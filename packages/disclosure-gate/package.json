@@ -2,7 +2,7 @@
   "name": "@worldbuilder/disclosure-gate",
   "version": "0.0.0",
   "private": true,
-  "description": "Disclosure gate: default-deny decisions for card disclosure (skeleton)",
+  "description": "Disclosure gate: default-deny decisions per card and target",
   "license": "Apache-2.0",
   "type": "module",
   "main": "./dist/index.js",
@@ -19,5 +19,11 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@worldbuilder/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@worldbuilder/conformance": "workspace:*"
   }
 }
