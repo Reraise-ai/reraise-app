@@ -46,9 +46,12 @@ and maps the legacy value cleanly.
   for any model, demos, exports and shared cards never contain them.
 - Persistence: stances are local files under `.worldbuilder/stances/` on
   the user's device (gitignored), one file per card with the current
-  stance and its previous versions. They are never written into card
-  files and never pass through a `StorageAdapter` of a shared or remote
-  store.
+  stance and its previous versions. Stance data created or changed in the
+  product is never written to card files and never passes through a
+  `StorageAdapter` of a shared or remote store. Stance-like fields that
+  already exist in a store file (`ebene: geglaubt`, `einordnung`) are read
+  and mapped, but left verbatim in the file, because adapters write by
+  patch ([ADR-0023](0023-core-domain-model.md)).
 - Legacy mapping (implemented by the owner's adapter, rule tested by
   `packages/conformance`): a card with `ebene: geglaubt` becomes
   `layer: said` with `author: human`, plus a stance `position: believed`
@@ -74,7 +77,8 @@ and maps the legacy value cleanly.
 Schema tests for `Stance`; conformance test for the `geglaubt` mapping;
 disclosure-gate tests that a stance is denied for every target except
 `screen`; MCP contract has no stance-writing tool; a conformance test
-proves that no adapter writes stance data into card files.
+proves that stance data created or changed in the product is never
+written to card files.
 
 ## Pros and Cons of the Options
 

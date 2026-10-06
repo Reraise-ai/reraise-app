@@ -49,6 +49,9 @@ documented in `docs/reference/`:
 - Reference-by-URI: every card has a product `id` (ULID) and may carry
   `externalId` and `uri` pointing to its home system. Cards are referenced,
   never copied, between worlds and between systems.
+- `StorageAdapter.create` returns the canonical id, and updates are
+  patches that leave all other store content verbatim
+  ([ADR-0023](0023-core-domain-model.md)).
 - The owner's card store is reached through a `StorageAdapter` that is
   developed and operated outside this repository against our contracts.
 - The in-repo reference implementation is

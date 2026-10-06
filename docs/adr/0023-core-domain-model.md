@@ -52,17 +52,34 @@ index, and lost on rebuild); store ids are not globally unique.
 ### Identity
 
 - Every card has `externalId` (the store-local id, for example `x-14`)
-  and `uri`, a stable adapter-defined URI built from the store instance
-  and `externalId`.
-- If the store record carries a canonical ULID of its own, that is `id`.
-  Otherwise `id` = derived ULID: the 128 bits of the ULID are the first
-  128 bits of SHA-256(`uri`), encoded as a 26-character ULID string
-  (Crockford base32). Derived ids are not
-  time-sortable; ordering uses dates.
+  and `uri = wb:<storeInstanceId>/<externalId percent-encoded>`.
+  - `storeInstanceId` is a random UUID created once and persisted in the
+    store's configuration; never a hostname, path or user name.
+  - Normalisation: `externalId` is NFC-normalised, encoded as UTF-8 bytes,
+    case preserved, and percent-encoded per RFC 3986 (unreserved
+    characters kept, everything else `%XX` with uppercase hex).
+- The reference `markdown-files` adapter stores the canonical ULID
+  natively in `id` (it is our own format). Stores with their own id
+  scheme use the derived id: the 128 bits of the ULID are the first 128
+  bits of SHA-256(`uri`), encoded as a 26-character ULID string (Crockford
+  base32). Derived ids are not time-sortable; ordering uses dates.
 - Every store-id reference is resolved the same way: edge `ziel`, Lage
   `karten[].id` and Lage `kanten` `von` / `ziel`, decision `cardsUsed`
   entries, player-field `source` when it is a card id. Canonical objects
-  hold the derived `id`; adapters write the store id back.
+  hold the canonical `id`; adapters write the store id back.
+
+### Writes
+
+- `StorageAdapter.create` returns the canonical `id` of the new card
+  (minted ULID, or derived from the store-assigned id). Callers must use
+  the returned id and never predict it.
+- Updates are patches: an adapter writes only the canonical fields the
+  product changed. Everything else in the file stays verbatim, including
+  store fields the product does not own or understand (for example
+  `einordnung`, `ebene: geglaubt`, unknown fields, formatting and order).
+- Conformance: read → patch one field → the file is byte-identical except
+  for that field; create → re-read → same `id`; the same card yields the
+  same `id` on another machine; no `uri` contains a hostname or path.
 
 ### Format versions
 
@@ -74,7 +91,9 @@ index, and lost on rebuild); store ids are not globally unique.
   [ADR-0009](0009-mandatory-provenance.md)).
 - Legacy defaults: a format-1 card without `ebene` has no `layer` and is
   shown as "unclassified"; without `urheber` it has `author: unknown`.
-  `unknown` is valid only on format-1 cards.
+  `author: unknown` is valid only on format-1 cards; `by: unknown` is
+  valid on edges read from legacy `verknuepfungen`, in format-1 and
+  format-2 cards alike.
 - Cards written by the product are always format 2; adapters emit
   `format: 2`.
 
@@ -85,13 +104,13 @@ index, and lost on rebuild); store ids are not globally unique.
 | `id` | `externalId` (+ `uri`, derived `id`) | see Identity |
 | `format` | `format` | `1` / `2` |
 | `brett` | `collection` | `akteure`→`actors`, `belege`→`evidence`, `entscheidungen`→`decisions` |
-| `typ` | `type` | open vocabulary (person, organisation, actor, event, claim, source, assumption, rating, decision, rule, topic, `lage`, …) |
+| `typ` | `type` + `typeRaw` | see the `typ` table below; `typeRaw` keeps the store's original value |
 | `titel` | `title` | text |
 | body | `body` | Markdown |
 | `datum` | `date` | ISO date |
 | `quelle` | `source` | text, URI or card id |
 | `quelle_datum` | `sourceDate` | ISO date |
-| `pruefsumme` | `sourceChecksum` | SHA-256 of the original source document; explicitly not `contentHash` |
+| `pruefsumme` | `sourceChecksum` | SHA-256 of the original source document; explicitly not `contentHash`. Must be SHA-256 on `collection: evidence`; on other cards any string is accepted (warning only, as in the store's validator) |
 | – | `contentHash` | SHA-256 of canonical card content, computed by us |
 | `status` | `status` | `entwurf`→`draft`, `geprueft`→`checked`, `freigegeben`→`released` |
 | `bewertung` | `rating` | carried as stored |
@@ -101,7 +120,7 @@ index, and lost on rebuild); store ids are not globally unique.
 | `sichtbarkeit` | `visibility` | `privat`→`private`, `gesellschaftsintern`→`company_internal`, `partneruebergreifend`→`cross_partner`, `kundensichtbar`→`customer_visible`, `oeffentlich`→`public` |
 | `klasse` | `class` | `A` / `B` / `C`; input to disclosure-gate rules |
 | `ebene` | `layer` | `belegt`→`evidenced`, `gesagt`→`said`, `erfahrung`→`experience`; `geglaubt` → `said` + stance believed ([ADR-0008](0008-believed-as-private-stance.md)) |
-| `welten` | `worlds` | list of world names, references only |
+| `welten` | `worlds` | world names resolved by name within the store to World references; a World is created on demand for an unknown name |
 | `einordnung` | stance `note` (private, not on the card) | see below |
 | `urheber` | `author` | `mensch`→`human`, `agent:<name>`→`agent:<name>`; absent on format 1 → `unknown` |
 | `herkunft_system` | `originSystem` | text |
@@ -110,6 +129,29 @@ index, and lost on rebuild); store ids are not globally unique.
 | `verknuepfungen` (legacy) | `edges` of kind `unspecified`, `by: unknown` | dangling targets are a warning, not an error |
 | `interessen`, `faehigkeiten`, `abhaengigkeiten`, `zuege` | `interests`, `capabilities`, `dependencies`, `moves` | each `{text, source}`; only on `collection: actors` |
 | – | `level`, `signature` | reserved, unused |
+
+Store `typ` values map to canonical `type`:
+
+| `typ` | `type` |
+| --- | --- |
+| `akteur` | `actor` |
+| `person` | `person` (an actor kind) |
+| `organisation` | `organisation` (an actor kind) |
+| `beleg` | `evidence` |
+| `quelle` | `source` |
+| `behauptung` | `claim` |
+| `ereignis` | `event` |
+| `erfahrung` | `experience` |
+| `annahme` | `assumption` |
+| `bewertung` | `rating` |
+| `entscheidung` | `decision` |
+| `regel` | `rule` |
+| `thema` | `topic` |
+| `lage` | `lage` |
+| any other value | copied verbatim into `type` |
+
+The canonical `type` vocabulary is open; `typeRaw` always holds the
+store's original value so a patch never rewrites it.
 
 Format-2 requirement "ebene on evidence and actors" maps to: `layer` is
 required when `format = 2` and `collection ∈ {evidence, actors}`.
@@ -130,7 +172,7 @@ canonical card.
 | `optionen` | `options[]` |
 | `karten[{id, x, y}]` | `cards[{id, x, y}]` (ids resolved as above) |
 | `sitze[{name, art}]`, `art` `mensch` / `agent` | `seats[{name, kind}]`, `kind` `human` / `agent` |
-| `kanten[{von, ziel, art, wer}]` | `edges[{from, to, kind, by}]` (kinds as above) |
+| `kanten[{von, ziel, art, wer}]` | `edges[{from, to, kind, by}]`; kinds as above; `wer` `mensch` → `human`, `agent:<name>` → `agent:<name>` |
 
 A rewrite archives the previous version ([ADR-0006](0006-files-are-the-truth.md)).
 
