@@ -1,0 +1,23 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* Copyright The Worldbuilder contributors */
+
+/* Design tokens: the only place where raw colours and font names may appear. */
+:root {
+  --wb-color-navy: #0d1722;
+  --wb-color-cream: #f1ece2;
+  --wb-color-gold: #c9a44c;
+  --wb-color-evidenced: #4fb3a5;
+  --wb-color-said: #7fa3d6;
+  --wb-color-believed: var(--wb-color-gold);
+
+  --wb-surface: var(--wb-color-navy);
+  --wb-text: var(--wb-color-cream);
+  --wb-accent: var(--wb-color-gold);
+
+  --wb-font-display: 'Fraunces', Georgia, serif;
+  --wb-font-body: 'Inter', system-ui, sans-serif;
+
+  --wb-space-1: 0.5rem;
+  --wb-space-2: 1rem;
+  --wb-space-3: 2rem;
+}

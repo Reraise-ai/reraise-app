@@ -1,0 +1,16 @@
+version = 1
+SPDX-PackageName = "The Worldbuilder"
+
+# Files that cannot carry a comment header (JSON, images, YAML, docs, prototype) get their
+# licence tier from here. The last matching annotation wins. LICENSES/ is exempt by REUSE rules.
+# scripts/check-spdx.mjs verifies this file against the directory tiers in LICENSING.md.
+
+[[annotations]]
+path = ["**"]
+SPDX-FileCopyrightText = "The Worldbuilder contributors"
+SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
+path = ["apps/board/**", "services/api/**", "packages/mcp-server/**"]
+SPDX-FileCopyrightText = "The Worldbuilder contributors"
+SPDX-License-Identifier = "AGPL-3.0-or-later"

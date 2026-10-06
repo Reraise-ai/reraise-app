@@ -1,9 +1,11 @@
 # The Worldbuilder
 
-[![CI](https://img.shields.io/badge/CI-placeholder-lightgrey)](#status)
+[![CI](https://github.com/Reraise-ai/reraise-app/actions/workflows/ci.yml/badge.svg)](https://github.com/Reraise-ai/reraise-app/actions/workflows/ci.yml)
 [![Licence](https://img.shields.io/badge/licence-Apache--2.0%20%2F%20AGPL--3.0--or--later-blue)](LICENSING.md)
 
 > The model is replaceable. Your personal world is not.
+
+_The Worldbuilder — Powered by Private Executive_
 
 ## 30-second pitch
 
@@ -22,6 +24,8 @@ community files, tooling and package skeletons. There is no usable product yet, 
 feature is claimed here that is not backed by an automated test.
 
 ## What and why
+
+Design principles (see ADRs, implementation from M1). None of these is implemented yet:
 
 - **Files are the truth.** Worlds are Markdown with YAML front matter; any database is derived.
 - **Provenance is explicit.** Evidence, hearsay and experience are never mixed.
@@ -52,12 +56,12 @@ Available from M1. Until then, to work on the foundations:
 ```sh
 corepack enable
 pnpm install
-pnpm test
+pnpm lint && pnpm typecheck && pnpm test && pnpm build
 ```
 
 ## Repository settings
 
-GitHub secret scanning and push protection must be enabled in the repository settings.
+GitHub secret scanning and push protection must be enabled in the repository settings. CI additionally runs gitleaks over the full history. The CodeQL workflow needs a public repository or GitHub Advanced Security to upload results.
 
 ## Links
 
