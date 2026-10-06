@@ -226,7 +226,7 @@ describe('renderNewCard', () => {
     expect(parseCardText(d, ctx).card.sections).toEqual(sections);
   });
 
-  it('does not repeat a structured section the draft body already holds', () => {
+  it('refuses a body or a section value that brings its own structured heading', () => {
     const lage = {
       question: 'Q',
       options: [],
@@ -236,15 +236,18 @@ describe('renderNewCard', () => {
       version: 1,
       updatedAt: '2026-01-01',
     };
-    const body =
-      '## Position\n\n```json\n{"question":"Q","options":[],"cards":[],"seats":[],"edges":[]}\n```';
-    const text = renderNewCard(
-      ID,
-      { format: 2, type: 'lage', title: 'L', lage, body } as CardDraft,
-      'human',
-      ctx,
+    const body = '## Position\n\n```json\n{"question":"Q"}\n```';
+    const make = (extra: object) =>
+      ({ format: 2, type: 'lage', title: 'L', lage, ...extra }) as CardDraft;
+    expect(() => renderNewCard(ID, make({ body }), 'human', ctx)).toThrow(/structured heading/);
+    expect(() => renderNewCard(ID, make({ body: '## Rule\n\nx' }), 'human', ctx)).toThrow(
+      /structured heading/,
     );
-    expect(text.match(/## Position/g)).toHaveLength(1);
+    expect(() => renderNewCard(ID, make({ body: '## Facts\n\nx' }), 'human', ctx)).toThrow(
+      /structured heading/,
+    );
+    // a plain heading is fine
+    expect(renderNewCard(ID, make({ body: '## Notes\n\nx' }), 'human', ctx)).toContain('## Notes');
   });
 
   it('refuses entries that the flow list format cannot hold', () => {

@@ -321,9 +321,39 @@ const lageJson = (lage: Json): string => {
 
 const block = (json: string): string => `\`\`\`json\n${json}\n\`\`\``;
 
+/** Headings that belong to structured content; free text must not introduce them. */
+function isStructuredHeading(heading: string): boolean {
+  return (
+    heading === 'Position' ||
+    heading === 'Rule' ||
+    DECISION_SECTIONS.some(([, , a]) => a.includes(foldHeading(heading)))
+  );
+}
+
+/** Reject text that would add a structured heading (or hide one in an unbalanced code fence). */
+export function assertNoStructuredHeading(text: string, what: string): void {
+  if (findSections(text, 0).some((x) => isStructuredHeading(x.heading))) {
+    throw new MarkdownStoreError(
+      'invalid_card',
+      `${what} must not contain a structured heading (Position, Rule or a decision section)`,
+    );
+  }
+}
+
+/** Reject a section value that contains a heading line of its own. */
+function assertNoHeadingLine(value: string, key: string): void {
+  if (/^##\s/m.test(value.replace(/\r\n/g, '\n'))) {
+    throw new MarkdownStoreError(
+      'invalid_card',
+      `decision section "${key}" must not contain a "##" heading line`,
+    );
+  }
+}
+
 function sectionsText(sections: Json): string {
   return DECISION_SECTIONS.map(([key, heading]) => {
     const v = sections[key];
+    if (typeof v === 'string') assertNoHeadingLine(v, key);
     const content = Array.isArray(v) ? v.map((id) => `- ${String(id)}`).join('\n') : String(v);
     return `## ${heading}\n\n${content}\n`;
   }).join('\n');
@@ -379,15 +409,12 @@ export function renderNewCard(
   }
   const parts: string[] = [];
   const own = typeof d['body'] === 'string' ? d['body'].replace(/\r\n/g, '\n').trimEnd() : '';
+  const structured = lage || d['rule'] || d['sections'];
+  if (structured) assertNoStructuredHeading(own, 'the body');
   if (own) parts.push(own);
-  if (lage && !/^##\s+Position\s*$/m.test(own))
-    parts.push(`## Position\n\n${block(lageJson(lage))}`);
-  if (d['rule'] && !/^##\s+Rule\s*$/m.test(own)) {
-    parts.push(`## Rule\n\n${block(JSON.stringify(d['rule'], null, 2))}`);
-  }
-  if (d['sections'] && !/^##\s+Situation\s*$/m.test(own)) {
-    parts.push(sectionsText(d['sections'] as Json).trimEnd());
-  }
+  if (lage) parts.push(`## Position\n\n${block(lageJson(lage))}`);
+  if (d['rule']) parts.push(`## Rule\n\n${block(JSON.stringify(d['rule'], null, 2))}`);
+  if (d['sections']) parts.push(sectionsText(d['sections'] as Json).trimEnd());
   const body = parts.length > 0 ? `\n${parts.join('\n\n')}\n` : '';
   return `---\n${lines.join('\n')}\n---\n${body}`;
 }
@@ -426,6 +453,7 @@ function setDecisionSections(text: string, sections: Json): string {
   for (const [key, heading] of DECISION_SECTIONS) {
     const v = sections[key];
     if (v === undefined) continue;
+    if (typeof v === 'string') assertNoHeadingLine(v, key);
     const content = Array.isArray(v) ? v.map((id) => `- ${String(id)}`).join('\n') : String(v);
     const found = findSections(out, locateFrontMatter(out).bodyStart);
     const at = found.findIndex((s) => sectionKeyOf(s.heading) === key);

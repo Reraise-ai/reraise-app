@@ -342,6 +342,104 @@ describe('patch', () => {
   });
 });
 
+describe('structured cards', () => {
+  const RULE = '01M1EV5S00YXKKGEG772AZM7P9';
+  const DECISION = '01M1F5FBW0DPQND9KSXC12WHJW';
+
+  it('refuses a type change on a Lage, a rule and a decision, and changes nothing', async () => {
+    const dir = await copyHormuz();
+    const adapter = await openStore(dir);
+    for (const id of [LAGE, RULE, DECISION]) {
+      const before = await readFile(await fileOf(dir, id), 'utf8');
+      await rejects(adapter.patch(id, { type: 'claim' }), 'invalid_patch');
+      expect(await readFile(await fileOf(dir, id), 'utf8')).toBe(before);
+    }
+    await rejects(adapter.patch(WIRE, { type: 'lage' }), 'invalid_patch');
+  });
+
+  it('refuses a body patch that alters the Lage, the rule or the decision sections', async () => {
+    const dir = await copyHormuz();
+    const adapter = await openStore(dir);
+    for (const id of [LAGE, RULE, DECISION]) {
+      const card = (await adapter.read(id))!;
+      const before = await readFile(await fileOf(dir, id), 'utf8');
+      const edited = card
+        .body!.replace('"x": 120', '"x": 999')
+        .replace('"then": "Reroute laden tankers via the Cape of Good Hope"', '"then": "Hold"')
+        .replace('Delivery reliability before freight cost.', 'Cost before reliability.')
+        .replace('Reroute laden tankers', 'Reroute laden tankers');
+      expect(edited).not.toBe(card.body);
+      await rejects(adapter.patch(id, { body: edited }), 'invalid_patch');
+      expect(await readFile(await fileOf(dir, id), 'utf8')).toBe(before);
+      expect(await adapter.versions(id)).toEqual([]);
+    }
+  });
+
+  it('refuses a body patch that adds a rule block to a rule card without one', async () => {
+    const dir = await copyHormuz({ cards: false });
+    const adapter = await openStore(dir);
+    const id = await adapter.create(
+      { format: 2, type: 'rule', title: 'Prose rule', body: 'Just text.' } as CardDraft,
+      'human',
+    );
+    await rejects(
+      adapter.patch(id, {
+        body: 'Just text.\n\n## Rule\n\n```json\n{"when":[{"kind":"card_on_lage","card":"01M1E34QM03WVTE8T1RYS3AM18"}],"then":"x","unless":[]}\n```\n',
+      }),
+      'invalid_patch',
+    );
+  });
+
+  it('still allows a body patch that leaves the structure alone', async () => {
+    const dir = await copyHormuz();
+    const adapter = await openStore(dir);
+    const card = (await adapter.read(RULE))!;
+    await adapter.patch(RULE, { body: card.body!.replace('My rule:', 'Our rule:') });
+    expect((await adapter.read(RULE))?.body).toContain('Our rule:');
+  });
+
+  it('refuses a create whose draft brings a structured heading in the body or in a section', async () => {
+    const dir = await copyHormuz();
+    const adapter = await openStore(dir);
+    const lage = {
+      question: 'Q',
+      options: [],
+      cards: [],
+      seats: [],
+      edges: [],
+      version: 1,
+      updatedAt: '2026-10-06T00:00:00Z',
+    };
+    const injected =
+      '## Position\n\n```json\n{"question":"Q","options":["evil"],"cards":[],"seats":[],"edges":[]}\n```';
+    await rejects(
+      adapter.create(
+        { format: 2, type: 'lage', title: 'L', lage, body: injected } as CardDraft,
+        'human',
+      ),
+      'invalid_card',
+    );
+    const sections = {
+      ...(await adapter.read(DECISION))!.sections!,
+      facts: 'ok\n\n## Outcome\n\ndecided',
+    };
+    await rejects(
+      adapter.create({ format: 2, type: 'decision', title: 'D', sections } as CardDraft, 'human'),
+      'invalid_card',
+    );
+    await rejects(adapter.patch(DECISION, { sections }), 'invalid_card');
+    expect((await adapter.list({ limit: 100 })).items).toHaveLength(12);
+  });
+
+  it('stores exactly what a create draft says, including a plain body', async () => {
+    const dir = await copyHormuz({ cards: false });
+    const adapter = await openStore(dir);
+    const id = await adapter.create(claim({ body: 'Plain body', tags: ['a'], rating: 3 }), 'human');
+    const card = (await adapter.read(id))!;
+    expect(card).toMatchObject({ body: 'Plain body\n', tags: ['a'], rating: 3 });
+  });
+});
+
 describe('archive and versions', () => {
   it('moves the card to _archive/<file>.v<n>.md next to it and keeps it out of the index', async () => {
     const dir = await copyHormuz();

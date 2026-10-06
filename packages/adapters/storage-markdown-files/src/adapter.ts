@@ -49,6 +49,9 @@ import { acquireLock, type LockOptions } from './lock.js';
 import { describeErrors, schemaValidator } from './validate.js';
 import { mintUlid } from './ulid.js';
 
+/** `canonicalJson` that also accepts `undefined` (a field that is not there). */
+const jsonOf = (v: unknown): string => (v === undefined ? 'undefined' : canonicalJson(v));
+
 export const CONFIG_FILE = 'worldbuilder-store.yaml';
 export const CARDS_DIR = 'cards';
 export const ARCHIVE_DIR = '_archive';
@@ -57,6 +60,7 @@ export const LOCK_FILE = '.worldbuilder/write.lock';
 /** A file modified this recently may share its timestamp with a later write: always re-read. */
 const RACY_MS = 2000;
 const DEFAULT_LIMIT = 50;
+const STRUCTURED_TYPES: ReadonlySet<string> = new Set(['lage', 'rule', 'decision']);
 
 export interface OpenOptions {
   /** Create the folder and a store configuration with a fresh storeInstanceId if missing. */
@@ -338,6 +342,7 @@ export class MarkdownFilesAdapter implements StorageAdapter {
       const id = mintUlid();
       const text = renderNewCard(id, draft, author, this.ctx);
       const { card } = this.parseForWrite(text);
+      this.assertStored(card, draft as unknown as Record<string, unknown>);
       this.assertReferences(card as unknown as Record<string, unknown>);
       const rel = `${CARDS_DIR}/${slugOf(draft.title)}-${id.slice(-8).toLowerCase()}.md`;
       const abs = this.abs(rel);
@@ -394,15 +399,28 @@ export class MarkdownFilesAdapter implements StorageAdapter {
         }
       }
       this.assertReferences(changes);
+      if (
+        patch.type !== undefined &&
+        patch.type !== current.type &&
+        (STRUCTURED_TYPES.has(current.type) || STRUCTURED_TYPES.has(patch.type))
+      ) {
+        throw new MarkdownStoreError(
+          'invalid_patch',
+          'the type of a lage, rule or decision card cannot be changed',
+        );
+      }
 
       const next = applyPatch(text, changes, this.ctx);
       const { card } = this.parseForWrite(next);
-      for (const [key, value] of Object.entries(changes)) {
-        if (
-          value !== undefined &&
-          canonicalJson(card[key as keyof Card]) !== canonicalJson(value)
-        ) {
-          throw new MarkdownStoreError('invalid_patch', `the card cannot hold ${key} as given`);
+      this.assertStored(card, changes, 'invalid_patch');
+      // Structured content changes only through its own key (a Lage with a version bump and
+      // an archived previous version), never as a side effect of a body patch.
+      for (const key of ['lage', 'rule', 'sections'] as const) {
+        if (!(key in changes) && jsonOf(card[key]) !== jsonOf(current[key])) {
+          throw new MarkdownStoreError(
+            'invalid_patch',
+            `${key} can only be changed through the ${key} field, not through the body`,
+          );
         }
       }
       if (next === text) return;
@@ -459,6 +477,28 @@ export class MarkdownFilesAdapter implements StorageAdapter {
       throw new MarkdownStoreError('invalid_card', `invalid card: ${describeErrors(validate)}`);
     }
     return { card };
+  }
+
+  /** What was read back from the written text must equal what the caller gave. */
+  private assertStored(
+    card: Card,
+    given: Record<string, unknown>,
+    code: 'invalid_card' | 'invalid_patch' = 'invalid_card',
+  ): void {
+    const structured = ['lage', 'rule', 'sections'].some((k) => given[k] !== undefined);
+    for (const [key, value] of Object.entries(given)) {
+      if (value === undefined || key === 'contentHash' || key === 'format') continue;
+      let stored: unknown = card[key as keyof Card];
+      let wanted: unknown = value;
+      if (key === 'body') {
+        if (structured) continue; // the body also holds the rendered structure
+        stored = String(stored).trimEnd();
+        wanted = String(value).replace(/\r\n/g, '\n').trimEnd();
+      }
+      if (jsonOf(stored) !== jsonOf(wanted)) {
+        throw new MarkdownStoreError(code, `the card cannot hold ${key} as given`);
+      }
+    }
   }
 
   /** Every card the written fields point to must exist in this store. */
