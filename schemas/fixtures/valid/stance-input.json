@@ -1,0 +1,10 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/stance.schema.json#/$defs/input",
+  "description": "Body of stance_save; the server sets cardId, updatedAt and history.",
+  "data": {
+    "position": "believed",
+    "weight": 2,
+    "note": "Matches what I saw last time."
+  }
+}

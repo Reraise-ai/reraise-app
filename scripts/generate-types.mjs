@@ -264,20 +264,46 @@ export async function generateTypes(repoRoot) {
   return prettier.format(`${BANNER}\n\n${body}`, { ...config, parser: 'typescript' });
 }
 
+export const SCHEMAS_OUTPUT = 'packages/core/src/generated/schemas.ts';
+
+/**
+ * The JSON Schemas as a module, so runtime validators (the disclosure gate, the conformance
+ * kit) use exactly the files in schemas/ without reading the file system.
+ */
+export async function generateSchemasModule(repoRoot) {
+  const schemas = loadSchemaFiles(repoRoot).map(([, schema]) => schema);
+  const source = `${BANNER.replace('The types describe shapes only; validate data against the JSON Schemas for the rules.', 'The JSON Schemas of schemas/, for runtime validation with Ajv.')}
+
+/** Every JSON Schema of the contract, keyed by its \`$id\`. */
+export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>> = ${JSON.stringify(
+    Object.fromEntries(schemas.map((sch) => [sch.$id, sch])),
+  )};
+`;
+  const config = (await prettier.resolveConfig(path.join(repoRoot, SCHEMAS_OUTPUT))) ?? {};
+  return prettier.format(source, { ...config, parser: 'typescript' });
+}
+
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-  const file = path.join(repoRoot, OUTPUT);
-  const source = await generateTypes(repoRoot);
-  if (process.argv.includes('--check')) {
-    const current = existsSync(file) ? readFileSync(file, 'utf8') : '';
-    if (current !== source) {
-      console.error(`${OUTPUT} is out of date; run pnpm generate:types`);
-      process.exit(1);
+  /** @type {[string, string][]} */
+  const outputs = [
+    [OUTPUT, await generateTypes(repoRoot)],
+    [SCHEMAS_OUTPUT, await generateSchemasModule(repoRoot)],
+  ];
+  let stale = false;
+  for (const [rel, source] of outputs) {
+    const file = path.join(repoRoot, rel);
+    if (process.argv.includes('--check')) {
+      const current = existsSync(file) ? readFileSync(file, 'utf8') : '';
+      if (current !== source) {
+        console.error(`${rel} is out of date; run pnpm generate:types`);
+        stale = true;
+      } else console.log(`${rel} is up to date`);
+    } else {
+      mkdirSync(path.dirname(file), { recursive: true });
+      writeFileSync(file, source);
+      console.log(`wrote ${rel}`);
     }
-    console.log(`${OUTPUT} is up to date`);
-  } else {
-    mkdirSync(path.dirname(file), { recursive: true });
-    writeFileSync(file, source);
-    console.log(`wrote ${OUTPUT}`);
   }
+  if (stale) process.exit(1);
 }

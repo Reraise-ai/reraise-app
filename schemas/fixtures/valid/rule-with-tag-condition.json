@@ -1,0 +1,14 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/rule.schema.json",
+  "description": "Rule conditions may reference tags.",
+  "data": {
+    "when": [
+      {
+        "kind": "tag",
+        "tag": "transit"
+      }
+    ],
+    "then": "Check the routing desk"
+  }
+}

@@ -45,7 +45,8 @@
       "minimum": 0
     },
     "transfer": {
-      "$ref": "#/$defs/transferRef"
+      "description": "The confirmed transfer whose objects this package carries; its cardIds list every item.",
+      "$ref": "disclosure-decision.schema.json#/$defs/confirmationRef"
     },
     "denied": {
       "description": "Cards the gate withheld, by id and reason. A cloud_model package without a confirmed transfer contains only these (ADR-0031).",
@@ -53,6 +54,17 @@
       "items": {
         "$ref": "disclosure-decision.schema.json#/$defs/denied"
       }
+    },
+    "confirmationRequired": {
+      "description": "Set when a cloud_model caller asked without a confirmed transfer: the human must confirm transfer `transferId` on the board; the caller then asks again with that transferId. The package then has no content.",
+      "type": "object",
+      "properties": {
+        "transferId": {
+          "$ref": "common.schema.json#/$defs/ulid"
+        }
+      },
+      "required": ["transferId"],
+      "additionalProperties": false
     }
   },
   "required": [
@@ -92,7 +104,7 @@
       }
     },
     {
-      "description": "A cloud_model package carries card content only with a confirmed transfer whose token was consumed for it (ADR-0031); without one it has no items, only denied ids.",
+      "description": "A cloud_model package carries content only from a confirmed, released transfer (ADR-0031, ADR-0028); without one it has no items, no question and no pending proposals, only denied ids and possibly confirmationRequired.",
       "if": {
         "properties": {
           "target": {
@@ -114,17 +126,32 @@
               "items": {
                 "type": "array",
                 "maxItems": 0
-              }
+              },
+              "pendingProposals": {
+                "type": "array",
+                "maxItems": 0
+              },
+              "question": false
             }
           }
         ]
       },
       "else": {
         "not": {
-          "properties": {
-            "transfer": true
-          },
-          "required": ["transfer"]
+          "anyOf": [
+            {
+              "properties": {
+                "transfer": true
+              },
+              "required": ["transfer"]
+            },
+            {
+              "properties": {
+                "confirmationRequired": true
+              },
+              "required": ["confirmationRequired"]
+            }
+          ]
         }
       }
     }
@@ -230,27 +257,9 @@
       "additionalProperties": false,
       "description": "A pending proposal, by id and kind only: no free text from agents reaches a model as context."
     },
-    "transferRef": {
-      "title": "ContextTransferRef",
-      "description": "The confirmed cloud_model transfer this package belongs to.",
-      "type": "object",
-      "properties": {
-        "transferId": {
-          "$ref": "common.schema.json#/$defs/ulid"
-        },
-        "confirmedAt": {
-          "$ref": "common.schema.json#/$defs/dateTime"
-        },
-        "payloadHash": {
-          "$ref": "disclosure-decision.schema.json#/$defs/payloadHash"
-        }
-      },
-      "required": ["transferId", "confirmedAt", "payloadHash"],
-      "additionalProperties": false
-    },
     "request": {
       "title": "ContextPackageRequest",
-      "description": "Input of context_package_get. The target is taken from the caller's registered connection, never from the request (ADR-0012). A cloud_model send carries the confirmation token of the transfer that previewed exactly this package (ADR-0031).",
+      "description": "Input of context_package_get. The target is taken from the caller's registered connection, never from the request (ADR-0012). A board send to a cloud model carries the transferId and the confirmation token; an MCP connection registered as cloud_model carries only the transferId of the transfer the human confirmed, and the service releases it to that connection (ADR-0031, ADR-0028).",
       "type": "object",
       "properties": {
         "worldId": {
@@ -277,7 +286,6 @@
       "required": ["worldId"],
       "additionalProperties": false,
       "dependentRequired": {
-        "transferId": ["confirmationToken"],
         "confirmationToken": ["transferId"]
       }
     }

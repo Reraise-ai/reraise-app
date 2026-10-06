@@ -130,9 +130,14 @@ describe('MCP / Board API parity', () => {
     },
   );
 
-  it('lets agent tokens call the mirrored operations', () => {
+  it('lets agent tokens call every mirrored operation, and only agents propose', () => {
     expect(api.security).toEqual([{ sessionToken: [] }, { agentToken: [] }]);
-    for (const tool of TOOLS) expect(operations.get(tool.name)?.op.security).toBeUndefined();
+    for (const tool of TOOLS) {
+      const security = operations.get(tool.name)?.op.security;
+      // proposal_create is agent-only: humans act directly (ADR-0011, ADR-0028).
+      if (tool.name === 'proposal_create') expect(security).toEqual([{ agentToken: [] }]);
+      else expect(security).toBeUndefined();
+    }
   });
 
   it('reaches stances only through human-only operations (ADR-0008)', () => {
@@ -167,6 +172,12 @@ describe('MCP / Board API parity', () => {
       expect(op['x-human-only'], id).toBe(true);
       expect(op.security, id).toEqual([{ sessionToken: [] }]);
       expect(Object.keys(op.responses), id).toContain('403');
+    }
+  });
+
+  it('answers 413 for every request body that exceeds the size limit (ADR-0026)', () => {
+    for (const [id, { op }] of operations) {
+      if (op.requestBody) expect(Object.keys(op.responses), id).toContain('413');
     }
   });
 });

@@ -1,0 +1,14 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/stance.schema.json#/$defs/input",
+  "description": "The server keeps the history; a client cannot write it.",
+  "expect": {
+    "keyword": "additionalProperties",
+    "instancePath": ""
+  },
+  "data": {
+    "position": "believed",
+    "weight": 2,
+    "history": []
+  }
+}

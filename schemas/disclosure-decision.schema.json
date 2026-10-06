@@ -19,7 +19,7 @@
       "$ref": "common.schema.json#/$defs/text"
     },
     "ruleId": {
-      "description": "The allow rule that matched, if any.",
+      "description": "Id of the rule that decided: the matching deny rule, or else the matching allow rule. Absent for default deny.",
       "type": "string",
       "minLength": 1
     },
@@ -149,6 +149,11 @@
         },
         "expiresAt": {
           "$ref": "common.schema.json#/$defs/dateTime"
+        },
+        "requestedBy": {
+          "description": "Who will send: the board session (token flow) or a registered MCP connection (released to that connection only).",
+          "type": "string",
+          "enum": ["board", "mcp_connection"]
         }
       },
       "required": [
@@ -158,7 +163,8 @@
         "payloadHash",
         "preview",
         "createdAt",
-        "expiresAt"
+        "expiresAt",
+        "requestedBy"
       ],
       "additionalProperties": false
     },
@@ -176,7 +182,7 @@
     },
     "confirmation": {
       "title": "DisclosureConfirmation",
-      "description": "Response of the human-only confirm operation (ADR-0031): a single-use confirmation token, at least 128 random bits, held server side, bound to the confirming human session, valid for 5 minutes and void after a restart. The send call carries it; the service consumes it atomically before sending an envelope whose hash equals `payloadHash`. Never logged.",
+      "description": "Response of the human-only confirm operation (ADR-0031, ADR-0028). For a transfer the board previewed for its own send, it carries a single-use token (at least 128 random bits, held server side, bound to the confirming human session, valid 5 minutes, void after a restart) that the send call carries; the service consumes it atomically before sending. For a transfer an MCP connection registered as cloud_model asked for, there is no token: the agent re-calls with the transferId and the service releases the content to that connection only. Never logged.",
       "type": "object",
       "properties": {
         "transferId": {
@@ -206,16 +212,11 @@
           "$ref": "common.schema.json#/$defs/dateTime"
         }
       },
-      "required": [
-        "transferId",
-        "payloadHash",
-        "cardIds",
-        "token",
-        "tokenExpiresAt",
-        "confirmedBy",
-        "confirmedAt"
-      ],
-      "additionalProperties": false
+      "required": ["transferId", "payloadHash", "cardIds", "confirmedBy", "confirmedAt"],
+      "additionalProperties": false,
+      "dependentRequired": {
+        "token": ["tokenExpiresAt"]
+      }
     },
     "payloadHash": {
       "title": "PayloadHash",
@@ -304,7 +305,8 @@
       "title": "ConfirmationToken",
       "description": "Opaque single-use token, base64url of at least 16 random bytes (128 bits).",
       "type": "string",
-      "pattern": "^[A-Za-z0-9_-]{22,}$"
+      "pattern": "^[A-Za-z0-9_-]{22,128}$",
+      "maxLength": 128
     },
     "confirmationRef": {
       "title": "DisclosureConfirmationRef",
@@ -345,6 +347,25 @@
         }
       },
       "required": ["cardId", "reason"],
+      "additionalProperties": false
+    },
+    "release": {
+      "title": "DisclosureRelease",
+      "description": "Result of consuming a confirmation for one send (DisclosureGate.redeem): exactly the canonical objects the human confirmed, nothing else. Cloud content leaves the device only as these objects.",
+      "type": "object",
+      "properties": {
+        "confirmation": {
+          "$ref": "#/$defs/confirmationRef"
+        },
+        "objects": {
+          "type": "array",
+          "items": {
+            "$ref": "card.schema.json"
+          },
+          "minItems": 1
+        }
+      },
+      "required": ["confirmation", "objects"],
       "additionalProperties": false
     }
   }

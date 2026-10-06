@@ -1,0 +1,45 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/context-package.schema.json",
+  "description": "Without a confirmed transfer a cloud package carries no question either (ADR-0031).",
+  "expect": {
+    "keyword": "false schema",
+    "instancePath": "/question"
+  },
+  "data": {
+    "id": "01M1FK6TC038DQ5MVEW3P3ZGQ9",
+    "target": "cloud_model",
+    "worldId": "01M1DZPW00JGXPRPG4179ZPNB8",
+    "lageId": "01M1F21G80R816A1T0V2P6RACH",
+    "createdAt": "2026-09-16T10:10:00Z",
+    "items": [],
+    "independence": {
+      "findings": 0,
+      "origins": 0
+    },
+    "pendingProposals": [],
+    "withheld": 4,
+    "confirmationRequired": {
+      "transferId": "01M1HA4MC0T8585XX5H0E6NVRP"
+    },
+    "denied": [
+      {
+        "cardId": "01M1E34QM03WVTE8T1RYS3AM18",
+        "reason": "cloud_model needs a confirmed transfer"
+      },
+      {
+        "cardId": "01M1E6JK80GR8G0JHMPVT7TDX4",
+        "reason": "cloud_model needs a confirmed transfer"
+      },
+      {
+        "cardId": "01M1EA0EW0V90F04X7AKQJSKK2",
+        "reason": "cloud_model needs a confirmed transfer"
+      },
+      {
+        "cardId": "01M1F8X7G0TTV1CC1FNKTNN0TJ",
+        "reason": "deny rule never-class-a"
+      }
+    ],
+    "question": "Reroute laden tankers around the Cape for Q4?"
+  }
+}

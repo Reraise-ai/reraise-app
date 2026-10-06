@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright The Worldbuilder contributors
 //
-// Reference DisclosureGate (ADR-0012, ADR-0031): default deny, deny wins, per card and per
-// target, with rules as data (`schemas/gate-rules.schema.json`). Adapter fragments may only
-// deny. Cloud transfers are previewed, hashed (RFC 8785), confirmed by the human with the
-// previewed hash, and released by a single-use token that the send consumes. All transfer
-// state is in memory: a restart voids every transfer and token. Decisions are logged by the
-// caller without card content.
+// Reference DisclosureGate (ADR-0012, ADR-0031, ADR-0028): default deny, deny wins, per card
+// and per target, with rules as data validated against `schemas/gate-rules.schema.json`.
+// Invalid rules or an allowing adapter fragment fail closed: every decision is deny.
+//
+// Cloud content never passes `decide`: it leaves only as the objects `redeem` returns for one
+// previewed, human-confirmed, unexpired and unused transfer, bound to the board session (by a
+// single-use token) or to the MCP connection that asked. All transfer state is in memory and
+// pruned on expiry; a restart voids it. Decisions are logged by the caller without content.
 
 import type {
   Card,
@@ -15,32 +17,36 @@ import type {
   DisclosureDecision,
   DisclosureGate,
   DisclosureItem,
+  DisclosurePreviewEnvelope,
   DisclosureTarget,
   DisclosureTransfer,
   GateRule,
   GateRuleFragment,
   GateRules,
   TransferErrorCode,
+  TransferRequester,
 } from '@worldbuilder/core';
-import { computePayloadHash, encodeUlid, parseUri } from '@worldbuilder/core';
+import { SCHEMAS, computePayloadHash, encodeUlid, parseUri } from '@worldbuilder/core';
+import { Ajv2020 } from 'ajv/dist/2020.js';
+import addFormatsModule from 'ajv-formats';
 
 export type { DisclosureTarget } from '@worldbuilder/core';
 
 /** Transfer records and tokens live 5 minutes (ADR-0031). */
 export const TRANSFER_TTL_MS = 5 * 60 * 1000;
+const RULES_ID = 'https://worldbuilder.invalid/schemas/v0/gate-rules.schema.json';
 
 export interface DisclosureGateOptions {
-  /** The user's rules (validated against gate-rules.schema.json). */
-  readonly rules?: GateRules;
-  /** Adapter fragments; deny rules only (ADR-0031). */
-  readonly fragments?: readonly GateRuleFragment[];
+  /** The user's rule file, as parsed; validated here. */
+  readonly rules?: unknown;
+  /** Adapter fragments, as supplied; validated here and deny-only (ADR-0031). */
+  readonly fragments?: readonly unknown[];
   /** Store instance ids whose configuration says `synthetic: true`. */
   readonly syntheticStores?: readonly string[];
   /** World names by id, for rules that name worlds. */
   readonly worldNames?: ReadonlyMap<string, string>;
   readonly now?: () => Date;
-  readonly newId?: () => string;
-  /** Random bytes for tokens; defaults to the platform's secure random source. */
+  /** Random bytes for ids and tokens; defaults to the platform's secure random source. */
   readonly randomBytes?: (n: number) => Uint8Array;
 }
 
@@ -66,20 +72,61 @@ function base64url(bytes: Uint8Array): string {
   return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-/**
- * The effective rule set: the user's rules plus all adapter fragments. A fragment containing
- * an allow rule is rejected, so an adapter can only narrow what leaves the device.
- */
-export function effectiveRules(
-  user: GateRules | undefined,
-  fragments: readonly GateRuleFragment[] = [],
-): SourcedRule[] {
-  const out: SourcedRule[] = (user?.rules ?? []).map((r) => ({ ...r, source: 'user' }));
-  for (const fragment of fragments) {
-    const allow = fragment.rules.find((r) => r.effect !== 'deny');
-    if (allow) {
-      throw new Error(`adapter fragment ${fragment.source} may only deny; rule ${allow.id} allows`);
+let validators:
+  | {
+      rules: (data: unknown) => boolean;
+      fragment: (data: unknown) => boolean;
+      errors: () => string;
     }
+  | undefined;
+
+/** Ajv validators for the rule file and fragments, compiled once from the contract schemas. */
+function ruleValidators() {
+  if (!validators) {
+    const ajv = new Ajv2020({ strict: true, allErrors: true });
+    // ajv-formats is CommonJS; under NodeNext its default import is the module object.
+    (addFormatsModule as unknown as { default: (a: Ajv2020) => void }).default(ajv);
+    for (const schema of Object.values(SCHEMAS)) ajv.addSchema(schema);
+    const rules = ajv.getSchema(RULES_ID)!;
+    const fragment = ajv.getSchema(`${RULES_ID}#/$defs/fragment`)!;
+    let last: typeof rules.errors = null;
+    validators = {
+      rules: (d) => {
+        const ok = rules(d) as boolean;
+        last = rules.errors;
+        return ok;
+      },
+      fragment: (d) => {
+        const ok = fragment(d) as boolean;
+        last = fragment.errors;
+        return ok;
+      },
+      errors: () => (last ?? []).map((e) => `${e.instancePath || '/'} ${e.message}`).join('; '),
+    };
+  }
+  return validators;
+}
+
+/**
+ * The effective rule set: the user's rules plus all adapter fragments, each validated against
+ * the rule schema. Throws on an invalid rule file or fragment, including a fragment with an
+ * allow rule, so an adapter can only narrow what leaves the device.
+ */
+export function effectiveRules(user: unknown, fragments: readonly unknown[] = []): SourcedRule[] {
+  const v = ruleValidators();
+  if (user !== undefined && !v.rules(user)) throw new Error(`invalid gate rules: ${v.errors()}`);
+  const out: SourcedRule[] = ((user as GateRules | undefined)?.rules ?? []).map((r) => ({
+    ...r,
+    source: 'user',
+  }));
+  for (const f of fragments) {
+    if (!v.fragment(f)) {
+      const source = (f as { source?: unknown } | null)?.source;
+      throw new Error(
+        `invalid gate rule fragment ${String(source)} (deny rules only): ${v.errors()}`,
+      );
+    }
+    const fragment = f as GateRuleFragment;
     out.push(...fragment.rules.map((r) => ({ ...r, source: fragment.source })));
   }
   return out;
@@ -115,24 +162,44 @@ export function ruleMatches(rule: GateRule, card: Card, ctx: MatchContext = {}):
   );
 }
 
-interface TokenRecord {
-  readonly transferId: string;
-  readonly sessionId: string;
-  readonly expiresAt: number;
+interface TransferRecord {
+  readonly transfer: DisclosureTransfer;
+  readonly requester: TransferRequester;
+  confirmed?: DisclosureConfirmationRef;
+  /** The board token, or `connection:<id>` for a connection-bound transfer. */
+  grantKey?: string;
+  grantSession?: string;
+  grantExpiresAt?: number;
+  used?: boolean;
 }
 
 export function createDisclosureGate(options: DisclosureGateOptions = {}): DisclosureGate {
-  const rules = effectiveRules(options.rules, options.fragments);
+  let rules: SourcedRule[] = [];
+  let configError: string | undefined;
+  try {
+    rules = effectiveRules(options.rules, options.fragments);
+  } catch (err) {
+    configError = err instanceof Error ? err.message : String(err);
+  }
   const ctx: MatchContext = options;
   const now = options.now ?? (() => new Date());
   const random = options.randomBytes ?? secureRandom;
-  const newId =
-    options.newId ?? (() => encodeUlid(random(16).map((b, i) => (i === 0 ? b & 0x7f : b))));
-  const transfers = new Map<string, DisclosureTransfer>();
-  const confirmed = new Map<string, DisclosureConfirmationRef>();
-  const tokens = new Map<string, TokenRecord>();
-  const sent = new Map<string, DisclosureConfirmationRef>();
-  const usedTokens = new Set<string>();
+  // 128 random bits always encode below 2^128, the ULID range.
+  const newId = () => encodeUlid(random(16));
+  const transfers = new Map<string, TransferRecord>();
+  const tokens = new Map<string, string>(); // token -> transferId
+
+  /** Forget expired transfers and their grants: nothing outlives 5 minutes. */
+  const prune = () => {
+    const t = now().getTime();
+    for (const [id, rec] of transfers) {
+      const ends = Math.max(Date.parse(rec.transfer.expiresAt), rec.grantExpiresAt ?? 0);
+      if (t >= ends) {
+        transfers.delete(id);
+        if (rec.grantKey) tokens.delete(rec.grantKey);
+      }
+    }
+  };
 
   const result = (
     item: DisclosureItem,
@@ -159,8 +226,23 @@ export function createDisclosureGate(options: DisclosureGateOptions = {}): Discl
     throw new GateTransferError(code, message);
   };
 
+  const sameEnvelope = (confirmed: DisclosurePreviewEnvelope, current: DisclosurePreviewEnvelope) =>
+    computePayloadHash(current) === computePayloadHash(confirmed) &&
+    current.objects.length === confirmed.objects.length &&
+    current.objects.every(
+      (o, i) =>
+        o.id === confirmed.objects[i]!.id && o.contentHash === confirmed.objects[i]!.contentHash,
+    );
+
   return {
-    decide(item, target, confirmation) {
+    decide(item, target) {
+      if (configError)
+        return result(
+          item,
+          target,
+          'deny',
+          `gate rules invalid, everything is denied: ${configError}`,
+        );
       if (item.kind === 'stance' && target !== 'screen') {
         return result(item, target, 'deny', 'stance data never leaves the screen');
       }
@@ -171,28 +253,24 @@ export function createDisclosureGate(options: DisclosureGateOptions = {}): Discl
           ruleId: rule.id,
         });
       }
-      if (target !== 'cloud_model') {
-        return result(item, target, 'allow', `allow rule ${rule.id}`, { ruleId: rule.id });
+      if (target === 'cloud_model') {
+        return result(
+          item,
+          target,
+          'deny',
+          'cloud content leaves only through a confirmed transfer',
+          {
+            ruleId: rule.id,
+            confirmationRequired: true,
+          },
+        );
       }
-      const released = confirmation && sent.get(confirmation.transferId);
-      const ok =
-        released !== undefined &&
-        released.payloadHash === confirmation?.payloadHash &&
-        released.confirmedAt === confirmation.confirmedAt &&
-        released.cardIds.includes(item.card.id);
-      if (!ok) {
-        return result(item, target, 'deny', 'cloud transfer needs a confirmed, consumed token', {
-          ruleId: rule.id,
-          confirmationRequired: true,
-        });
-      }
-      return result(item, target, 'allow', `allow rule ${rule.id} and confirmed transfer`, {
-        ruleId: rule.id,
-        confirmation: released,
-      });
+      return result(item, target, 'allow', `allow rule ${rule.id}`, { ruleId: rule.id });
     },
 
     preview(input) {
+      prune();
+      if (configError) throw new Error(`gate rules invalid: ${configError}`);
       const objects = input.cards.filter((c) => decidingRule(c, 'cloud_model')?.effect === 'allow');
       if (objects.length === 0)
         throw new Error('no card of this transfer is cleared for cloud_model');
@@ -200,31 +278,33 @@ export function createDisclosureGate(options: DisclosureGateOptions = {}): Discl
         target: 'cloud_model' as const,
         connectorId: input.connectorId,
         request: input.request,
-        objects,
+        objects: structuredClone(objects),
       };
       const created = now();
       const transfer: DisclosureTransfer = {
         transferId: newId(),
         purpose: input.purpose,
+        requestedBy: input.requester.kind === 'board' ? 'board' : 'mcp_connection',
         cardIds: objects.map((c) => c.id),
         payloadHash: computePayloadHash(preview),
         preview,
         createdAt: created.toISOString(),
         expiresAt: new Date(created.getTime() + TRANSFER_TTL_MS).toISOString(),
       };
-      transfers.set(transfer.transferId, transfer);
-      return transfer;
+      transfers.set(transfer.transferId, { transfer, requester: input.requester });
+      return structuredClone(transfer);
     },
 
     confirm({ transferId, payloadHash, sessionId, currentEnvelope }) {
-      const transfer =
-        transfers.get(transferId) ?? fail('unknown', `unknown transfer ${transferId}`);
-      if (confirmed.has(transferId)) fail('replayed', 'this transfer is already confirmed');
-      if (now().getTime() >= Date.parse(transfer.expiresAt))
+      prune();
+      const rec =
+        transfers.get(transferId) ?? fail('unknown', `unknown or expired transfer ${transferId}`);
+      if (rec.confirmed) fail('replayed', 'this transfer is already confirmed');
+      if (now().getTime() >= Date.parse(rec.transfer.expiresAt))
         fail('expired', 'this transfer has expired');
       if (
-        payloadHash !== transfer.payloadHash ||
-        computePayloadHash(currentEnvelope) !== transfer.payloadHash
+        payloadHash !== rec.transfer.payloadHash ||
+        !sameEnvelope(rec.transfer.preview, currentEnvelope)
       ) {
         fail('mismatch', 'the payload differs from the preview');
       }
@@ -232,36 +312,50 @@ export function createDisclosureGate(options: DisclosureGateOptions = {}): Discl
       const ref: DisclosureConfirmationRef = {
         transferId,
         payloadHash,
-        cardIds: [...transfer.cardIds],
+        cardIds: [...rec.transfer.cardIds],
         confirmedAt: confirmedAt.toISOString(),
       };
-      confirmed.set(transferId, ref);
+      rec.confirmed = ref;
+      rec.grantExpiresAt = confirmedAt.getTime() + TRANSFER_TTL_MS;
+      if (rec.requester.kind === 'connection') {
+        rec.grantKey = `connection:${rec.requester.connectionId}`;
+        return { ...ref, confirmedBy: 'human' } satisfies DisclosureConfirmation;
+      }
       const token = base64url(random(32));
-      const expiresAt = confirmedAt.getTime() + TRANSFER_TTL_MS;
-      tokens.set(token, { transferId, sessionId, expiresAt });
+      rec.grantKey = token;
+      rec.grantSession = sessionId;
+      tokens.set(token, transferId);
       return {
         ...ref,
         token,
-        tokenExpiresAt: new Date(expiresAt).toISOString(),
+        tokenExpiresAt: new Date(rec.grantExpiresAt).toISOString(),
         confirmedBy: 'human',
       } satisfies DisclosureConfirmation;
     },
 
-    redeem({ token, sessionId, envelope }) {
-      const record = tokens.get(token);
-      if (!record)
-        return fail(usedTokens.has(token) ? 'replayed' : 'unknown', 'unknown or used token');
-      if (record.sessionId !== sessionId) fail('session', 'token belongs to another session');
+    redeem({ grant, envelope }) {
+      prune();
+      const transferId = grant.kind === 'token' ? tokens.get(grant.token) : grant.transferId;
+      const rec = transferId === undefined ? undefined : transfers.get(transferId);
+      if (!rec?.confirmed) return fail('unknown', 'unknown, unconfirmed or expired grant');
+      if (grant.kind === 'token') {
+        if (rec.grantKey !== grant.token || rec.grantSession !== grant.sessionId) {
+          fail('binding', 'the token belongs to another session');
+        }
+      } else if (rec.grantKey !== `connection:${grant.connectionId}`) {
+        fail('binding', 'the transfer was confirmed for another connection');
+      }
+      if (rec.used) fail('replayed', 'this transfer was already sent');
       // Consume before any further check or send: a second use fails, also under concurrency.
-      tokens.delete(token);
-      usedTokens.add(token);
-      if (now().getTime() >= record.expiresAt) fail('expired', 'this token has expired');
-      const ref = confirmed.get(record.transferId)!;
-      if (computePayloadHash(envelope) !== ref.payloadHash) {
+      rec.used = true;
+      if (now().getTime() >= rec.grantExpiresAt!) fail('expired', 'the confirmation has expired');
+      if (!sameEnvelope(rec.transfer.preview, envelope)) {
         fail('mismatch', 'the envelope differs from the confirmed one');
       }
-      sent.set(record.transferId, ref);
-      return ref;
+      return {
+        confirmation: rec.confirmed,
+        objects: structuredClone(rec.transfer.preview.objects),
+      };
     },
   };
 }

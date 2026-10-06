@@ -172,6 +172,17 @@ export const CROSS_CHECKS = {
       return out;
     },
   },
+  /** ADR-0031: a cloud package carries only the cards of its confirmed transfer. */
+  'transfer-items': {
+    schema: 'context-package.schema.json',
+    run(pkg) {
+      if (!pkg.transfer) return [];
+      const allowed = new Set(pkg.transfer.cardIds);
+      return pkg.items
+        .filter((i) => !allowed.has(i.card.id))
+        .map((i) => `item ${i.card.id} is not in confirmed transfer ${pkg.transfer.transferId}`);
+    },
+  },
   /** ADR-0015: the choice of a level-1 answer is one of its options. */
   'level1-choice': {
     schema: 'level1-answer.schema.json',

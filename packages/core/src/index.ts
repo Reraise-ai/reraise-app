@@ -32,3 +32,6 @@ export type CardLayer = (typeof CARD_LAYERS)[number];
 export function isCardLayer(value: unknown): value is CardLayer {
   return typeof value === 'string' && (CARD_LAYERS as readonly string[]).includes(value);
 }
+
+/** The JSON Schemas of schemas/, keyed by `$id`, for runtime validation. */
+export { SCHEMAS } from './generated/schemas.js';

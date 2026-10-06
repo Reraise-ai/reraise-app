@@ -72,7 +72,7 @@ export const TOOLS = [
     name: 'context_package_get',
     title: 'Get a context package',
     description:
-      'Builds a context package for this connection: gate-cleared cards with layer, author, provenance and independence; pending proposals listed separately; never stances.',
+      'Builds a context package for this connection: gate-cleared cards with provenance and independence; pending proposals by id and kind only; never stances. For a connection registered as cloud_model it first returns confirmationRequired with a transferId and no content; once the human confirmed that transfer on the board, call again with the transferId to receive exactly the confirmed cards. readOnlyHint stays true: it never changes the world, it only creates or consumes a disclosure transfer.',
     inputSchema: schema('context-package.schema.json#/$defs/request'),
     outputSchema: schema('context-package.schema.json'),
     annotations: READ_ONLY,

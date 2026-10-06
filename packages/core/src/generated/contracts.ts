@@ -93,7 +93,7 @@ export type Ulid = string;
  */
 export type PlayerField = PlayerEntry[];
 export type RuleCondition =
-  CardOnLageCondition | CardFieldCondition | EdgeCondition | StanceCondition;
+  CardOnLageCondition | CardFieldCondition | TagCondition | EdgeCondition | StanceCondition;
 export type StancePosition = 'believed' | 'rejected' | 'undecided';
 /**
  * An agent move (ADR-0011). `proposal_create` is the only write path for agents; the server sets `id`, `author` (from the connection's agent identity), `status` and `createdAt`. Accept and reject are human-only. Pending or rejected proposals never count anywhere.
@@ -472,6 +472,14 @@ export interface CardFieldCondition {
   equals: Text;
 }
 /**
+ * A card has this tag: `card` if given, otherwise any accepted card placed on the Lage.
+ */
+export interface TagCondition {
+  kind: 'tag';
+  card?: CardId;
+  tag: Text;
+}
+/**
  * An accepted edge of this kind exists on the Lage, optionally restricted to its endpoints.
  */
 export interface EdgeCondition {
@@ -576,11 +584,17 @@ export interface ContextPackage {
    * Number of cards the gate denied for this target.
    */
   withheld: number;
-  transfer?: ContextTransferRef;
+  transfer?: DisclosureConfirmationRef;
   /**
    * Cards the gate withheld, by id and reason. A cloud_model package without a confirmed transfer contains only these (ADR-0031).
    */
   denied?: DeniedCard[];
+  /**
+   * Set when a cloud_model caller asked without a confirmed transfer: the human must confirm transfer `transferId` on the board; the caller then asks again with that transferId. The package then has no content.
+   */
+  confirmationRequired?: {
+    transferId: Ulid;
+  };
 }
 /**
  * One card for the target, with its provenance and gate decision. Layer and author are those of the card; a card without a layer is unclassified (ADR-0007).
@@ -650,15 +664,19 @@ export interface ContextPendingProposal {
   kind: ProposalKind;
 }
 /**
- * The confirmed cloud_model transfer this package belongs to.
+ * Reference to a confirmed transfer whose token was consumed for this send; recorded in gate decisions and context packages. Contains no token.
  */
-export interface ContextTransferRef {
+export interface DisclosureConfirmationRef {
   transferId: Ulid;
-  confirmedAt: DateTime;
   payloadHash: PayloadHash;
+  /**
+   * @minItems 1
+   */
+  cardIds: CardId[];
+  confirmedAt: DateTime;
 }
 /**
- * Input of context_package_get. The target is taken from the caller's registered connection, never from the request (ADR-0012). A cloud_model send carries the confirmation token of the transfer that previewed exactly this package (ADR-0031).
+ * Input of context_package_get. The target is taken from the caller's registered connection, never from the request (ADR-0012). A board send to a cloud model carries the transferId and the confirmation token; an MCP connection registered as cloud_model carries only the transferId of the transfer the human confirmed, and the service releases it to that connection (ADR-0031, ADR-0028).
  */
 export interface ContextPackageRequest {
   worldId: WorldId;
@@ -677,7 +695,7 @@ export interface DisclosureDecision {
   decision: 'allow' | 'deny';
   reason: Text;
   /**
-   * The allow rule that matched, if any.
+   * Id of the rule that decided: the matching deny rule, or else the matching allow rule. Absent for default deny.
    */
   ruleId?: string;
   /**
@@ -695,18 +713,6 @@ export interface DisclosureSubject {
   cardId: CardId;
 }
 /**
- * Reference to a confirmed transfer whose token was consumed for this send; recorded in gate decisions and context packages. Contains no token.
- */
-export interface DisclosureConfirmationRef {
-  transferId: Ulid;
-  payloadHash: PayloadHash;
-  /**
-   * @minItems 1
-   */
-  cardIds: CardId[];
-  confirmedAt: DateTime;
-}
-/**
  * A previewed cloud_model transfer awaiting the user's confirmation (ADR-0012, ADR-0031). The record lives in memory on the service, expires 5 minutes after the preview, and is void after a restart. `cardIds` lists the ids of the objects in the envelope; `payloadHash` must be echoed by the confirmation.
  */
 export interface DisclosureTransfer {
@@ -720,6 +726,10 @@ export interface DisclosureTransfer {
   preview: DisclosurePreviewEnvelope;
   createdAt: DateTime;
   expiresAt: DateTime;
+  /**
+   * Who will send: the board session (token flow) or a registered MCP connection (released to that connection only).
+   */
+  requestedBy: 'board' | 'mcp_connection';
 }
 /**
  * Exactly what would leave the device: the target, the connector, the request parameters and the canonical objects after the gate decision. The payload hash covers this envelope.
@@ -751,7 +761,7 @@ export interface DisclosureConfirmRequest {
   payloadHash: PayloadHash;
 }
 /**
- * Response of the human-only confirm operation (ADR-0031): a single-use confirmation token, at least 128 random bits, held server side, bound to the confirming human session, valid for 5 minutes and void after a restart. The send call carries it; the service consumes it atomically before sending an envelope whose hash equals `payloadHash`. Never logged.
+ * Response of the human-only confirm operation (ADR-0031, ADR-0028). For a transfer the board previewed for its own send, it carries a single-use token (at least 128 random bits, held server side, bound to the confirming human session, valid 5 minutes, void after a restart) that the send call carries; the service consumes it atomically before sending. For a transfer an MCP connection registered as cloud_model asked for, there is no token: the agent re-calls with the transferId and the service releases the content to that connection only. Never logged.
  */
 export interface DisclosureConfirmation {
   transferId: Ulid;
@@ -760,8 +770,8 @@ export interface DisclosureConfirmation {
    * @minItems 1
    */
   cardIds: CardId[];
-  token: ConfirmationToken;
-  tokenExpiresAt: DateTime;
+  token?: ConfirmationToken;
+  tokenExpiresAt?: DateTime;
   confirmedBy: HumanAuthor;
   confirmedAt: DateTime;
 }
@@ -776,6 +786,16 @@ export interface DisclosurePreviewRequest {
    * @minItems 1
    */
   cardIds: CardId[];
+}
+/**
+ * Result of consuming a confirmation for one send (DisclosureGate.redeem): exactly the canonical objects the human confirmed, nothing else. Cloud content leaves the device only as these objects.
+ */
+export interface DisclosureRelease {
+  confirmation: DisclosureConfirmationRef;
+  /**
+   * @minItems 1
+   */
+  objects: Card[];
 }
 export interface Finding2 {
   /**
@@ -1022,6 +1042,14 @@ export interface SourceProfileTopicDimension {
   topic: Text;
   value?: number;
   n: number;
+}
+/**
+ * Body of the human-only stance_save operation. The server sets cardId (from the path), updatedAt and history.
+ */
+export interface StanceInput {
+  position: StancePosition;
+  weight: StanceWeight;
+  note?: string;
 }
 /**
  * Configuration persisted once per store. `storeInstanceId` is the random UUID used in card URIs (ADR-0023); it must never be a hostname, path or user name.

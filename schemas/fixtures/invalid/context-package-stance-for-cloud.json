@@ -155,6 +155,11 @@
     "transfer": {
       "transferId": "01M1HA4MC0T8585XX5H0E6NVRP",
       "payloadHash": "sha256:abababababababababababababababababababababababababababababababab",
+      "cardIds": [
+        "01M1E34QM03WVTE8T1RYS3AM18",
+        "01M1E6JK80GR8G0JHMPVT7TDX4",
+        "01M1EA0EW0V90F04X7AKQJSKK2"
+      ],
       "confirmedAt": "2026-09-16T10:20:00Z"
     }
   }

@@ -7,20 +7,17 @@
     "target": "cloud_model",
     "worldId": "01M1DZPW00JGXPRPG4179ZPNB8",
     "lageId": "01M1F21G80R816A1T0V2P6RACH",
-    "question": "Reroute laden tankers around the Cape for Q4?",
     "createdAt": "2026-09-16T10:10:00Z",
     "items": [],
     "independence": {
       "findings": 0,
       "origins": 0
     },
-    "pendingProposals": [
-      {
-        "proposalId": "01M1FFRYR0CNCMTND011BG5QPC",
-        "kind": "create_card"
-      }
-    ],
+    "pendingProposals": [],
     "withheld": 4,
+    "confirmationRequired": {
+      "transferId": "01M1HA4MC0T8585XX5H0E6NVRP"
+    },
     "denied": [
       {
         "cardId": "01M1E34QM03WVTE8T1RYS3AM18",

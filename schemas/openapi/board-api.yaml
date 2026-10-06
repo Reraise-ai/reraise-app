@@ -74,6 +74,9 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/HumanOnly'
+        '413':
+          $ref: '#/components/responses/TooLarge'
+
   /lagen/{lageId}:
     parameters:
       - name: lageId
@@ -129,6 +132,9 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+        '413':
+          $ref: '#/components/responses/TooLarge'
+
   /cards:
     get:
       operationId: cards_search
@@ -227,8 +233,8 @@ paths:
       summary: Set the user's own stance on a card
       description: >-
         Human-only. Stored on the device, never in a card file and never through a
-        StorageAdapter; the previous version moves into `history` (ADR-0008). `cardId` in the
-        body must equal the path.
+        StorageAdapter. The body is position, weight and note; the server sets `cardId` from
+        the path, `updatedAt`, and moves the previous version into `history` (ADR-0008).
       tags: [human-only]
       x-human-only: true
       security:
@@ -238,7 +244,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '../stance.schema.json'
+              $ref: '../stance.schema.json#/$defs/input'
       responses:
         '200':
           description: The saved stance.
@@ -254,16 +260,24 @@ paths:
           $ref: '#/components/responses/HumanOnly'
         '404':
           $ref: '#/components/responses/NotFound'
+        '413':
+          $ref: '#/components/responses/TooLarge'
+
   /context-packages:
     post:
       operationId: context_package_get
       summary: Build a context package
       description: >-
-        Builds a gate-cleared context package for the caller's target. For a cloud_model
-        caller (including an MCP connection registered as cloud_model) the package carries card
-        content only when the request names a confirmed transfer and its single-use
-        confirmation token, which the service consumes atomically before sending; otherwise it
-        lists only the denied card ids and reasons (ADR-0031). No other side effects.
+        Builds a gate-cleared context package for the caller's target. A cloud_model caller gets
+        card content only from a confirmed transfer (ADR-0031, ADR-0028). The board sends with
+        the transferId and its single-use confirmationToken. An MCP connection registered as
+        cloud_model first gets `confirmationRequired` with a transferId and no content; after
+        the human confirmed that transfer on the board, it calls again with the transferId and
+        the service releases the content to that connection only; the agent never sees a token.
+        Without a confirmed transfer the package lists only denied card ids and reasons. Side
+        effects: it may create or consume a disclosure transfer, never change the world, so
+        the MCP tool keeps `readOnlyHint: true`. 403: the caller's connection is not registered
+        with a disclosure target.
       tags: [world]
       requestBody:
         required: true
@@ -284,6 +298,9 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '413':
+          $ref: '#/components/responses/TooLarge'
+
   /rules/evaluate:
     post:
       operationId: rules_evaluate
@@ -311,6 +328,9 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
+        '413':
+          $ref: '#/components/responses/TooLarge'
+
   /proposals:
     get:
       operationId: proposal_list
@@ -353,9 +373,13 @@ paths:
       operationId: proposal_create
       summary: Propose a move (the only agent write path)
       description: >-
-        Creates a pending proposal. The server sets `id`, `author` (from the agent token),
-        `status` and `createdAt`. Nothing proposed counts until a human accepts it (ADR-0011).
+        Agent-only: creates a pending proposal. The server sets `id`, `author` (from the agent
+        token), `status` and `createdAt`. Nothing proposed counts until a human accepts it
+        (ADR-0011). Humans act directly through the human-only operations, so the session token
+        gets 403 here.
       tags: [proposals]
+      security:
+        - agentToken: []
       requestBody:
         required: true
         content:
@@ -373,6 +397,8 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '413':
           $ref: '#/components/responses/TooLarge'
   /proposals/{proposalId}/accept:
@@ -406,6 +432,9 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+        '413':
+          $ref: '#/components/responses/TooLarge'
+
   /proposals/{proposalId}/reject:
     parameters:
       - $ref: '#/components/parameters/proposalId'
@@ -437,6 +466,9 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+        '413':
+          $ref: '#/components/responses/TooLarge'
+
   /decisions:
     post:
       operationId: decision_create
@@ -465,6 +497,9 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/HumanOnly'
+        '413':
+          $ref: '#/components/responses/TooLarge'
+
   /decisions/{cardId}:
     put:
       operationId: decision_save
@@ -503,6 +538,9 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+        '413':
+          $ref: '#/components/responses/TooLarge'
+
   /disclosure/transfers:
     post:
       operationId: disclosure_transfer_preview
@@ -535,6 +573,9 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/HumanOnly'
+        '413':
+          $ref: '#/components/responses/TooLarge'
+
   /disclosure/transfers/{transferId}:
     parameters:
       - $ref: '#/components/parameters/transferId'
@@ -601,6 +642,8 @@ paths:
           $ref: '#/components/responses/Conflict'
         '410':
           $ref: '#/components/responses/Gone'
+        '413':
+          $ref: '#/components/responses/TooLarge'
 components:
   securitySchemes:
     sessionToken:

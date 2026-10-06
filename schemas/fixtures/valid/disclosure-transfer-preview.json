@@ -5,6 +5,7 @@
   "data": {
     "transferId": "01M1HA4MC0T8585XX5H0E6NVRP",
     "purpose": "level1",
+    "requestedBy": "board",
     "cardIds": ["01M1E34QM03WVTE8T1RYS3AM18"],
     "payloadHash": "sha256:db4bc27a862c21237ea43dec0c237eb75ce72127bb653b45a16d03f9d493c373",
     "preview": {
