@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Reference `markdown-files` storage adapter: byte-preserving patches, archive and versions,
+  derived in-memory index with file watcher and rescan fallback, single-writer lock file, search
+  by text, type, layer, world and tags; passes the StorageAdapter conformance kit.
 - Repository foundation: community files, licensing (Apache-2.0 / AGPL-3.0-or-later),
   issue and pull request templates, Dependabot configuration.
 - pnpm workspace tooling (TypeScript strict, ESLint, Prettier, Vitest), package skeletons, SPDX and

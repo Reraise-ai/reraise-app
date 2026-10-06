@@ -71,7 +71,7 @@ Milestone M0 is in progress. Its done criteria come from the [roadmap](./roadmap
 | ID | Criterion | Test file | CI job | Status |
 | --- | --- | --- | --- | --- |
 | M1-01 | The Hormuz scenario (open Lage, place card, draw `supports` edge, agent proposes, human accepts, reload persists, context package, gate blocks a private card for cloud) runs end to end | `e2e/` (planned, Playwright) | `e2e` (planned) | not started |
-| M1-02 | The reference `markdown-files` adapter passes the conformance kit | `packages/conformance` (planned) | `conformance` (planned) | not started |
+| M1-02 | The reference `markdown-files` adapter passes the conformance kit | `packages/adapters/storage-markdown-files/src/conformance.test.ts` (kit over a temporary copy of the Hormuz store without its cards), `hormuz.test.ts` (the complete store), `adapter.test.ts`, `codec.test.ts`, `frontmatter.test.ts`, `lock.test.ts` | `checks` (`pnpm test`, `pnpm test:coverage`) | in progress (passes locally; no CI run yet) |
 | M1-03 | The first release waits until M1 passes on all three operating systems | release checklist | release workflow (planned) | not started |
 
 ## Checks promised by the ADRs
