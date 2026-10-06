@@ -9,7 +9,7 @@
       "$ref": "common.schema.json#/$defs/ulid"
     },
     "target": {
-      "$ref": "common.schema.json#/$defs/disclosureTarget"
+      "$ref": "common.schema.json#/$defs/packageTarget"
     },
     "worldId": {
       "$ref": "common.schema.json#/$defs/worldId"

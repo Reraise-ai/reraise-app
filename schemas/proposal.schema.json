@@ -269,7 +269,14 @@
       "type": "object",
       "properties": {
         "card": {
-          "$ref": "card.schema.json#/$defs/draft"
+          "description": "The card to create. An agent cannot release it for sharing: `release` is private or absent, and only the human changes it (ADR-0036).",
+          "type": "object",
+          "$ref": "card.schema.json#/$defs/draft",
+          "properties": {
+            "release": {
+              "const": "private"
+            }
+          }
         },
         "lageId": {
           "$ref": "common.schema.json#/$defs/cardId"

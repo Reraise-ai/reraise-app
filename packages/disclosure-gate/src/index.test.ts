@@ -32,7 +32,7 @@ const shared = card('01M1E34QM03WVTE8T1RYS3AM18', { class: 'C' });
 const tagged = card('01M1E6JK80GR8G0JHMPVT7TDX4', { class: 'C', tags: ['private'] });
 const secret = card('01M1F8X7G0TTV1CC1FNKTNN0TJ', { class: 'A' });
 const demoCard = card('01M1FXGD80NDYTK1MY14M2X8NH', { class: 'A' }, SYNTHETIC_STORE);
-const all = ['screen', 'local_model', 'cloud_model', 'demo'] as const;
+const all = ['screen', 'local_model', 'cloud_model', 'demo', 'share'] as const;
 const allowRule = {
   id: 'class-c',
   effect: 'allow' as const,
@@ -157,6 +157,27 @@ describe('reference gate output matches the schemas', () => {
     ]) {
       check(id, d);
     }
+  });
+
+  it('for share decisions and share bundles (ADR-0036)', () => {
+    const released = card('01M1J0000000000000000000D1', { class: 'C', release: 'community' });
+    const decision = card('01M1J0000000000000000000D2', {
+      class: 'C',
+      type: 'decision',
+      release: 'community',
+    });
+    const gate = createDisclosureGate({ rules });
+    const bundle = gate.prepareShare([released, decision, tagged]);
+    check(`${id}#/$defs/shareBundle`, bundle);
+    expect(bundle.objects.map((o) => o.id)).toEqual([released.id]);
+    expect(bundle.denied.map((d) => d.reason)).toEqual([
+      "conclusions are never shared: type decision is the user's own conclusion",
+      'not released for sharing by the user',
+    ]);
+    for (const c of [released, decision, shared]) {
+      check(id, gate.decide({ kind: 'card', card: c }, 'share'));
+    }
+    check(id, gate.decide({ kind: 'stance', card: released }, 'share'));
   });
 
   it('refuses a preview without any cleared card or with invalid rules', () => {

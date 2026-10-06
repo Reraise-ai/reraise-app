@@ -26,6 +26,16 @@ export {
   sha256,
 } from './ids.js';
 
+export {
+  CONCLUSION_TYPES,
+  SHARED_FIELDS,
+  SHARED_PLAYER_FIELDS,
+  isPublicSourceUri,
+  originOf,
+  shareProjection,
+} from './sharing.js';
+export type { Origin, OriginClass } from './sharing.js';
+
 export const CARD_LAYERS = ['evidenced', 'said', 'experience'] as const satisfies readonly Layer[];
 
 export type CardLayer = (typeof CARD_LAYERS)[number];

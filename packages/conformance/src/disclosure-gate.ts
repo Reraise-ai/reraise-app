@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright The Worldbuilder contributors
 //
-// Conformance kit for DisclosureGate implementations (ADR-0008, ADR-0012, ADR-0031, ADR-0028).
+// Conformance kit for DisclosureGate implementations (ADR-0008, ADR-0012, ADR-0031, ADR-0028,
+// ADR-0036).
 
 import type {
   Card,
@@ -12,8 +13,9 @@ import type {
   DisclosureTransfer,
   TransferRequester,
 } from '@worldbuilder/core';
-import { computeContentHash, computePayloadHash } from '@worldbuilder/core';
+import { buildUri, computeContentHash, computePayloadHash, parseUri } from '@worldbuilder/core';
 import { describe, expect, it } from 'vitest';
+import { schemaValidator } from './validate.js';
 
 export interface DisclosureGateConfig {
   /** A user rule file as parsed from YAML; may be invalid on purpose. */
@@ -43,7 +45,38 @@ export interface DisclosureGateHarness {
 /** Builds fresh gates that read the time from `now`, so the kit can test expiry. */
 export type DisclosureGateFactory = (now: () => Date) => DisclosureGateHarness;
 
-const TARGETS: readonly DisclosureTarget[] = ['screen', 'local_model', 'cloud_model', 'demo'];
+const TARGETS: readonly DisclosureTarget[] = [
+  'screen',
+  'local_model',
+  'cloud_model',
+  'demo',
+  'share',
+];
+const PUBLIC = 'https://example.org/conformance/public-report';
+const ALLOW_ALL = { id: 'kit-allow-all', effect: 'allow', targets: [...TARGETS], match: {} };
+const SHARED = 'https://worldbuilder.invalid/schemas/v0/shared-card.schema.json';
+
+/** A card derived from `base` with another id and the given fields; `undefined` removes one. */
+function variant(base: Card, id: string, patch: Record<string, unknown>): Card {
+  const store = parseUri(base.uri).storeInstanceId;
+  const merged: Record<string, unknown> = {
+    id,
+    externalId: id,
+    uri: buildUri(store, id),
+    format: 2,
+    worlds: base.worlds,
+    class: base.class,
+    type: 'claim',
+    title: `Conformance card ${id}`,
+    layer: 'said',
+    author: 'human',
+    source: PUBLIC,
+    release: 'community',
+    ...patch,
+  };
+  for (const [k, v] of Object.entries(merged)) if (v === undefined) delete merged[k];
+  return { ...merged, contentHash: computeContentHash(merged as never) } as unknown as Card;
+}
 const request = { question: 'Conformance?', options: ['yes', 'no'] };
 const SESSION = 'session-a';
 const BOARD: TransferRequester = { kind: 'board' };
@@ -162,7 +195,7 @@ export function describeDisclosureGateConformance(
     it('never discloses stance data beyond the screen, whatever the rules say', () => {
       const { configured, card } = setup();
       expect(configured.decide({ kind: 'stance', card }, 'screen').decision).toBe('allow');
-      for (const target of ['local_model', 'cloud_model', 'demo'] as const) {
+      for (const target of ['local_model', 'cloud_model', 'demo', 'share'] as const) {
         expect(configured.decide({ kind: 'stance', card }, target).decision, target).toBe('deny');
       }
     });
@@ -298,6 +331,152 @@ export function describeDisclosureGateConformance(
           send(configured, { kind: 'token', token: c3.token!, sessionId: SESSION }, t3.preview),
         ),
       ).not.toBe('no error');
+    });
+
+    describe('sharing with other people (ADR-0036)', () => {
+      const cards = (base: Card) => ({
+        external: variant(base, '01M1J0000000000000000000A1', {}),
+        unreleased: variant(base, '01M1J0000000000000000000A2', { release: 'private' }),
+        experience: variant(base, '01M1J0000000000000000000A3', {
+          type: 'experience',
+          layer: 'experience',
+          source: undefined,
+          release: 'private',
+        }),
+        releasedExperience: variant(base, '01M1J0000000000000000000A4', {
+          type: 'experience',
+          layer: 'experience',
+          source: undefined,
+        }),
+        conclusions: {
+          decision: variant(base, '01M1J0000000000000000000B1', {
+            type: 'decision',
+            layer: undefined,
+          }),
+          rule: variant(base, '01M1J0000000000000000000B2', { type: 'rule', layer: undefined }),
+          rating: variant(base, '01M1J0000000000000000000B3', { type: 'rating' }),
+          assumption: variant(base, '01M1J0000000000000000000B4', { type: 'assumption' }),
+          agentAnalysis: variant(base, '01M1J0000000000000000000B5', { author: 'agent:analyst' }),
+          ownClassification: variant(base, '01M1J0000000000000000000B6', { source: 'Own notes' }),
+          citesOwnCard: variant(base, '01M1J0000000000000000000B7', {
+            source: '01M1J0000000000000000000B3',
+          }),
+          unclassified: variant(base, '01M1J0000000000000000000B8', { layer: undefined }),
+        },
+      });
+      const allowAll = (h: ReturnType<typeof setup>) =>
+        h.withConfig({ rules: { rules: [ALLOW_ALL] } });
+
+      it('never shares a conclusion, whatever the rules and the release say', () => {
+        const h = setup();
+        const gate = allowAll(h);
+        const { conclusions } = cards(h.card);
+        for (const [what, card] of Object.entries(conclusions)) {
+          const d = gate.decide({ kind: 'card', card }, 'share');
+          expect(d.decision, what).toBe('deny');
+          expect(d.reason.length, what).toBeGreaterThan(0);
+        }
+        const bundle = gate.prepareShare(Object.values(conclusions));
+        expect(bundle.objects).toEqual([]);
+        expect(bundle.denied.map((d) => d.cardId)).toEqual(
+          Object.values(conclusions).map((c) => c.id),
+        );
+      });
+
+      it('shares own experience only after the user released that card', () => {
+        const h = setup();
+        const gate = allowAll(h);
+        const { experience, releasedExperience } = cards(h.card);
+        expect(gate.decide({ kind: 'card', card: experience }, 'share').decision).toBe('deny');
+        expect(gate.decide({ kind: 'card', card: releasedExperience }, 'share').decision).toBe(
+          'allow',
+        );
+      });
+
+      it('shares an external-source card only when released and allowed by a rule', () => {
+        const h = setup();
+        const { external, unreleased } = cards(h.card);
+        expect(h.empty.decide({ kind: 'card', card: external }, 'share').decision).toBe('deny');
+        const gate = allowAll(h);
+        expect(gate.decide({ kind: 'card', card: unreleased }, 'share').decision).toBe('deny');
+        expect(gate.decide({ kind: 'card', card: external }, 'share').decision).toBe('allow');
+        const narrowed = h.withConfig({
+          rules: {
+            rules: [
+              ALLOW_ALL,
+              {
+                id: 'kit-no-share',
+                effect: 'deny',
+                targets: ['share'],
+                match: { ids: [external.id] },
+              },
+            ],
+          },
+        });
+        expect(narrowed.decide({ kind: 'card', card: external }, 'share').decision).toBe('deny');
+      });
+
+      it('shares content and provenance only, and player entries with a public source only', () => {
+        const h = setup();
+        const gate = allowAll(h);
+        const { external, conclusions } = cards(h.card);
+        const person = variant(h.card, '01M1J0000000000000000000C1', {
+          collection: 'actors',
+          type: 'person',
+          tags: ['kit'],
+          visibility: 'public',
+          training: true,
+          edges: [{ target: external.id, kind: 'supports', by: 'human' }],
+          interests: [{ text: 'Public interest', source: PUBLIC }],
+          assumedGoals: [{ text: 'Assumed by the user', source: conclusions.rating.id }],
+          personalityType: { text: 'ISTJ', source: PUBLIC },
+        });
+        const bundle = gate.prepareShare([person, conclusions.decision]);
+        expect(bundle.denied.map((d) => d.cardId)).toEqual([conclusions.decision.id]);
+        expect(bundle.objects).toHaveLength(1);
+        const shared = bundle.objects[0]!;
+        const validate = schemaValidator(SHARED);
+        expect(validate(shared), JSON.stringify(validate.errors)).toBe(true);
+        expect(shared.id).toBe(person.id);
+        expect(shared.source).toBe(person.source);
+        expect(shared.interests).toEqual(person.interests);
+        for (const k of [
+          'uri',
+          'externalId',
+          'worlds',
+          'tags',
+          'class',
+          'visibility',
+          'release',
+          'training',
+          'edges',
+          'assumedGoals',
+          'personalityType',
+        ]) {
+          expect(shared, k).not.toHaveProperty(k);
+        }
+      });
+
+      it('lets decision and rule cards go to a cloud model only through a confirmed transfer', () => {
+        const h = setup();
+        const gate = allowAll(h);
+        const { decision, rule } = cards(h.card).conclusions;
+        for (const card of [decision, rule]) {
+          const d = gate.decide({ kind: 'card', card }, 'cloud_model');
+          expect(d.decision).toBe('deny');
+          expect(d.confirmationRequired).toBe(true);
+          expect(gate.decide({ kind: 'card', card }, 'share').decision).toBe('deny');
+        }
+        const t = previewOf(gate, [decision, rule]);
+        expect(t.cardIds).toEqual([decision.id, rule.id]);
+        const c = confirm(gate, t);
+        const release = send(
+          gate,
+          { kind: 'token', token: c.token!, sessionId: SESSION },
+          t.preview,
+        );
+        expect(release.objects.map((o) => o.id)).toEqual([decision.id, rule.id]);
+      });
     });
   });
 }

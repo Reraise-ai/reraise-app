@@ -110,10 +110,11 @@ Decides per card and per target what may leave the screen
 
 | Member | Contract |
 | --- | --- |
-| `decide(item, target)` | default deny; a matching deny rule wins; invalid rules deny everything; stance data only for `screen`; never allows `cloud_model` |
+| `decide(item, target)` | default deny; a matching deny rule wins; invalid rules deny everything; stance data only for `screen`; never allows `cloud_model`; for `share` never a conclusion, and own experience or an external-source card only after the user's release ([ADR-0036](../adr/0036-conclusions-are-private.md)) |
 | `preview(input)` | a cloud transfer: the envelope of gate-cleared objects, its RFC 8785 `payloadHash`, an expiry 5 minutes ahead; requested by the board or by an MCP connection |
 | `confirm(input)` | human only, with the previewed hash; issues a single-use token (at least 128 bits, bound to the board session, 5 minutes) for board transfers, none for connection transfers |
 | `redeem({ grant, envelope })` | consumes the token or the connection grant once, checks the envelope, and returns exactly the confirmed objects as a `DisclosureRelease` |
+| `prepareShare(cards)` | a `ShareBundle`: the share projections (content and provenance only) of the cards allowed for `share`, and the ids and reasons of the others; sends nothing |
 
 Rules are data (`gate-rules.schema.json`); adapter fragments may only deny. Conformance:
 `describeDisclosureGateConformance` from `@worldbuilder/conformance`; the reference gate in

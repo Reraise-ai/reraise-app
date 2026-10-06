@@ -33,7 +33,8 @@ card format, the table gives the field of our model that it maps to.
 | Entscheidungskarte | decision card | card with the 11 sections |
 | Entscheidungsregel | decision rule (Rule) | a rule card evaluated by the Rules panel |
 | Neigungsmesser, Barometer | barometer (removed) | the superseded probability meter. Replaced by the Rules panel ([ADR-0013](./adr/0013-rules-panel-replaces-barometer.md)). |
-| Freigabe | release | `release`: `private`, `community` or `commercial`. Whether a card may be shared at all. |
+| Freigabe | release | `release`: `private`, `community` or `commercial`. The user's per-card release for sharing; conclusions stay private whatever it says ([ADR-0036](./adr/0036-conclusions-are-private.md)). |
+| Schlussfolgerungen | conclusions | everything that originates from the user without a public external source: stances, ratings, own classifications, decisions, rules, AI analysis on the board. Never shared with other people ([ADR-0036](./adr/0036-conclusions-are-private.md)). |
 | Sichtbarkeit | visibility | `visibility`: who may see a card. See the values below. |
 | Klasse | class | `class` A, B or C: the sensitivity class of a card, an input to disclosure-gate rules |
 | Träger | carrier | `carrier`, carried as stored |

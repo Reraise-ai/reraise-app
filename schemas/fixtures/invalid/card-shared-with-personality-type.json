@@ -1,0 +1,44 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/shared-card.schema.json",
+  "description": "A personality type is always private (ADR-0036, ADR-0038).",
+  "expect": {
+    "keyword": "additionalProperties",
+    "instancePath": ""
+  },
+  "data": {
+    "id": "01M1EGW640BMD0RDT5NGRMFD70",
+    "format": 2,
+    "collection": "actors",
+    "type": "organisation",
+    "title": "Tanker operators consortium (fictional)",
+    "body": "A fictional association of tanker operators.\n",
+    "layer": "said",
+    "source": "https://example.org/consortium/2026-q4-outlook",
+    "originSystem": "Example analyst wiki",
+    "author": "human",
+    "interests": [
+      {
+        "text": "Keep delivery schedules for Q4 contracts",
+        "source": "https://example.org/consortium/2026-q4-outlook"
+      }
+    ],
+    "redLines": [
+      {
+        "text": "No sailings without war-risk cover",
+        "source": "https://example.org/consortium/2026-09-15-member-circular"
+      }
+    ],
+    "assumedGoals": [
+      {
+        "text": "Protect Q4 margins",
+        "source": "https://example.org/consortium/2026-q4-outlook"
+      }
+    ],
+    "contentHash": "sha256:3f607254ba94e51674a8e1d80dd6cc6b8cc328ac0a101777db9531b370f1f94d",
+    "personalityType": {
+      "text": "ENTJ",
+      "source": "https://example.org/profile"
+    }
+  }
+}

@@ -6,6 +6,10 @@ decision-makers: "Owner (product), CTO/orchestrator (technical)"
 
 # ADR-0021: Privacy and sharing model for the later platform
 
+> Refined by [ADR-0036](0036-conclusions-are-private.md): the owner confirmed a broader meaning
+> of "conclusions" (everything user-originated without a public external source); the gate
+> target `share` enforces it.
+
 ## Context and Problem Statement
 
 The canon envisions a later platform: private worlds by default, single

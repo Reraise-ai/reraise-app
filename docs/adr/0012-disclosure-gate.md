@@ -6,6 +6,10 @@ decision-makers: "Owner (product), CTO/orchestrator (technical)"
 
 # ADR-0012: Disclosure gate, default deny, per card and per target
 
+> Refined by [ADR-0036](0036-conclusions-are-private.md): a fifth target `share` (other people);
+> conclusions are everything user-originated without a public external source, not stance data
+> only, and are never allowed for `share`.
+
 ## Context and Problem Statement
 
 A user's knowledge store can contain identity documents, tax identifiers

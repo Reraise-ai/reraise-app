@@ -189,7 +189,9 @@ export const CROSS_CHECKS = {
     run(prediction) {
       return prediction.players
         .filter((p) => !p.moveOptions.includes(p.predictedMove))
-        .map((p) => `player ${p.playerCardId}: "${p.predictedMove}" is not one of its move options`);
+        .map(
+          (p) => `player ${p.playerCardId}: "${p.predictedMove}" is not one of its move options`,
+        );
     },
   },
   /** ADR-0035: every player of a level-1 request is a card on the board, named once. */

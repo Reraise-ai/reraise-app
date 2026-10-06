@@ -1,0 +1,19 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/disclosure-decision.schema.json",
+  "description": "Stance data is never shared (ADR-0008, ADR-0036).",
+  "expect": {
+    "keyword": "const",
+    "instancePath": "/target"
+  },
+  "data": {
+    "subject": {
+      "kind": "stance",
+      "cardId": "01M1E34QM03WVTE8T1RYS3AM18"
+    },
+    "target": "share",
+    "decision": "allow",
+    "reason": "allow rule x",
+    "decidedAt": "2026-09-16T10:00:00Z"
+  }
+}

@@ -13,7 +13,7 @@ repeat them. It only adds terms that are used in the architecture documentation 
 | Adapter | An implementation of a port for one store, source or model. |
 | Conformance kit | `packages/conformance`, the test kit every `StorageAdapter` must pass. |
 | Egress | Anything leaving the screen: a context package, an MCP response, a model or Jev call, an export. Every egress path calls the disclosure gate. |
-| Target, target class | The audience of an egress: `screen`, `local_model`, `cloud_model` or `demo`. An MCP connection is registered with one target class. |
+| Target, target class | The audience of an egress: `screen`, `local_model`, `cloud_model`, `demo` or `share` (other people, [ADR-0036](../adr/0036-conclusions-are-private.md)). An MCP connection is registered with one target class, `local_model` or `cloud_model`. |
 | Canonical object | A domain object in the product's English model, as opposed to a store's raw file. Egress serialises canonical objects only. |
 | Patch write | A write that changes only the fields the product changed and leaves every other byte of the store file verbatim. |
 | Write path, write channel | The single sanctioned way to write into a store: validate, lock, write. "The owner store's write channel" is that store's own implementation. |

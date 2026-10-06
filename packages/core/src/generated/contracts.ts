@@ -162,9 +162,13 @@ export type HumanAuthor = 'human';
  */
 export type Uuid = string;
 /**
- * Where content may go (ADR-0012).
+ * Where content may go (ADR-0012). `share` is other people: another user, a peer-to-peer exchange or a platform export. Conclusions (user-originated cards, stance data, AI analysis) are never allowed for `share`; own experience only after the user released the card; external-source cards only after release, as content and provenance (ADR-0036).
  */
-export type DisclosureTarget = 'screen' | 'local_model' | 'cloud_model' | 'demo';
+export type DisclosureTarget = 'screen' | 'local_model' | 'cloud_model' | 'demo' | 'share';
+/**
+ * The targets a context package or a rule evaluation can be built for: the screen, models and demos. Never `share` (ADR-0036).
+ */
+export type PackageTarget = 'screen' | 'local_model' | 'cloud_model' | 'demo';
 /**
  * ICD 203 band keys (ADR-0010).
  */
@@ -207,6 +211,16 @@ export type DecisionDraft = CardDraft & {
   type: 'decision';
   sections: DecisionSections;
 };
+/**
+ * An absolute http or https address: a public external source (ADR-0036).
+ */
+export type PublicSourceRef = string;
+/**
+ * Player-field entries that cite a public source only.
+ *
+ * @minItems 1
+ */
+export type SharedPlayerField = SharedPlayerEntry[];
 /**
  * A new finding reported by a SourceConnector (ADR-0014). It is a reference with provenance, not content we ingest; nothing in the inbox is part of a world until a human pins it (reference-then-pin).
  */
@@ -558,7 +572,12 @@ export interface AddEdgePayload {
  * Create a new card (for example a reference card for a finding, ADR-0014), optionally placed on a Lage.
  */
 export interface CreateCardPayload {
-  card: CardDraft;
+  /**
+   * The card to create. An agent cannot release it for sharing: `release` is private or absent, and only the human changes it (ADR-0036).
+   */
+  card: CardDraft & {
+    release?: 'private';
+  };
   lageId?: CardId;
   x?: number;
   y?: number;
@@ -582,7 +601,7 @@ export interface Problem {
  */
 export interface ContextPackage {
   id: Ulid;
-  target: DisclosureTarget;
+  target: PackageTarget;
   worldId: WorldId;
   lageId?: CardId;
   question?: Text;
@@ -810,6 +829,42 @@ export interface DisclosureRelease {
    */
   objects: Card[];
 }
+/**
+ * Result of DisclosureGate.prepareShare (ADR-0036): the share projections of the cards allowed for target share, and the ids and reasons of the others. Never stance data, never a conclusion. A later sharing slice adds a hash-bound confirmation before anything is sent.
+ */
+export interface ShareBundle {
+  objects: SharedCard[];
+  denied: DeniedCard[];
+}
+/**
+ * What leaves the device when a card is shared with other people (target share, ADR-0036): content and provenance only. No store identity (uri, externalId), no worlds, tags, class, visibility, release, training, status, rating, edges, structured state or private player field (personalityType), and no player entry without a public source. contentHash is the hash of this projection (ADR-0034). Built by shareProjection in packages/core after the gate allowed the card for share.
+ */
+export interface SharedCard {
+  id: CardId;
+  format: 2;
+  collection?: Collection;
+  type: Text;
+  title: Text;
+  body?: string;
+  date?: IsoDate;
+  layer: Layer;
+  source?: Text;
+  sourceDate?: IsoDate;
+  sourceChecksum?: string;
+  originSystem?: Text;
+  author: HumanAuthor;
+  interests?: SharedPlayerField;
+  capabilities?: SharedPlayerField;
+  dependencies?: SharedPlayerField;
+  moves?: SharedPlayerField;
+  redLines?: SharedPlayerField;
+  assumedGoals?: SharedPlayerField;
+  contentHash: ContentHash;
+}
+export interface SharedPlayerEntry {
+  text: Text;
+  source: PublicSourceRef;
+}
 export interface Finding2 {
   /**
    * Where the finding lives in its home system.
@@ -1011,7 +1066,7 @@ export interface ProposalDecide {
 export interface RuleEvaluation {
   lageId: CardId;
   lageVersion: number;
-  target: DisclosureTarget;
+  target: PackageTarget;
   evaluatedAt: DateTime;
   results: RuleResult[];
   /**

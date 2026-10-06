@@ -367,6 +367,27 @@
       },
       "required": ["confirmation", "objects"],
       "additionalProperties": false
+    },
+    "shareBundle": {
+      "title": "ShareBundle",
+      "description": "Result of DisclosureGate.prepareShare (ADR-0036): the share projections of the cards allowed for target share, and the ids and reasons of the others. Never stance data, never a conclusion. A later sharing slice adds a hash-bound confirmation before anything is sent.",
+      "type": "object",
+      "properties": {
+        "objects": {
+          "type": "array",
+          "items": {
+            "$ref": "shared-card.schema.json"
+          }
+        },
+        "denied": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/denied"
+          }
+        }
+      },
+      "required": ["objects", "denied"],
+      "additionalProperties": false
     }
   }
 }

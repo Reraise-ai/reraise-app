@@ -116,8 +116,14 @@ classDiagram
 Privacy is structural, not a setting ([ADR-0012](../adr/0012-disclosure-gate.md),
 [ADR-0021](../adr/0021-privacy-and-sharing-model.md)).
 
-- **Targets.** `screen`, `local_model`, `cloud_model`, `demo`. Each MCP connection is
+- **Targets.** `screen`, `local_model`, `cloud_model`, `demo`, `share`. Each MCP connection is
   registered with the target class it represents; an unregistered connection is denied.
+- **Conclusions are private.** For `share` (other people) the gate derives an origin class
+  from canonical fields and never allows a conclusion: decisions, rules, ratings, assumptions,
+  Lagen, agent output and any card without a public external source. Own experience and
+  external-source cards are shared only after the user released the card (`release`) and a
+  rule allows it, and only as the share projection: content and provenance
+  ([ADR-0036](../adr/0036-conclusions-are-private.md)).
 - **Rules.** Declarative YAML allow and deny rules per target in `gate-rules.yaml` in the state directory,
   matching canonical card fields only (`visibility`, `class`, `collection`, `worlds`, `type`,
   tags once defined, explicit ids), validated against `schemas/gate-rules.schema.json` (to be

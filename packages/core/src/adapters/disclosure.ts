@@ -10,6 +10,7 @@ import type {
   DisclosureRelease,
   DisclosureTarget,
   DisclosureTransfer,
+  ShareBundle,
 } from '../generated/contracts.js';
 
 /** What is about to leave the screen: a card, or the user's stance data on a card. */
@@ -74,6 +75,11 @@ export interface TransferError extends Error {
  * - default deny: without a matching allow rule the decision is `deny`, for every target; a
  *   matching deny rule wins; adapter fragments may only deny; invalid rules deny everything;
  * - stance data is allowed for `screen` only, whatever the rules say;
+ * - `share` (other people, ADR-0036) never allows a conclusion (a decision, rule, rating,
+ *   assumption, Lage, agent output or a card without a public external source, see
+ *   `originOf`); it allows the user's own experience and an external-source card only when
+ *   the user released that card (`release` other than `private`) and a rule allows it, and
+ *   what leaves is the share projection: content and provenance only;
  * - `decide` never allows `cloud_model`: cloud content leaves only as the objects that
  *   `redeem` returns for one confirmed, unexpired, unused transfer, bound to the board session
  *   (token) or to the MCP connection that asked.
@@ -89,4 +95,10 @@ export interface DisclosureGate {
   confirm(input: DisclosureConfirmInput): DisclosureConfirmation;
   /** Consume the grant for one send and return exactly the confirmed objects. */
   redeem(input: DisclosureRedeemInput): DisclosureRelease;
+  /**
+   * What sharing these cards with other people would carry: the share projection of every
+   * card `decide` allows for `share`, and the ids and reasons of the others. Sends nothing;
+   * a later sharing slice adds a hash-bound confirmation before any send (ADR-0036).
+   */
+  prepareShare(cards: readonly Card[]): ShareBundle;
 }

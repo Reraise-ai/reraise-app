@@ -1,0 +1,29 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/proposal.schema.json#/$defs/create",
+  "description": "An agent cannot release a card for sharing; only the human changes release (ADR-0036).",
+  "expect": {
+    "keyword": "const",
+    "instancePath": "/payload/card/release"
+  },
+  "data": {
+    "kind": "create_card",
+    "payload": {
+      "card": {
+        "format": 2,
+        "collection": "evidence",
+        "type": "claim",
+        "title": "Insurer bulletin: war-risk premiums doubled",
+        "layer": "said",
+        "source": "https://example.org/insurer-bulletin/2026-09-16",
+        "sourceDate": "2026-09-16",
+        "worlds": ["01M1DZPW00JGXPRPG4179ZPNB8"],
+        "release": "community"
+      },
+      "lageId": "01M1F21G80R816A1T0V2P6RACH",
+      "x": 720,
+      "y": 80
+    },
+    "rationale": "New finding from a connected source; supports the insurance experience card."
+  }
+}

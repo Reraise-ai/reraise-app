@@ -6,6 +6,11 @@ decision-makers: "Owner (product), CTO/orchestrator (technical)"
 
 # ADR-0028: JSON Schema contract conventions, fixtures and generated types
 
+> Amended by [ADR-0035](0035-level1-engine-socket.md) (`level1-prediction` replaces
+> `level1-answer`; cross-checks `level1-move` and `level1-players` replace `level1-choice`) and
+> [ADR-0036](0036-conclusions-are-private.md) (target `share`, `PackageTarget` for context
+> packages and rule evaluations).
+
 ## Context and Problem Statement
 
 [ADR-0016](0016-mcp-first-and-openapi-contracts.md) makes JSON Schema 2020-12 in `schemas/`

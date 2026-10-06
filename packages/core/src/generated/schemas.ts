@@ -569,7 +569,15 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
       },
       disclosureTarget: {
         title: 'DisclosureTarget',
-        description: 'Where content may go (ADR-0012).',
+        description:
+          'Where content may go (ADR-0012). `share` is other people: another user, a peer-to-peer exchange or a platform export. Conclusions (user-originated cards, stance data, AI analysis) are never allowed for `share`; own experience only after the user released the card; external-source cards only after release, as content and provenance (ADR-0036).',
+        type: 'string',
+        enum: ['screen', 'local_model', 'cloud_model', 'demo', 'share'],
+      },
+      packageTarget: {
+        title: 'PackageTarget',
+        description:
+          'The targets a context package or a rule evaluation can be built for: the screen, models and demos. Never `share` (ADR-0036).',
         type: 'string',
         enum: ['screen', 'local_model', 'cloud_model', 'demo'],
       },
@@ -630,7 +638,7 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
     type: 'object',
     properties: {
       id: { $ref: 'common.schema.json#/$defs/ulid' },
-      target: { $ref: 'common.schema.json#/$defs/disclosureTarget' },
+      target: { $ref: 'common.schema.json#/$defs/packageTarget' },
       worldId: { $ref: 'common.schema.json#/$defs/worldId' },
       lageId: { $ref: 'common.schema.json#/$defs/cardId' },
       question: { $ref: 'common.schema.json#/$defs/text' },
@@ -1089,6 +1097,18 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
           objects: { type: 'array', items: { $ref: 'card.schema.json' }, minItems: 1 },
         },
         required: ['confirmation', 'objects'],
+        additionalProperties: false,
+      },
+      shareBundle: {
+        title: 'ShareBundle',
+        description:
+          'Result of DisclosureGate.prepareShare (ADR-0036): the share projections of the cards allowed for target share, and the ids and reasons of the others. Never stance data, never a conclusion. A later sharing slice adds a hash-bound confirmation before anything is sent.',
+        type: 'object',
+        properties: {
+          objects: { type: 'array', items: { $ref: 'shared-card.schema.json' } },
+          denied: { type: 'array', items: { $ref: '#/$defs/denied' } },
+        },
+        required: ['objects', 'denied'],
         additionalProperties: false,
       },
     },
@@ -1666,7 +1686,13 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
           'Create a new card (for example a reference card for a finding, ADR-0014), optionally placed on a Lage.',
         type: 'object',
         properties: {
-          card: { $ref: 'card.schema.json#/$defs/draft' },
+          card: {
+            description:
+              'The card to create. An agent cannot release it for sharing: `release` is private or absent, and only the human changes it (ADR-0036).',
+            type: 'object',
+            $ref: 'card.schema.json#/$defs/draft',
+            properties: { release: { const: 'private' } },
+          },
           lageId: { $ref: 'common.schema.json#/$defs/cardId' },
           x: { type: 'number' },
           y: { type: 'number' },
@@ -1698,7 +1724,7 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
     properties: {
       lageId: { $ref: 'common.schema.json#/$defs/cardId' },
       lageVersion: { type: 'integer', minimum: 1 },
-      target: { $ref: 'common.schema.json#/$defs/disclosureTarget' },
+      target: { $ref: 'common.schema.json#/$defs/packageTarget' },
       evaluatedAt: { $ref: 'common.schema.json#/$defs/dateTime' },
       results: { type: 'array', items: { $ref: '#/$defs/result' } },
       withheld: {
@@ -1924,6 +1950,71 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
         },
         required: ['kind', 'tag'],
         additionalProperties: false,
+      },
+    },
+  },
+  'https://worldbuilder.invalid/schemas/v0/shared-card.schema.json': {
+    $schema: 'https://json-schema.org/draft/2020-12/schema',
+    $id: 'https://worldbuilder.invalid/schemas/v0/shared-card.schema.json',
+    title: 'SharedCard',
+    description:
+      'What leaves the device when a card is shared with other people (target share, ADR-0036): content and provenance only. No store identity (uri, externalId), no worlds, tags, class, visibility, release, training, status, rating, edges, structured state or private player field (personalityType), and no player entry without a public source. contentHash is the hash of this projection (ADR-0034). Built by shareProjection in packages/core after the gate allowed the card for share.',
+    type: 'object',
+    properties: {
+      id: { $ref: 'common.schema.json#/$defs/cardId' },
+      format: { type: 'integer', const: 2 },
+      collection: { $ref: 'common.schema.json#/$defs/collection' },
+      type: { $ref: 'common.schema.json#/$defs/text' },
+      title: { $ref: 'common.schema.json#/$defs/text' },
+      body: { type: 'string' },
+      date: { $ref: 'common.schema.json#/$defs/isoDate' },
+      layer: { $ref: 'common.schema.json#/$defs/layer' },
+      source: { $ref: 'common.schema.json#/$defs/text' },
+      sourceDate: { $ref: 'common.schema.json#/$defs/isoDate' },
+      sourceChecksum: { type: 'string' },
+      originSystem: { $ref: 'common.schema.json#/$defs/text' },
+      author: { $ref: 'common.schema.json#/$defs/humanAuthor' },
+      interests: { $ref: '#/$defs/playerField' },
+      capabilities: { $ref: '#/$defs/playerField' },
+      dependencies: { $ref: '#/$defs/playerField' },
+      moves: { $ref: '#/$defs/playerField' },
+      redLines: { $ref: '#/$defs/playerField' },
+      assumedGoals: { $ref: '#/$defs/playerField' },
+      contentHash: { $ref: 'common.schema.json#/$defs/contentHash' },
+    },
+    required: ['id', 'format', 'type', 'title', 'layer', 'author', 'contentHash'],
+    additionalProperties: false,
+    allOf: [
+      {
+        description:
+          "Only external-source cards and the user's released experience are shared (ADR-0036).",
+        if: { properties: { layer: { enum: ['evidenced', 'said'] } }, required: ['layer'] },
+        then: { properties: { source: { $ref: '#/$defs/publicSourceRef' } }, required: ['source'] },
+      },
+    ],
+    $defs: {
+      playerField: {
+        title: 'SharedPlayerField',
+        description: 'Player-field entries that cite a public source only.',
+        type: 'array',
+        items: {
+          title: 'SharedPlayerEntry',
+          type: 'object',
+          properties: {
+            text: { $ref: 'common.schema.json#/$defs/text' },
+            source: { $ref: '#/$defs/publicSourceRef' },
+          },
+          required: ['text', 'source'],
+          additionalProperties: false,
+        },
+        minItems: 1,
+      },
+      publicSourceRef: {
+        title: 'PublicSourceRef',
+        description: 'An absolute http or https address: a public external source (ADR-0036).',
+        type: 'string',
+        format: 'uri',
+        pattern: '^[Hh][Tt][Tt][Pp][Ss]?://[^\\s/]+',
       },
     },
   },

@@ -5,6 +5,9 @@
 // and per target, with rules as data validated against `schemas/gate-rules.schema.json`.
 // Invalid rules or an allowing adapter fragment fail closed: every decision is deny.
 //
+// Sharing with other people (target `share`, ADR-0036) never allows a conclusion, needs the
+// user's release of the card and an allow rule, and carries the share projection only.
+//
 // Cloud content never passes `decide`: it leaves only as the objects `redeem` returns for one
 // previewed, human-confirmed, unexpired and unused transfer, bound to the board session (by a
 // single-use token) or to the MCP connection that asked. All transfer state is in memory and
@@ -26,7 +29,14 @@ import type {
   TransferErrorCode,
   TransferRequester,
 } from '@worldbuilder/core';
-import { SCHEMAS, computePayloadHash, encodeUlid, parseUri } from '@worldbuilder/core';
+import {
+  SCHEMAS,
+  computePayloadHash,
+  encodeUlid,
+  originOf,
+  parseUri,
+  shareProjection,
+} from '@worldbuilder/core';
 import { Ajv2020 } from 'ajv/dist/2020.js';
 import addFormatsModule from 'ajv-formats';
 
@@ -246,6 +256,16 @@ export function createDisclosureGate(options: DisclosureGateOptions = {}): Discl
       if (item.kind === 'stance' && target !== 'screen') {
         return result(item, target, 'deny', 'stance data never leaves the screen');
       }
+      if (target === 'share') {
+        // Conclusions are private (ADR-0036): no rule and no release can widen this.
+        const origin = originOf(item.card);
+        if (origin.originClass === 'conclusion') {
+          return result(item, target, 'deny', `conclusions are never shared: ${origin.reason}`);
+        }
+        if ((item.card.release ?? 'private') === 'private') {
+          return result(item, target, 'deny', 'not released for sharing by the user');
+        }
+      }
       const rule = decidingRule(item.card, target);
       if (!rule) return result(item, target, 'deny', 'default deny: no allow rule matches');
       if (rule.effect === 'deny') {
@@ -331,6 +351,17 @@ export function createDisclosureGate(options: DisclosureGateOptions = {}): Discl
         tokenExpiresAt: new Date(rec.grantExpiresAt).toISOString(),
         confirmedBy: 'human',
       } satisfies DisclosureConfirmation;
+    },
+
+    prepareShare(cards) {
+      const objects = [];
+      const denied = [];
+      for (const card of cards) {
+        const d = this.decide({ kind: 'card', card }, 'share');
+        if (d.decision === 'allow') objects.push(shareProjection(card));
+        else denied.push({ cardId: card.id, reason: d.reason });
+      }
+      return { objects, denied };
     },
 
     redeem({ grant, envelope }) {
