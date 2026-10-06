@@ -6,6 +6,10 @@ decision-makers: "Owner (product), CTO/orchestrator (technical)"
 
 # ADR-0016: MCP-first AI interface and an OpenAPI 3.1 Board API, contract-first
 
+> Refined by [ADR-0039](0039-knowledge-loop-receipts.md): the knowledge-loop tools
+> `knowledge_consult`, `knowledge_write_back`, `decision_record`, `decision_outcome` and
+> `memory_route`; the tools with side effects are exactly the four that create proposals.
+
 ## Context and Problem Statement
 
 The first target users run their own agent systems. Their agents must

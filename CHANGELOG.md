@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Knowledge loop (ADR-0039 to ADR-0043): Knowledge and Write-back Receipts, the hash-chained
+  receipt log and its fail-closed verifier, usage metrics per agent and week with the owner's
+  targets, deterministic memory routing and atlas pages with card links and staleness, in the
+  new package `@worldbuilder/knowledge-loop` with the offline `wb` command line
+  (`wb receipts verify`, `wb digest`, `wb metrics`); MCP tools `knowledge_consult`,
+  `knowledge_write_back`, `decision_record`, `decision_outcome`, `memory_route` with Board API
+  mirrors, the proposal kind `record_outcome`, and the opt-in training export builder.
 - Reference `markdown-files` storage adapter: byte-preserving patches, archive and versions,
   derived in-memory index with file watcher and rescan fallback, single-writer lock file, search
   by text, type, layer, world and tags; passes the StorageAdapter conformance kit.

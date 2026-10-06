@@ -1,0 +1,26 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/write-back-receipt.schema.json#/$defs/request",
+  "description": "Exactly one of card or notNeeded.",
+  "expect": {
+    "keyword": "oneOf",
+    "instancePath": ""
+  },
+  "data": {
+    "taskRef": "TASK-1",
+    "card": {
+      "format": 2,
+      "collection": "evidence",
+      "type": "claim",
+      "title": "Insurer bulletin: war-risk premiums doubled",
+      "layer": "said",
+      "source": "https://example.org/insurer-bulletin/2026-09-16",
+      "sourceDate": "2026-09-16",
+      "worlds": ["01M1DZPW00JGXPRPG4179ZPNB8"],
+      "release": "private"
+    },
+    "notNeeded": {
+      "reason": "no_new_knowledge"
+    }
+  }
+}

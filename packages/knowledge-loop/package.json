@@ -1,0 +1,35 @@
+{
+  "name": "@worldbuilder/knowledge-loop",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Knowledge loop: receipts, the hash-chained receipt log and its verifier, usage metrics, memory routing, atlas digest, and the wb command line",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "bin": {
+    "wb": "./dist/bin.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@worldbuilder/core": "workspace:*",
+    "@worldbuilder/disclosure-gate": "workspace:*",
+    "@worldbuilder/local-state": "workspace:*",
+    "@worldbuilder/storage-markdown-files": "workspace:*",
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1",
+    "yaml": "^2.9.1"
+  }
+}

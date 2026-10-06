@@ -1,0 +1,12 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/memory-route.schema.json#/$defs/request",
+  "description": "An empty item cannot be classified.",
+  "expect": {
+    "keyword": "minLength",
+    "instancePath": "/text"
+  },
+  "data": {
+    "text": ""
+  }
+}

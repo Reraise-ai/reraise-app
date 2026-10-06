@@ -1,0 +1,12 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/api.schema.json#/$defs/usageMetricsRequest",
+  "description": "Weeks are ISO 8601, YYYY-Www.",
+  "expect": {
+    "keyword": "pattern",
+    "instancePath": "/week"
+  },
+  "data": {
+    "week": "2026-41"
+  }
+}

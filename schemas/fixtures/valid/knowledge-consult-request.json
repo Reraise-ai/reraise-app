@@ -1,0 +1,12 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/knowledge-receipt.schema.json#/$defs/consultRequest",
+  "description": "Input of knowledge_consult: task reference, task text and world; no target, no author.",
+  "data": {
+    "taskRef": "TASK-2026-0042",
+    "task": "Assess whether tankers reroute around the Cape in Q4",
+    "worldId": "01M1DZPW00JGXPRPG4179ZPNB8",
+    "lageId": "01M1F21G80R816A1T0V2P6RACH",
+    "maxItems": 20
+  }
+}

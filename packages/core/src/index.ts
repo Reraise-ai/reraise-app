@@ -27,6 +27,17 @@ export {
 } from './ids.js';
 
 export {
+  EMAIL_PATTERN,
+  IBAN_LENGTHS,
+  findEmails,
+  findIbans,
+  findPhoneNumbers,
+  isValidIban,
+  personalDataKinds,
+} from './personal-data.js';
+export type { PersonalDataKind } from './personal-data.js';
+export { OPEN_OUTCOME, OPEN_OUTCOME_SCHEMA_PATTERN, isKnownOutcome } from './outcome.js';
+export {
   EXTERNAL_TYPES,
   SHARED_FIELDS,
   SHARED_PLAYER_FIELDS,

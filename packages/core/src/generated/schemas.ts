@@ -181,6 +181,55 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
         required: ['title', 'status'],
         additionalProperties: false,
       },
+      decisionRecordRequest: {
+        title: 'DecisionRecordRequest',
+        description:
+          'Input of decision_record (ADR-0039): an agent proposes a decision card with the eleven sections; the human accepts. Becomes a create_card proposal. The agent cannot release it for sharing (ADR-0036).',
+        type: 'object',
+        properties: {
+          decision: {
+            type: 'object',
+            $ref: 'decision.schema.json#/$defs/draft',
+            properties: {
+              release: { const: 'private' },
+              training: {
+                description:
+                  'An agent cannot opt a card in to the training export; only the human sets training (ADR-0017, ADR-0039).',
+                const: false,
+              },
+            },
+          },
+          lageId: { $ref: 'common.schema.json#/$defs/cardId' },
+          x: { type: 'number' },
+          y: { type: 'number' },
+          rationale: { type: 'string', maxLength: 2000 },
+        },
+        required: ['decision'],
+        additionalProperties: false,
+        dependentRequired: { lageId: ['x', 'y'] },
+      },
+      decisionOutcomeRequest: {
+        title: 'DecisionOutcomeRequest',
+        description:
+          'Input of decision_outcome (ADR-0039): an agent proposes the outcome of a decision card; becomes a record_outcome proposal.',
+        type: 'object',
+        properties: {
+          decisionId: { $ref: 'common.schema.json#/$defs/cardId' },
+          outcome: { $ref: 'proposal.schema.json#/$defs/outcomeText' },
+          expectedContentHash: { $ref: 'common.schema.json#/$defs/contentHash' },
+          rationale: { type: 'string', maxLength: 2000 },
+        },
+        required: ['decisionId', 'outcome', 'expectedContentHash'],
+        additionalProperties: false,
+      },
+      usageMetricsRequest: {
+        title: 'UsageMetricsRequest',
+        description:
+          'Input of the human-only usage_metrics_get: an ISO week, or nothing for the rolling 7 days before now.',
+        type: 'object',
+        properties: { week: { $ref: 'usage-metrics.schema.json#/$defs/isoWeek' } },
+        additionalProperties: false,
+      },
     },
   },
   'https://worldbuilder.invalid/schemas/v0/card.schema.json': {
@@ -646,7 +695,7 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
       proposalKind: {
         title: 'ProposalKind',
         type: 'string',
-        enum: ['place_card', 'move_card', 'add_edge', 'create_card', 'comment'],
+        enum: ['place_card', 'move_card', 'add_edge', 'create_card', 'comment', 'record_outcome'],
       },
       isoDate: { title: 'IsoDate', type: 'string', format: 'date' },
       dateTime: { title: 'DateTime', type: 'string', format: 'date-time' },
@@ -669,6 +718,20 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
         type: 'string',
         minLength: 1,
         pattern: '\\S',
+      },
+      taskRef: {
+        title: 'TaskRef',
+        description:
+          "An opaque task reference chosen by the agent system (for example its task id): 1 to 128 characters of letters, digits and . _ : / # -, starting with a letter or digit, without spaces and without '//', so it can carry neither prose nor a URL (ADR-0039).",
+        type: 'string',
+        pattern: '^(?!.*//)[A-Za-z0-9][A-Za-z0-9._:/#-]{0,127}$',
+      },
+      jcsHash: {
+        title: 'JcsHash',
+        description:
+          'sha256:<lower-case hex> over the RFC 8785 (JCS) serialisation of a JSON value (ADR-0034, ADR-0039).',
+        type: 'string',
+        pattern: '^sha256:[0-9a-f]{64}$',
       },
     },
   },
@@ -892,6 +955,78 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
           sections: { $ref: 'card.schema.json#/$defs/decisionSections' },
         },
         required: ['type', 'sections'],
+      },
+    },
+  },
+  'https://worldbuilder.invalid/schemas/v0/digest-page.schema.json': {
+    $schema: 'https://json-schema.org/draft/2020-12/schema',
+    $id: 'https://worldbuilder.invalid/schemas/v0/digest-page.schema.json',
+    title: 'DigestPage',
+    description:
+      'One atlas page built by wb digest (ADR-0043): lines that each cite card ids, and the content hash of every card the page covers, for the staleness check. A derived local view built for one gate target; never shared.',
+    type: 'object',
+    properties: {
+      pageId: { type: 'string', pattern: '^[a-z0-9][a-z0-9-]{0,63}$' },
+      title: { $ref: 'common.schema.json#/$defs/text' },
+      scope: { $ref: '#/$defs/scope' },
+      target: { $ref: 'common.schema.json#/$defs/packageTarget' },
+      generatedAt: { $ref: 'common.schema.json#/$defs/dateTime' },
+      generator: {
+        type: 'string',
+        pattern: '^(deterministic|model:[A-Za-z0-9][A-Za-z0-9._-]{0,63})$',
+      },
+      lines: { type: 'array', items: { $ref: '#/$defs/line' } },
+      sources: { type: 'array', items: { $ref: '#/$defs/source' } },
+    },
+    required: [
+      'pageId',
+      'title',
+      'scope',
+      'target',
+      'generatedAt',
+      'generator',
+      'lines',
+      'sources',
+    ],
+    additionalProperties: false,
+    $defs: {
+      scope: {
+        title: 'DigestScope',
+        type: 'object',
+        properties: {
+          kind: { type: 'string', enum: ['world', 'unassigned'] },
+          worldId: { $ref: 'common.schema.json#/$defs/worldId' },
+        },
+        required: ['kind'],
+        additionalProperties: false,
+        if: { properties: { kind: { const: 'world' } }, required: ['kind'] },
+        then: { properties: { worldId: true }, required: ['worldId'] },
+        else: { properties: { worldId: false } },
+      },
+      line: {
+        title: 'DigestLine',
+        type: 'object',
+        properties: {
+          text: { $ref: 'common.schema.json#/$defs/text' },
+          cardIds: {
+            type: 'array',
+            items: { $ref: 'common.schema.json#/$defs/cardId' },
+            minItems: 1,
+            uniqueItems: true,
+          },
+        },
+        required: ['text', 'cardIds'],
+        additionalProperties: false,
+      },
+      source: {
+        title: 'DigestSource',
+        type: 'object',
+        properties: {
+          cardId: { $ref: 'common.schema.json#/$defs/cardId' },
+          contentHash: { $ref: 'common.schema.json#/$defs/contentHash' },
+        },
+        required: ['cardId', 'contentHash'],
+        additionalProperties: false,
       },
     },
   },
@@ -1321,6 +1456,124 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
       },
     },
   },
+  'https://worldbuilder.invalid/schemas/v0/knowledge-receipt.schema.json': {
+    $schema: 'https://json-schema.org/draft/2020-12/schema',
+    $id: 'https://worldbuilder.invalid/schemas/v0/knowledge-receipt.schema.json',
+    title: 'KnowledgeReceipt',
+    description:
+      'Proof that an agent consulted the knowledge for a task (ADR-0039). Returned by knowledge_consult and appended to the receipt log (ADR-0040). Holds ids, hashes, codes and times only: never the task text, a card title or any other content. `hash` is the JCS hash of the receipt without `hash`.',
+    type: 'object',
+    properties: {
+      receiptId: { $ref: 'common.schema.json#/$defs/ulid' },
+      kind: { type: 'string', const: 'knowledge' },
+      agent: { $ref: 'common.schema.json#/$defs/agentAuthor' },
+      taskRef: { $ref: 'common.schema.json#/$defs/taskRef' },
+      queryHash: {
+        description:
+          'Keyed hash of the task text: HMAC-SHA256 with the device receipt key over the UTF-8 JCS serialisation of the text, as hmac-sha256:<hex>. The text is never stored; without the key the hash cannot be checked against guessed texts (ADR-0039).',
+        type: 'string',
+        pattern: '^hmac-sha256:[0-9a-f]{64}$',
+      },
+      worldId: { $ref: 'common.schema.json#/$defs/worldId' },
+      lageId: { $ref: 'common.schema.json#/$defs/cardId' },
+      target: {
+        description: 'The disclosure class of the agent connection (ADR-0037).',
+        type: 'string',
+        enum: ['local_model', 'cloud_model'],
+      },
+      packageId: {
+        description: 'Id of the context package the consult returned.',
+        $ref: 'common.schema.json#/$defs/ulid',
+      },
+      result: {
+        description:
+          'cards: the package delivered cards (cardIds lists exactly them); nothing_found: no card matched; confirmation_required: a cloud_model connection without a confirmed transfer (ADR-0031). All three prove a consult.',
+        type: 'string',
+        enum: ['cards', 'nothing_found', 'confirmation_required'],
+      },
+      cardIds: {
+        type: 'array',
+        items: { $ref: 'common.schema.json#/$defs/cardId' },
+        uniqueItems: true,
+        maxItems: 500,
+      },
+      transferId: { $ref: 'common.schema.json#/$defs/ulid' },
+      at: { $ref: 'common.schema.json#/$defs/dateTime' },
+      hash: { $ref: 'common.schema.json#/$defs/jcsHash' },
+    },
+    required: [
+      'receiptId',
+      'kind',
+      'agent',
+      'taskRef',
+      'queryHash',
+      'worldId',
+      'target',
+      'packageId',
+      'result',
+      'cardIds',
+      'at',
+      'hash',
+    ],
+    additionalProperties: false,
+    allOf: [
+      {
+        description: 'Only a consult that delivered cards names cards.',
+        if: { properties: { result: { const: 'cards' } }, required: ['result'] },
+        then: { properties: { cardIds: { minItems: 1, type: 'array' } } },
+        else: { properties: { cardIds: { maxItems: 0, type: 'array' } } },
+      },
+      {
+        description:
+          'A consult waiting for a cloud confirmation names its transfer and comes from a cloud_model connection.',
+        if: { properties: { result: { const: 'confirmation_required' } }, required: ['result'] },
+        then: {
+          properties: { transferId: true, target: { const: 'cloud_model' } },
+          required: ['transferId'],
+        },
+      },
+    ],
+    $defs: {
+      consultRequest: {
+        title: 'KnowledgeConsultRequest',
+        description:
+          'Input of knowledge_consult: a context package request (ADR-0016) plus the task. Target and agent come from the connection. The task text is hashed into the receipt and never stored.',
+        type: 'object',
+        properties: {
+          taskRef: { $ref: 'common.schema.json#/$defs/taskRef' },
+          task: {
+            description: 'What the agent is about to do, as the question for the context package.',
+            allOf: [
+              { $ref: 'common.schema.json#/$defs/text' },
+              { maxLength: 2000, type: 'string' },
+            ],
+          },
+          worldId: { $ref: 'common.schema.json#/$defs/worldId' },
+          lageId: { $ref: 'common.schema.json#/$defs/cardId' },
+          maxItems: { type: 'integer', minimum: 1, maximum: 500 },
+          transferId: {
+            description:
+              'For a cloud_model connection: the transfer the human confirmed after a first consult returned confirmation_required (ADR-0031).',
+            $ref: 'common.schema.json#/$defs/ulid',
+          },
+        },
+        required: ['taskRef', 'task', 'worldId'],
+        additionalProperties: false,
+      },
+      consultResult: {
+        title: 'KnowledgeConsultResult',
+        description:
+          'Output of knowledge_consult: the gate-cleared context package and the receipt for it.',
+        type: 'object',
+        properties: {
+          package: { $ref: 'context-package.schema.json' },
+          receipt: { $ref: 'knowledge-receipt.schema.json' },
+        },
+        required: ['package', 'receipt'],
+        additionalProperties: false,
+      },
+    },
+  },
   'https://worldbuilder.invalid/schemas/v0/lage.schema.json': {
     $schema: 'https://json-schema.org/draft/2020-12/schema',
     $id: 'https://worldbuilder.invalid/schemas/v0/lage.schema.json',
@@ -1529,6 +1782,80 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
       },
     },
   },
+  'https://worldbuilder.invalid/schemas/v0/memory-route.schema.json': {
+    $schema: 'https://json-schema.org/draft/2020-12/schema',
+    $id: 'https://worldbuilder.invalid/schemas/v0/memory-route.schema.json',
+    title: 'MemoryRouteResult',
+    description:
+      'Result of memory_route (ADR-0042): whether an agent memory item should become a card proposal or stay an ephemeral operational fact, with the deciding rule and the signal ids (never the matched words). Nothing is stored.',
+    type: 'object',
+    properties: {
+      route: { type: 'string', enum: ['card_proposal', 'ephemeral_ops_fact'] },
+      ruleId: {
+        type: 'string',
+        enum: [
+          'secret',
+          'personal_data',
+          'short',
+          'ops_hint',
+          'local_reference',
+          'public_source',
+          'durable_statement',
+          'transient',
+          'knowledge_hint',
+          'default',
+          'model',
+        ],
+      },
+      signals: {
+        type: 'array',
+        items: {
+          type: 'string',
+          enum: [
+            'secret_like',
+            'personal_data',
+            'public_source',
+            'local_reference',
+            'transient',
+            'durable',
+            'short',
+          ],
+        },
+        uniqueItems: true,
+      },
+      classifier: {
+        description:
+          'rules:v2 for the deterministic rules of ADR-0042; model:<engine> only for a later model-assisted slice.',
+        type: 'string',
+        pattern: '^(rules:v[0-9]+|model:[A-Za-z0-9][A-Za-z0-9._-]{0,63})$',
+      },
+    },
+    required: ['route', 'ruleId', 'signals', 'classifier'],
+    additionalProperties: false,
+    $defs: {
+      request: {
+        title: 'MemoryRouteRequest',
+        description:
+          'Input of memory_route: one memory item of the agent system. Inbound data, classified and never stored or logged.',
+        type: 'object',
+        properties: {
+          text: {
+            allOf: [
+              { $ref: 'common.schema.json#/$defs/text' },
+              { maxLength: 4000, type: 'string' },
+            ],
+          },
+          kindHint: {
+            type: 'string',
+            enum: ['learning', 'observation', 'preference', 'decision', 'ops', 'unknown'],
+          },
+          source: { $ref: 'common.schema.json#/$defs/sourceRef' },
+        },
+        required: ['text'],
+        additionalProperties: false,
+      },
+    },
+  },
   'https://worldbuilder.invalid/schemas/v0/prediction.schema.json': {
     $schema: 'https://json-schema.org/draft/2020-12/schema',
     $id: 'https://worldbuilder.invalid/schemas/v0/prediction.schema.json',
@@ -1681,6 +2008,10 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
             if: { properties: { kind: { const: 'comment' } }, required: ['kind'] },
             then: { properties: { payload: { $ref: '#/$defs/comment' } } },
           },
+          {
+            if: { properties: { kind: { const: 'record_outcome' } }, required: ['kind'] },
+            then: { properties: { payload: { $ref: '#/$defs/recordOutcome' } } },
+          },
         ],
       },
       placeCard: {
@@ -1734,7 +2065,14 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
               'The card to create. An agent cannot release it for sharing: `release` is private or absent, and only the human changes it (ADR-0036).',
             type: 'object',
             $ref: 'card.schema.json#/$defs/draft',
-            properties: { release: { const: 'private' } },
+            properties: {
+              release: { const: 'private' },
+              training: {
+                description:
+                  'An agent cannot opt a card in to the training export; only the human sets training (ADR-0017, ADR-0039).',
+                const: false,
+              },
+            },
           },
           lageId: { $ref: 'common.schema.json#/$defs/cardId' },
           x: { type: 'number' },
@@ -1755,7 +2093,52 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
         required: ['text'],
         additionalProperties: false,
       },
+      outcomeText: {
+        title: 'OutcomeText',
+        description: 'A known outcome: non-empty text that is not `open`.',
+        allOf: [
+          { $ref: 'common.schema.json#/$defs/text' },
+          { maxLength: 4000, type: 'string' },
+          { not: { type: 'string', pattern: '^\\s*[Oo][Pp][Ee][Nn]\\s*$' } },
+        ],
+      },
+      recordOutcome: {
+        title: 'RecordOutcomePayload',
+        description:
+          'Propose the outcome of a decision card (ADR-0039). On accept the service patches only sections.outcome, and only if the card still has expectedContentHash; never release or other metadata.',
+        type: 'object',
+        properties: {
+          decisionId: { $ref: 'common.schema.json#/$defs/cardId' },
+          outcome: { $ref: '#/$defs/outcomeText' },
+          expectedContentHash: { $ref: 'common.schema.json#/$defs/contentHash' },
+        },
+        required: ['decisionId', 'outcome', 'expectedContentHash'],
+        additionalProperties: false,
+      },
     },
+  },
+  'https://worldbuilder.invalid/schemas/v0/receipt-log-entry.schema.json': {
+    $schema: 'https://json-schema.org/draft/2020-12/schema',
+    $id: 'https://worldbuilder.invalid/schemas/v0/receipt-log-entry.schema.json',
+    title: 'ReceiptLogEntry',
+    description:
+      'One line of <state>/receipt-log.jsonl (ADR-0040): append-only, hash-chained, written only by the service. `prev` is the hash of the previous entry (64 zeros for the first); `hash` is the JCS hash of the entry without `hash`. Holds no content.',
+    type: 'object',
+    properties: {
+      v: { type: 'integer', const: 1 },
+      seq: { type: 'integer', minimum: 0 },
+      at: { $ref: 'common.schema.json#/$defs/dateTime' },
+      prev: { $ref: 'common.schema.json#/$defs/jcsHash' },
+      receipt: {
+        oneOf: [
+          { $ref: 'knowledge-receipt.schema.json' },
+          { $ref: 'write-back-receipt.schema.json' },
+        ],
+      },
+      hash: { $ref: 'common.schema.json#/$defs/jcsHash' },
+    },
+    required: ['v', 'seq', 'at', 'prev', 'receipt', 'hash'],
+    additionalProperties: false,
   },
   'https://worldbuilder.invalid/schemas/v0/rule-evaluation.schema.json': {
     $schema: 'https://json-schema.org/draft/2020-12/schema',
@@ -2216,6 +2599,37 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
     required: ['storeInstanceId'],
     additionalProperties: false,
   },
+  'https://worldbuilder.invalid/schemas/v0/task-record.schema.json': {
+    $schema: 'https://json-schema.org/draft/2020-12/schema',
+    $id: 'https://worldbuilder.invalid/schemas/v0/task-record.schema.json',
+    title: 'TaskRecord',
+    description:
+      'The hand-off of one agent task as the verifier reads it (ADR-0040): which receipts the task cites. Both receipts are optional here so that the verifier, not the parser, reports a missing one. A JSON file or the YAML front matter of a Markdown file.',
+    type: 'object',
+    properties: {
+      taskRef: { $ref: 'common.schema.json#/$defs/taskRef' },
+      agent: { $ref: 'common.schema.json#/$defs/agentAuthor' },
+      startedAt: { $ref: 'common.schema.json#/$defs/dateTime' },
+      completedAt: { $ref: 'common.schema.json#/$defs/dateTime' },
+      knowledgeReceipt: { $ref: '#/$defs/receiptRef' },
+      writeBackReceipt: { $ref: '#/$defs/receiptRef' },
+    },
+    required: ['taskRef', 'agent', 'completedAt'],
+    additionalProperties: false,
+    $defs: {
+      receiptRef: {
+        title: 'ReceiptRef',
+        description: 'A receipt cited by id and hash.',
+        type: 'object',
+        properties: {
+          receiptId: { $ref: 'common.schema.json#/$defs/ulid' },
+          hash: { $ref: 'common.schema.json#/$defs/jcsHash' },
+        },
+        required: ['receiptId', 'hash'],
+        additionalProperties: false,
+      },
+    },
+  },
   'https://worldbuilder.invalid/schemas/v0/training-export-record.schema.json': {
     $schema: 'https://json-schema.org/draft/2020-12/schema',
     $id: 'https://worldbuilder.invalid/schemas/v0/training-export-record.schema.json',
@@ -2283,6 +2697,162 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
       },
     },
   },
+  'https://worldbuilder.invalid/schemas/v0/usage-metrics.schema.json': {
+    $schema: 'https://json-schema.org/draft/2020-12/schema',
+    $id: 'https://worldbuilder.invalid/schemas/v0/usage-metrics.schema.json',
+    title: 'UsageMetrics',
+    description:
+      'Knowledge-loop metrics per agent for one window, derived from the receipt log, task records, proposals, decision cards and the atlas (ADR-0041). Every field has one formula in the ADR. No score, rank or overall verdict; each target is reported on its own, and a target without a value is not met.',
+    type: 'object',
+    properties: {
+      generatedAt: { $ref: 'common.schema.json#/$defs/dateTime' },
+      window: { $ref: '#/$defs/window' },
+      agents: { type: 'array', items: { $ref: '#/$defs/agentUsage' } },
+      totals: { $ref: '#/$defs/counts' },
+      decisions: {
+        description: 'Decision cards of the store (not windowed); null without a store.',
+        oneOf: [
+          {
+            type: 'object',
+            properties: {
+              total: { type: 'integer', minimum: 0 },
+              withOutcome: { type: 'integer', minimum: 0 },
+            },
+            required: ['total', 'withOutcome'],
+            additionalProperties: false,
+          },
+          { type: 'null' },
+        ],
+      },
+      atlas: {
+        type: 'object',
+        properties: {
+          pages: { type: 'integer', minimum: 0 },
+          stalePages: { type: 'integer', minimum: 0 },
+          lagHours: {
+            description:
+              '0 when every page is fresh, else the age of the oldest stale page in hours; null without pages.',
+            oneOf: [{ type: 'number', minimum: 0 }, { type: 'null' }],
+          },
+        },
+        required: ['pages', 'stalePages', 'lagHours'],
+        additionalProperties: false,
+      },
+      targets: { type: 'array', items: { $ref: '#/$defs/target' } },
+    },
+    required: ['generatedAt', 'window', 'agents', 'totals', 'decisions', 'atlas', 'targets'],
+    additionalProperties: false,
+    $defs: {
+      isoWeek: {
+        title: 'IsoWeek',
+        description: 'An ISO 8601 week in UTC, YYYY-Www.',
+        type: 'string',
+        pattern: '^[0-9]{4}-W(0[1-9]|[1-4][0-9]|5[0-3])$',
+      },
+      window: {
+        title: 'UsageWindow',
+        type: 'object',
+        properties: {
+          kind: { type: 'string', enum: ['rolling_7d', 'iso_week'] },
+          start: { $ref: 'common.schema.json#/$defs/dateTime' },
+          end: { description: 'Exclusive.', $ref: 'common.schema.json#/$defs/dateTime' },
+          isoWeek: { $ref: '#/$defs/isoWeek' },
+        },
+        required: ['kind', 'start', 'end'],
+        additionalProperties: false,
+        if: { properties: { kind: { const: 'iso_week' } }, required: ['kind'] },
+        then: { properties: { isoWeek: true }, required: ['isoWeek'] },
+        else: { properties: { isoWeek: false } },
+      },
+      counts: {
+        title: 'UsageCounts',
+        type: 'object',
+        properties: {
+          tasks: { type: 'integer', minimum: 0 },
+          tasksWithReceipts: { type: 'integer', minimum: 0 },
+          consults: { type: 'integer', minimum: 0 },
+          consultsNothingFound: { type: 'integer', minimum: 0 },
+          writeBacks: { type: 'integer', minimum: 0 },
+          writeBacksNotNeeded: { type: 'integer', minimum: 0 },
+          cardsProposed: { type: 'integer', minimum: 0 },
+          decisionsProposed: { type: 'integer', minimum: 0 },
+          outcomesProposed: { type: 'integer', minimum: 0 },
+          cardsAccepted: { type: 'integer', minimum: 0 },
+          cardsRejected: { type: 'integer', minimum: 0 },
+          receiptCoverage: {
+            description: 'tasksWithReceipts / tasks; null when there are no tasks.',
+            oneOf: [{ type: 'number', minimum: 0, maximum: 1 }, { type: 'null' }],
+          },
+        },
+        required: [
+          'tasks',
+          'tasksWithReceipts',
+          'consults',
+          'consultsNothingFound',
+          'writeBacks',
+          'writeBacksNotNeeded',
+          'cardsProposed',
+          'decisionsProposed',
+          'outcomesProposed',
+          'cardsAccepted',
+          'cardsRejected',
+          'receiptCoverage',
+        ],
+        additionalProperties: false,
+      },
+      agentUsage: {
+        title: 'AgentUsage',
+        type: 'object',
+        properties: {
+          agent: { $ref: 'common.schema.json#/$defs/agentAuthor' },
+          tasks: { type: 'integer', minimum: 0 },
+          tasksWithReceipts: { type: 'integer', minimum: 0 },
+          consults: { type: 'integer', minimum: 0 },
+          consultsNothingFound: { type: 'integer', minimum: 0 },
+          writeBacks: { type: 'integer', minimum: 0 },
+          writeBacksNotNeeded: { type: 'integer', minimum: 0 },
+          cardsProposed: { type: 'integer', minimum: 0 },
+          decisionsProposed: { type: 'integer', minimum: 0 },
+          outcomesProposed: { type: 'integer', minimum: 0 },
+          cardsAccepted: { type: 'integer', minimum: 0 },
+          cardsRejected: { type: 'integer', minimum: 0 },
+          receiptCoverage: {
+            description: 'tasksWithReceipts / tasks; null when there are no tasks.',
+            oneOf: [{ type: 'number', minimum: 0, maximum: 1 }, { type: 'null' }],
+          },
+        },
+        required: [
+          'agent',
+          'tasks',
+          'tasksWithReceipts',
+          'consults',
+          'consultsNothingFound',
+          'writeBacks',
+          'writeBacksNotNeeded',
+          'cardsProposed',
+          'decisionsProposed',
+          'outcomesProposed',
+          'cardsAccepted',
+          'cardsRejected',
+          'receiptCoverage',
+        ],
+        additionalProperties: false,
+      },
+      target: {
+        title: 'UsageTarget',
+        type: 'object',
+        properties: {
+          id: { type: 'string', pattern: '^[a-z][a-z0-9_]{0,63}$' },
+          comparison: { type: 'string', enum: ['at_least', 'at_most'] },
+          threshold: { type: 'number', minimum: 0 },
+          value: { oneOf: [{ type: 'number' }, { type: 'null' }] },
+          met: { type: 'boolean' },
+        },
+        required: ['id', 'comparison', 'threshold', 'value', 'met'],
+        additionalProperties: false,
+      },
+    },
+  },
   'https://worldbuilder.invalid/schemas/v0/world.schema.json': {
     $schema: 'https://json-schema.org/draft/2020-12/schema',
     $id: 'https://worldbuilder.invalid/schemas/v0/world.schema.json',
@@ -2303,5 +2873,139 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
     },
     required: ['id', 'name'],
     additionalProperties: false,
+  },
+  'https://worldbuilder.invalid/schemas/v0/write-back-receipt.schema.json': {
+    $schema: 'https://json-schema.org/draft/2020-12/schema',
+    $id: 'https://worldbuilder.invalid/schemas/v0/write-back-receipt.schema.json',
+    title: 'WriteBackReceipt',
+    description:
+      'Proof that an agent decided, for a task, whether its knowledge becomes a card (ADR-0039). Returned by knowledge_write_back and appended to the receipt log (ADR-0040). Holds ids, hashes, codes and times only; a reason is a fixed code, never free text.',
+    type: 'object',
+    properties: {
+      receiptId: { $ref: 'common.schema.json#/$defs/ulid' },
+      kind: { type: 'string', const: 'write_back' },
+      agent: { $ref: 'common.schema.json#/$defs/agentAuthor' },
+      taskRef: { $ref: 'common.schema.json#/$defs/taskRef' },
+      consultReceiptId: {
+        description: 'The Knowledge Receipt of the same task, if the agent passed it.',
+        $ref: 'common.schema.json#/$defs/ulid',
+      },
+      result: { type: 'string', enum: ['proposed', 'not_needed'] },
+      proposalId: { $ref: 'common.schema.json#/$defs/ulid' },
+      draftHash: {
+        description: 'Content hash of the proposed card draft (ADR-0034).',
+        $ref: 'common.schema.json#/$defs/contentHash',
+      },
+      reason: { $ref: '#/$defs/reason' },
+      coveredBy: {
+        description: 'Cards that already hold the knowledge (reason already_covered).',
+        type: 'array',
+        items: { $ref: 'common.schema.json#/$defs/cardId' },
+        minItems: 1,
+        maxItems: 50,
+        uniqueItems: true,
+      },
+      at: { $ref: 'common.schema.json#/$defs/dateTime' },
+      hash: { $ref: 'common.schema.json#/$defs/jcsHash' },
+    },
+    required: ['receiptId', 'kind', 'agent', 'taskRef', 'result', 'at', 'hash'],
+    additionalProperties: false,
+    allOf: [
+      {
+        description:
+          'A proposed card names its proposal and draft hash and gives no reason; not_needed gives a reason and names no proposal.',
+        if: { properties: { result: { const: 'proposed' } }, required: ['result'] },
+        then: {
+          properties: { proposalId: true, draftHash: true, reason: false, coveredBy: false },
+          required: ['proposalId', 'draftHash'],
+        },
+        else: {
+          properties: { reason: true, proposalId: false, draftHash: false },
+          required: ['reason'],
+        },
+      },
+      {
+        description: 'already_covered names the covering cards; other reasons name none.',
+        if: { properties: { reason: { const: 'already_covered' } }, required: ['reason'] },
+        then: { properties: { coveredBy: true }, required: ['coveredBy'] },
+        else: { properties: { coveredBy: false } },
+      },
+    ],
+    $defs: {
+      reason: {
+        title: 'WriteBackReason',
+        description: 'Why no card is needed (ADR-0039).',
+        type: 'string',
+        enum: ['no_new_knowledge', 'already_covered', 'ephemeral_ops_fact', 'task_abandoned'],
+      },
+      notNeeded: {
+        title: 'WriteBackNotNeeded',
+        type: 'object',
+        properties: {
+          reason: { $ref: '#/$defs/reason' },
+          coveredBy: {
+            type: 'array',
+            items: { $ref: 'common.schema.json#/$defs/cardId' },
+            minItems: 1,
+            maxItems: 50,
+            uniqueItems: true,
+          },
+        },
+        required: ['reason'],
+        additionalProperties: false,
+        if: { properties: { reason: { const: 'already_covered' } }, required: ['reason'] },
+        then: { properties: { coveredBy: true }, required: ['coveredBy'] },
+        else: { properties: { coveredBy: false } },
+      },
+      request: {
+        title: 'WriteBackRequest',
+        description:
+          'Input of knowledge_write_back: exactly one of `card` (creates a create_card proposal; the agent cannot release it for sharing, ADR-0036) or `notNeeded`. Author and target come from the connection.',
+        type: 'object',
+        properties: {
+          taskRef: { $ref: 'common.schema.json#/$defs/taskRef' },
+          consultReceiptId: { $ref: 'common.schema.json#/$defs/ulid' },
+          card: {
+            type: 'object',
+            $ref: 'card.schema.json#/$defs/draft',
+            properties: {
+              release: { const: 'private' },
+              training: {
+                description:
+                  'An agent cannot opt a card in to the training export; only the human sets training (ADR-0017, ADR-0039).',
+                const: false,
+              },
+            },
+          },
+          lageId: { $ref: 'common.schema.json#/$defs/cardId' },
+          x: { type: 'number' },
+          y: { type: 'number' },
+          rationale: { type: 'string', maxLength: 2000 },
+          notNeeded: { $ref: '#/$defs/notNeeded' },
+        },
+        required: ['taskRef'],
+        additionalProperties: false,
+        oneOf: [
+          { required: ['card'], properties: { card: true } },
+          {
+            required: ['notNeeded'],
+            properties: { notNeeded: true, lageId: false, x: false, y: false, rationale: false },
+          },
+        ],
+        dependentRequired: { lageId: ['x', 'y'] },
+      },
+      result: {
+        title: 'WriteBackResult',
+        description:
+          'Output of knowledge_write_back: the receipt, and the pending proposal when a card was proposed.',
+        type: 'object',
+        properties: {
+          receipt: { $ref: 'write-back-receipt.schema.json' },
+          proposal: { $ref: 'proposal.schema.json' },
+        },
+        required: ['receipt'],
+        additionalProperties: false,
+      },
+    },
   },
 };

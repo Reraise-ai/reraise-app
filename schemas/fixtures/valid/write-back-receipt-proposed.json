@@ -1,0 +1,16 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/write-back-receipt.schema.json",
+  "description": "A proposed card, bound by proposal id and the content hash of the draft.",
+  "data": {
+    "receiptId": "01M1KM00000000000000000004",
+    "kind": "write_back",
+    "agent": "agent:research-helper",
+    "taskRef": "TASK-2026-0044",
+    "result": "proposed",
+    "proposalId": "01M1KM00000000000000000020",
+    "draftHash": "sha256:aa17b20cf158ba8c00ecbebd6300c4d8f84c21d0ec875abfda60ada962b59309",
+    "at": "2026-10-05T10:00:00Z",
+    "hash": "sha256:38a93b482a54adb68d9da6cc43d15a802b383b2fc1e21a2de89b36ba22c90bf8"
+  }
+}

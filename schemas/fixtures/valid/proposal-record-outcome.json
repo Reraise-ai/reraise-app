@@ -1,0 +1,17 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/proposal.schema.json",
+  "description": "A pending record_outcome proposal (ADR-0039).",
+  "data": {
+    "id": "01M1KM00000000000000000030",
+    "author": "agent:research-helper",
+    "kind": "record_outcome",
+    "payload": {
+      "decisionId": "01M1E300000000000000000002",
+      "outcome": "Rerouted two of three tankers.",
+      "expectedContentHash": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+    },
+    "status": "pending",
+    "createdAt": "2026-10-06T09:00:00Z"
+  }
+}

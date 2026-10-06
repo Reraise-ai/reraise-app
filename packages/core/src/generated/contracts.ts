@@ -136,6 +136,10 @@ export type ProposalKindPayload =
   | {
       kind: 'comment';
       payload: CommentPayload;
+    }
+  | {
+      kind: 'record_outcome';
+      payload: RecordOutcomePayload;
     };
 /**
  * A card proposed for creation (proposal kind create_card). Identity is assigned by the store on accept; the author is set by the server from the agent connection, never taken from the payload (ADR-0011).
@@ -149,14 +153,30 @@ export type CardDraft = CardContent &
     author?: never;
   };
 /**
+ * A known outcome: non-empty text that is not `open`.
+ */
+export type OutcomeText = Text;
+/**
  * An agent identity: agent:<name>.
  */
 export type AgentAuthor = string;
-export type ProposalKind = 'place_card' | 'move_card' | 'add_edge' | 'create_card' | 'comment';
+export type ProposalKind =
+  'place_card' | 'move_card' | 'add_edge' | 'create_card' | 'comment' | 'record_outcome';
 /**
  * The local human user. Human-only operations record this value.
  */
 export type HumanAuthor = 'human';
+/**
+ * Body of the human-only decision create operation: a decision card without identity or author (the store assigns the id; the author is the human).
+ */
+export type DecisionDraft = CardDraft & {
+  type: 'decision';
+  sections: DecisionSections;
+};
+/**
+ * An ISO 8601 week in UTC, YYYY-Www.
+ */
+export type IsoWeek = string;
 /**
  * A lower-case RFC 9562 UUID.
  */
@@ -185,6 +205,14 @@ export type ProbabilityBand =
  */
 export type Sha256 = string;
 /**
+ * An opaque task reference chosen by the agent system (for example its task id): 1 to 128 characters of letters, digits and . _ : / # -, starting with a letter or digit, without spaces and without '//', so it can carry neither prose nor a URL (ADR-0039).
+ */
+export type TaskRef = string;
+/**
+ * sha256:<lower-case hex> over the RFC 8785 (JCS) serialisation of a JSON value (ADR-0034, ADR-0039).
+ */
+export type JcsHash = string;
+/**
  * Strength with which the position is held: 1 = weak, 2 = moderate, 3 = strong. Deliberately coarse; no percentages (ADR-0008).
  */
 export type StanceWeight = number;
@@ -202,13 +230,6 @@ export type ConfirmationToken = string;
 export type Decision = Card & {
   type?: 'decision';
   format?: 2;
-  sections: DecisionSections;
-};
-/**
- * Body of the human-only decision create operation: a decision card without identity or author (the store assigns the id; the author is the human).
- */
-export type DecisionDraft = CardDraft & {
-  type: 'decision';
   sections: DecisionSections;
 };
 /**
@@ -250,6 +271,26 @@ export type ProposalCreate = ProposalKindPayload & {
   payload: Record<string, unknown>;
   rationale?: string;
 };
+/**
+ * Why no card is needed (ADR-0039).
+ */
+export type WriteBackReason =
+  'no_new_knowledge' | 'already_covered' | 'ephemeral_ops_fact' | 'task_abandoned';
+/**
+ * Input of knowledge_write_back: exactly one of `card` (creates a create_card proposal; the agent cannot release it for sharing, ADR-0036) or `notNeeded`. Author and target come from the connection.
+ */
+export type WriteBackRequest = WriteBackRequest1 & WriteBackRequest2;
+export type WriteBackRequest1 =
+  | {
+      card: unknown;
+    }
+  | {
+      notNeeded: unknown;
+      lageId?: never;
+      x?: never;
+      y?: never;
+      rationale?: never;
+    };
 
 /**
  * The registry of agent connections in the per-user state directory, <state>/agents.yaml (ADR-0030, ADR-0037). Each MCP client connection (for example one agent of a multi-agent system) is registered on its own with a name, which becomes its author agent:<name>, and the disclosure target class it represents. The token itself is never stored, only its SHA-256. Names are unique (cross-check `agent-names`). Local state: never sent, exported or shared.
@@ -599,6 +640,10 @@ export interface CreateCardPayload {
    */
   card: CardDraft & {
     release?: 'private';
+    /**
+     * An agent cannot opt a card in to the training export; only the human sets training (ADR-0017, ADR-0039).
+     */
+    training?: false;
   };
   lageId?: CardId;
   x?: number;
@@ -610,6 +655,14 @@ export interface CommentPayload {
   lageId?: CardId;
 }
 /**
+ * Propose the outcome of a decision card (ADR-0039). On accept the service patches only sections.outcome, and only if the card still has expectedContentHash; never release or other metadata.
+ */
+export interface RecordOutcomePayload {
+  decisionId: CardId;
+  outcome: OutcomeText;
+  expectedContentHash: ContentHash;
+}
+/**
  * Error response (RFC 9457). Never contains card content (ADR-0026).
  */
 export interface Problem {
@@ -617,6 +670,37 @@ export interface Problem {
   title: string;
   status: number;
   detail?: string;
+}
+/**
+ * Input of decision_record (ADR-0039): an agent proposes a decision card with the eleven sections; the human accepts. Becomes a create_card proposal. The agent cannot release it for sharing (ADR-0036).
+ */
+export interface DecisionRecordRequest {
+  decision: DecisionDraft & {
+    release?: 'private';
+    /**
+     * An agent cannot opt a card in to the training export; only the human sets training (ADR-0017, ADR-0039).
+     */
+    training?: false;
+  };
+  lageId?: CardId;
+  x?: number;
+  y?: number;
+  rationale?: string;
+}
+/**
+ * Input of decision_outcome (ADR-0039): an agent proposes the outcome of a decision card; becomes a record_outcome proposal.
+ */
+export interface DecisionOutcomeRequest {
+  decisionId: CardId;
+  outcome: OutcomeText;
+  expectedContentHash: ContentHash;
+  rationale?: string;
+}
+/**
+ * Input of the human-only usage_metrics_get: an ISO week, or nothing for the rolling 7 days before now.
+ */
+export interface UsageMetricsRequest {
+  week?: IsoWeek;
 }
 /**
  * What a model or agent receives about the active world (ADR-0016, ADR-0024 item 34). Built after the disclosure gate: every item is gate-cleared for `target`; denied cards are omitted and only counted in `withheld`. Layers are never merged into a score. Only accepted content appears as items; pending proposals are listed separately. Stance data appears only for target screen; a cloud_model package carries content only with a confirmed, consumed transfer token.
@@ -739,6 +823,34 @@ export interface ContextPackageRequest {
   maxItems?: number;
   transferId?: Ulid;
   confirmationToken?: ConfirmationToken;
+}
+/**
+ * One atlas page built by wb digest (ADR-0043): lines that each cite card ids, and the content hash of every card the page covers, for the staleness check. A derived local view built for one gate target; never shared.
+ */
+export interface DigestPage {
+  pageId: string;
+  title: Text;
+  scope: DigestScope;
+  target: PackageTarget;
+  generatedAt: DateTime;
+  generator: string;
+  lines: DigestLine[];
+  sources: DigestSource[];
+}
+export interface DigestScope {
+  kind: 'world' | 'unassigned';
+  worldId?: WorldId;
+}
+export interface DigestLine {
+  text: Text;
+  /**
+   * @minItems 1
+   */
+  cardIds: CardId[];
+}
+export interface DigestSource {
+  cardId: CardId;
+  contentHash: ContentHash;
 }
 /**
  * Result of DisclosureGate.decide(card, target) (ADR-0012). Default deny: without a matching allow rule the decision is deny. An allow for cloud_model is only valid with the user's per-transfer confirmation. Stance data is allowed for target screen only. Decisions are logged without card content.
@@ -975,6 +1087,58 @@ export interface GateRuleFragment {
   })[];
 }
 /**
+ * Proof that an agent consulted the knowledge for a task (ADR-0039). Returned by knowledge_consult and appended to the receipt log (ADR-0040). Holds ids, hashes, codes and times only: never the task text, a card title or any other content. `hash` is the JCS hash of the receipt without `hash`.
+ */
+export interface KnowledgeReceipt {
+  receiptId: Ulid;
+  kind: 'knowledge';
+  agent: AgentAuthor;
+  taskRef: TaskRef;
+  /**
+   * Keyed hash of the task text: HMAC-SHA256 with the device receipt key over the UTF-8 JCS serialisation of the text, as hmac-sha256:<hex>. The text is never stored; without the key the hash cannot be checked against guessed texts (ADR-0039).
+   */
+  queryHash: string;
+  worldId: WorldId;
+  lageId?: CardId;
+  /**
+   * The disclosure class of the agent connection (ADR-0037).
+   */
+  target: 'local_model' | 'cloud_model';
+  packageId: Ulid;
+  /**
+   * cards: the package delivered cards (cardIds lists exactly them); nothing_found: no card matched; confirmation_required: a cloud_model connection without a confirmed transfer (ADR-0031). All three prove a consult.
+   */
+  result: 'cards' | 'nothing_found' | 'confirmation_required';
+  /**
+   * @maxItems 500
+   */
+  cardIds: CardId[];
+  transferId?: Ulid;
+  at: DateTime;
+  hash: JcsHash;
+}
+/**
+ * Input of knowledge_consult: a context package request (ADR-0016) plus the task. Target and agent come from the connection. The task text is hashed into the receipt and never stored.
+ */
+export interface KnowledgeConsultRequest {
+  taskRef: TaskRef;
+  /**
+   * What the agent is about to do, as the question for the context package.
+   */
+  task: Text;
+  worldId: WorldId;
+  lageId?: CardId;
+  maxItems?: number;
+  transferId?: Ulid;
+}
+/**
+ * Output of knowledge_consult: the gate-cleared context package and the receipt for it.
+ */
+export interface KnowledgeConsultResult {
+  package: ContextPackage;
+  receipt: KnowledgeReceipt;
+}
+/**
  * Result of a Level1Engine (ADR-0035): for each player on a Lage, the engine's predicted next move out of a closed set of move options, with the engine's own confidence and the ids of the on-board cards it used. An attributed estimate ('<engine> estimates ...'), never a verdict: it is not a card, does not count as a decision, does not trigger rules, does not enter statistics and is never shared (ADR-0036). `predictedMove` is one of `moveOptions` and every id in `cardIds` names a card of the request (checked by the conformance kit and the cross-check `level1-move`).
  */
 export interface Level1Prediction {
@@ -1043,6 +1207,45 @@ export interface Level1PredictionRequest {
   cards: Card[];
 }
 /**
+ * Result of memory_route (ADR-0042): whether an agent memory item should become a card proposal or stay an ephemeral operational fact, with the deciding rule and the signal ids (never the matched words). Nothing is stored.
+ */
+export interface MemoryRouteResult {
+  route: 'card_proposal' | 'ephemeral_ops_fact';
+  ruleId:
+    | 'secret'
+    | 'personal_data'
+    | 'short'
+    | 'ops_hint'
+    | 'local_reference'
+    | 'public_source'
+    | 'durable_statement'
+    | 'transient'
+    | 'knowledge_hint'
+    | 'default'
+    | 'model';
+  signals: (
+    | 'secret_like'
+    | 'personal_data'
+    | 'public_source'
+    | 'local_reference'
+    | 'transient'
+    | 'durable'
+    | 'short'
+  )[];
+  /**
+   * rules:v2 for the deterministic rules of ADR-0042; model:<engine> only for a later model-assisted slice.
+   */
+  classifier: string;
+}
+/**
+ * Input of memory_route: one memory item of the agent system. Inbound data, classified and never stored or logged.
+ */
+export interface MemoryRouteRequest {
+  text: Text;
+  kindHint?: 'learning' | 'observation' | 'preference' | 'decision' | 'ops' | 'unknown';
+  source?: SourceRef;
+}
+/**
  * An estimative statement found on a card (ADR-0010). Stores the source's original `phrase` verbatim and the mapped ICD 203 `band` (almost_no_chance 1-5 %, very_unlikely 5-20 %, unlikely 20-45 %, roughly_even 45-55 %, likely 55-80 %, very_likely 80-95 %, almost_certain 95-99 %). A number is stored only if the source stated one. The UI shows words. Mappings are made by a human or a deterministic lookup table; an agent's mapping is a proposal.
  */
 export interface Prediction {
@@ -1080,6 +1283,40 @@ export interface PredictionResolution {
  */
 export interface ProposalDecide {
   note?: string;
+}
+/**
+ * One line of <state>/receipt-log.jsonl (ADR-0040): append-only, hash-chained, written only by the service. `prev` is the hash of the previous entry (64 zeros for the first); `hash` is the JCS hash of the entry without `hash`. Holds no content.
+ */
+export interface ReceiptLogEntry {
+  v: 1;
+  seq: number;
+  at: DateTime;
+  prev: JcsHash;
+  receipt: KnowledgeReceipt | WriteBackReceipt;
+  hash: JcsHash;
+}
+/**
+ * Proof that an agent decided, for a task, whether its knowledge becomes a card (ADR-0039). Returned by knowledge_write_back and appended to the receipt log (ADR-0040). Holds ids, hashes, codes and times only; a reason is a fixed code, never free text.
+ */
+export interface WriteBackReceipt {
+  receiptId: Ulid;
+  kind: 'write_back';
+  agent: AgentAuthor;
+  taskRef: TaskRef;
+  consultReceiptId?: Ulid;
+  result: 'proposed' | 'not_needed';
+  proposalId?: Ulid;
+  draftHash?: ContentHash;
+  reason?: WriteBackReason;
+  /**
+   * Cards that already hold the knowledge (reason already_covered).
+   *
+   * @minItems 1
+   * @maxItems 50
+   */
+  coveredBy?: CardId[];
+  at: DateTime;
+  hash: JcsHash;
 }
 /**
  * Result of rules_evaluate for one Lage and one disclosure target (ADR-0013). Lists which rules fire and why. There is deliberately no percentage, score, ratio, aggregate, net value or recommended option, and no field may be added for one. Only accepted cards trigger rules. For non-screen targets, rules with a stance-dependent condition or a condition on a card not cleared for the target are omitted and only counted in `withheld`.
@@ -1177,6 +1414,24 @@ export interface StoreConfig {
   synthetic?: boolean;
 }
 /**
+ * The hand-off of one agent task as the verifier reads it (ADR-0040): which receipts the task cites. Both receipts are optional here so that the verifier, not the parser, reports a missing one. A JSON file or the YAML front matter of a Markdown file.
+ */
+export interface TaskRecord {
+  taskRef: TaskRef;
+  agent: AgentAuthor;
+  startedAt?: DateTime;
+  completedAt: DateTime;
+  knowledgeReceipt?: ReceiptRef;
+  writeBackReceipt?: ReceiptRef;
+}
+/**
+ * A receipt cited by id and hash.
+ */
+export interface ReceiptRef {
+  receiptId: Ulid;
+  hash: JcsHash;
+}
+/**
  * One JSONL line of the training export: a decision trace (ADR-0017, ADR-0028). Exported only if the decision card has training: true. Used cards appear only with training: true; cards that did not opt in are omitted entirely, not even as ids: the decision's cardsUsed, the Lage placements and edges list only opted-in cards, and a brainstorm proposal touching any other card is dropped. The Lage is exported only if the Lage card itself opted in. Never contains stance data.
  */
 export interface TrainingExportRecord {
@@ -1208,4 +1463,108 @@ export interface TrainingLageCard {
 }
 export interface AcceptedProposal {
   status: 'accepted';
+}
+/**
+ * Knowledge-loop metrics per agent for one window, derived from the receipt log, task records, proposals, decision cards and the atlas (ADR-0041). Every field has one formula in the ADR. No score, rank or overall verdict; each target is reported on its own, and a target without a value is not met.
+ */
+export interface UsageMetrics {
+  generatedAt: DateTime;
+  window: UsageWindow;
+  agents: AgentUsage[];
+  totals: UsageCounts;
+  /**
+   * Decision cards of the store (not windowed); null without a store.
+   */
+  decisions: {
+    total: number;
+    withOutcome: number;
+  } | null;
+  atlas: {
+    pages: number;
+    stalePages: number;
+    /**
+     * 0 when every page is fresh, else the age of the oldest stale page in hours; null without pages.
+     */
+    lagHours: number | null;
+  };
+  targets: UsageTarget[];
+}
+export interface UsageWindow {
+  kind: 'rolling_7d' | 'iso_week';
+  start: DateTime;
+  end: DateTime;
+  isoWeek?: IsoWeek;
+}
+export interface AgentUsage {
+  agent: AgentAuthor;
+  tasks: number;
+  tasksWithReceipts: number;
+  consults: number;
+  consultsNothingFound: number;
+  writeBacks: number;
+  writeBacksNotNeeded: number;
+  cardsProposed: number;
+  decisionsProposed: number;
+  outcomesProposed: number;
+  cardsAccepted: number;
+  cardsRejected: number;
+  /**
+   * tasksWithReceipts / tasks; null when there are no tasks.
+   */
+  receiptCoverage: number | null;
+}
+export interface UsageCounts {
+  tasks: number;
+  tasksWithReceipts: number;
+  consults: number;
+  consultsNothingFound: number;
+  writeBacks: number;
+  writeBacksNotNeeded: number;
+  cardsProposed: number;
+  decisionsProposed: number;
+  outcomesProposed: number;
+  cardsAccepted: number;
+  cardsRejected: number;
+  /**
+   * tasksWithReceipts / tasks; null when there are no tasks.
+   */
+  receiptCoverage: number | null;
+}
+export interface UsageTarget {
+  id: string;
+  comparison: 'at_least' | 'at_most';
+  threshold: number;
+  value: number | null;
+  met: boolean;
+}
+export interface WriteBackNotNeeded {
+  reason: WriteBackReason;
+  /**
+   * @minItems 1
+   * @maxItems 50
+   */
+  coveredBy?: CardId[];
+}
+export interface WriteBackRequest2 {
+  taskRef: TaskRef;
+  consultReceiptId?: Ulid;
+  card?: CardDraft & {
+    release?: 'private';
+    /**
+     * An agent cannot opt a card in to the training export; only the human sets training (ADR-0017, ADR-0039).
+     */
+    training?: false;
+  };
+  lageId?: CardId;
+  x?: number;
+  y?: number;
+  rationale?: string;
+  notNeeded?: WriteBackNotNeeded;
+}
+/**
+ * Output of knowledge_write_back: the receipt, and the pending proposal when a card was proposed.
+ */
+export interface WriteBackResult {
+  receipt: WriteBackReceipt;
+  proposal?: Proposal;
 }

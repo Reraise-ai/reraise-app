@@ -1,0 +1,15 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/memory-route.schema.json",
+  "description": "The result names signal ids, never the matched words.",
+  "expect": {
+    "keyword": "enum",
+    "instancePath": "/signals/0"
+  },
+  "data": {
+    "route": "card_proposal",
+    "ruleId": "durable_statement",
+    "signals": ["tend to"],
+    "classifier": "rules:v1"
+  }
+}

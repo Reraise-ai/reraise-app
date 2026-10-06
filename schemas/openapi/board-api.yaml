@@ -27,6 +27,10 @@ tags:
     description: Read the active world. Mirrors MCP tools.
   - name: proposals
     description: Agent proposals; proposal_create is the only agent write path.
+  - name: knowledge
+    description: >-
+      The knowledge loop (ADR-0039): consult with a receipt, write back with a receipt, propose
+      decisions and outcomes, route agent memories. Mirrors MCP tools.
   - name: human-only
     description: Operations only the human session may call.
 paths:
@@ -644,6 +648,195 @@ paths:
           $ref: '#/components/responses/Gone'
         '413':
           $ref: '#/components/responses/TooLarge'
+  /knowledge/consult:
+    post:
+      operationId: knowledge_consult
+      summary: Consult the knowledge for a task
+      description: >-
+        Agent-only. Builds the context package exactly like context_package_get (same gate path;
+        a cloud_model connection first gets confirmationRequired) and returns it with a
+        Knowledge Receipt that is appended to the receipt log (ADR-0039, ADR-0040). The receipt
+        holds ids and hashes only; the task text is hashed, never stored. Never changes the
+        world, so the MCP tool keeps `readOnlyHint: true`.
+      tags: [knowledge]
+      security:
+        - agentToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../knowledge-receipt.schema.json#/$defs/consultRequest'
+      responses:
+        '200':
+          description: The context package and its Knowledge Receipt.
+          content:
+            application/json:
+              schema:
+                $ref: '../knowledge-receipt.schema.json#/$defs/consultResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '413':
+          $ref: '#/components/responses/TooLarge'
+  /knowledge/write-back:
+    post:
+      operationId: knowledge_write_back
+      summary: Write back what a task learned, or say why not
+      description: >-
+        Agent-only. Either proposes a card (a pending create_card proposal, never released for
+        sharing) or records a coded "not needed" reason; returns a Write-back Receipt that is
+        appended to the receipt log (ADR-0039, ADR-0040).
+      tags: [knowledge]
+      security:
+        - agentToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../write-back-receipt.schema.json#/$defs/request'
+      responses:
+        '201':
+          description: The Write-back Receipt, and the pending proposal if a card was proposed.
+          content:
+            application/json:
+              schema:
+                $ref: '../write-back-receipt.schema.json#/$defs/result'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '413':
+          $ref: '#/components/responses/TooLarge'
+  /proposals/decision:
+    post:
+      operationId: decision_record
+      summary: Propose a decision card
+      description: >-
+        Agent-only. Proposes a decision card with the eleven sections as a pending create_card
+        proposal; the human accepts or rejects it (ADR-0011, ADR-0017, ADR-0039). Saving a
+        decision directly stays human-only (decision_create).
+      tags: [knowledge]
+      security:
+        - agentToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../api.schema.json#/$defs/decisionRecordRequest'
+      responses:
+        '201':
+          description: The pending proposal.
+          content:
+            application/json:
+              schema:
+                $ref: '../proposal.schema.json'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '413':
+          $ref: '#/components/responses/TooLarge'
+  /proposals/outcome:
+    post:
+      operationId: decision_outcome
+      summary: Propose the outcome of a decision
+      description: >-
+        Agent-only. Creates a pending record_outcome proposal. On accept the service patches only
+        the outcome section, and only if the decision card still has expectedContentHash
+        (ADR-0039).
+      tags: [knowledge]
+      security:
+        - agentToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../api.schema.json#/$defs/decisionOutcomeRequest'
+      responses:
+        '201':
+          description: The pending proposal.
+          content:
+            application/json:
+              schema:
+                $ref: '../proposal.schema.json'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '413':
+          $ref: '#/components/responses/TooLarge'
+  /memory/route:
+    post:
+      operationId: memory_route
+      summary: Route an agent memory item
+      description: >-
+        Classifies one memory item as a card proposal or an ephemeral operational fact with the
+        deterministic rules of ADR-0042. Stores and logs nothing; creates nothing.
+      tags: [knowledge]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../memory-route.schema.json#/$defs/request'
+      responses:
+        '200':
+          description: The route, the deciding rule and the signal ids.
+          content:
+            application/json:
+              schema:
+                $ref: '../memory-route.schema.json'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '413':
+          $ref: '#/components/responses/TooLarge'
+  /metrics/usage:
+    get:
+      operationId: usage_metrics_get
+      summary: Knowledge-loop usage metrics
+      description: >-
+        Human-only. Metrics per agent for an ISO week, or for the rolling 7 days without `week`,
+        and the owner's targets (ADR-0041). Not an MCP tool: the numbers describe the agents and
+        are for the human.
+      tags: [human-only]
+      x-human-only: true
+      security:
+        - sessionToken: []
+      parameters:
+        - name: week
+          in: query
+          schema:
+            $ref: '../api.schema.json#/$defs/usageMetricsRequest/properties/week'
+      responses:
+        '200':
+          description: The usage metrics.
+          content:
+            application/json:
+              schema:
+                $ref: '../usage-metrics.schema.json'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/HumanOnly'
 components:
   securitySchemes:
     sessionToken:

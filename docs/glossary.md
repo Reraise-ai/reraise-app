@@ -165,9 +165,16 @@ Store headings are matched with and without umlaut transliteration (`ae`, `oe`, 
 
 - **Reserved card fields:** `level` (future card tiers, not an epistemic field) and `signature`
   (author signatures). Both are unused.
-- **Disclosure targets:** `screen`, `local_model`, `cloud_model`, `demo`.
+- **Disclosure targets:** `screen`, `local_model`, `cloud_model`, `demo`, `share`.
 - **Thinking levels:** Level 1 (fast, "System 1") and Level 2 (deliberate, "System 2", the board).
-- **Proposal kinds:** `place_card`, `move_card`, `add_edge`, `create_card`, `comment`.
+- **Proposal kinds:** `place_card`, `move_card`, `add_edge`, `create_card`, `comment`,
+  `record_outcome`.
+- **Knowledge loop:** an agent consults the knowledge at the start of a task and writes back at
+  the end; each step returns a receipt (**Knowledge Receipt**, **Write-back Receipt**) that the
+  task hand-off (**task record**) cites and the **receipt log** proves
+  ([ADR-0039](./adr/0039-knowledge-loop-receipts.md)).
+- **Atlas:** the generated summary pages over the cards that agents use for orientation; every
+  line cites card ids ([ADR-0043](./adr/0043-digest-atlas-regeneration.md)).
 - **Adapters:** `StorageAdapter`, `SourceConnector`, `ModelConnector`, `Level1Engine`, `DisclosureGate`.
 - **ICD 203:** the intelligence-community standard of verbal probability bands used for
   stored probability phrases.

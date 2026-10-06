@@ -5,3 +5,13 @@
 export function isTrainingEligible(card: { readonly training?: boolean }): boolean {
   return card.training === true;
 }
+
+export {
+  buildTrainingRecord,
+  isValidTrainingRecord,
+  toJsonl,
+  ulidsIn,
+  type TrainingSkipReason,
+  type TrainingTrace,
+  type TrainingTraceInput,
+} from './build.js';

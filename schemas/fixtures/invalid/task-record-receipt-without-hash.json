@@ -1,0 +1,17 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/task-record.schema.json",
+  "description": "A receipt is cited by id and hash.",
+  "expect": {
+    "keyword": "required",
+    "instancePath": "/knowledgeReceipt"
+  },
+  "data": {
+    "taskRef": "TASK-1",
+    "agent": "agent:research-helper",
+    "completedAt": "2026-10-05T11:00:00Z",
+    "knowledgeReceipt": {
+      "receiptId": "01M1KM00000000000000000001"
+    }
+  }
+}

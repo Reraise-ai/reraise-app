@@ -6,6 +6,11 @@ decision-makers: "Owner (product), CTO/orchestrator (technical)"
 
 # ADR-0030: Local state lives in files in the per-user state directory, owned by `packages/local-state`
 
+> Extended by [ADR-0040](0040-receipt-log-and-verifier.md): the receipt log
+> `<state>/receipt-log.jsonl` (append-only, hash-chained, never rotated) and the atlas pages of
+> [ADR-0043](0043-digest-atlas-regeneration.md) (`<state>/atlas/` by default), and the device
+> receipt key `<state>/receipt-key` of [ADR-0039](0039-knowledge-loop-receipts.md).
+
 ## Context and Problem Statement
 
 Some state belongs to the user's device and not to any card store: proposals

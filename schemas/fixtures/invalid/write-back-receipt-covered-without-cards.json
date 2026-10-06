@@ -1,0 +1,20 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/write-back-receipt.schema.json",
+  "description": "already_covered must name the covering cards.",
+  "expect": {
+    "keyword": "required",
+    "instancePath": ""
+  },
+  "data": {
+    "receiptId": "01M1KM00000000000000000002",
+    "kind": "write_back",
+    "agent": "agent:research-helper",
+    "taskRef": "TASK-2026-0042",
+    "consultReceiptId": "01M1KM00000000000000000001",
+    "result": "not_needed",
+    "reason": "already_covered",
+    "at": "2026-10-05T09:30:00Z",
+    "hash": "sha256:0143bd1704dbed4ec8992251ce274cd315b585242ded13af50109b485f0a4f22"
+  }
+}

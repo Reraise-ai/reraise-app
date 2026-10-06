@@ -1,0 +1,324 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldbuilder.invalid/schemas/v0/usage-metrics.schema.json",
+  "title": "UsageMetrics",
+  "description": "Knowledge-loop metrics per agent for one window, derived from the receipt log, task records, proposals, decision cards and the atlas (ADR-0041). Every field has one formula in the ADR. No score, rank or overall verdict; each target is reported on its own, and a target without a value is not met.",
+  "type": "object",
+  "properties": {
+    "generatedAt": {
+      "$ref": "common.schema.json#/$defs/dateTime"
+    },
+    "window": {
+      "$ref": "#/$defs/window"
+    },
+    "agents": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/agentUsage"
+      }
+    },
+    "totals": {
+      "$ref": "#/$defs/counts"
+    },
+    "decisions": {
+      "description": "Decision cards of the store (not windowed); null without a store.",
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "total": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "withOutcome": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "required": ["total", "withOutcome"],
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "atlas": {
+      "type": "object",
+      "properties": {
+        "pages": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "stalePages": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "lagHours": {
+          "description": "0 when every page is fresh, else the age of the oldest stale page in hours; null without pages.",
+          "oneOf": [
+            {
+              "type": "number",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": ["pages", "stalePages", "lagHours"],
+      "additionalProperties": false
+    },
+    "targets": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/target"
+      }
+    }
+  },
+  "required": ["generatedAt", "window", "agents", "totals", "decisions", "atlas", "targets"],
+  "additionalProperties": false,
+  "$defs": {
+    "isoWeek": {
+      "title": "IsoWeek",
+      "description": "An ISO 8601 week in UTC, YYYY-Www.",
+      "type": "string",
+      "pattern": "^[0-9]{4}-W(0[1-9]|[1-4][0-9]|5[0-3])$"
+    },
+    "window": {
+      "title": "UsageWindow",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["rolling_7d", "iso_week"]
+        },
+        "start": {
+          "$ref": "common.schema.json#/$defs/dateTime"
+        },
+        "end": {
+          "description": "Exclusive.",
+          "$ref": "common.schema.json#/$defs/dateTime"
+        },
+        "isoWeek": {
+          "$ref": "#/$defs/isoWeek"
+        }
+      },
+      "required": ["kind", "start", "end"],
+      "additionalProperties": false,
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "iso_week"
+          }
+        },
+        "required": ["kind"]
+      },
+      "then": {
+        "properties": {
+          "isoWeek": true
+        },
+        "required": ["isoWeek"]
+      },
+      "else": {
+        "properties": {
+          "isoWeek": false
+        }
+      }
+    },
+    "counts": {
+      "title": "UsageCounts",
+      "type": "object",
+      "properties": {
+        "tasks": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "tasksWithReceipts": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "consults": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "consultsNothingFound": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "writeBacks": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "writeBacksNotNeeded": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cardsProposed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "decisionsProposed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "outcomesProposed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cardsAccepted": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cardsRejected": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "receiptCoverage": {
+          "description": "tasksWithReceipts / tasks; null when there are no tasks.",
+          "oneOf": [
+            {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "tasks",
+        "tasksWithReceipts",
+        "consults",
+        "consultsNothingFound",
+        "writeBacks",
+        "writeBacksNotNeeded",
+        "cardsProposed",
+        "decisionsProposed",
+        "outcomesProposed",
+        "cardsAccepted",
+        "cardsRejected",
+        "receiptCoverage"
+      ],
+      "additionalProperties": false
+    },
+    "agentUsage": {
+      "title": "AgentUsage",
+      "type": "object",
+      "properties": {
+        "agent": {
+          "$ref": "common.schema.json#/$defs/agentAuthor"
+        },
+        "tasks": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "tasksWithReceipts": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "consults": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "consultsNothingFound": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "writeBacks": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "writeBacksNotNeeded": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cardsProposed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "decisionsProposed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "outcomesProposed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cardsAccepted": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cardsRejected": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "receiptCoverage": {
+          "description": "tasksWithReceipts / tasks; null when there are no tasks.",
+          "oneOf": [
+            {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "agent",
+        "tasks",
+        "tasksWithReceipts",
+        "consults",
+        "consultsNothingFound",
+        "writeBacks",
+        "writeBacksNotNeeded",
+        "cardsProposed",
+        "decisionsProposed",
+        "outcomesProposed",
+        "cardsAccepted",
+        "cardsRejected",
+        "receiptCoverage"
+      ],
+      "additionalProperties": false
+    },
+    "target": {
+      "title": "UsageTarget",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,63}$"
+        },
+        "comparison": {
+          "type": "string",
+          "enum": ["at_least", "at_most"]
+        },
+        "threshold": {
+          "type": "number",
+          "minimum": 0
+        },
+        "value": {
+          "oneOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "met": {
+          "type": "boolean"
+        }
+      },
+      "required": ["id", "comparison", "threshold", "value", "met"],
+      "additionalProperties": false
+    }
+  }
+}

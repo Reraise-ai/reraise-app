@@ -1,0 +1,88 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/usage-metrics.schema.json",
+  "description": "No overall score or verdict (ADR-0041).",
+  "expect": {
+    "keyword": "additionalProperties",
+    "instancePath": ""
+  },
+  "data": {
+    "generatedAt": "2026-10-06T12:00:00.000Z",
+    "window": {
+      "kind": "rolling_7d",
+      "start": "2026-09-29T12:00:00.000Z",
+      "end": "2026-10-06T12:00:00.000Z"
+    },
+    "agents": [
+      {
+        "agent": "agent:research-helper",
+        "tasks": 1,
+        "tasksWithReceipts": 1,
+        "consults": 1,
+        "consultsNothingFound": 0,
+        "writeBacks": 1,
+        "writeBacksNotNeeded": 1,
+        "cardsProposed": 0,
+        "decisionsProposed": 0,
+        "outcomesProposed": 0,
+        "cardsAccepted": 0,
+        "cardsRejected": 0,
+        "receiptCoverage": 1
+      }
+    ],
+    "totals": {
+      "tasks": 1,
+      "tasksWithReceipts": 1,
+      "consults": 1,
+      "consultsNothingFound": 0,
+      "writeBacks": 1,
+      "writeBacksNotNeeded": 1,
+      "cardsProposed": 0,
+      "decisionsProposed": 0,
+      "outcomesProposed": 0,
+      "cardsAccepted": 0,
+      "cardsRejected": 0,
+      "receiptCoverage": 1
+    },
+    "decisions": {
+      "total": 0,
+      "withOutcome": 0
+    },
+    "atlas": {
+      "pages": 1,
+      "stalePages": 0,
+      "lagHours": 0
+    },
+    "targets": [
+      {
+        "id": "receipt_coverage_7d",
+        "comparison": "at_least",
+        "threshold": 0.8,
+        "value": 1,
+        "met": true
+      },
+      {
+        "id": "agent_cards_7d",
+        "comparison": "at_least",
+        "threshold": 5,
+        "value": 0,
+        "met": false
+      },
+      {
+        "id": "atlas_lag_hours",
+        "comparison": "at_most",
+        "threshold": 24,
+        "value": 0,
+        "met": true
+      },
+      {
+        "id": "decisions_with_outcome",
+        "comparison": "at_least",
+        "threshold": 10,
+        "value": 0,
+        "met": false
+      }
+    ],
+    "score": 0.7
+  }
+}

@@ -3,6 +3,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { hashJcs } from '@worldbuilder/core';
 import { describe, expect, it } from 'vitest';
 import { computeContentHash } from './markdown-cards.mjs';
 import { makeTree } from './test-helpers.mjs';
@@ -233,6 +234,45 @@ describe('cross-checks', () => {
     expect(
       crossCheck('level1-prediction.schema.json', { players: [{ ...player, predictedMove: 'a' }] }),
     ).toEqual([]);
+  });
+
+  it('flag a receipt or log entry whose hash is not the hash of its content (ADR-0039, ADR-0040)', () => {
+    const receipt = { receiptId: '01M1E34QM03WVTE8T1RYS3AM18', kind: 'knowledge' };
+    const sealed = { ...receipt, hash: hashJcs(receipt) };
+    expect(crossCheck('knowledge-receipt.schema.json', sealed)).toEqual([]);
+    expect(
+      crossCheck('write-back-receipt.schema.json', { ...sealed, kind: 'write_back' }).map(
+        (f) => f.check,
+      ),
+    ).toEqual(['receipt-hash']);
+    const entry = { v: 1, seq: 0, receipt: sealed };
+    expect(crossCheck('receipt-log-entry.schema.json', { ...entry, hash: hashJcs(entry) })).toEqual(
+      [],
+    );
+    expect(
+      crossCheck('receipt-log-entry.schema.json', { ...entry, seq: 1, hash: hashJcs(entry) }).map(
+        (f) => f.message,
+      ),
+    ).toEqual([
+      `log entry 1 has hash ${hashJcs(entry)}, expected ${hashJcs({ ...entry, seq: 1 })}`,
+    ]);
+  });
+
+  it('flag digest lines citing a card the page does not cover, and uncited sources (ADR-0043)', () => {
+    const a = '01M1E34QM03WVTE8T1RYS3AM18';
+    const b = '01M1F8X7G0TTV1CC1FNKTNN0TJ';
+    const name = 'digest-page.schema.json';
+    const src = (id) => ({ cardId: id, contentHash: `sha256:${'0'.repeat(64)}` });
+    expect(crossCheck(name, { lines: [{ cardIds: [a] }], sources: [src(a)] })).toEqual([]);
+    expect(
+      crossCheck(name, { lines: [{ cardIds: [b] }], sources: [src(a), src(a)] }).map(
+        (f) => f.message,
+      ),
+    ).toEqual([
+      `line cites ${b}, which is not a source`,
+      `source ${a} is cited by no line`,
+      `source ${a} is listed twice`,
+    ]);
   });
 
   it('flag a level-1 player that is not on the board or named twice (ADR-0035)', () => {

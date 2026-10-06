@@ -6,6 +6,9 @@ decision-makers: "Owner (product), CTO/orchestrator (technical)"
 
 # ADR-0036: Conclusions are private; a `share` target enforces it in the disclosure gate
 
+> Refined by [ADR-0039](0039-knowledge-loop-receipts.md): an accepted `record_outcome` proposal
+> patches the outcome section of a decision card; it can never touch `release` or other metadata.
+
 ## Context and Problem Statement
 
 [ADR-0021](0021-privacy-and-sharing-model.md) and [ADR-0012](0012-disclosure-gate.md) read the

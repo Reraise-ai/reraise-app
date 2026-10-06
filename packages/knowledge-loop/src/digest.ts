@@ -1,0 +1,202 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright The Worldbuilder contributors
+//
+// Atlas digest (ADR-0043): deterministic summary pages over the cards, one per world plus one
+// for cards without a world. Every line cites its card ids; every page records the content hash
+// of each card it covers, so staleness is a computed fact.
+
+import type { Card, DigestPage, PackageTarget, World } from '@worldbuilder/core';
+
+export interface DigestOptions {
+  readonly generatedAt: string;
+  /** The gate target the cards were filtered for (ADR-0043). */
+  readonly target: PackageTarget;
+}
+
+export const UNASSIGNED_PAGE_ID = 'unassigned';
+
+/** Page id of a world's page. */
+export const worldPageId = (worldId: string) => `world-${worldId.toLowerCase()}`;
+
+const byCodeUnits = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
+const typeOf = (card: Card) => String(card.type).trim().toLowerCase();
+const oneLine = (s: string) => s.replace(/\s+/g, ' ').trim();
+
+/** Lage cards are boards, not knowledge; they are left out of the atlas. */
+export const inAtlas = (card: Card) => typeOf(card) !== 'lage';
+
+/** The line text of one card: `<title> (<layer or unclassified>, <type>[, <date>])`. */
+export function lineText(card: Card): string {
+  const parts = [card.layer ?? 'unclassified', oneLine(String(card.type))];
+  if (card.date !== undefined) parts.push(card.date);
+  return `${oneLine(card.title)} (${parts.join(', ')})`;
+}
+
+/** Cards of one page scope, in page order: by type, then title, then id. */
+export function cardsInScope(cards: readonly Card[], scope: DigestPage['scope']): Card[] {
+  return cards
+    .filter(inAtlas)
+    .filter((c) =>
+      scope.kind === 'world'
+        ? (c.worlds ?? []).includes(scope.worldId as string)
+        : (c.worlds ?? []).length === 0,
+    )
+    .sort(
+      (a, b) =>
+        byCodeUnits(typeOf(a), typeOf(b)) ||
+        byCodeUnits(oneLine(a.title), oneLine(b.title)) ||
+        byCodeUnits(a.id, b.id),
+    );
+}
+
+function page(
+  pageId: string,
+  title: string,
+  scope: DigestPage['scope'],
+  cards: readonly Card[],
+  options: DigestOptions,
+): DigestPage {
+  const scoped = cardsInScope(cards, scope);
+  return {
+    pageId,
+    title,
+    scope,
+    target: options.target,
+    generatedAt: options.generatedAt,
+    generator: 'deterministic',
+    lines: scoped.map((c) => ({ text: lineText(c), cardIds: [c.id] })),
+    sources: scoped.map((c) => ({ cardId: c.id, contentHash: c.contentHash })),
+  };
+}
+
+/**
+ * Build the atlas pages: one per world that has cards (title the world name, or its id when the
+ * world is unknown), then `unassigned` if any card has no world. Same input, same output.
+ */
+export function buildDigest(
+  cards: readonly Card[],
+  worlds: readonly World[],
+  options: DigestOptions,
+): DigestPage[] {
+  const names = new Map(worlds.map((w) => [w.id, w.name]));
+  const worldIds = new Set<string>();
+  for (const c of cards.filter(inAtlas)) for (const w of c.worlds ?? []) worldIds.add(w);
+  const pages = [...worldIds]
+    .sort((a, b) => byCodeUnits(names.get(a) ?? a, names.get(b) ?? b) || byCodeUnits(a, b))
+    .map((id) =>
+      page(
+        worldPageId(id),
+        names.get(id) ?? `World ${id}`,
+        { kind: 'world', worldId: id },
+        cards,
+        options,
+      ),
+    );
+  if (cards.some((c) => inAtlas(c) && (c.worlds ?? []).length === 0)) {
+    pages.push(
+      page(UNASSIGNED_PAGE_ID, 'Cards without a world', { kind: 'unassigned' }, cards, options),
+    );
+  }
+  return pages;
+}
+
+const escapeMd = (s: string) => s.replace(/([\\`*_[\]<>#|])/g, '\\$1');
+
+/**
+ * Render a page as Markdown: a generated-file comment, the title, a summary line and one bullet
+ * per line ending in one link per card id. `linkFor` gives the link target of a card id (the
+ * card's `wb:` URI when known).
+ */
+export function renderDigestMarkdown(
+  digest: DigestPage,
+  linkFor: (cardId: string) => string = (id) => id,
+): string {
+  const out = [
+    `${GENERATED_HEADER} Do not edit: regenerate instead. -->`,
+    '',
+    `# ${escapeMd(digest.title)}`,
+    '',
+    `Generated ${digest.generatedAt} from ${digest.sources.length} cards for target ${digest.target}.`,
+    '',
+  ];
+  for (const line of digest.lines) {
+    const links = line.cardIds.map((id) => `[${id}](<${linkFor(id)}>)`).join(' ');
+    out.push(`- ${escapeMd(line.text)} ${links}`);
+  }
+  return `${out.join('\n')}\n`;
+}
+
+export interface DigestStaleness {
+  readonly fresh: boolean;
+  /** Sources whose card's content hash changed. */
+  readonly changed: readonly string[];
+  /** Sources whose card is gone or no longer in scope. */
+  readonly removed: readonly string[];
+  /** Cards in scope that are not sources. */
+  readonly added: readonly string[];
+}
+
+/** Compare a page with the current cards (already filtered for the page's target). */
+export function checkDigestPage(digest: DigestPage, cards: readonly Card[]): DigestStaleness {
+  const current = new Map(cardsInScope(cards, digest.scope).map((c) => [c.id, c]));
+  const sources = new Set(digest.sources.map((s) => s.cardId));
+  const changed: string[] = [];
+  const removed: string[] = [];
+  for (const s of digest.sources) {
+    const card = current.get(s.cardId);
+    if (card === undefined) removed.push(s.cardId);
+    else if (card.contentHash !== s.contentHash) changed.push(s.cardId);
+  }
+  const added = [...current.keys()].filter((id) => !sources.has(id));
+  return {
+    fresh: changed.length === 0 && removed.length === 0 && added.length === 0,
+    changed,
+    removed,
+    added,
+  };
+}
+
+/** Status of one atlas page against the pages the current cards would produce (ADR-0043). */
+export interface AtlasPageStatus {
+  readonly pageId: string;
+  /** `missing`: expected but absent; `extra`: present but not expected (or built for another target). */
+  readonly state: 'fresh' | 'stale' | 'missing' | 'extra';
+  /** When the existing page was generated; `null` for a missing page. */
+  readonly generatedAt: string | null;
+  readonly staleness?: DigestStaleness;
+}
+
+/**
+ * Compare the existing pages with the expected pages (`buildDigest` over the current,
+ * gate-filtered cards for `target`). Every expected page is fresh, stale or missing; every
+ * other existing page is extra. Only fresh pages count as fresh.
+ */
+export function compareAtlas(
+  existing: readonly DigestPage[],
+  expected: readonly DigestPage[],
+  cards: readonly Card[],
+  target: PackageTarget,
+): AtlasPageStatus[] {
+  const byId = new Map(existing.filter((p) => p.target === target).map((p) => [p.pageId, p]));
+  const expectedIds = new Set(expected.map((p) => p.pageId));
+  const out: AtlasPageStatus[] = expected.map((e) => {
+    const page = byId.get(e.pageId);
+    if (page === undefined) return { pageId: e.pageId, state: 'missing', generatedAt: null };
+    const staleness = checkDigestPage(page, cards);
+    return {
+      pageId: e.pageId,
+      state: staleness.fresh ? 'fresh' : 'stale',
+      generatedAt: page.generatedAt,
+      staleness,
+    };
+  });
+  for (const page of existing) {
+    if (page.target !== target || !expectedIds.has(page.pageId)) {
+      out.push({ pageId: page.pageId, state: 'extra', generatedAt: page.generatedAt });
+    }
+  }
+  return out;
+}
+
+/** The generated-file comment that starts every rendered page. */
+export const GENERATED_HEADER = '<!-- Generated by wb digest (ADR-0043).';

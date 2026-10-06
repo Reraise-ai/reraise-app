@@ -1,0 +1,36 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/knowledge-receipt.schema.json#/$defs/consultResult",
+  "description": "Output of knowledge_consult: the context package and its receipt.",
+  "data": {
+    "package": {
+      "id": "01M1KM00000000000000000011",
+      "target": "local_model",
+      "worldId": "01M1DZPW00JGXPRPG4179ZPNB8",
+      "lageId": "01M1F21G80R816A1T0V2P6RACH",
+      "question": "Reroute laden tankers around the Cape for Q4?",
+      "createdAt": "2026-10-05T09:00:00Z",
+      "items": [],
+      "independence": {
+        "findings": 0,
+        "origins": 0
+      },
+      "pendingProposals": [],
+      "withheld": 0
+    },
+    "receipt": {
+      "receiptId": "01M1KM00000000000000000005",
+      "kind": "knowledge",
+      "agent": "agent:research-helper",
+      "taskRef": "TASK-2026-0045",
+      "queryHash": "hmac-sha256:4a2d40eb265b42c9b96460688b55f8dcfb3534c2dcfbe4f9b9a9bb330fe40c1c",
+      "worldId": "01M1DZPW00JGXPRPG4179ZPNB8",
+      "target": "local_model",
+      "packageId": "01M1KM00000000000000000011",
+      "result": "nothing_found",
+      "cardIds": [],
+      "at": "2026-10-05T09:00:00Z",
+      "hash": "sha256:7bce495e365629b47f831efa7f2c2787009a1054ddaa507bac34f4b0fc976369"
+    }
+  }
+}

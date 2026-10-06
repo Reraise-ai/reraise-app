@@ -1,0 +1,32 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/digest-page.schema.json",
+  "description": "Every line cites at least one card.",
+  "expect": {
+    "keyword": "minItems",
+    "instancePath": "/lines/0/cardIds"
+  },
+  "data": {
+    "pageId": "world-01m1dzpw00jgxprpg4179zpnb8",
+    "title": "Hormuz",
+    "scope": {
+      "kind": "world",
+      "worldId": "01M1DZPW00JGXPRPG4179ZPNB8"
+    },
+    "target": "local_model",
+    "generatedAt": "2026-10-06T02:00:00Z",
+    "generator": "deterministic",
+    "lines": [
+      {
+        "text": "An uncited summary",
+        "cardIds": []
+      }
+    ],
+    "sources": [
+      {
+        "cardId": "01M1E34QM03WVTE8T1RYS3AM18",
+        "contentHash": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+      }
+    ]
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/write-back-receipt.schema.json#/$defs/result",
+  "description": "Output of knowledge_write_back for a proposed card: receipt and pending proposal.",
+  "data": {
+    "receipt": {
+      "receiptId": "01M1KM00000000000000000004",
+      "kind": "write_back",
+      "agent": "agent:research-helper",
+      "taskRef": "TASK-2026-0044",
+      "result": "proposed",
+      "proposalId": "01M1KM00000000000000000020",
+      "draftHash": "sha256:aa17b20cf158ba8c00ecbebd6300c4d8f84c21d0ec875abfda60ada962b59309",
+      "at": "2026-10-05T10:00:00Z",
+      "hash": "sha256:38a93b482a54adb68d9da6cc43d15a802b383b2fc1e21a2de89b36ba22c90bf8"
+    },
+    "proposal": {
+      "id": "01M1KM00000000000000000020",
+      "author": "agent:research-helper",
+      "kind": "create_card",
+      "payload": {
+        "card": {
+          "format": 2,
+          "collection": "evidence",
+          "type": "claim",
+          "title": "Insurer bulletin: war-risk premiums doubled",
+          "layer": "said",
+          "source": "https://example.org/insurer-bulletin/2026-09-16",
+          "sourceDate": "2026-09-16",
+          "worlds": ["01M1DZPW00JGXPRPG4179ZPNB8"],
+          "release": "private"
+        }
+      },
+      "status": "pending",
+      "createdAt": "2026-10-05T10:00:00Z"
+    }
+  }
+}

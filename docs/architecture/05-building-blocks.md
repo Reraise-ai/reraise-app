@@ -94,14 +94,15 @@ Each building block, its single responsibility and its interfaces.
 | --- | --- | --- |
 | Board app | Presenting a Lage as a canvas with custom nodes; collecting human actions (place, move, draw, accept, reject, confirm transfer, set stance); showing gate decisions and proposal authors. Styled only through design tokens ([ADR-0019](../adr/0019-design-tokens-and-board-canvas.md)) | Any domain rule; any direct store access. The board is only a client of the Board API (AC-23) |
 | Board API | Authenticating the human session; exposing the MCP-mirroring endpoints and the human-only endpoints (proposal accept and reject, Lage save, decision save, disclosure confirm, [ADR-0016](../adr/0016-mcp-first-and-openapi-contracts.md)), plus the human-only stance endpoint `PUT /cards/{id}/stance` ([ADR-0030](../adr/0030-local-state-on-the-device.md)) and the HTTP mirror of `proposal_list` with `changedSince`, which the M1 board polls ([ADR-0032](../adr/0032-m1-proposal-polling.md)); the only writer of local state; schema-validating input with size limits ([ADR-0026](../adr/0026-security-defaults.md)) | Domain logic beyond orchestration |
-| MCP server | Running inside the service at `/mcp`, reached by stdio clients through the stateless bridge of `services/api` ([ADR-0029](../adr/0029-process-topology.md)); validating `Origin` and `Host`; authenticating agent connections and mapping each to `agent:<name>` and a target class; exposing the eight tools; setting a proposal's `author` from the connection, never from the payload ([ADR-0011](../adr/0011-agent-moves-are-proposals.md)) | Any write other than `proposal_create`; any stance access |
+| MCP server | Running inside the service at `/mcp`, reached by stdio clients through the stateless bridge of `services/api` ([ADR-0029](../adr/0029-process-topology.md)); validating `Origin` and `Host`; authenticating agent connections and mapping each to `agent:<name>` and a target class; exposing the eight tools of ADR-0016 and the five knowledge-loop tools ([ADR-0039](../adr/0039-knowledge-loop-receipts.md)); setting a proposal's `author` and a receipt's `agent` from the connection, never from the payload ([ADR-0011](../adr/0011-agent-moves-are-proposals.md)) | Any write other than creating a proposal; any stance access |
 | core | Canonical domain model (types generated from or tested against the JSON Schemas); provenance rules and the independence count ([ADR-0009](../adr/0009-mandatory-provenance.md)); proposal lifecycle and the non-counting rule; context package assembly; rules evaluation without any score ([ADR-0013](../adr/0013-rules-panel-replaces-barometer.md)); Level 1 request and prediction shapes ([ADR-0035](../adr/0035-level1-engine-socket.md)); source profile derivation ([ADR-0018](../adr/0018-multidimensional-source-profile.md)); the port interfaces | Any I/O, network, file system or clock access other than through ports |
 | disclosure-gate | `decide(card, target) → {decision, reason}` for `screen`, `local_model`, `cloud_model`, `demo`; default deny; stance data only for `screen`; declarative allow and deny rules, deny wins; per-transfer confirmation for `cloud_model` bound to the hash of the exact payload; local decision log without card content ([ADR-0012](../adr/0012-disclosure-gate.md), [ADR-0031](../adr/0031-gate-rules-and-confirmation-binding.md)) | Choosing which cards are relevant; the confirmation UI |
 | local-state | Persisting proposals, stances (with history), the gate log and gate rules in the per-user state directory on the user's device, outside every shared or remote store ([ADR-0030](../adr/0030-local-state-on-the-device.md)) | Card data; deciding anything |
 | Storage adapter | Mapping one store to the canonical model ([ADR-0023](../adr/0023-core-domain-model.md)); derived ids; patch writes through the store's own write path with lock and optimistic concurrency; archive on rewrite; rebuilding its derived index (in memory for the reference adapter, [ADR-0033](../adr/0033-derived-index-reference-adapter.md)); reporting capabilities | Deciding what may leave the device; stances (never written to card files, [ADR-0008](../adr/0008-believed-as-private-stance.md)) |
 | Source connector | Listing new findings as references with provenance | Writing anything; deciding relevance |
 | Model connector | Sending gate-cleared canonical objects to one model or Jev and returning the answer as a proposal or a typed Level 1 result | Calling without a gate decision; persisting answers as facts |
-| training-export | Writing decision traces as JSONL for decisions and cards with `training: true` only ([ADR-0017](../adr/0017-decision-card-and-training-export.md)) | Fine-tuning |
+| training-export | Writing decision traces as JSONL for decisions and cards with `training: true` only, for decisions with a known outcome ([ADR-0017](../adr/0017-decision-card-and-training-export.md), [ADR-0039](../adr/0039-knowledge-loop-receipts.md)) | Fine-tuning |
+| knowledge-loop | Knowledge and Write-back Receipts; the hash-chained receipt log and the fail-closed verifier ([ADR-0040](../adr/0040-receipt-log-and-verifier.md)); usage metrics ([ADR-0041](../adr/0041-usage-ledger-and-metrics.md)); memory routing rules ([ADR-0042](../adr/0042-memory-route-classification.md)); the atlas digest ([ADR-0043](../adr/0043-digest-atlas-regeneration.md)); the offline `wb` command line | Serving tools or endpoints (the service wires it); writing cards or proposals |
 | conformance | Contract shape, round trip, provenance rules, archive on rewrite, index rebuild, id derivation, patch byte-identity and the legacy mapping rules ([ADR-0005](../adr/0005-universal-adapter-architecture.md), [ADR-0023](../adr/0023-core-domain-model.md), [ADR-0027](../adr/0027-card-format-mapping-addenda.md)) | Testing a specific store's own validator |
 
 ## 5.4 Package dependencies and licence tiers
@@ -127,6 +128,7 @@ flowchart BT
     export[packages/training-export]
     conf[packages/conformance]
     local[packages/local-state]
+    loop[packages/knowledge-loop]
   end
   core --> schemas
   gate --> core
@@ -135,11 +137,16 @@ flowchart BT
   export --> gate
   conf --> core
   local --> core
+  loop --> core
+  loop --> gate
+  loop --> local
+  loop --> adapters
   api --> core
   api --> gate
   api --> adapters
   api --> export
   api --> local
+  api --> loop
   api --> mcp
   mcp --> core
   mcp --> gate

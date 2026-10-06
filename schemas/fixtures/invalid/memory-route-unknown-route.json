@@ -1,0 +1,15 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/memory-route.schema.json",
+  "description": "Two routes only.",
+  "expect": {
+    "keyword": "enum",
+    "instancePath": "/route"
+  },
+  "data": {
+    "route": "discard",
+    "ruleId": "default",
+    "signals": [],
+    "classifier": "rules:v1"
+  }
+}

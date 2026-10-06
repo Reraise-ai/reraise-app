@@ -1,0 +1,24 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/write-back-receipt.schema.json#/$defs/request",
+  "description": "knowledge_write_back proposing a private card, placed on a Lage.",
+  "data": {
+    "taskRef": "TASK-2026-0044",
+    "consultReceiptId": "01M1KM00000000000000000001",
+    "card": {
+      "format": 2,
+      "collection": "evidence",
+      "type": "claim",
+      "title": "Insurer bulletin: war-risk premiums doubled",
+      "layer": "said",
+      "source": "https://example.org/insurer-bulletin/2026-09-16",
+      "sourceDate": "2026-09-16",
+      "worlds": ["01M1DZPW00JGXPRPG4179ZPNB8"],
+      "release": "private"
+    },
+    "lageId": "01M1F21G80R816A1T0V2P6RACH",
+    "x": 720,
+    "y": 80,
+    "rationale": "New finding from a connected source."
+  }
+}

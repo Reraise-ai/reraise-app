@@ -1,0 +1,14 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/knowledge-receipt.schema.json#/$defs/consultRequest",
+  "description": "A task reference cannot carry prose: no spaces.",
+  "expect": {
+    "keyword": "pattern",
+    "instancePath": "/taskRef"
+  },
+  "data": {
+    "taskRef": "reroute the tankers",
+    "task": "x",
+    "worldId": "01M1DZPW00JGXPRPG4179ZPNB8"
+  }
+}

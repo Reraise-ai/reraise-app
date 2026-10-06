@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "paths": {
+      "@worldbuilder/core": ["../core/src/index.ts"],
+      "@worldbuilder/disclosure-gate": ["../disclosure-gate/src/index.ts"],
+      "@worldbuilder/local-state": ["../local-state/src/index.ts"],
+      "@worldbuilder/storage-markdown-files": ["../adapters/storage-markdown-files/src/index.ts"]
+    }
+  },
+  "include": ["src"]
+}

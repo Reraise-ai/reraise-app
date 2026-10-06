@@ -6,5 +6,5 @@ import { TOOLS, type ToolName } from './tools.js';
 export { SCHEMA_BASE, TOOLS } from './tools.js';
 export type { SchemaRef, ToolDefinition, ToolName } from './tools.js';
 
-/** Tool contract names. proposal_create is the only write path for agents. */
+/** Tool contract names. Every agent write is a proposal (ADR-0011, ADR-0039). */
 export const MCP_TOOL_NAMES: readonly ToolName[] = TOOLS.map((t) => t.name);

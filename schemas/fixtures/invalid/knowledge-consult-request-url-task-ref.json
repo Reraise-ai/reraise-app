@@ -1,0 +1,14 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/knowledge-receipt.schema.json#/$defs/consultRequest",
+  "description": "A task reference is opaque: no URL (no //).",
+  "expect": {
+    "keyword": "pattern",
+    "instancePath": "/taskRef"
+  },
+  "data": {
+    "taskRef": "https://tracker.example.org/T-1",
+    "task": "x",
+    "worldId": "01M1DZPW00JGXPRPG4179ZPNB8"
+  }
+}

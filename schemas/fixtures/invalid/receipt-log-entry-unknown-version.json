@@ -1,0 +1,31 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/receipt-log-entry.schema.json",
+  "description": "Only version 1 exists.",
+  "expect": {
+    "keyword": "const",
+    "instancePath": "/v"
+  },
+  "data": {
+    "v": 2,
+    "seq": 0,
+    "at": "2026-10-05T09:00:05Z",
+    "prev": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+    "receipt": {
+      "receiptId": "01M1KM00000000000000000001",
+      "kind": "knowledge",
+      "agent": "agent:research-helper",
+      "taskRef": "TASK-2026-0042",
+      "queryHash": "hmac-sha256:9402a908294bcb124fddc1a9868eccebdb2ff8eabb77f33f56545d0594ad55d3",
+      "worldId": "01M1DZPW00JGXPRPG4179ZPNB8",
+      "lageId": "01M1F21G80R816A1T0V2P6RACH",
+      "target": "local_model",
+      "packageId": "01M1KM00000000000000000010",
+      "result": "cards",
+      "cardIds": ["01M1E34QM03WVTE8T1RYS3AM18"],
+      "at": "2026-10-05T09:00:05Z",
+      "hash": "sha256:eb445bd8333247b874fbd443556bc675b2125138e4b1d9d40a930032d3ac47da"
+    },
+    "hash": "sha256:99efeb85a3751eb1805ca219ce30e1f91d998656af5041b5c627ad60d0db798e"
+  }
+}

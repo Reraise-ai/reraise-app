@@ -82,6 +82,8 @@ export default withMermaid({
             { text: 'Overview', link: '/reference/' },
             { text: 'Card format v2', link: '/reference/card-format' },
             { text: 'Adapter interfaces', link: '/reference/adapters' },
+            { text: 'Knowledge loop', link: '/reference/knowledge-loop' },
+            { text: 'The wb command line', link: '/reference/wb-cli' },
             { text: 'Glossary', link: '/glossary' },
           ],
         },
@@ -97,6 +99,7 @@ export default withMermaid({
               link: '/explanation/provenance-and-independence',
             },
             { text: 'Why the LLM is replaceable', link: '/explanation/llm-is-replaceable' },
+            { text: 'Why receipts, not reminders', link: '/explanation/receipts-not-reminders' },
           ],
         },
       ],
@@ -133,6 +136,8 @@ export default withMermaid({
             { text: 'Overview', link: '/reference/' },
             { text: 'Card format v2', link: '/reference/card-format' },
             { text: 'Adapter interfaces', link: '/reference/adapters' },
+            { text: 'Knowledge loop', link: '/reference/knowledge-loop' },
+            { text: 'The wb command line', link: '/reference/wb-cli' },
             { text: 'Glossary', link: '/glossary' },
           ],
         },
@@ -143,6 +148,17 @@ export default withMermaid({
           items: [
             { text: 'Roadmap', link: '/roadmap' },
             { text: 'Verification', link: '/verification' },
+            { text: 'Owner questions', link: '/owner-questions' },
+          ],
+        },
+      ],
+      '/owner-questions': [
+        {
+          text: 'Project',
+          items: [
+            { text: 'Roadmap', link: '/roadmap' },
+            { text: 'Verification', link: '/verification' },
+            { text: 'Owner questions', link: '/owner-questions' },
           ],
         },
       ],
@@ -152,6 +168,7 @@ export default withMermaid({
           items: [
             { text: 'Roadmap', link: '/roadmap' },
             { text: 'Verification', link: '/verification' },
+            { text: 'Owner questions', link: '/owner-questions' },
           ],
         },
       ],

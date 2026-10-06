@@ -65,3 +65,8 @@ MCP tool definitions, the adapter interfaces, or the product canon
 | [0036](0036-conclusions-are-private.md) | Conclusions are private; a `share` target enforces it in the disclosure gate | accepted | 2026-10-06 |
 | [0037](0037-hermes-agents-as-mcp-clients.md) | Hermes agents connect as individually registered MCP clients | accepted | 2026-10-06 |
 | [0038](0038-player-fields-red-lines-goals-personality.md) | Player fields for red lines, assumed goals and a private personality type | accepted | 2026-10-06 |
+| [0039](0039-knowledge-loop-receipts.md) | The knowledge loop runs on mandatory, checked receipts, not on reminders | accepted | 2026-10-06 |
+| [0040](0040-receipt-log-and-verifier.md) | A hash-chained receipt log on the device and a verifier that fails closed | accepted | 2026-10-06 |
+| [0041](0041-usage-ledger-and-metrics.md) | A derived usage ledger and exactly defined knowledge-loop metrics per agent and week | accepted | 2026-10-06 |
+| [0042](0042-memory-route-classification.md) | `memory_route` classifies agent memories with ordered deterministic rules | accepted | 2026-10-06 |
+| [0043](0043-digest-atlas-regeneration.md) | `wb digest` regenerates atlas pages deterministically, with card links and a staleness check | accepted | 2026-10-06 |
