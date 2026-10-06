@@ -1,8 +1,8 @@
 # Glossary
 
 The repository, code and documentation are in English. The product grew out of German
-concept work, and German terms still appear in the owner's card store and in the original
-definition. This page maps them. Where a German term is a legacy field name in the owner
+concept work, and German terms still appear in a legacy card store and in the original
+definition. This page maps them. Where a German term is a legacy field name in the legacy
 card format, the table gives the field of our model that it maps to.
 
 ## Domain terms
@@ -107,8 +107,6 @@ The mapping below follows [ADR-0023](./adr/0023-core-domain-model.md), which is 
 | `training` (`ja`, `nein`) | `training` (boolean, default false) |
 | `kanten` (`ziel\|art\|von`) | `edges` (`{target, kind, by}`) |
 | `interessen`, `faehigkeiten`, `abhaengigkeiten`, `zuege` | `interests`, `capabilities`, `dependencies`, `moves` (`{text, source}`) |
-| `level` (reserved) | `level`: reserved for future card tiers. Not an epistemic field. |
-| `signature` (reserved) | `signature`: reserved for author signatures |
 
 Visibility values: `privat` = `private`, `gesellschaftsintern` = `company_internal`,
 `partneruebergreifend` = `cross_partner`, `kundensichtbar` = `customer_visible`, `oeffentlich` =
@@ -161,6 +159,8 @@ Store headings are matched with and without umlaut transliteration (`ae`, `oe`, 
 
 ## Other terms
 
+- **Reserved card fields:** `level` (future card tiers, not an epistemic field) and `signature`
+  (author signatures). Both are unused.
 - **Disclosure targets:** `screen`, `local_model`, `cloud_model`, `demo`.
 - **Thinking levels:** Level 1 (fast, "System 1") and Level 2 (deliberate, "System 2", the board).
 - **Proposal kinds:** `place_card`, `move_card`, `add_edge`, `create_card`, `comment`.

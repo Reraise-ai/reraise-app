@@ -101,7 +101,7 @@ crypto, and fine-tuning itself. The data model keeps ids, content hash, `level` 
 
 ### Earlier cross-team roadmap (phases 0 to 5)
 
-That plan was written around one owner store, so its items are mapped to the generic
+That plan was written around one particular store, so its items are mapped to the generic
 product. Work specific to a particular store (its validator, its write channel and its
 deployment) is delivered as a separate adapter outside this repository.
 
@@ -146,7 +146,7 @@ the acceptance criteria below. The tests that prove them are tracked in
 
 | ID | Criterion | Audit # | Milestone |
 | --- | --- | --- | --- |
-| AC-01 | The three layers (`evidenced`, `said`, `experience`) are never merged into one figure. Every number on the board decomposes into layers. | 11 | M1 |
+| AC-01 | The three layers (`evidenced`, `said`, `experience`) are never merged into one figure, and a stance is never folded into a layer or a count. Every number on the board decomposes into layers. | 11 | M1 |
 | AC-02 | The user can classify any foreign statement with a private stance (`believed`, `rejected`, `undecided`, weight, note) without changing the card's layer. | 12 | M1 |
 | AC-03 | The interface contains no verdict: no meter, no percentage, no highlighted "winning" option. The Rules panel lists fired and not fired rules with triggering cards only. | 62 | M2+ |
 | AC-04 | The world's content types are visible and stored, including the user's own derivations and premises. | 5 | M1 |
@@ -163,15 +163,15 @@ the acceptance criteria below. The tests that prove them are tracked in
 | ID | Criterion | Audit # | Milestone |
 | --- | --- | --- | --- |
 | AC-07 | The user can create a Lage with their own question and any number of options. | 30 | M1 |
-| AC-08 | The user can draw, delete and reverse `supports` and `refutes` edges, and they persist. | 31 | M1 |
+| AC-08 | The user can draw, delete and reverse `supports` and `refutes` edges (both in M1), and they persist. | 31 | M1 |
 
 ### Decisions, rules and the loop
 
 | ID | Criterion | Audit # | Milestone |
 | --- | --- | --- | --- |
 | AC-09 | A decision card stores all 11 sections and they survive a reload. | 23 | M2+ |
-| AC-10 | Rules are explicit cards and evaluation reads from them, never from code. | 25 | M2+ |
-| AC-11 | The outcome of a decision becomes a linked experience card, and source statistics update. | 50 | M2+ |
+| AC-10 | The user creates and changes rule cards, and evaluation reads from those cards, never from code. | 25 | M2+ |
+| AC-11 | Recording an outcome creates an experience card linked to the decision and to the cards used, it survives a reload, and source statistics update. | 50 | M2+ |
 | AC-12 | A decision protocol exists across sessions, not only for the current one. | 99 | M2+ |
 | AC-13 | The rationale of a decision is stored. | 101 | M2+ |
 
@@ -189,14 +189,14 @@ the acceptance criteria below. The tests that prove them are tracked in
 | AC-21 | An agent queries the world itself (through MCP) and the user does not re-enter it. | 77 | M1 |
 | AC-22 | Single cards can be added to and removed from a context package by the user. | 79 | M1 |
 | AC-23 | A board API exists and the board is only a client of it. | 90 | M1 |
-| AC-24 | The supporting infrastructure (API, storage, integrations) exists. | 84 | M1 |
+| AC-24 | The supporting infrastructure exists: API, storage and integrations (M1). Analytics (source statistics) arrive with the source-profile slice (M2+). Authentication is the local session token and per-agent tokens of [ADR-0026](./adr/0026-security-defaults.md); user accounts are deferred to platform work. | 84 | M1 |
 | AC-25 | An external decision AI can be connected, at least as a stub behind the gate. | 89 | M2+ |
 
 ### Privacy and provenance
 
 | ID | Criterion | Audit # | Milestone |
 | --- | --- | --- | --- |
-| AC-26 | Every world is private by default. A private card sent toward a cloud target is denied or warned about, and each cloud transfer needs confirmation. | 66 | M1 |
+| AC-26 | Every world is private by default. The gate denies a private card for `cloud_model` by default; a cloud transfer happens only for gate-cleared cards and after the user confirms that transfer; the preview shows a cloud warning. | 66 | M1 |
 | AC-27 | The user can see and control which private cards leave the device, and the world stays outside the model. | 80 | M1 |
 | AC-28 | Player entries (interests, capabilities, dependencies, moves) need a source, or are left empty. | 47 | M2+ |
 | AC-29 | The independence count is derived from the provenance chain, never typed in. | 70 | M1 |

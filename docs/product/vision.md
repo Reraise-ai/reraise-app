@@ -3,7 +3,7 @@
 > The model is replaceable. Your personal world is not.
 
 This page states what The Worldbuilder is and why it exists. Part 1 renders the substance of
-the owner's product definition (21 sections, condensed). Part 2 states the concept vision
+the original product definition (21 sections, condensed). Part 2 states the concept vision
 this repository builds, including the decisions that refine or supersede details of Part 1.
 Where the two differ, Part 2 is the binding canon.
 
@@ -51,7 +51,7 @@ The essential separation:
 These categories must never be merged into an artificial "central truth". A personal
 conclusion such as "I consider this regional property market excellent" need not be
 objectively proven. It may be a well-founded conclusion from own experience, contacts and
-results, and it has high value for the owner's own decision process.
+results, and it has high value for the user's own decision process.
 
 ### 4. The world
 
@@ -88,7 +88,7 @@ knowledge cards used, and the later outcome. What is stored is not only what the
 knows, but gradually how they decide.
 
 The goal is not immediate training or fine-tuning. First, decision knowledge is structured
-explicitly and retrieved on demand. The AI then asks not only "what does my owner know about
+explicitly and retrieved on demand. The AI then asks not only "what does this user know about
 this topic?" but "which of their assumptions, experiences and decision rules are relevant to
 this situation, and how would they probably rate them?"
 
@@ -226,7 +226,7 @@ My life and my world → knowledge, experience, decisions → **cards** → rela
 → **world** → a concrete situation or topic → **board** (actors, evidence, assumptions) →
 analysis and AI → **decision** → action → outcome → new experience, flowing back.
 
-In parallel, the platform: private world A shares released cards into a common knowledge
+Alongside this, the platform: private world A shares released cards into a common knowledge
 graph; private world B does the same. Origin, independence, counter-evidence, ratings and
 practical experience are preserved throughout.
 

@@ -11,12 +11,12 @@ This page is the human-readable specification of the canonical model decided in
 [ADR-0008](../adr/0008-believed-as-private-stance.md) and
 [ADR-0009](../adr/0009-mandatory-provenance.md). The machine-readable contract is the set of
 JSON Schemas in [`schemas/`](https://github.com/Reraise-ai/reraise-app/tree/main/schemas),
-which are being written in milestone M0. If this page and a published schema differ, the
+which are in progress in milestone M0. If this page and a published schema differ, the
 schema wins and this page is a bug. The reference `markdown-files` storage adapter (planned
 M1) will implement this format, and the conformance kit will test it.
 :::
 
-The format is **owner-neutral**. It is a generic specification that any store can implement.
+The format is **store-neutral**. It is a generic specification that any store can implement.
 It is structurally compatible with the card format v2 used by an existing Markdown card
 store: every field there has a one-to-one counterpart here (see
 [Mapping](#mapping-from-the-legacy-german-field-names)), so a storage adapter can translate
@@ -26,9 +26,10 @@ in both directions without loss.
 
 - **v2 only adds.** No existing card needs rewriting. A card without a v2 field is validated
   as before. The v2 rules apply once a card uses a v2 field or declares `format: 2`.
-- **Files are the truth.** Writing goes through one write channel of the store, which checks
-  every v2 card with the same rules as the validator before writing. A card that fails is not
-  written.
+- **Files are the truth.** Reference-adapter behaviour: the `markdown-files` adapter writes
+  through one write path per store that validates every v2 card with the schema rules and takes
+  a lock before writing. A card that fails is not written. Other stores have their own write
+  channel; the conformance kit tests the contract, not the mechanism.
 - **Provenance is mandatory.** See [section 5](#5-provenance-rules).
 - **Nothing is deleted.** A rewrite archives the previous version
   ([section 10](#10-archive-on-rewrite)).
@@ -59,7 +60,7 @@ visibility: private
 release: private
 training: false
 edges: [01J9ZQ7K3M5V8W2X4Y6Z0A1B2D|supports|human]
-synthetic: true
+synthetic: true # repository hygiene marker for example data, not a card field
 ---
 
 Traffic in the harbour fell by twelve percent compared with the previous month.
@@ -256,7 +257,7 @@ no card content.
 
 A card with `type: decision` and `format: 2` has exactly eleven sections in its body. Each is
 introduced by a `##` heading and none may be empty. The canonical keys, and the headings of the
-owner store that map to them ([ADR-0017](../adr/0017-decision-card-and-training-export.md),
+legacy store that map to them ([ADR-0017](../adr/0017-decision-card-and-training-export.md),
 [ADR-0023](../adr/0023-core-domain-model.md)):
 
 | # | Key | Store heading |
@@ -349,6 +350,8 @@ A store that uses the German header names maps one to one. The authoritative tab
 | `interessen`, `faehigkeiten`, `abhaengigkeiten`, `zuege` | `interests`, `capabilities`, `dependencies`, `moves` | each `text\|source`, on `collection: actors` only |
 | `lage`: `frage`, `optionen`, `karten`, `sitze`, `kanten` | `question`, `options`, `cards`, `seats`, `edges` | seat `art` (`mensch`, `agent`) becomes `kind` (`human`, `agent`). Edge `von`, `ziel`, `art`, `wer` become `from`, `to`, `kind`, `by`. `stand` becomes `updatedAt`. |
 | decision sections | `situation` to `outcome` | `offen` maps to `open` |
+| Lage body heading `## Stellung` | `## Position` | [ADR-0027](../adr/0027-card-format-mapping-addenda.md) |
+| archive folder `_archiv/` | `_archive/` | [ADR-0027](../adr/0027-card-format-mapping-addenda.md) |
 
 ## See also
 

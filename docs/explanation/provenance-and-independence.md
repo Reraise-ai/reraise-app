@@ -40,8 +40,9 @@ and M the number of distinct roots. In the example above it reads "4 findings ·
 Rules that follow from this:
 
 - Counters show origins, never raw card counts.
-- A stack counts once wherever the board counts evidence.
-- Missing chain information is shown as unknown, not assumed independent.
+- A stack counts once wherever origins are counted.
+- An unknown origin counts as its own origin root and is flagged, so missing chain information
+  never makes two cards look like one origin or like independent confirmation.
 - A chain that cannot be followed (hearsay with no recoverable origin) counts as its own
   origin root and is flagged as such. One speaker quoted by many media is one root.
 - The count is derived from the edges at read time. It is never typed in.

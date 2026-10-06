@@ -27,7 +27,7 @@ features:
     linkText: How it counts
   - title: Agents propose, you decide
     details: Agents sit at the board through MCP, but every move is a proposal with an author. Nothing counts until a human accepts it.
-    link: /product/board-ux#_8-seats-and-agent-proposals
+    link: /product/board-ux#8-seats-and-agent-proposals
     linkText: Seats and proposals
   - title: Files are the truth
     details: Worlds are Markdown with YAML front matter. Any database is derived and rebuildable. Open adapters connect any knowledge store.
@@ -35,7 +35,7 @@ features:
     linkText: Card format
   - title: Private by default
     details: A disclosure gate decides per card and per target whether anything may leave. The default is deny, and a cloud transfer needs your confirmation.
-    link: /product/board-ux#_10-disclosure-gate-and-cloud-warning
+    link: /product/board-ux#10-disclosure-gate-and-cloud-warning
     linkText: The gate
   - title: Prove, don't claim
     details: Every claim is backed by an automated test or a reproducible command, and the verification table says honestly what is not started.
@@ -46,7 +46,8 @@ features:
 ## Status
 
 **M0 is in progress.** The repository currently contains foundations: licensing, tooling, package
-skeletons, contracts and these docs. There is no usable product yet, and no feature is claimed
+skeletons and these docs. The contracts (JSON Schema, OpenAPI, MCP tool definitions, adapter
+interfaces) are in progress and not present yet. There is no usable product yet, and no feature is claimed
 here that is not backed by an automated test. See the [roadmap](/roadmap) for the milestones
 and the [verification table](/verification) for what is proven.
 

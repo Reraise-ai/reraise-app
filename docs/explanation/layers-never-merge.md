@@ -45,8 +45,8 @@ So belief is a **stance**: an overlay stored per user per card, with `position` 
 consequences follow.
 
 1. A card keeps its true layer. Believing a said card does not turn it into evidence.
-2. Stances are private. They never leave the device and are never sent to a model beyond
-   the screen.
+2. Stances are private. They never leave the device and are shown on screen only. They are
+   never put into a context package, an export or a shared card.
 3. The card field name `level` stays free for future card tiers. The epistemic kind is
    `layer`.
 

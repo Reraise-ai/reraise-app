@@ -139,7 +139,7 @@ would leave the device. The user's stances are never in the package at all. The 
 ### 6. Follow up (5 January 2027, invented outcome)
 
 The user records: "threats and two incidents without damage, no interruption over 24
-hours." The forecast resolves as **did not come true**. The decision is rated "mixed": a hedge
+hours." The forecast resolves as **did not come true**. The decision is rated "mixed" (a separate rating of process and outcome is a deferred feature): a hedge
 against something that did not happen, sound in process. The user writes one lesson: weigh
 probability words from sources with a commercial interest lower. The system proposes an
 experience card, a rule statistic update and a source-profile update, and the user accepts
@@ -213,7 +213,7 @@ voice on the agent's price claim.
 
 ### 5. Decide
 
-Options: A buy at 480,000; B negotiate to 450,000 with the minutes as a condition; C do not
+Options: A buy at 480,000; B negotiate (target 450,000, ceiling 455,000) with the minutes as a condition; C do not
 buy. The user chooses B. Conditions: the minutes of the last three meetings before the
 offer, the facade levy amount clarified. Exclusion: a decided or quantified levy over 15,000
 without a price deduction. Rationale links the earlier experience, the R1 check and the

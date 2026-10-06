@@ -8,8 +8,8 @@ Reference pages are information-oriented: precise descriptions to look things up
 | --- | --- |
 | [Card format v2](./card-format.md) | written. Human-readable specification of the Markdown and YAML card format. |
 | [Glossary](../glossary.md) | written. German and English domain terms, field names and value mappings. |
-| [Schemas](https://github.com/Reraise-ai/reraise-app/tree/main/schemas) | being written in M0 (JSON Schema for Card, World, Lage, Edge, Stance, Decision, SourceProfile, ContextPackage; OpenAPI 3.1 for the Board API). Normative: if a schema and a page here differ, the schema wins. |
-| [ADR log](../adr/README.md) | written in parallel in M0. Every binding decision, in MADR format. |
+| [Schemas](https://github.com/Reraise-ai/reraise-app/tree/main/schemas) | in progress in M0 (JSON Schema for Card, World, Lage, Edge, Stance, Decision, SourceProfile, ContextPackage; OpenAPI 3.1 for the Board API). Normative: if a schema and a page here differ, the schema wins. |
+| [ADR log](../adr/README.md) | written. Every binding decision, in MADR format. |
 
 ## Planned
 

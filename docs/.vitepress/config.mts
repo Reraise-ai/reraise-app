@@ -13,9 +13,19 @@ const adrItems = readdirSync(adrDir)
   .sort()
   .map((f) => {
     const heading = /^# (.+)$/m.exec(readFileSync(adrDir + f, 'utf8'));
-    const title = heading ? heading[1].replace(/^ADR-/, 'ADR-') : f;
+    const title = heading ? heading[1] : f;
     return { text: title, link: `/adr/${f.replace(/\.md$/, '')}` };
   });
+
+// GitHub-style heading slugs ("## 8. Seats and agents" becomes "8-seats-and-agents"), so a link
+// works the same on GitHub and on the site. scripts/check-doc-anchors.mjs verifies every anchor.
+function githubSlug(text: string): string {
+  return text
+    .trim()
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s_-]/gu, '')
+    .replace(/\s/g, '-');
+}
 
 export default withMermaid({
   title: 'The Worldbuilder',
@@ -23,6 +33,9 @@ export default withMermaid({
     'A personal layer between you and any model or agent: cards with provenance, a board for decisions, files as the truth.',
   lang: 'en',
   base: '/Worldbuilder/',
+  // The ADR index is README.md so that GitHub renders it; the site serves it at /adr/.
+  rewrites: { 'adr/README.md': 'adr/index.md' },
+  markdown: { anchor: { slugify: githubSlug } },
   cleanUrls: true,
   lastUpdated: false,
   // Dead links fail the build.
