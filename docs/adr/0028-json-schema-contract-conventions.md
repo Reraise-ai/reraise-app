@@ -70,7 +70,7 @@ the contracts free of `$schema` and `synthetic` members that only tests need.
 - Every card an adapter returns carries `contentHash` (`sha256:<hex>`,
   [ADR-0034](0034-content-hash.md)); drafts may omit it, the store recomputes it.
 - Cards have optional, unique free `tags`. They are not a card format v2 field and do not make
-  a card format 2; disclosure-gate rules may match them (ADR-0031).
+  a card format 2; disclosure-gate rules may match them ([ADR-0031](0031-gate-rules-and-confirmation-binding.md)).
 
 ### Examples and fixtures
 
@@ -137,17 +137,29 @@ In addition to [ADR-0023](0023-core-domain-model.md) and
   transfer view and confirm, Lage create (`POST /lagen`, body `LageCreateRequest`) and the
   user's own stance (`GET` and `PUT /cards/{cardId}/stance`, body `stance.schema.json`,
   target screen only). No MCP tool reads or writes stances.
-- `proposal_list` supports polling (ADR-0032), on MCP and HTTP and for both token kinds: the
+- `proposal_list` supports polling ([ADR-0032](0032-m1-proposal-polling.md)), on MCP and HTTP and for both token kinds: the
   request takes `changedSince` (an opaque cursor) and the page returns `nextCursor`, to pass as
   `cursor` for the next page or as `changedSince` for the next poll.
-- Cloud transfers (ADR-0031): `POST /disclosure/transfers` previews a transfer whose
+- Cloud transfers ([ADR-0031](0031-gate-rules-and-confirmation-binding.md)): `POST /disclosure/transfers` previews a transfer whose
   envelope holds the target, the connector, the request parameters and the gate-cleared
   canonical objects; `payloadHash` is the RFC 8785 SHA-256 of the envelope
-  ([ADR-0034](0034-content-hash.md)). The confirm body carries `payloadHash`; a mismatch or a
-  second confirmation is 409, an expired transfer 410.
-- `gate-rules.schema.json` is the disclosure-gate configuration: allow and deny rules per
-  target matching `visibility`, `class`, `collection`, `worlds`, `type`, `tags`, card `ids` or
-  a synthetic store; deny wins, no rule matches stance data.
+  ([ADR-0034](0034-content-hash.md)); the record expires after 5 minutes. The confirm body
+  carries the previewed `payloadHash` and the service recomputes the current one; a mismatch
+  or a second confirmation is 409, an expired transfer 410. The confirm response
+  (`DisclosureConfirmation`) issues the single-use `token` (at least 128 bits, bound to the
+  human session, valid 5 minutes, in memory only). The send call carries it: a
+  `ContextPackageRequest` names `transferId` and `confirmationToken`, and the service consumes
+  the token atomically before sending an envelope with the same hash. Gate decisions and
+  context packages hold only a `DisclosureConfirmationRef`, never the token.
+- An MCP connection registered as `cloud_model` gets card content only through such a
+  transfer; otherwise context packages and card pages list only `denied` ids and reasons.
+- `gate-rules.schema.json` describes the user's rule file: allow and deny rules per target
+  matching `visibility`, `class`, `collection`, `worlds` (by name or id), `type`, `tags`, card
+  `ids` or a synthetic store; an empty `match` matches every card; deny wins, no rule matches
+  stance data. `#/$defs/fragment` describes adapter fragments: deny rules only, and the
+  reference loader (`effectiveRules` in `packages/disclosure-gate`) rejects a fragment with an
+  allow rule. `syntheticStore` is an extension of the field list of ADR-0031 for demo
+  clearance, decided here.
 - MCP tools (`packages/mcp-server/src/tools.ts`) reference the schemas by `$id`; the MCP
   annotation `readOnlyHint` is false only for `proposal_create`.
 - The adapter interfaces live in `packages/core/src/adapters/`; `packages/conformance`
