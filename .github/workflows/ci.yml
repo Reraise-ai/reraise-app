@@ -90,7 +90,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - run: pipx run reuse lint
+      - run: pipx run reuse==6.2.0 lint
 
   gitleaks:
     name: Secret scan (gitleaks, full history)
