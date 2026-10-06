@@ -52,6 +52,7 @@ sequenceDiagram
   MCP->>MCP: author = agent:test-agent from the token, never from the payload
   MCP->>C: validate proposal, status pending
   C->>P: store pending proposal
+  Note over C,P: core calls the LocalStateStore port that the service injects. core itself does no I/O.
   MCP-->>A: proposal id, status pending
   UI->>API: proposal_list with changedSince cursor, polled every 2 s
   API-->>UI: pending proposal and nextCursor, drawn dashed with its author
@@ -63,7 +64,7 @@ sequenceDiagram
   C->>SA: create(card)
   SA->>F: validate, lock, write new card file
   SA-->>C: canonical id of the new card
-  C->>P: status accepted, decidedBy, decidedAt
+  C->>P: status accepted, decidedBy, decidedAt (through the injected LocalStateStore port)
   API-->>UI: accepted, card id
 
   Note over H,F: Reload
@@ -151,7 +152,10 @@ sequenceDiagram
       API-->>UI: result
       UI-->>H: "Jev estimates 0.82 for X", with its inputs, never a verdict
       opt the answer implies world changes
-        JC->>P: proposals with author agent:jev, status pending
+        JC-->>C: implied world changes
+        C->>C: build proposals with author agent:jev, status pending
+        C-->>API: proposals
+        API->>P: store pending proposals through packages/local-state
       end
       opt escalate to Level 2
         H->>UI: Escalate

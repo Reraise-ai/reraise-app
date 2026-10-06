@@ -9,7 +9,7 @@ repeat them. It only adds terms that are used in the architecture documentation 
 | arc42 | The template this documentation follows ([arc42.org](https://arc42.org/overview)). |
 | C4 | Context, containers, components, code: the diagram levels used here ([c4model.com](https://c4model.com/)). Level 1 is the [system context](./03-context-scope.md), level 2 the [container view](./05-building-blocks.md#52-level-1-container-view). |
 | Container | In C4, a separately runnable or deployable unit. Here also used for a separately licensed library package with its own contract. |
-| Port | One of the four interfaces through which `core` reaches the outside: `StorageAdapter`, `SourceConnector`, `ModelConnector`, `DisclosureGate` ([ADR-0005](../adr/0005-universal-adapter-architecture.md)). |
+| Port | One of the five interfaces through which `core` reaches the outside: `StorageAdapter`, `SourceConnector`, `ModelConnector`, `DisclosureGate` ([ADR-0005](../adr/0005-universal-adapter-architecture.md)) and `LocalStateStore` for device-only state ([ADR-0030](../adr/0030-local-state-on-the-device.md)). |
 | Adapter | An implementation of a port for one store, source or model. |
 | Conformance kit | `packages/conformance`, the test kit every `StorageAdapter` must pass. |
 | Egress | Anything leaving the screen: a context package, an MCP response, a model or Jev call, an export. Every egress path calls the disclosure gate. |
@@ -18,6 +18,8 @@ repeat them. It only adds terms that are used in the architecture documentation 
 | Patch write | A write that changes only the fields the product changed and leaves every other byte of the store file verbatim. |
 | Write path, write channel | The single sanctioned way to write into a store: validate, lock, write. "The owner store's write channel" is that store's own implementation. |
 | stdio bridge | The command `worldbuilder mcp --stdio` that connects stdio-only MCP clients to the running service; it holds no state and never writes ([ADR-0029](../adr/0029-process-topology.md)). |
+| Gate rule | A disclosure rule in `gate-rules.yaml` that allows or denies a card for a target ([ADR-0031](../adr/0031-gate-rules-and-confirmation-binding.md)). Not to be confused with a `Rule` card. |
+| Rule card (`Rule`) | A user-authored decision rule evaluated by the Rules panel (fired or not fired, no score, [ADR-0013](../adr/0013-rules-panel-replaces-barometer.md)). Unrelated to gate rules. |
 | State directory | The per-user directory for device-only state (proposals, stances, gate log, gate rules) ([ADR-0030](../adr/0030-local-state-on-the-device.md)). |
 | Derived index | Any search index, graph cache or vector store built from the files; deletable and rebuildable. |
 | Walking skeleton | Milestone M1: the thinnest end-to-end path, everything real, nothing pretty. |

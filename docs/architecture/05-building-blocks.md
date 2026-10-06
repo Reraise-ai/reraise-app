@@ -140,12 +140,14 @@ flowchart BT
   api --> adapters
   api --> export
   api --> local
+  api --> mcp
   mcp --> core
   mcp --> gate
   board -. "HTTP only, no import" .-> api
 ```
 
-An arrow means "depends on". The board app talks to the Board API over HTTP and imports no
+An arrow means "depends on". `services/api` depends on `packages/mcp-server` because the
+service mounts the MCP server at `/mcp` ([ADR-0029](../adr/0029-process-topology.md)). The board app talks to the Board API over HTTP and imports no
 server package; it may import generated contract types from `core`.
 
 ## 5.5 Level 2: inside core (planned)

@@ -39,6 +39,11 @@ C4Context
   UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")
 ```
 
+The diagram draws the knowledge stores on the device for the common case of a local vault.
+A store may also be remote (another agent system's wiki, a server-hosted store); its adapter then
+reaches it over HTTPS or the store's own interface, as in the
+[deployment view](./07-deployment.md#71-default-local-single-user).
+
 | Neighbour | What crosses the boundary | Direction | Status |
 | --- | --- | --- | --- |
 | User | Lagen, cards placed and edges drawn, accept or reject of proposals, stances, decisions, transfer confirmations | in and out (screen) | planned (M1) for the walking-skeleton steps; M2+ for decisions |

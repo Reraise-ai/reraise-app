@@ -60,14 +60,16 @@ state directory:
 | --- | --- | --- |
 | Proposals | `<state>/proposals/<ulid>.json` | one JSON file per proposal, validated against the Proposal schema |
 | Stances | `<state>/stances/` | one file per card with the current stance and its previous versions ([ADR-0008](0008-believed-as-private-stance.md)) |
-| Gate decision log | `<state>/gate-log.jsonl` | append-only JSON Lines: card id, target, decision, reason, time; never card content |
+| Gate decision log | `<state>/gate-log.jsonl` | append-only JSON Lines: card id, target, decision, reason, time; never card content. Rotated at 10 MB, keeping 5 rotated files by default; both limits are configurable |
 | Gate rules | `<state>/gate-rules.yaml` | the rule language of [ADR-0031](0031-gate-rules-and-confirmation-binding.md) |
 
 ### Ownership
 
 - All of it is files and local only. None of it is ever sent to a model, exported or shared.
-- A new Apache-2.0 package `packages/local-state` implements the access. `core` defines the
-  interface it implements (for example `LocalStateStore`), so `core` keeps no I/O and the
+- A new Apache-2.0 package `packages/local-state` implements the access. When it is created it
+  gets its own `LICENSE` file and a row in `LICENSING.md`, like every package
+  ([ADR-0004](0004-two-tier-licensing.md)). `core` defines the
+  interface it implements, `LocalStateStore`, so `core` keeps no I/O and the
   package can be replaced.
 - `services/api`, inside the single service process, is the only writer. The MCP bridge and
   agents never write local state directly; proposals reach it only through `proposal_create`
@@ -90,8 +92,8 @@ state directory:
 Tests (M1): proposals, stances and gate decisions are written only under `<state>`; the default
 `<state>` resolves to the per-OS directory above on each CI operating system; the service refuses
 to start when `<state>` is configured inside a store root or a Git working tree (also through a
-symbolic link); the
-gate log contains no card text (fixture with a marker string that must not appear); the stance
+symbolic link); the gate log rotates at the configured size and keeps the configured number of
+files; the gate log contains no card text (fixture with a marker string that must not appear); the stance
 endpoint rejects agent tokens; no MCP tool reads or writes stances; `packages/local-state`
 imports no AGPL package.
 

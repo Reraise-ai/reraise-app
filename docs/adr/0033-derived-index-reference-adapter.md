@@ -68,7 +68,7 @@ needed to derive canonical ids ([ADR-0023](0023-core-domain-model.md)).
 ### Scan on every query
 
 - Good, because always current.
-- Bad, because too slow even for modest stores.
+- Bad, because likely too slow beyond small stores (not measured).
 
 ## More Information
 
