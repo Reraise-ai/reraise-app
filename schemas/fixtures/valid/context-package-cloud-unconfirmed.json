@@ -17,10 +17,7 @@
     "pendingProposals": [
       {
         "proposalId": "01M1FFRYR0CNCMTND011BG5QPC",
-        "author": "agent:research-helper",
-        "kind": "create_card",
-        "status": "pending",
-        "summary": "Create card \"Insurer bulletin: war-risk premiums doubled\" on this Lage"
+        "kind": "create_card"
       }
     ],
     "withheld": 4,
