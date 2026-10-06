@@ -5,6 +5,17 @@ import type { Layer } from './generated/contracts.js';
 
 /** Types generated from the JSON Schemas in schemas/ (the source of truth, ADR-0016). */
 export type * from './generated/contracts.js';
+/** Adapter interfaces (ADR-0005). */
+export type * from './adapters/index.js';
+export {
+  buildUri,
+  deriveCardId,
+  encodeExternalId,
+  encodeUlid,
+  isWbUri,
+  parseUri,
+  sha256,
+} from './ids.js';
 
 export const CARD_LAYERS = ['evidenced', 'said', 'experience'] as const satisfies readonly Layer[];
 
