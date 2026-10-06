@@ -23,7 +23,7 @@ There is no release yet (pre-0.1.0). Security fixes target the default branch.
 
 Please use GitHub private vulnerability reporting: go to the repository's **Security** tab
 and choose **Report a vulnerability**. Do not open public issues for vulnerabilities.
-We aim to acknowledge reports within 5 working days.
+Reports are handled as soon as possible (best effort, single maintainer).
 
 ## Repository safeguards
 
