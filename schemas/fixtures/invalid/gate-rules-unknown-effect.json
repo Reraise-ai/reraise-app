@@ -1,0 +1,21 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/gate-rules.schema.json",
+  "description": "Effects are allow or deny.",
+  "expect": {
+    "keyword": "enum",
+    "instancePath": "/rules/0/effect"
+  },
+  "data": {
+    "rules": [
+      {
+        "id": "maybe",
+        "effect": "ask",
+        "targets": ["screen"],
+        "match": {
+          "class": ["C"]
+        }
+      }
+    ]
+  }
+}

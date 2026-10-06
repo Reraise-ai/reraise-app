@@ -1,0 +1,19 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/gate-rules.schema.json",
+  "description": "A rule needs at least one criterion.",
+  "expect": {
+    "keyword": "minProperties",
+    "instancePath": "/rules/0/match"
+  },
+  "data": {
+    "rules": [
+      {
+        "id": "everything",
+        "effect": "allow",
+        "targets": ["cloud_model"],
+        "match": {}
+      }
+    ]
+  }
+}

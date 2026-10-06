@@ -1,0 +1,51 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/gate-rules.schema.json",
+  "description": "Allow and deny rules for the Hormuz example: deny wins for class A.",
+  "data": {
+    "rules": [
+      {
+        "id": "screen-all-private",
+        "effect": "allow",
+        "targets": ["screen"],
+        "match": {
+          "visibility": ["private", "public"]
+        },
+        "description": "The local user sees their own cards."
+      },
+      {
+        "id": "hormuz-class-c-models",
+        "effect": "allow",
+        "targets": ["local_model", "cloud_model"],
+        "match": {
+          "worlds": ["01M1DZPW00JGXPRPG4179ZPNB8"],
+          "class": ["C"]
+        }
+      },
+      {
+        "id": "demo-synthetic",
+        "effect": "allow",
+        "targets": ["demo"],
+        "match": {
+          "syntheticStore": true
+        }
+      },
+      {
+        "id": "never-class-a",
+        "effect": "deny",
+        "targets": ["local_model", "cloud_model", "demo"],
+        "match": {
+          "class": ["A"]
+        }
+      },
+      {
+        "id": "never-tagged-private",
+        "effect": "deny",
+        "targets": ["cloud_model"],
+        "match": {
+          "tags": ["private"]
+        }
+      }
+    ]
+  }
+}

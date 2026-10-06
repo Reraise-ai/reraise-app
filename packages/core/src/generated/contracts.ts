@@ -722,6 +722,63 @@ export interface Finding2 {
   retrievedAt: DateTime;
 }
 /**
+ * Disclosure-gate configuration (ADR-0012, ADR-0031): allow and deny rules per target. A card is allowed for a target only if at least one allow rule matches it and no deny rule does: deny wins, and without a matching allow rule the decision is deny. Rules match card fields only; nothing matches stance data, which stays on the screen whatever the rules say (ADR-0008).
+ */
+export interface GateRules {
+  rules: GateRule[];
+}
+export interface GateRule {
+  id: string;
+  effect: 'allow' | 'deny';
+  /**
+   * @minItems 1
+   */
+  targets: DisclosureTarget[];
+  match: GateMatch;
+  description?: string;
+}
+/**
+ * All given criteria must hold (AND); within one criterion any listed value matches (OR). At least one criterion: a rule never matches every card by accident.
+ */
+export interface GateMatch {
+  /**
+   * @minItems 1
+   */
+  visibility?: Visibility[];
+  /**
+   * @minItems 1
+   */
+  class?: CardClass[];
+  /**
+   * @minItems 1
+   */
+  collection?: Collection[];
+  /**
+   * Matches if the card appears in any of these worlds.
+   *
+   * @minItems 1
+   */
+  worlds?: WorldId[];
+  /**
+   * @minItems 1
+   */
+  type?: Text[];
+  /**
+   * Matches if the card has any of these tags.
+   *
+   * @minItems 1
+   */
+  tags?: Text[];
+  /**
+   * @minItems 1
+   */
+  ids?: CardId[];
+  /**
+   * Matches cards of a store whose configuration says synthetic: true (demo clearance, ADR-0028).
+   */
+  syntheticStore?: true;
+}
+/**
  * A fast, typed level-1 answer (ADR-0015). It is an attributed engine estimate ('<engine> estimates 0.82 for X'), never a verdict: it does not count as a decision, does not trigger rules and does not enter statistics. `choice` is one of `options`. World changes it implies arrive as proposals by agent:<engine>.
  */
 export interface Level1Answer {

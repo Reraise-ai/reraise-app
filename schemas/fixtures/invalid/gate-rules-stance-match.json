@@ -1,0 +1,21 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/gate-rules.schema.json",
+  "description": "Rules never match stance data (ADR-0008).",
+  "expect": {
+    "keyword": "additionalProperties",
+    "instancePath": "/rules/0/match"
+  },
+  "data": {
+    "rules": [
+      {
+        "id": "by-belief",
+        "effect": "allow",
+        "targets": ["cloud_model"],
+        "match": {
+          "stance": "believed"
+        }
+      }
+    ]
+  }
+}
