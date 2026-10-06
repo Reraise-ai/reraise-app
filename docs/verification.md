@@ -32,7 +32,7 @@ Milestone M0 is in progress. Its done criteria come from the [roadmap](./roadmap
 | M0-05 | Coverage gate on `packages/core` (90 % lines, 90 % functions, 85 % branches, 90 % statements) | `vitest.config.ts` thresholds | `checks` (`pnpm test:coverage`) | in progress (passes locally; no CI run yet) |
 | M0-06 | JSON Schemas validate the synthetic examples | `scripts/validate-schemas.mjs` and `scripts/validate-schemas.test.mjs`. The schemas and examples are in a separate branch and not merged here. | `checks` (`pnpm validate:schemas`) | in progress (validator exists; schemas and examples not merged yet) |
 | M0-07 | OpenAPI 3.1 contract lints and contract tests | `schemas/openapi/` | an OpenAPI job, added with the contract | in progress (contract and tests are being built) |
-| M0-08 | The ADR log is complete for every binding decision | `docs/adr/` (ADR-0001 to ADR-0027) | `build` in `docs.yml` builds it | in progress (passes locally; no CI run yet) |
+| M0-08 | The ADR log is complete for every binding decision | `docs/adr/` (ADR-0001 onwards) | `build` in `docs.yml` builds it | in progress (passes locally; no CI run yet) |
 | M0-09 | The docs site builds with no dead links or broken anchors | `docs/.vitepress/config.mts` (`ignoreDeadLinks: false`), `scripts/check-doc-anchors.mjs` | `build` in `docs.yml` | in progress (passes locally; no CI run yet) |
 | M0-10 | Dependency audit passes at high severity | `pnpm audit --audit-level high` | `audit` | in progress (passes locally; no CI run yet) |
 | M0-11 | Dependabot is configured for npm and GitHub Actions | `.github/dependabot.yml` | none (GitHub-side service) | in progress (configured; no run yet) |
@@ -70,6 +70,11 @@ not started, and the status says so.
 | ADR-C14 | MCP has no writing tool except `proposal_create`; accept and reject reject agent credentials | [0011](./adr/0011-agent-moves-are-proposals.md), [0026](./adr/0026-security-defaults.md) | not written | not defined | not started |
 | ADR-C15 | Default bind address is loopback | [0026](./adr/0026-security-defaults.md) | not written | not defined | not started |
 | ADR-C16 | A decision without `training: true` produces no training trace | [0017](./adr/0017-decision-card-and-training-export.md) | not written | not defined | not started |
+| ADR-C17 | The stdio bridge writes no files and opens no store or state file (spy-based test), relays `Mcp-Session-Id` and streams, and takes its token from an environment variable or file only; `/mcp` rejects a foreign `Host` or disallowed `Origin`; `/mcp` and the bridge return the same results | [0029](./adr/0029-process-topology.md) | not written | not defined | not started |
+| ADR-C18 | Local state is written only in the state directory; its default is the per-OS directory; the service refuses to start when it is inside a store root or a Git working tree; the gate log contains no card content; the stance endpoint rejects agent tokens | [0030](./adr/0030-local-state-on-the-device.md) | not written | not defined | not started |
+| ADR-C19 | Gate rules: deny wins, an invalid rule file denies everything, adapter fragments cannot override a deny. Cloud confirmation: send rejected after a change of engine, question, options, output schema or cards; confirm rejected on a preview/confirm hash mismatch; token rejected on replay (also racing), after 5 minutes, after a restart and from another session; a `cloud_model` MCP connection gets no card content without a confirmed transfer | [0031](./adr/0031-gate-rules-and-confirmation-binding.md) | not written | not defined | not started |
+| ADR-C20 | `proposal_list` has the same `changedSince` parameter and `nextCursor` result on MCP and HTTP, for both token kinds; no proposal is missed or repeated across polls | [0032](./adr/0032-m1-proposal-polling.md) | not written | not defined | not started |
+| ADR-C21 | The derived index rebuilt from the files gives identical query results and follows external file changes | [0033](./adr/0033-derived-index-reference-adapter.md) | not written | not defined | not started |
 
 ## Acceptance criteria
 
@@ -110,4 +115,4 @@ the milestone in which the criterion is first expected to be demonstrated.
 | AC-30 | A source pass is available on every card, seat, edge and decision. | M2+ | not yet written | not yet defined | not started |
 | AC-31 | Provenance is mandatory for players, moves, assumptions and decisions, and imported cards keep their original provenance. | M2+ | not yet written | not yet defined | not started |
 | AC-32 | The project exists as its own repository with CI. | M0 | not yet written | not yet defined | in progress |
-| AC-33 | UX and architecture are separate documents with the links between them written down. | M0 | not yet written | not yet defined | in progress |
+| AC-33 | UX and architecture are separate documents with the links between them written down. | M0 | link table in `docs/architecture/index.md`; dead links and anchors fail `pnpm docs:build` and `pnpm check:doc-anchors` | `build` in `docs.yml` | in progress (passes locally; no CI run yet) |

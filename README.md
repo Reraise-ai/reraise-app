@@ -48,7 +48,8 @@ flowchart LR
 
 Monorepo layout: `apps/board`, `services/api`, `packages/*`, `schemas/`, `examples/`, `docs/`.
 More in the [documentation](docs/index.md): [vision](docs/product/vision.md),
-[board UX](docs/product/board-ux.md), [card format](docs/reference/card-format.md),
+[board UX](docs/product/board-ux.md), [architecture](docs/architecture/index.md),
+[card format](docs/reference/card-format.md),
 [glossary](docs/glossary.md), [roadmap](docs/roadmap.md) and
 [verification](docs/verification.md).
 See [LICENSING.md](LICENSING.md) for which licence applies where.

@@ -12,3 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   issue and pull request templates, Dependabot configuration.
 - pnpm workspace tooling (TypeScript strict, ESLint, Prettier, Vitest), package skeletons, SPDX and
   no-real-data checks, schema validation script, CI and CodeQL workflows.
+- Architecture documentation (arc42) with C4 context and container diagrams, runtime scenarios,
+  quality scenarios, risks and technical debt, and open decisions.
+- ADR-0029 to ADR-0033: process topology, local state, gate rules and confirmation binding, M1
+  proposal polling, and the derived index of the reference adapter.

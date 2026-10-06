@@ -91,7 +91,26 @@ export default withMermaid({
           ],
         },
       ],
-      '/architecture/': [{ text: 'Architecture', items: [{ text: 'Overview', link: '/architecture/' }] }],
+      '/architecture/': [
+        {
+          text: 'Architecture (arc42)',
+          items: [
+            { text: 'Overview', link: '/architecture/' },
+            { text: '1. Introduction and goals', link: '/architecture/01-introduction-goals' },
+            { text: '2. Constraints', link: '/architecture/02-constraints' },
+            { text: '3. Context and scope', link: '/architecture/03-context-scope' },
+            { text: '4. Solution strategy', link: '/architecture/04-solution-strategy' },
+            { text: '5. Building blocks', link: '/architecture/05-building-blocks' },
+            { text: '6. Runtime view', link: '/architecture/06-runtime' },
+            { text: '7. Deployment view', link: '/architecture/07-deployment' },
+            { text: '8. Crosscutting concepts', link: '/architecture/08-crosscutting' },
+            { text: '9. Architecture decisions', link: '/architecture/09-decisions' },
+            { text: '10. Quality requirements', link: '/architecture/10-quality' },
+            { text: '11. Risks and technical debt', link: '/architecture/11-risks-debt' },
+            { text: '12. Glossary', link: '/architecture/12-glossary' },
+          ],
+        },
+      ],
       '/adr/': [
         {
           text: 'Architecture decisions',

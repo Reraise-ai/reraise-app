@@ -54,3 +54,9 @@ MCP tool definitions, the adapter interfaces, or the product canon
 | [0025](0025-engineering-process-and-quality-gates.md) | Engineering process and quality gates | accepted | 2026-10-06 |
 | [0026](0026-security-defaults.md) | Security defaults for the Board API and the MCP server | accepted | 2026-10-06 |
 | [0027](0027-card-format-mapping-addenda.md) | Card format mapping addenda: Lage heading and archive folder | accepted | 2026-10-06 |
+| 0028 | Reserved for the schema contracts ADR | – | – |
+| [0029](0029-process-topology.md) | One local service process hosts the Board API and the MCP server; stdio through a stateless bridge | accepted | 2026-10-06 |
+| [0030](0030-local-state-on-the-device.md) | Local state lives in files in the per-user state directory, owned by `packages/local-state` | accepted | 2026-10-06 |
+| [0031](0031-gate-rules-and-confirmation-binding.md) | Declarative gate rules and hash-bound cloud confirmations | accepted | 2026-10-06 |
+| [0032](0032-m1-proposal-polling.md) | The M1 board polls for proposals; the M2 live channel replaces polling | accepted | 2026-10-06 |
+| [0033](0033-derived-index-reference-adapter.md) | In-memory derived index for the reference adapter; SQLite only on measured need | accepted | 2026-10-06 |
