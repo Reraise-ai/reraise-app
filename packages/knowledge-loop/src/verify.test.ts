@@ -3,6 +3,8 @@
 
 import { describe, expect, it } from 'vitest';
 import { checkChain } from './log.js';
+import { selfHash } from './receipts.js';
+import { parseTime } from './time.js';
 import {
   AGENT,
   OTHER_AGENT,
@@ -114,5 +116,48 @@ describe('verifyReceipts (ADR-0040)', () => {
     const report = verifyAgainstChain([taskOf('TASK-A', k, w)], chain);
     expect(report.ok).toBe(false);
     expect(report.tasks[0]!.agent).toBe(AGENT);
+  });
+});
+
+describe('times (ADR-0040, invalid_time)', () => {
+  const leap = '2026-10-05T23:59:60Z';
+
+  it.each([
+    [leap],
+    ['2026-10-05T09:00:00+25:00'],
+    ['2026-02-30T10:00:00Z'],
+    ['garbage'],
+    ['2026-10-05 09:00'],
+  ])('fails a task whose completedAt is %s', (completedAt) => {
+    const report = verifyReceipts([taskOf('TASK-A', k, w, { completedAt })], lines);
+    expect(report.ok).toBe(false);
+    expect(codes(report)[0]).toEqual(['task:invalid_time']);
+  });
+
+  it('fails a task with an unparsable startedAt or a start after its completion', () => {
+    expect(codes(verifyReceipts([taskOf('TASK-A', k, w, { startedAt: 'x' })], lines))[0]).toEqual([
+      'task:invalid_time',
+    ]);
+    expect(
+      codes(verifyReceipts([taskOf('TASK-A', k, w, { startedAt: iso(61) })], lines))[0],
+    ).toEqual(['task:invalid_time']);
+  });
+
+  it('fails a receipt whose logged time cannot be represented (a leap second)', () => {
+    const odd = { ...consult(8, { taskRef: 'TASK-L' }), at: leap };
+    const sealed = { ...odd, hash: selfHash(odd) };
+    const oddLines = logOf([sealed]);
+    expect(checkChain(oddLines).ok).toBe(true);
+    const report = verifyReceipts([taskOf('TASK-L', sealed, undefined)], oddLines);
+    expect(codes(report)[0]).toEqual(['knowledge:invalid_time', 'write_back:missing']);
+  });
+
+  it('accepts offsets and fractions that RFC 3339 allows', () => {
+    expect(parseTime('2026-10-05T11:00:00.123456789+02:00')).toBe(
+      Date.parse('2026-10-05T09:00:00.123Z'),
+    );
+    expect(parseTime('2024-02-29T00:00:00Z')).toBe(Date.parse('2024-02-29T00:00:00Z'));
+    expect(parseTime(42)).toBeUndefined();
+    expect(parseTime('2026-10-05T09:00:00+23:60')).toBeUndefined();
   });
 });

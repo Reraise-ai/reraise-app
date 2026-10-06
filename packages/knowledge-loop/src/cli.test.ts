@@ -78,6 +78,13 @@ describe('wb receipts verify (ADR-0040)', () => {
     );
   });
 
+  it('exits 1 for a task record whose time cannot be represented (a leap second)', async () => {
+    const log = await writeLog(logOf([k, w]));
+    const tasks = await writeTasks([taskOf('TASK-A', k, w, { completedAt: '2026-10-05T23:59:60Z' })]);
+    expect(await run('receipts', 'verify', tasks, '--log', log)).toBe(EXIT.failed);
+    expect(out.join('')).toContain('FAIL  TASK-A agent:scout: task invalid_time');
+  });
+
   it('exits 3 when the log is broken, and reads the default log in the state directory', async () => {
     await writeLog([logOf([k, w])[1]!], path.join(dir, 'xdg', 'worldbuilder', RECEIPT_LOG_FILE));
     const tasks = await writeTasks([taskOf('TASK-A', k, w)]);

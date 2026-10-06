@@ -50,7 +50,8 @@ runs anywhere the log file is readable.
 - The log holds no content: receipts are content-free by contract
   ([ADR-0039](0039-knowledge-loop-receipts.md)), and the entry adds only numbers, times and
   hashes. It is local state: never sent to a model, exported or shared.
-- Appends go through one writer with an in-process mutex. At open the writer verifies the whole
+- Appends go through one writer with an in-process mutex. The writer refuses a receipt whose
+  `receiptId` is already in the log. At open the writer verifies the whole
   chain; if it is broken it refuses to append and reports the first broken line, so a damaged
   log is never extended. Repair is a human act: move the file aside; a new chain starts at
   `seq` 0. Receipts of the old file then no longer verify, which is correct: their evidence is
@@ -84,7 +85,11 @@ or a Markdown file whose YAML front matter holds the same keys.
 1. The chain is checked first. Any unparsable line, schema-invalid entry, wrong `seq`, wrong
    `prev`, wrong entry hash, wrong receipt hash, duplicate `receiptId` or head mismatch makes
    the log broken, and every task fails with `chain_broken`.
-2. For each task record and each of its two receipts, the first failing check wins:
+2. Every time (`startedAt`, `completedAt`, each receipt's `at`) is parsed once, strictly as
+   RFC 3339 (no leap second, no out-of-range offset or date). A task record whose own times
+   cannot be represented, or whose `startedAt` is after `completedAt`, fails with
+   `invalid_time` (slot `task`) and its receipts are not checked.
+3. For each task record and each of its two receipts, the first failing check wins:
 
 | Code | Meaning |
 | --- | --- |
@@ -94,13 +99,19 @@ or a Markdown file whose YAML front matter holds the same keys.
 | `wrong_kind` | a knowledge slot cites a write-back receipt or the reverse |
 | `wrong_agent` | the receipt's agent is not the record's agent |
 | `wrong_task` | the receipt's `taskRef` is not the record's |
+| `invalid_time` | the receipt's `at` cannot be represented |
 | `stale` | the receipt is older than the task window: before `startedAt`, or, without `startedAt`, more than `maxAgeHours` (default 24) before `completedAt` |
 | `out_of_window` | the receipt is after `completedAt`, or the write-back is before the consult |
 | `reused` | an earlier task record already cited this `receiptId` |
 | `unlinked` | the write-back receipt names a `consultReceiptId` other than the record's knowledge receipt |
 
    Times are compared with a clock-skew tolerance (default 300 seconds).
-3. A task is valid when both receipts pass. Every `result` counts: `nothing_found`,
+
+   `reused` is detected within one verifier run only. A receipt cited by two task records that
+   are verified in separate runs (two CI jobs over different task sets) is not caught; a
+   reviewer that needs this guarantee verifies the complete set of task records of the period
+   in one run, as `wb metrics --tasks` does.
+4. A task is valid when both receipts pass. Every `result` counts: `nothing_found`,
    `confirmation_required` and `not_needed` are honest answers, and the point is the habit of
    asking and deciding, not a quota.
 

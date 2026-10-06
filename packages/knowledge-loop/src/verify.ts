@@ -13,11 +13,15 @@ import type {
 } from '@worldbuilder/core';
 import type { ChainCheck, ChainCheckOptions } from './log.js';
 import { checkChain } from './log.js';
+import { parseTime } from './time.js';
 
 export type ReceiptSlot = 'knowledge' | 'write_back';
+/** Where a problem was found: one of the two receipts, or the task record itself. */
+export type ProblemSlot = ReceiptSlot | 'task';
 
 export type ReceiptProblemCode =
   | 'chain_broken'
+  | 'invalid_time'
   | 'missing'
   | 'unknown'
   | 'forged'
@@ -30,7 +34,7 @@ export type ReceiptProblemCode =
   | 'reused';
 
 export interface ReceiptProblem {
-  readonly slot: ReceiptSlot;
+  readonly slot: ProblemSlot;
   readonly code: ReceiptProblemCode;
   readonly message: string;
 }
@@ -58,8 +62,6 @@ export interface VerifyOptions extends ChainCheckOptions {
 
 export const DEFAULT_MAX_AGE_HOURS = 24;
 export const DEFAULT_SKEW_SECONDS = 300;
-
-const ms = (iso: string) => Date.parse(iso);
 
 /**
  * Verify every task record against the log lines. `logLines` are the raw lines of
@@ -95,8 +97,27 @@ export function verifyAgainstChain(
       }
       return { taskRef: task.taskRef, agent: task.agent, ok: false, problems };
     }
-    const completed = ms(task.completedAt);
-    const windowStart = task.startedAt !== undefined ? ms(task.startedAt) : completed - maxAgeMs;
+    // Every time is parsed once; a time that cannot be represented fails the task (fail closed).
+    const completed = parseTime(task.completedAt);
+    const started = task.startedAt !== undefined ? parseTime(task.startedAt) : undefined;
+    if (completed === undefined || (task.startedAt !== undefined && started === undefined)) {
+      problems.push({
+        slot: 'task',
+        code: 'invalid_time',
+        message: 'startedAt or completedAt is not a representable RFC 3339 time',
+      });
+      return { taskRef: task.taskRef, agent: task.agent, ok: false, problems };
+    }
+    if (started !== undefined && started > completed) {
+      problems.push({
+        slot: 'task',
+        code: 'invalid_time',
+        message: 'startedAt is after completedAt',
+      });
+      return { taskRef: task.taskRef, agent: task.agent, ok: false, problems };
+    }
+    const windowStart = started ?? completed - maxAgeMs;
+    const times = new Map<string, number>();
 
     const check = <K extends ReceiptSlot>(
       slot: K,
@@ -124,7 +145,11 @@ export function verifyAgainstChain(
       if (receipt.taskRef !== task.taskRef) {
         return problem('wrong_task', `${label} ${ref.receiptId} is for task ${receipt.taskRef}`);
       }
-      const at = ms(receipt.at);
+      const at = parseTime(receipt.at);
+      if (at === undefined) {
+        return problem('invalid_time', `${label} ${ref.receiptId} has no representable time`);
+      }
+      times.set(ref.receiptId, at);
       if (at < windowStart - skewMs) {
         return problem('stale', `${label} ${ref.receiptId} is older than the task window`);
       }
@@ -150,7 +175,10 @@ export function verifyAgainstChain(
           code: 'unlinked',
           message: `write-back receipt names consult ${writeBack.consultReceiptId}, not the task's`,
         });
-      } else if (consult !== undefined && ms(writeBack.at) < ms(consult.at) - skewMs) {
+      } else if (
+        consult !== undefined &&
+        times.get(writeBack.receiptId)! < times.get(consult.receiptId)! - skewMs
+      ) {
         problems.push({
           slot: 'write_back',
           code: 'out_of_window',

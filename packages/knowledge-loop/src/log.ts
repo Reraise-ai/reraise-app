@@ -142,6 +142,7 @@ export class ReceiptLog {
   private constructor(
     private readonly port: ReceiptLogPort,
     private last: ReceiptLogEntry | undefined,
+    private readonly ids: Set<string>,
     private readonly now: () => Date,
   ) {}
 
@@ -151,7 +152,12 @@ export class ReceiptLog {
     if (!check.ok) {
       throw new Error(`receipt log is broken, refusing to append: ${check.problems[0]?.message}`);
     }
-    return new ReceiptLog(port, check.entries.at(-1), now);
+    return new ReceiptLog(
+      port,
+      check.entries.at(-1),
+      new Set(check.entries.map((e) => e.receipt.receiptId)),
+      now,
+    );
   }
 
   /** Hash of the last entry, or GENESIS. */
@@ -166,8 +172,12 @@ export class ReceiptLog {
       const valid = validateContract('receipt-log-entry.schema.json', entry);
       if (!valid.ok) throw new Error(`receipt log entry invalid: ${valid.message}`);
       if (!receiptHashMatches(receipt)) throw new Error('receipt hash does not match its content');
+      if (this.ids.has(receipt.receiptId)) {
+        throw new Error(`receipt ${receipt.receiptId} is already in the log`);
+      }
       await this.port.appendLine(formatEntry(entry));
       this.last = entry;
+      this.ids.add(receipt.receiptId);
       return entry;
     });
     this.queue = run.catch(() => undefined);

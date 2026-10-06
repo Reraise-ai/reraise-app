@@ -136,6 +136,8 @@ describe('ReceiptLog writer (ADR-0040)', () => {
     await expect(log.append({ ...consult(1), taskRef: 'TASK-9' })).rejects.toThrow(/hash/);
     await expect(log.append({ ...consult(1), task: 'x' } as never)).rejects.toThrow(/invalid/);
     await log.append(consult(2));
+    await expect(log.append(consult(2))).rejects.toThrow(/already in the log/);
+    await expect((await ReceiptLog.open(port)).append(consult(2))).rejects.toThrow(/already/);
     expect(checkChain(port.lines)).toMatchObject({ ok: true });
     expect(port.lines).toHaveLength(1);
   });
