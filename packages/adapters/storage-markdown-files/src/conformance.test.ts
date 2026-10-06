@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright The Worldbuilder contributors
 //
-// The reference adapter passes the StorageAdapter conformance kit (ADR-0005, M1-02) against a
-// temporary copy of the synthetic Hormuz store. The kit assumes a store without cards (it
-// expects an empty list after rejected drafts), so the cards of the copy are left out here;
-// hormuz.test.ts runs the adapter over the complete example store.
+// The reference adapter passes the StorageAdapter conformance kit (ADR-0005, M1-02) against
+// temporary copies of the synthetic Hormuz store: once without its cards and once complete.
 
 import { cp, readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
@@ -39,54 +37,59 @@ async function findFile(dir: string, id: string): Promise<string> {
   return file;
 }
 
-describeStorageAdapterConformance('markdown-files', async () => {
-  const dir = await copyHormuz({ cards: false });
-  const adapter = await openStore(dir);
-  return {
-    adapter,
-    reopen: () => openStore(dir),
-    relocate: async () => {
-      const moved = await tempDir();
-      await cp(dir, moved, { recursive: true });
-      return openStore(moved);
+for (const withCards of [false, true]) {
+  describeStorageAdapterConformance(
+    withCards ? 'markdown-files (complete Hormuz store)' : 'markdown-files (empty Hormuz store)',
+    async () => {
+      const dir = await copyHormuz({ cards: withCards });
+      const adapter = await openStore(dir);
+      return {
+        adapter,
+        reopen: () => openStore(dir),
+        relocate: async () => {
+          const moved = await tempDir();
+          await cp(dir, moved, { recursive: true });
+          return openStore(moved);
+        },
+        raw: async (id) => readFile(await findFile(dir, id), 'utf8'),
+        seed: {
+          legacyCard: async () => {
+            const id = newId();
+            await writeCardFile(
+              dir,
+              'legacy-topic.md',
+              `---\nid: ${id}\ntype: topic\ntitle: Legacy topic\n---\n\nOld.\n`,
+            );
+            return id;
+          },
+          cardWithForeignFields: async () => {
+            const id = newId();
+            await writeCardFile(
+              dir,
+              'foreign-fields.md',
+              [
+                '---',
+                '# kept: a comment the product does not own',
+                `id: ${id}`,
+                'format: 2',
+                "x-store-field:   'kept   verbatim'",
+                'type: claim',
+                'title:    Original title   # trailing comment',
+                'layer: said',
+                'originSystem: Example store',
+                'author: human',
+                'x-other:',
+                '  nested: [1, 2]',
+                '---',
+                '',
+                'Body.',
+                '',
+              ].join('\n'),
+            );
+            return id;
+          },
+        },
+      };
     },
-    raw: async (id) => readFile(await findFile(dir, id), 'utf8'),
-    seed: {
-      legacyCard: async () => {
-        const id = newId();
-        await writeCardFile(
-          dir,
-          'legacy-topic.md',
-          `---\nid: ${id}\ntype: topic\ntitle: Legacy topic\n---\n\nOld.\n`,
-        );
-        return id;
-      },
-      cardWithForeignFields: async () => {
-        const id = newId();
-        await writeCardFile(
-          dir,
-          'foreign-fields.md',
-          [
-            '---',
-            '# kept: a comment the product does not own',
-            `id: ${id}`,
-            'format: 2',
-            "x-store-field:   'kept   verbatim'",
-            'type: claim',
-            'title:    Original title   # trailing comment',
-            'layer: said',
-            'originSystem: Example store',
-            'author: human',
-            'x-other:',
-            '  nested: [1, 2]',
-            '---',
-            '',
-            'Body.',
-            '',
-          ].join('\n'),
-        );
-        return id;
-      },
-    },
-  };
-});
+  );
+}

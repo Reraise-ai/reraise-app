@@ -318,7 +318,9 @@ a `sourceChecksum` on a card outside `collection: evidence` that is not a SHA-25
 
 A `lage` card, and any other versioned card, is **archived** on rewrite
 ([ADR-0006](../adr/0006-files-are-the-truth.md)). The previous version moves to an archive folder next to the card, named
-`_archive/<file>.v<n>.md`, where `n` is the version number. Nothing is deleted. The
+`_archive/<file>.v<n>.md`, where `n` is the version number. Nothing is deleted. In the reference
+format `<file>` is the card's file name without `.md` (`01-x.md` is archived as
+`_archive/01-x.v1.md`). The
 validator does not look inside the archive. History is therefore a set of archived
 versions, not an event log.
 
