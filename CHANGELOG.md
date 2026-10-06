@@ -10,3 +10,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 - Repository foundation: community files, licensing (Apache-2.0 / AGPL-3.0-or-later),
   issue and pull request templates, Dependabot configuration.
+- pnpm workspace tooling (TypeScript strict, ESLint, Prettier, Vitest), package skeletons, SPDX and
+  no-real-data checks, schema validation script, CI and CodeQL workflows.

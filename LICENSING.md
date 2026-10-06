@@ -9,20 +9,20 @@ Copyright: The Worldbuilder contributors.
 
 ## Which licence applies where
 
-| Directory | Licence |
-|---|---|
-| `packages/core` | Apache-2.0 |
-| `packages/adapters/*` | Apache-2.0 |
-| `packages/disclosure-gate` | Apache-2.0 |
-| `packages/training-export` | Apache-2.0 |
-| `packages/conformance` | Apache-2.0 |
-| `schemas/` | Apache-2.0 |
-| `examples/` | Apache-2.0 |
-| `docs/` (including the card format specification) | Apache-2.0 |
-| `scripts/`, `.github/`, root tooling | Apache-2.0 |
-| `apps/board` | AGPL-3.0-or-later |
-| `services/api` | AGPL-3.0-or-later |
-| `packages/mcp-server` | AGPL-3.0-or-later |
+| Directory                                         | Licence           |
+| ------------------------------------------------- | ----------------- |
+| `packages/core`                                   | Apache-2.0        |
+| `packages/adapters/*`                             | Apache-2.0        |
+| `packages/disclosure-gate`                        | Apache-2.0        |
+| `packages/training-export`                        | Apache-2.0        |
+| `packages/conformance`                            | Apache-2.0        |
+| `schemas/`                                        | Apache-2.0        |
+| `examples/`                                       | Apache-2.0        |
+| `docs/` (including the card format specification) | Apache-2.0        |
+| `scripts/`, `.github/`, root tooling              | Apache-2.0        |
+| `apps/board`                                      | AGPL-3.0-or-later |
+| `services/api`                                    | AGPL-3.0-or-later |
+| `packages/mcp-server`                             | AGPL-3.0-or-later |
 
 `prototype/` is a frozen early concept and follows the Apache-2.0 tier.
 

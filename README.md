@@ -52,7 +52,7 @@ Available from M1. Until then, to work on the foundations:
 ```sh
 corepack enable
 pnpm install
-pnpm test
+pnpm lint && pnpm typecheck && pnpm test && pnpm build
 ```
 
 ## Repository settings
