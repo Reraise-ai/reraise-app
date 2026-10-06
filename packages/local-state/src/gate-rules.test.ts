@@ -182,3 +182,22 @@ describe('gate rules loader', () => {
     });
   });
 });
+
+describe('fragment source names', () => {
+  const frag = (source: string, id = 'f') => ({
+    source,
+    rules: [{ id, effect: 'deny', targets: ['demo'], match: {} }],
+  });
+
+  it('rejects reserved sources and the same source supplied twice', () => {
+    for (const reserved of ['user', 'fail-closed']) {
+      const r = buildGateRules(undefined, [frag(reserved)]);
+      expect(r.ok).toBe(false);
+      expect(r.reason).toContain('reserved');
+    }
+    const dup = buildGateRules(undefined, [frag('store-a', 'f1'), frag('store-a', 'f2')]);
+    expect(dup.ok).toBe(false);
+    expect(dup.reason).toContain('more than once');
+    expect(buildGateRules(undefined, [frag('store-a', 'f1'), frag('store-b', 'f2')]).ok).toBe(true);
+  });
+});

@@ -202,3 +202,33 @@ describe('assertStateDirSafe', () => {
     ).resolves.toBeTruthy();
   });
 });
+
+describe('review regressions', () => {
+  it('a state dir named like "..state" inside a store root is inside it', async () => {
+    const base = await tempDir();
+    const root = path.join(base, 'store');
+    await mkdir(root);
+    await expect(
+      assertStateDirSafe(path.join(root, '..state'), { storeRoots: [root] }),
+    ).rejects.toMatchObject({
+      code: 'unsafe_state_dir',
+    });
+    await expect(
+      assertStateDirSafe(path.join(root, '..'), { storeRoots: [root] }),
+    ).resolves.toBeTruthy();
+  });
+
+  it('refuses UNC and device paths for an explicit Windows state dir', () => {
+    for (const explicitPath of [
+      '\\\\server\\share\\wb',
+      '//server/share/wb',
+      '\\\\?\\C:\\wb',
+      '\\\\.\\C:\\wb',
+    ]) {
+      expect(() => resolveStateDir({ platform: 'win32', explicitPath }), explicitPath).toThrow(
+        'UNC',
+      );
+    }
+    expect(resolveStateDir({ platform: 'win32', explicitPath: 'C:\\wb' })).toBe('C:\\wb');
+  });
+});

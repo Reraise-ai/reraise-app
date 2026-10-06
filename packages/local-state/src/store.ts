@@ -18,11 +18,11 @@ import type {
   Stance,
   StanceInput,
 } from '@worldbuilder/core';
-import { mkdir, readFile, readdir } from 'node:fs/promises';
+import { chmod, lstat, mkdir, readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { localStateError } from './errors.js';
 import { type FsOps, Mutex, atomicWriteFile, defaultFsOps } from './fs-util.js';
-import { GateLog, type GateLogOptions } from './gate-log.js';
+import { DEFAULT_GATE_LOG_KEEP, GateLog, type GateLogOptions } from './gate-log.js';
 import { loadGateRulesFile } from './gate-rules.js';
 import { assertStateDirSafe, resolveStateDir, type ResolveStateDirOptions } from './state-dir.js';
 import { ULID_PATTERN, createUlidFactory } from './ulid.js';
@@ -80,7 +80,27 @@ export async function createLocalStateStore(
     ...(options.storeRoots ? { storeRoots: options.storeRoots } : {}),
   });
   await mkdir(stateDir, { recursive: true, mode: 0o700 });
+  if (process.platform !== 'win32') await chmod(stateDir, 0o700); // an existing dir may be looser
+  await refuseSymlinkedEntries(stateDir, options.gateLog?.keep ?? DEFAULT_GATE_LOG_KEEP);
   return new FileLocalStateStore(stateDir, options);
+}
+
+/**
+ * A symbolic link in place of one of our files or directories could redirect writes out of the
+ * state directory (and past the store-root and Git checks), so it is refused at open.
+ */
+async function refuseSymlinkedEntries(stateDir: string, keep: number): Promise<void> {
+  const names = ['proposals', 'stances', 'gate-rules.yaml', 'gate-log.jsonl'];
+  for (let n = 1; n <= keep; n++) names.push(`gate-log.jsonl.${n}`);
+  for (const name of names) {
+    const info = await lstat(path.join(stateDir, name)).catch(() => undefined);
+    if (info?.isSymbolicLink()) {
+      throw localStateError(
+        'unsafe_state_dir',
+        `${name} in the state directory is a symbolic link`,
+      );
+    }
+  }
 }
 
 class FileLocalStateStore implements LocalStateStore {
@@ -116,6 +136,11 @@ class FileLocalStateStore implements LocalStateStore {
    * Strictly increasing millisecond timestamps for change tracking: no two changes share a
    * stamp, so a cursor never skips or repeats one (one writer, ADR-0030). Resumes after the
    * newest stamp on disk when the process restarts.
+   *
+   * Clock jumps: stamps never go backwards. If the wall clock steps back (NTP, manual change),
+   * new stamps continue one millisecond after the last one, so they run ahead of the clock
+   * until it catches up. Cursors stay valid; \`createdAt\` may then be later than real time.
+   * A step forward only moves stamps forward. No schema change is involved.
    */
   private async stamp(): Promise<string> {
     if (!this.stampReady) {
@@ -132,31 +157,66 @@ class FileLocalStateStore implements LocalStateStore {
     return path.join(this.proposalsDir, `${id}.json`);
   }
 
-  private async readProposalFile(file: string): Promise<Proposal | undefined> {
+  /**
+   * A damaged file (not JSON, schema-invalid, or an inner id that differs from the file name)
+   * counts nowhere (ADR-0011) and must not stop polling; it is reported by `damagedFiles`.
+   */
+  private async inspectProposalFile(
+    file: string,
+  ): Promise<{ proposal?: Proposal; damaged?: string }> {
     let text: string;
     try {
       text = await readFile(file, 'utf8');
     } catch (e) {
-      if ((e as NodeJS.ErrnoException).code === 'ENOENT') return undefined;
+      if ((e as NodeJS.ErrnoException).code === 'ENOENT') return {};
       throw e;
     }
     try {
-      const data = parseJson(text);
-      return validatorFor('proposal.schema.json')(data).ok ? (data as Proposal) : undefined;
+      const data = parseJson(text) as Proposal;
+      if (
+        validatorFor('proposal.schema.json')(data).ok &&
+        `${data.id}.json` === path.basename(file)
+      ) {
+        return { proposal: data };
+      }
     } catch {
-      return undefined; // a damaged file counts nowhere (ADR-0011) and must not stop polling
+      // fall through: not JSON
     }
+    return { damaged: path.basename(file) };
   }
 
-  private async readAllProposals(): Promise<Proposal[]> {
-    const names = await readdir(this.proposalsDir).catch((e: NodeJS.ErrnoException) => {
+  private async readProposalFile(file: string): Promise<Proposal | undefined> {
+    return (await this.inspectProposalFile(file)).proposal;
+  }
+
+  private async listDir(dir: string): Promise<string[]> {
+    const names = await readdir(dir).catch((e: NodeJS.ErrnoException) => {
       if (e.code === 'ENOENT') return [] as string[];
       throw e;
     });
+    return names.filter((n) => ULID_FILE.test(n));
+  }
+
+  async damagedFiles(): Promise<{ proposals: string[]; stances: string[] }> {
+    const proposals = (
+      await Promise.all(
+        (await this.listDir(this.proposalsDir)).map((n) =>
+          this.inspectProposalFile(path.join(this.proposalsDir, n)),
+        ),
+      )
+    ).flatMap((r) => (r.damaged ? [r.damaged] : []));
+    const stances: string[] = [];
+    for (const n of await this.listDir(this.stancesDir)) {
+      await this.readStanceFile(path.join(this.stancesDir, n)).catch(() => void stances.push(n));
+    }
+    return { proposals: proposals.sort(), stances: stances.sort() };
+  }
+
+  private async readAllProposals(): Promise<Proposal[]> {
     const all = await Promise.all(
-      names
-        .filter((n) => ULID_FILE.test(n))
-        .map((n) => this.readProposalFile(path.join(this.proposalsDir, n))),
+      (await this.listDir(this.proposalsDir)).map((n) =>
+        this.readProposalFile(path.join(this.proposalsDir, n)),
+      ),
     );
     return all.filter((p): p is Proposal => p !== undefined);
   }
@@ -253,10 +313,18 @@ class FileLocalStateStore implements LocalStateStore {
       if ((e as NodeJS.ErrnoException).code === 'ENOENT') return undefined;
       throw e;
     }
-    const data = parseJson(text);
+    let data: Stance;
+    try {
+      data = parseJson(text) as Stance;
+    } catch {
+      throw localStateError('invalid', 'stored stance is not valid JSON');
+    }
     const checked = validatorFor('stance.schema.json')(data);
     if (!checked.ok) throw localStateError('invalid', `stored stance invalid: ${checked.message}`);
-    return data as Stance;
+    if (`${data.cardId}.json` !== path.basename(file)) {
+      throw localStateError('invalid', 'stored stance does not match its file name');
+    }
+    return data;
   }
 
   async getStance(cardId: string): Promise<Stance | undefined> {
@@ -264,14 +332,10 @@ class FileLocalStateStore implements LocalStateStore {
   }
 
   async listStances(): Promise<Stance[]> {
-    const names = await readdir(this.stancesDir).catch((e: NodeJS.ErrnoException) => {
-      if (e.code === 'ENOENT') return [] as string[];
-      throw e;
-    });
     const all = await Promise.all(
-      names
-        .filter((n) => ULID_FILE.test(n))
-        .map((n) => this.readStanceFile(path.join(this.stancesDir, n))),
+      (await this.listDir(this.stancesDir)).map((n) =>
+        this.readStanceFile(path.join(this.stancesDir, n)).catch(() => undefined),
+      ),
     );
     return all.filter((s): s is Stance => s !== undefined);
   }

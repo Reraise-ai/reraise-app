@@ -12,7 +12,7 @@ const entry = (n: number) => ({
   item: 'card' as const,
   target: 'cloud_model' as const,
   decision: 'deny' as const,
-  reason: 'default deny',
+  reason: 'default_deny' as const,
   at: '2026-10-06T10:00:00.000Z',
 });
 
@@ -32,7 +32,8 @@ describe('gate log', () => {
       item: 'stance',
       target: 'screen',
       decision: 'allow',
-      reason: 'screen-all',
+      reason: 'stance_screen_only',
+      ruleId: 'screen-all',
     });
     await log.append(entry(2));
     const rows = await lines(file);
@@ -43,7 +44,8 @@ describe('gate log', () => {
       item: 'stance',
       target: 'screen',
       decision: 'allow',
-      reason: 'screen-all',
+      reason: 'stance_screen_only',
+      ruleId: 'screen-all',
     });
     expect(Object.keys(rows[1]!).sort()).toEqual([
       'at',
@@ -55,7 +57,7 @@ describe('gate log', () => {
     ]);
   });
 
-  it('never contains card content: extra fields are dropped and the reason is capped', async () => {
+  it('never contains card content: extra fields are dropped; free text in any field is refused', async () => {
     const dir = await tempDir();
     const file = path.join(dir, 'gate-log.jsonl');
     const log = new GateLog(file);
@@ -66,10 +68,47 @@ describe('gate log', () => {
       body: MARKER,
       card: { body: MARKER },
     } as never);
-    await log.append({ ...entry(1), reason: 'r'.repeat(5000) });
-    const text = await readFile(file, 'utf8');
-    expect(text).not.toContain(MARKER);
-    expect((await lines(file))[1]!.reason).toHaveLength(200);
+    for (const patch of [
+      { reason: MARKER },
+      { ruleId: MARKER },
+      { at: MARKER },
+      { at: `2026-10-06T10:00:00Z ${MARKER}` },
+    ]) {
+      await expect(log.append({ ...entry(1), ...patch } as never)).rejects.toMatchObject({
+        code: 'invalid',
+      });
+    }
+    expect(await readFile(file, 'utf8')).not.toContain(MARKER);
+    expect(await lines(file)).toHaveLength(1);
+  });
+
+  it('accepts ISO 8601 UTC times only', () => {
+    const ok = (at: string) => formatGateLogLine(entry(1), at);
+    expect(() => ok('2026-10-06T10:00:00Z')).not.toThrow();
+    expect(() => ok('2026-10-06T10:00:00.5Z')).not.toThrow();
+    for (const bad of [
+      '2026-10-06T10:00:00+02:00',
+      '2026-10-06',
+      '2026-10-06 10:00:00Z',
+      '2026-13-45T99:00:00Z',
+      'x',
+    ]) {
+      expect(() => ok(bad), bad).toThrow('ISO 8601');
+    }
+  });
+
+  it('records the deciding rule id and only fixed reason codes', async () => {
+    const dir = await tempDir();
+    const file = path.join(dir, 'gate-log.jsonl');
+    const log = new GateLog(file);
+    await log.append({ ...entry(1), reason: 'rule_deny', ruleId: 'never-class-a' });
+    expect((await lines(file))[0]).toMatchObject({ reason: 'rule_deny', ruleId: 'never-class-a' });
+    await expect(
+      log.append({ ...entry(1), reason: 'default deny' } as never),
+    ).rejects.toMatchObject({ code: 'invalid' });
+    await expect(log.append({ ...entry(1), ruleId: 'Bad Id' })).rejects.toMatchObject({
+      code: 'invalid',
+    });
   });
 
   it('rejects malformed entries instead of logging them', () => {
@@ -107,15 +146,17 @@ describe('gate log', () => {
     it('keeps order: .1 holds older lines than the live file', async () => {
       const dir = await tempDir();
       const file = path.join(dir, 'gate-log.jsonl');
-      const log = new GateLog(file, { maxBytes: lineSize * 2, keep: 5 });
+      const sized = Buffer.byteLength(
+        formatGateLogLine({ ...entry(1), ruleId: 'n1' }, entry(1).at),
+      );
+      const log = new GateLog(file, { maxBytes: sized * 2, keep: 5 });
       for (let i = 0; i < 5; i++) {
-        await log.append({ ...entry(i), reason: `n${i}`.padEnd(12, '.') });
+        await log.append({ ...entry(i), ruleId: `n${i}` });
       }
-      const reasons = async (f: string) =>
-        (await lines(f)).map((r) => String(r.reason).slice(0, 2));
-      expect(await reasons(file + '.2')).toEqual(['n0', 'n1']);
-      expect(await reasons(file + '.1')).toEqual(['n2', 'n3']);
-      expect(await reasons(file)).toEqual(['n4']);
+      const ruleIds = async (f: string) => (await lines(f)).map((r) => String(r.ruleId));
+      expect(await ruleIds(file + '.2')).toEqual(['n0', 'n1']);
+      expect(await ruleIds(file + '.1')).toEqual(['n2', 'n3']);
+      expect(await ruleIds(file)).toEqual(['n4']);
     });
 
     it('default limits are 10 MB and 5 files', async () => {

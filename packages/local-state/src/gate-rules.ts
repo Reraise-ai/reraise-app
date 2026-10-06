@@ -17,6 +17,8 @@ import { parse } from 'yaml';
 import { validatorFor } from './validate.js';
 
 const TARGETS: DisclosureTarget[] = ['screen', 'local_model', 'cloud_model', 'demo'];
+/** Sources the loader assigns itself; an adapter must not pose as them. */
+const RESERVED_SOURCES = new Set(['user', 'fail-closed']);
 const MAX_RULE_FILE_BYTES = 1024 * 1024;
 
 /** The rule set that denies every card for every target. */
@@ -68,6 +70,12 @@ export function buildGateRules(
       );
     }
     const f = fragment as GateRuleFragment;
+    if (RESERVED_SOURCES.has(f.source)) {
+      return denyAll(`gate rule fragment source "${f.source}" is reserved`);
+    }
+    if (validFragments.some((v) => v.source === f.source)) {
+      return denyAll(`gate rule fragment source "${f.source}" is supplied more than once`);
+    }
     validFragments.push(f);
     effective.push(...f.rules.map((r) => ({ ...r, source: f.source })));
   }

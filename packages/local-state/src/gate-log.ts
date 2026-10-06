@@ -4,7 +4,7 @@
 // Gate decision log (ADR-0030): append-only JSON Lines with card id, target, decision and
 // reason, never card content. Rotated by size: `gate-log.jsonl` -> `.1` -> ... -> `.<keep>`.
 
-import type { GateLogEntry } from '@worldbuilder/core';
+import { GATE_LOG_REASONS, type GateLogEntry } from '@worldbuilder/core';
 import { appendFile, mkdir, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { localStateError } from './errors.js';
@@ -13,7 +13,9 @@ import { ULID_PATTERN } from './ulid.js';
 
 export const DEFAULT_GATE_LOG_MAX_BYTES = 10 * 1024 * 1024;
 export const DEFAULT_GATE_LOG_KEEP = 5;
-const MAX_REASON = 200;
+const REASONS = new Set<string>(GATE_LOG_REASONS);
+const RULE_ID = /^[a-z0-9][a-z0-9._-]{0,63}$/;
+const ISO_UTC = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z$/;
 const TARGETS = new Set(['screen', 'local_model', 'cloud_model', 'demo']);
 
 export interface GateLogOptions {
@@ -32,13 +34,21 @@ export function formatGateLogLine(entry: GateLogEntry, at: string): string {
   if (entry.item !== 'card' && entry.item !== 'stance') {
     throw localStateError('invalid', 'gate log: bad item');
   }
+  if (!REASONS.has(entry.reason)) throw localStateError('invalid', 'gate log: bad reason code');
+  if (entry.ruleId !== undefined && !RULE_ID.test(entry.ruleId)) {
+    throw localStateError('invalid', 'gate log: bad rule id');
+  }
+  if (!ISO_UTC.test(at) || Number.isNaN(Date.parse(at))) {
+    throw localStateError('invalid', 'gate log: time must be ISO 8601 UTC');
+  }
   return `${JSON.stringify({
     at,
     cardId: entry.cardId,
     item: entry.item,
     target: entry.target,
     decision: entry.decision,
-    reason: String(entry.reason).slice(0, MAX_REASON),
+    reason: entry.reason,
+    ...(entry.ruleId !== undefined ? { ruleId: entry.ruleId } : {}),
   })}\n`;
 }
 
@@ -60,9 +70,9 @@ export class GateLog {
     this.now = options.now ?? (() => new Date());
   }
 
-  append(entry: GateLogEntry): Promise<void> {
+  async append(entry: GateLogEntry): Promise<void> {
     const line = formatGateLogLine(entry, entry.at ?? this.now().toISOString());
-    return this.mutex.run(async () => {
+    return await this.mutex.run(async () => {
       await mkdir(path.dirname(this.file), { recursive: true, mode: 0o700 });
       const size = await stat(this.file).then(
         (s) => s.size,

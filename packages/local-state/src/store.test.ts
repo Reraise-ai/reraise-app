@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright The Worldbuilder contributors
 
-import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, stat, symlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { isLocalStateError } from './errors.js';
@@ -35,7 +35,8 @@ describe('createLocalStateStore', () => {
       item: 'card',
       target: 'screen',
       decision: 'allow',
-      reason: 'r',
+      reason: 'rule_allow',
+      ruleId: 'r',
     });
     expect(store.stateDir).toBe(stateDir);
     expect((await readdir(base)).sort()).toEqual(['state']);
@@ -353,7 +354,7 @@ describe('gate log and rules through the store', () => {
         item: 'card',
         target: 'demo',
         decision: 'deny',
-        reason: 'default deny',
+        reason: 'default_deny' as const,
       });
     }
     expect((await readdir(path.join(base, 's'))).sort()).toEqual([
@@ -375,5 +376,71 @@ describe('gate log and rules through the store', () => {
     });
     await writeFile(path.join(stateDir, 'gate-rules.yaml'), 'rules: nonsense');
     expect(await store.loadGateRules()).toMatchObject({ ok: false });
+  });
+});
+
+describe('review hardening', () => {
+  it('refuses at open a symlinked proposals dir, stances dir, rules file or log file', async () => {
+    for (const name of [
+      'proposals',
+      'stances',
+      'gate-rules.yaml',
+      'gate-log.jsonl',
+      'gate-log.jsonl.2',
+    ]) {
+      const base = await tempDir();
+      const stateDir = path.join(base, 'state');
+      await mkdir(stateDir);
+      await mkdir(path.join(base, 'elsewhere'));
+      try {
+        await symlink(path.join(base, 'elsewhere'), path.join(stateDir, name));
+      } catch (e) {
+        if ((e as NodeJS.ErrnoException).code === 'EPERM') return; // Windows without privilege
+        throw e;
+      }
+      await rejects(createLocalStateStore({ explicitPath: stateDir }), 'unsafe_state_dir');
+    }
+  });
+
+  it.skipIf(process.platform === 'win32')(
+    'tightens an existing directory to owner-only',
+    async () => {
+      const base = await tempDir();
+      const stateDir = path.join(base, 'state');
+      await mkdir(stateDir, { mode: 0o755 });
+      await createLocalStateStore({ explicitPath: stateDir });
+      expect((await stat(stateDir)).mode & 0o777).toBe(0o700);
+    },
+  );
+
+  it('ignores a proposal whose inner id differs from its file name, and reports it', async () => {
+    const { stateDir, store } = await open();
+    const p = await store.createProposal(place(), AGENT);
+    const other = '01J9Z0000000000000000000R5';
+    await writeFile(path.join(stateDir, 'proposals', `${other}.json`), JSON.stringify(p));
+    expect((await store.listProposals()).proposals.map((x) => x.id)).toEqual([p.id]);
+    expect(await store.getProposal(other)).toBeUndefined();
+    await rejects(store.decideProposal(other, 'accepted'), 'not_found');
+    expect((await store.damagedFiles()).proposals).toEqual([`${other}.json`]);
+  });
+
+  it('a stance whose inner card id differs from its file name is invalid; listing skips and reports damage', async () => {
+    const { stateDir, store } = await open();
+    const good = await store.saveStance(CARD_A, { position: 'believed', weight: 1 });
+    await writeFile(path.join(stateDir, 'stances', `${CARD_B}.json`), JSON.stringify(good));
+    await rejects(store.getStance(CARD_B), 'invalid');
+    const broken = '01J9Z0000000000000000000R5';
+    await writeFile(path.join(stateDir, 'stances', `${broken}.json`), '{ nope');
+    expect(await store.listStances()).toEqual([good]);
+    expect(await store.damagedFiles()).toEqual({
+      proposals: [],
+      stances: [`${CARD_B}.json`, `${broken}.json`].sort(),
+    });
+  });
+
+  it('reports no damage on a clean state', async () => {
+    const { store } = await open();
+    await store.createProposal(place(), AGENT);
+    expect(await store.damagedFiles()).toEqual({ proposals: [], stances: [] });
   });
 });

@@ -27,6 +27,23 @@ export interface LocalStateError extends Error {
   readonly code: LocalStateErrorCode;
 }
 
+/**
+ * Fixed reason codes of the gate log. The caller (the service, around `DisclosureGate.decide`)
+ * must map each decision to one of these and pass the deciding rule's id as `ruleId`; it must
+ * never put free text, card titles or card bodies into a log entry.
+ */
+export const GATE_LOG_REASONS = [
+  'default_deny',
+  'rule_allow',
+  'rule_deny',
+  'stance_screen_only',
+  'invalid_rules',
+  'confirmation_required',
+  'confirmed_transfer',
+  'connection_not_registered',
+] as const;
+export type GateLogReason = (typeof GATE_LOG_REASONS)[number];
+
 /** One line of the gate decision log (ADR-0030): ids, targets and decisions, never content. */
 export interface GateLogEntry {
   readonly cardId: CardId;
@@ -34,8 +51,10 @@ export interface GateLogEntry {
   readonly item: 'card' | 'stance';
   readonly target: DisclosureTarget;
   readonly decision: 'allow' | 'deny';
-  /** The deciding rule id or "default deny"; the gate never puts card text here. */
-  readonly reason: string;
+  /** Why, as a fixed code: never prose, never card text. */
+  readonly reason: GateLogReason;
+  /** The deciding rule, when a rule decided. */
+  readonly ruleId?: string;
   /** ISO 8601 date-time; the store sets it when omitted. */
   readonly at?: string;
 }
@@ -81,10 +100,17 @@ export interface LocalStateStore {
   decideProposal(id: string, status: 'accepted' | 'rejected'): Promise<Proposal>;
 
   getStance(cardId: string): Promise<Stance | undefined>;
+  /** Valid stances; a damaged file is skipped (see `damagedFiles`). */
   listStances(): Promise<Stance[]>;
   /** Human-only: set the stance; the previous version is kept in `history`. */
   saveStance(cardId: string, input: StanceInput): Promise<Stance>;
 
+  /**
+   * Names of proposal and stance files that were skipped or refused because they are damaged
+   * (not JSON, schema-invalid, or whose inner id differs from the file name). Such a proposal
+   * counts nowhere (ADR-0011); the board should surface the list.
+   */
+  damagedFiles(): Promise<{ readonly proposals: string[]; readonly stances: string[] }>;
   /** Append one decision to the gate log (rotating by size). */
   appendGateLog(entry: GateLogEntry): Promise<void>;
   /** Load the rules; invalid rules or fragments yield a deny-all result (fail closed). */

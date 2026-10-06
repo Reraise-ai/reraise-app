@@ -30,10 +30,15 @@ export function resolveStateDir(options: ResolveStateDirOptions = {}): string {
   const env = options.env ?? process.env;
   const p = platform === 'win32' ? path.win32 : path.posix;
   if (options.explicitPath !== undefined) {
+    const explicit = options.explicitPath;
+    if (platform === 'win32' && /^[\\/]{2}/.test(explicit)) {
+      // UNC and device paths: local state must live on the device, not on a network share.
+      throw new Error('the state directory must be a local drive path, not a UNC or device path');
+    }
     if (
-      options.explicitPath.trim() === '' ||
-      !p.isAbsolute(options.explicitPath) ||
-      (platform === 'win32' && !/^(?:[A-Za-z]:[\\/]|\\\\)/.test(options.explicitPath))
+      explicit.trim() === '' ||
+      !p.isAbsolute(explicit) ||
+      (platform === 'win32' && !/^[A-Za-z]:[\\/]/.test(explicit))
     ) {
       throw new Error('the state directory path must be absolute');
     }
@@ -98,7 +103,7 @@ function isInside(child: string, root: string, fold: boolean): boolean {
   const c = fold ? child.toLowerCase() : child;
   const r = fold ? root.toLowerCase() : root;
   const rel = path.relative(r, c);
-  return rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel));
+  return rel === '' || (rel !== '..' && !rel.startsWith('..' + path.sep) && !path.isAbsolute(rel));
 }
 
 /**

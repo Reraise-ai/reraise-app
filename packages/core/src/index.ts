@@ -7,6 +7,7 @@ import type { Layer } from './generated/contracts.js';
 export type * from './generated/contracts.js';
 /** Adapter interfaces (ADR-0005). */
 export type * from './adapters/index.js';
+export { GATE_LOG_REASONS } from './adapters/local-state.js';
 export {
   CONTENT_HASH_FIELDS,
   canonicalJson,

@@ -78,6 +78,21 @@ state directory:
   accepts the human screen session token only and never an agent token
   ([ADR-0026](0026-security-defaults.md)). This endpoint must be added to the OpenAPI contract.
 
+### Implementation notes (M1)
+
+- Proposals carry no sequence number (the Proposal schema is closed), so the change cursor is
+  built from strictly increasing millisecond stamps in `createdAt` and `decidedAt`. If the wall
+  clock steps back, new stamps continue one millisecond after the previous one and run ahead
+  of the clock until it catches up; cursors stay valid and nothing is skipped or repeated. No
+  schema change is needed.
+- A damaged proposal or stance file (not JSON, schema-invalid, inner id different from the file
+  name) is skipped in listings and reported by `damagedFiles()`; a stored proposal that does not
+  validate never counts.
+- At open the directory is set to owner-only permissions on POSIX, and the store refuses a
+  state directory in which `proposals`, `stances`, `gate-rules.yaml` or a gate-log file is a
+  symbolic link. An explicit state directory must be a local drive path on Windows (no UNC).
+- Gate log entries carry a fixed reason code and an optional rule id, never prose.
+
 ### Consequences
 
 - Good, because local state is inspectable, portable and never mixed into a shared store.
