@@ -5,8 +5,8 @@
 // short critical section of one write. Created with the exclusive flag, which is atomic on
 // every supported platform and network share that honours O_EXCL.
 
-import { randomUUID } from 'node:crypto';
-import { mkdir, open, readFile, rename, stat, unlink } from 'node:fs/promises';
+import { createHash, randomUUID } from 'node:crypto';
+import { link, mkdir, open, readFile, rename, stat, unlink, writeFile } from 'node:fs/promises';
 import { hostname } from 'node:os';
 import path from 'node:path';
 import { MarkdownStoreError } from './errors.js';
@@ -31,6 +31,10 @@ interface LockFileContent {
 export interface HeldLock {
   release(): Promise<void>;
 }
+
+/** A hash of the host name: enough to tell hosts apart, never the name itself. */
+export const hostId = (): string =>
+  createHash('sha256').update(hostname()).digest('hex').slice(0, 16);
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
@@ -65,7 +69,7 @@ function parseLock(text: string): LockFileContent | undefined {
 export function isStale(lock: LockFileContent | undefined, staleMs: number, now: number): boolean {
   if (!lock) return false; // unreadable: a writer may be mid-creation, judged by age elsewhere
   if (now - lock.createdAt > staleMs) return true;
-  return lock.host === hostname() && !pidAlive(lock.pid);
+  return lock.host === hostId() && !pidAlive(lock.pid);
 }
 
 /** Acquire the store's write lock at `lockPath`, waiting up to `timeoutMs`. */
@@ -78,10 +82,14 @@ export async function acquireLock(lockPath: string, options: LockOptions = {}): 
   const content: LockFileContent = {
     token,
     pid: process.pid,
-    host: hostname(),
+    host: hostId(),
     createdAt: Date.now(),
   };
   await mkdir(path.dirname(lockPath), { recursive: true });
+  // The folder holds only machine-local state; a version control tool must never pick it up.
+  await writeFile(path.join(path.dirname(lockPath), '.gitignore'), '*\n', { flag: 'wx' }).catch(
+    () => undefined,
+  );
 
   for (;;) {
     try {
@@ -112,25 +120,33 @@ export async function acquireLock(lockPath: string, options: LockOptions = {}): 
   }
 }
 
-/** Move an abandoned lock out of the way; the move is atomic, so only one breaker wins. */
-async function breakIfStale(lockPath: string, staleMs: number): Promise<void> {
+/**
+ * Move an abandoned lock out of the way. The move is atomic, so only one breaker wins. If the
+ * bytes that were moved are not the bytes that were judged stale (a fresh lock took the slot
+ * in between), the file is put back with a hard link, which never replaces a lock that has
+ * been taken meanwhile. `afterRead` is a test seam for exactly that race.
+ */
+export async function breakIfStale(
+  lockPath: string,
+  staleMs: number,
+  afterRead?: () => Promise<void>,
+): Promise<void> {
   const text = await readFile(lockPath, 'utf8').catch(() => undefined);
   if (text === undefined) return; // released meanwhile
   const lock = parseLock(text);
   // An unreadable file is a writer mid-creation or a crashed one; only age tells them apart.
   const unreadableAndOld = lock === undefined && (await ageMs(lockPath)) > staleMs;
   if (!unreadableAndOld && !isStale(lock, staleMs, Date.now())) return;
+  await afterRead?.();
   const aside = `${lockPath}.stale-${randomUUID()}`;
   try {
     await rename(lockPath, aside);
   } catch {
     return; // another process broke it first
   }
-  const moved = parseLock(await readFile(aside, 'utf8').catch(() => ''));
-  if (moved && lock && moved.token !== lock.token) {
-    // We moved a fresh lock that replaced the stale one: put it back if the slot is free.
-    await rename(aside, lockPath).catch(() => undefined);
-    return;
+  const moved = await readFile(aside, 'utf8').catch(() => undefined);
+  if (moved !== text) {
+    await link(aside, lockPath).catch(() => undefined);
   }
   await unlink(aside).catch(() => undefined);
 }

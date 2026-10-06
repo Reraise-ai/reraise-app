@@ -2,12 +2,11 @@
 // Copyright The Worldbuilder contributors
 
 import { spawnSync } from 'node:child_process';
-import { hostname } from 'node:os';
-import { readFile, stat, utimes, writeFile } from 'node:fs/promises';
+import { readFile, readdir, stat, utimes, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { MarkdownStoreError } from './errors.js';
-import { acquireLock, isStale } from './lock.js';
+import { acquireLock, breakIfStale, hostId, isStale } from './lock.js';
 import { cleanupAfterAll, tempDir } from './testing/store.js';
 
 cleanupAfterAll();
@@ -24,7 +23,7 @@ const fileOf = (over: Record<string, unknown>) =>
   JSON.stringify({
     token: 'other',
     pid: process.pid,
-    host: hostname(),
+    host: hostId(),
     createdAt: Date.now(),
     ...over,
   });
@@ -129,11 +128,73 @@ describe('write lock', () => {
 describe('isStale', () => {
   it('judges age and holder', () => {
     const now = Date.now();
-    const base = { token: 't', pid: process.pid, host: hostname(), createdAt: now };
+    const base = { token: 't', pid: process.pid, host: hostId(), createdAt: now };
     expect(isStale(undefined, 1000, now)).toBe(false);
     expect(isStale(base, 1000, now)).toBe(false);
     expect(isStale({ ...base, createdAt: now - 5000 }, 1000, now)).toBe(true);
     expect(isStale({ ...base, pid: deadPid() }, 1000, now)).toBe(true);
     expect(isStale({ ...base, host: 'elsewhere', pid: deadPid() }, 1000, now)).toBe(false);
+  });
+});
+
+describe('breaking a stale lock', () => {
+  it('puts a fresh lock back if it replaced the stale one before the move', async () => {
+    const file = await lockIn();
+    await (await acquireLock(file)).release();
+    await writeFile(file, fileOf({ createdAt: Date.now() - 120_000, token: 'stale' }));
+    const fresh = fileOf({ token: 'fresh' });
+    await breakIfStale(file, 60_000, async () => {
+      await writeFile(file, fresh); // another writer breaks and re-takes the lock first
+    });
+    expect(await readFile(file, 'utf8')).toBe(fresh);
+    expect((await readdir(path.dirname(file))).filter((n) => n.includes('stale-'))).toEqual([]);
+  });
+
+  it('does the same for an unreadable old lock file', async () => {
+    const file = await lockIn();
+    await (await acquireLock(file)).release();
+    await writeFile(file, 'garbage');
+    const old = new Date(Date.now() - 120_000);
+    await utimes(file, old, old);
+    const fresh = fileOf({ token: 'fresh' });
+    await breakIfStale(file, 60_000, async () => {
+      await writeFile(file, fresh);
+    });
+    expect(await readFile(file, 'utf8')).toBe(fresh);
+  });
+
+  it('removes the stale lock when nothing changed, and leaves a live one alone', async () => {
+    const file = await lockIn();
+    await (await acquireLock(file)).release();
+    await writeFile(file, fileOf({ createdAt: Date.now() - 120_000 }));
+    await breakIfStale(file, 60_000);
+    await expect(stat(file)).rejects.toThrow();
+    await writeFile(file, fileOf({}));
+    await breakIfStale(file, 60_000);
+    expect((await stat(file)).isFile()).toBe(true);
+  });
+
+  it('does not re-take the slot when another writer holds it by then', async () => {
+    const file = await lockIn();
+    await (await acquireLock(file)).release();
+    await writeFile(file, fileOf({ createdAt: Date.now() - 120_000, token: 'stale' }));
+    await breakIfStale(file, 60_000, async () => {
+      await writeFile(file, fileOf({ token: 'fresh' }));
+    });
+    // the moved fresh lock was linked back; a later writer sees a live lock
+    await expect(acquireLock(file, { timeoutMs: 40, pollMs: 5 })).rejects.toMatchObject({
+      code: 'locked',
+    });
+  });
+});
+
+describe('lock folder', () => {
+  it('ignores itself in version control and records only a host hash', async () => {
+    const file = await lockIn();
+    const held = await acquireLock(file);
+    expect(await readFile(path.join(path.dirname(file), '.gitignore'), 'utf8')).toBe('*\n');
+    const { host } = JSON.parse(await readFile(file, 'utf8')) as { host: string };
+    expect(host).toMatch(/^[0-9a-f]{16}$/);
+    await held.release();
   });
 });
