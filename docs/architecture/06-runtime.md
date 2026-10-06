@@ -4,7 +4,8 @@ Three scenarios show how the building blocks of [section 5](./05-building-blocks
 cooperate. **None of them runs today.** Scenario 6.1 is the target of milestone M1, 6.2 and
 6.3 belong to M2+ slices and to adapters outside this repository. Endpoint and message names
 are descriptive; the normative names are in the OpenAPI contract and the MCP tool definitions
-(in progress, M0).
+(in progress, M0). The process layout follows [ADR-0029](../adr/0029-process-topology.md):
+the Board API and the MCP server run in one local service process.
 
 ## 6.1 M1 walking skeleton
 
@@ -22,8 +23,8 @@ sequenceDiagram
   participant G as Disclosure gate
   participant SA as markdown-files adapter
   participant F as Card files
-  participant P as Local proposal store
-  participant MCP as MCP server
+  participant P as local-state (.worldbuilder)
+  participant MCP as MCP server at /mcp
   participant A as Test agent
 
   Note over H,F: Open a Lage
@@ -52,7 +53,7 @@ sequenceDiagram
   MCP->>C: validate proposal, status pending
   C->>P: store pending proposal
   MCP-->>A: proposal id, status pending
-  UI->>API: list proposals
+  UI->>API: GET /proposals?since=cursor, polled every 2 s
   API-->>UI: pending proposal, drawn dashed with its author
 
   Note over H,P: A human accepts
@@ -113,7 +114,7 @@ sequenceDiagram
   participant G as Disclosure gate
   participant JC as Jev connector
   participant J as Jev
-  participant P as Local proposal store
+  participant P as local-state (.worldbuilder)
 
   H->>UI: Quick question with options, engine Jev
   UI->>API: Level 1 request (question, options, engine)
@@ -124,6 +125,7 @@ sequenceDiagram
   end
   Note over C,G: Stance data and stance-dependent rules are never candidates
   C-->>API: transfer preview: cleared cards, denied cards with reasons
+  API->>API: SHA-256 of the exact canonical payload
   API-->>UI: confirmation dialog listing exactly what would leave the device
   alt the human declines
     H->>UI: Cancel
@@ -131,7 +133,10 @@ sequenceDiagram
     Note over API,G: Nothing is sent. The gate log keeps card ids and decisions, never content.
   else the human confirms
     H->>UI: Confirm this transfer
-    UI->>API: disclosure confirm (human-only endpoint, one transfer)
+    UI->>API: disclosure confirm (human-only endpoint)
+    API-->>UI: single-use token bound to the payload hash, valid 5 minutes
+    UI->>API: send with token
+    API->>API: payload hash equals the bound hash, token unused and not expired
     API->>JC: decide(output schema, cleared canonical objects)
     JC->>J: POST /v1/decide over HTTPS, credential from environment or keychain
     J-->>JC: typed answer with calibrated confidence
@@ -154,6 +159,8 @@ sequenceDiagram
   end
 ```
 
+If anything in the payload changes after the preview, its hash changes and the token is
+invalid; the user must confirm again ([ADR-0031](../adr/0031-gate-rules-and-confirmation-binding.md)).
 A Level 1 answer is not a decision, triggers no rule and enters no statistics. The same flow
 with a local rules engine or a local model uses target `local_model` and needs no per-transfer
 confirmation, but still a gate decision per card.

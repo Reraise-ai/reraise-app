@@ -9,14 +9,18 @@ exists today.
 See the [system context](./03-context-scope.md#31-business-context). Inside the box, two
 front ends (board app and MCP server) share one domain core. Four ports connect the core to
 everything outside: `StorageAdapter`, `SourceConnector`, `ModelConnector` and
-`DisclosureGate` ([ADR-0005](../adr/0005-universal-adapter-architecture.md)).
+`DisclosureGate` ([ADR-0005](../adr/0005-universal-adapter-architecture.md)). Device-only state
+(proposals, stances, gate log, gate rules) sits behind a fifth, local-state interface
+([ADR-0030](../adr/0030-local-state-on-the-device.md)).
 
 ## 5.2 Level 1: container view
 
 C4 level 2. Libraries that run inside another process (core, gate, adapters) are drawn as
 containers because they are separately versioned, separately licensed packages with their own
-contract. The process boundaries are an open decision, see
-[OD-1](./09-decisions.md#92-open-decisions).
+contract. Process layout: one local service process hosts the Board API and the MCP server
+(Streamable HTTP at `/mcp`); stdio-only MCP clients use the stateless bridge
+`worldbuilder mcp --stdio`, which forwards to that service and never writes
+([ADR-0029](../adr/0029-process-topology.md)).
 
 ```mermaid
 C4Container
@@ -31,15 +35,16 @@ C4Container
   System_Boundary(wb, "The Worldbuilder") {
     Container(board, "Board app", "React, Vite, @xyflow/react", "apps/board. Canvas, rules panel, proposal review, cloud confirmation. AGPL.")
     Container(api, "Board API", "Fastify, OpenAPI 3.1", "services/api. Mirrors the MCP tools plus human-only endpoints. AGPL.")
-    Container(mcp, "MCP server", "@modelcontextprotocol/sdk", "packages/mcp-server. Read tools plus proposal_create. AGPL.")
+    Container(mcp, "MCP server", "@modelcontextprotocol/sdk", "packages/mcp-server. Mounted at /mcp in the service, plus the stdio bridge. Read tools plus proposal_create. AGPL.")
     Container(core, "core", "TypeScript library, no I/O", "packages/core. Domain model, provenance, rules, context packages, ports. Apache-2.0.")
     Container(gate, "disclosure-gate", "TypeScript library", "packages/disclosure-gate. decide(card, target), default deny. Apache-2.0.")
     Container(adapters, "Adapters", "TypeScript libraries", "packages/adapters/*. Storage (markdown-files reference), source and model connectors incl. Jev stub. Apache-2.0.")
+    Container(local, "local-state", "TypeScript library", "packages/local-state. Proposals, stances, gate log and gate rules on the device. Apache-2.0.")
     Container(export, "training-export", "TypeScript library", "packages/training-export. JSONL decision traces, opt-in. Apache-2.0.")
     Container(conf, "conformance", "Vitest test kit", "packages/conformance. Every StorageAdapter must pass. Apache-2.0.")
     ContainerDb(files, "Card files", "Markdown + YAML front matter", "The truth. Cards, Lagen, decisions, _archive versions.")
     ContainerDb(index, "Derived index", "rebuildable", "Full text, graph cache. Deletable at any time.")
-    ContainerDb(stances, ".worldbuilder/stances", "local files, gitignored", "Private stances with history. Never leave the device.")
+    ContainerDb(wbdir, ".worldbuilder/", "local files, gitignored", "proposals/, stances/, gate-log.jsonl, gate-rules.yaml. Never leave the device.")
   }
 
   Rel(user, board, "Uses", "HTTPS or HTTP on loopback")
@@ -54,7 +59,8 @@ C4Container
   Rel(adapters, stores, "Store write path")
   Rel(adapters, sources, "Findings")
   Rel(adapters, models, "Gate-cleared calls")
-  Rel(adapters, stances, "Local stance store")
+  Rel(api, local, "Only writer")
+  Rel(local, wbdir, "Read, write")
   Rel(export, core, "Uses")
   Rel(conf, adapters, "Tests")
 
@@ -65,16 +71,17 @@ C4Container
 | --- | --- | --- | --- | --- |
 | Board app | `apps/board` | AGPL-3.0-or-later | exists (M0 skeleton): placeholder page, `tokens.css` with brand defaults | M1: open a Lage, place cards, draw edges, review proposals, context package preview with gate result. M2+: rules panel, decision card, Level 1, inbox, time slider |
 | Board API | `services/api` | AGPL-3.0-or-later | exists (M0 skeleton): Fastify app with a `/health` route; binds `127.0.0.1` unless `HOST` is set. OpenAPI contract in progress (M0) | M1: endpoints of the walking skeleton, session token, human-only endpoints |
-| MCP server | `packages/mcp-server` | AGPL-3.0-or-later | exists (M0 skeleton): the list of tool names only; no SDK dependency yet. Tool schemas in progress (M0) | M1: read tools and `proposal_create` over stdio and Streamable HTTP |
+| MCP server | `packages/mcp-server` | AGPL-3.0-or-later | exists (M0 skeleton): the list of tool names only; no SDK dependency yet. Tool schemas in progress (M0) | M1: read tools and `proposal_create`, mounted at `/mcp` in the service, plus the stdio bridge command ([ADR-0029](../adr/0029-process-topology.md)) |
 | core | `packages/core` | Apache-2.0 | exists (M0 skeleton): the `layer` value set. Contract types generated from the schemas and the four port interfaces in progress (M0) | M1: Lage, proposal lifecycle, context package, independence count. M2+: rules evaluation, Level 1 requests, outcome loop, source profiles |
 | disclosure-gate | `packages/disclosure-gate` | Apache-2.0 | exists (M0 skeleton): a default-deny function, no rules | M1: rule evaluation per card and target, decision log, blocks a private card for `cloud_model` |
 | Storage adapter (reference) | `packages/adapters/storage-markdown-files` | Apache-2.0 | exists (M0 skeleton): adapter id only | M1: reads and patches the reference card format, archive on rewrite, derived index |
 | Source and model connectors | `packages/adapters/*` | Apache-2.0 | not started | M2+: local model, cloud model, Jev stub; Obsidian vault, HTTP/JSON, document management, paid news |
+| local-state | `packages/local-state` | Apache-2.0 | not created yet | M1: proposals, stances, gate log and gate rules under `.worldbuilder/` behind a core interface ([ADR-0030](../adr/0030-local-state-on-the-device.md)) |
 | training-export | `packages/training-export` | Apache-2.0 | exists (M0 skeleton): the `training: true` eligibility predicate | M2+: JSONL export behind the gate with per-export confirmation |
 | conformance | `packages/conformance` | Apache-2.0 | exists (M0 skeleton): version constant. Kit skeleton with mapping-rule tests against an in-memory fake in progress (M0) | M1: full kit run against the reference adapter |
 | Card files | user-chosen folder | user data | none (the synthetic example worlds are in progress, M0) | M1 |
-| Derived index | next to the files, per adapter | derived | none | M1 |
-| `.worldbuilder/stances` | user's device | private | none (path excluded by `.gitignore`) | M1 |
+| Derived index | in memory, per adapter | derived | none | M1: rebuilt at start, file-watcher refresh ([ADR-0033](../adr/0033-derived-index-reference-adapter.md)) |
+| `.worldbuilder/` | user's device | private | none (path excluded by `.gitignore`) | M1: `proposals/<ulid>.json`, `stances/`, `gate-log.jsonl`, `gate-rules.yaml` ([ADR-0030](../adr/0030-local-state-on-the-device.md)) |
 
 `schemas/` (JSON Schema and `openapi/`) and `examples/` are contracts and data, not
 containers. They are in progress (M0) and not yet on the trunk.
@@ -86,12 +93,12 @@ Each building block, its single responsibility and its interfaces.
 | Building block | Responsible for | Not responsible for |
 | --- | --- | --- |
 | Board app | Presenting a Lage as a canvas with custom nodes; collecting human actions (place, move, draw, accept, reject, confirm transfer, set stance); showing gate decisions and proposal authors. Styled only through design tokens ([ADR-0019](../adr/0019-design-tokens-and-board-canvas.md)) | Any domain rule; any direct store access. The board is only a client of the Board API (AC-23) |
-| Board API | Authenticating the human session; exposing the MCP-mirroring endpoints and the human-only endpoints (proposal accept and reject, Lage save, decision save, disclosure confirm, [ADR-0016](../adr/0016-mcp-first-and-openapi-contracts.md)), plus stance writes, which [ADR-0008](../adr/0008-believed-as-private-stance.md) reserves to humans; schema-validating input with size limits ([ADR-0026](../adr/0026-security-defaults.md)) | Domain logic beyond orchestration |
-| MCP server | Authenticating agent connections and mapping each to `agent:<name>` and a target class; exposing the eight tools; setting a proposal's `author` from the connection, never from the payload ([ADR-0011](../adr/0011-agent-moves-are-proposals.md)) | Any write other than `proposal_create`; any stance access |
+| Board API | Authenticating the human session; exposing the MCP-mirroring endpoints and the human-only endpoints (proposal accept and reject, Lage save, decision save, disclosure confirm, [ADR-0016](../adr/0016-mcp-first-and-openapi-contracts.md)), plus the human-only stance endpoint `PUT /cards/{id}/stance` ([ADR-0030](../adr/0030-local-state-on-the-device.md)) and the incremental `GET /proposals?since=<cursor>` the M1 board polls ([ADR-0032](../adr/0032-m1-proposal-polling.md)); the only writer of local state; schema-validating input with size limits ([ADR-0026](../adr/0026-security-defaults.md)) | Domain logic beyond orchestration |
+| MCP server | Running inside the service at `/mcp`, with a stateless stdio bridge ([ADR-0029](../adr/0029-process-topology.md)); authenticating agent connections and mapping each to `agent:<name>` and a target class; exposing the eight tools; setting a proposal's `author` from the connection, never from the payload ([ADR-0011](../adr/0011-agent-moves-are-proposals.md)) | Any write other than `proposal_create`; any stance access |
 | core | Canonical domain model (types generated from or tested against the JSON Schemas); provenance rules and the independence count ([ADR-0009](../adr/0009-mandatory-provenance.md)); proposal lifecycle and the non-counting rule; context package assembly; rules evaluation without any score ([ADR-0013](../adr/0013-rules-panel-replaces-barometer.md)); Level 1 request and result shapes ([ADR-0015](../adr/0015-two-thinking-levels.md)); source profile derivation ([ADR-0018](../adr/0018-multidimensional-source-profile.md)); the four port interfaces | Any I/O, network, file system or clock access other than through ports |
-| disclosure-gate | `decide(card, target) → {decision, reason}` for `screen`, `local_model`, `cloud_model`, `demo`; default deny; stance data only for `screen`; per-transfer confirmation requirement for `cloud_model`; local decision log without card content ([ADR-0012](../adr/0012-disclosure-gate.md)) | Choosing which cards are relevant; the confirmation UI |
-| Local stance and proposal store | Persisting stances (with history) and proposals on the user's device, outside every shared or remote store. Which package owns it is open ([OD-2](./09-decisions.md#92-open-decisions)) | Card data |
-| Storage adapter | Mapping one store to the canonical model ([ADR-0023](../adr/0023-core-domain-model.md)); derived ids; patch writes through the store's own write path with lock and optimistic concurrency; archive on rewrite; rebuilding its derived index; reporting capabilities | Deciding what may leave the device; stances (never written to card files, [ADR-0008](../adr/0008-believed-as-private-stance.md)) |
+| disclosure-gate | `decide(card, target) → {decision, reason}` for `screen`, `local_model`, `cloud_model`, `demo`; default deny; stance data only for `screen`; declarative allow and deny rules, deny wins; per-transfer confirmation for `cloud_model` bound to the hash of the exact payload; local decision log without card content ([ADR-0012](../adr/0012-disclosure-gate.md), [ADR-0031](../adr/0031-gate-rules-and-confirmation-binding.md)) | Choosing which cards are relevant; the confirmation UI |
+| local-state | Persisting proposals, stances (with history), the gate log and gate rules under `.worldbuilder/` on the user's device, outside every shared or remote store ([ADR-0030](../adr/0030-local-state-on-the-device.md)) | Card data; deciding anything |
+| Storage adapter | Mapping one store to the canonical model ([ADR-0023](../adr/0023-core-domain-model.md)); derived ids; patch writes through the store's own write path with lock and optimistic concurrency; archive on rewrite; rebuilding its derived index (in memory for the reference adapter, [ADR-0033](../adr/0033-derived-index-reference-adapter.md)); reporting capabilities | Deciding what may leave the device; stances (never written to card files, [ADR-0008](../adr/0008-believed-as-private-stance.md)) |
 | Source connector | Listing new findings as references with provenance | Writing anything; deciding relevance |
 | Model connector | Sending gate-cleared canonical objects to one model or Jev and returning the answer as a proposal or a typed Level 1 result | Calling without a gate decision; persisting answers as facts |
 | training-export | Writing decision traces as JSONL for decisions and cards with `training: true` only ([ADR-0017](../adr/0017-decision-card-and-training-export.md)) | Fine-tuning |
@@ -119,6 +126,7 @@ flowchart BT
     adapters[packages/adapters/*]
     export[packages/training-export]
     conf[packages/conformance]
+    local[packages/local-state]
   end
   core --> schemas
   gate --> core
@@ -126,10 +134,12 @@ flowchart BT
   export --> core
   export --> gate
   conf --> core
+  local --> core
   api --> core
   api --> gate
   api --> adapters
   api --> export
+  api --> local
   mcp --> core
   mcp --> gate
   board -. "HTTP only, no import" .-> api
@@ -145,7 +155,7 @@ server package; it may import generated contract types from `core`.
 | Module | Content | Milestone |
 | --- | --- | --- |
 | Contract types | Card, Edge, World, Lage, Stance, Proposal, Decision, Rule, SourceProfile, ContextPackage, Level 1 result; generated from the JSON Schemas | M0 (in progress) |
-| Ports | `StorageAdapter`, `SourceConnector`, `ModelConnector`, `DisclosureGate` interfaces | M0 (in progress) |
+| Ports | `StorageAdapter`, `SourceConnector`, `ModelConnector`, `DisclosureGate` interfaces (M0, in progress), plus the local-state interface of [ADR-0030](../adr/0030-local-state-on-the-device.md) (M1) | M0 / M1 |
 | Provenance | Provenance rules per layer, the independence count over `cites` and `based_on` edges and source identity | M1 |
 | Proposals | Lifecycle from `pending` to `accepted` or `rejected`, the non-counting rule | M1 |
 | Context package | Selection from request, active world, cards, relations, decisions and provenance; per-card gate decision; pending proposals in a separate section | M1 |

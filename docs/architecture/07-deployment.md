@@ -15,14 +15,14 @@ flowchart LR
     browser[Browser: board app]
     subgraph node [Node 22 process: Worldbuilder service]
       api[Board API]
-      mcphttp[MCP server, Streamable HTTP]
+      mcphttp[MCP server at /mcp, Streamable HTTP]
       libs[core, disclosure-gate, adapters]
     end
     agentproc[Agent host process]
-    mcpstdio[MCP server, stdio]
+    mcpstdio[Bridge: worldbuilder mcp --stdio, stateless]
     files[(Card files: user-chosen folder)]
-    local[(.worldbuilder: stances, proposals, gate log)]
-    index[(Derived index, per adapter)]
+    local[(.worldbuilder: proposals, stances, gate log, gate rules)]
+    index[(Derived index, in memory)]
     localmodel[Local model]
   end
   cloud[Cloud model, Jev]
@@ -31,7 +31,7 @@ flowchart LR
   browser -- "HTTP on 127.0.0.1, session token" --> api
   agentproc -- "HTTP on 127.0.0.1, agent token" --> mcphttp
   agentproc -- "spawns, stdio" --> mcpstdio
-  mcpstdio -. "see OD-1" .-> api
+  mcpstdio -- "forwards on 127.0.0.1, agent token" --> mcphttp
   api --> libs
   mcphttp --> libs
   libs --> files
@@ -45,11 +45,11 @@ flowchart LR
 | Node | Runs | Status |
 | --- | --- | --- |
 | Browser | The board app, served to `localhost` | planned (M1) |
-| Worldbuilder service | Board API and the MCP Streamable HTTP transport with the libraries in-process, bound to `127.0.0.1` | planned (M1); process layout is [OD-1](./09-decisions.md#92-open-decisions). Today `services/api` binds `127.0.0.1` unless `HOST` is set (M0 skeleton) |
-| MCP server over stdio | Started by the agent host with the identity configured for that process | planned (M1) |
+| Worldbuilder service | Board API and the MCP server (Streamable HTTP at `/mcp`) in one process with the libraries, one write path per store, bound to `127.0.0.1` ([ADR-0029](../adr/0029-process-topology.md)) | planned (M1). Today `services/api` binds `127.0.0.1` unless `HOST` is set (M0 skeleton) |
+| stdio bridge | `worldbuilder mcp --stdio`, started by the agent host with the agent token configured for that process; forwards to `/mcp`, holds no state, never writes files, fails if the service is not running ([ADR-0029](../adr/0029-process-topology.md)) | planned (M1) |
 | Card files | Markdown files in a folder the user chooses; the user's own store or a synthetic example world | planned (M1) |
-| `.worldbuilder/` | Local, private state on the device: stances with history, proposals, the gate decision log. Excluded by `.gitignore` | planned (M1); exact layout is [OD-2](./09-decisions.md#92-open-decisions) |
-| Derived index | Full-text or graph cache kept by each adapter; deletable and rebuilt from the files | planned (M1) |
+| `.worldbuilder/` | Local, private state on the device: `proposals/<ulid>.json`, `stances/`, the append-only `gate-log.jsonl` (ids, targets, decisions, never content) and `gate-rules.yaml`. Written only by the service through `packages/local-state`. Excluded by `.gitignore` | planned (M1) ([ADR-0030](../adr/0030-local-state-on-the-device.md)) |
+| Derived index | In memory in the service, rebuilt by scanning the files at start and refreshed by a file watcher with rescan fallback; SQLite only on measured need | planned (M1) ([ADR-0033](../adr/0033-derived-index-reference-adapter.md)) |
 | Local model | Any model served on the device, reached through a `ModelConnector` | planned (M2+) |
 | Cloud model, Jev | Outside the device, reached over HTTPS only with gate-cleared, confirmed transfers | planned (M2+) |
 
