@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldbuilder.invalid/schemas/v0/memory-route.schema.json",
+  "title": "MemoryRouteResult",
+  "description": "Result of memory_route (ADR-0042): whether an agent memory item should become a card proposal or stay an ephemeral operational fact, with the deciding rule and the signal ids (never the matched words). Nothing is stored.",
+  "type": "object",
+  "properties": {
+    "route": {
+      "type": "string",
+      "enum": ["card_proposal", "ephemeral_ops_fact"]
+    },
+    "ruleId": {
+      "type": "string",
+      "enum": [
+        "secret",
+        "short",
+        "ops_hint",
+        "public_source",
+        "local_reference",
+        "durable_statement",
+        "transient",
+        "knowledge_hint",
+        "default",
+        "model"
+      ]
+    },
+    "signals": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["secret_like", "public_source", "local_reference", "transient", "durable", "short"]
+      },
+      "uniqueItems": true
+    },
+    "classifier": {
+      "description": "rules:v1 for the deterministic rules; model:<engine> only for a later model-assisted slice.",
+      "type": "string",
+      "pattern": "^(rules:v[0-9]+|model:[A-Za-z0-9][A-Za-z0-9._-]{0,63})$"
+    }
+  },
+  "required": ["route", "ruleId", "signals", "classifier"],
+  "additionalProperties": false,
+  "$defs": {
+    "request": {
+      "title": "MemoryRouteRequest",
+      "description": "Input of memory_route: one memory item of the agent system. Inbound data, classified and never stored or logged.",
+      "type": "object",
+      "properties": {
+        "text": {
+          "allOf": [
+            {
+              "$ref": "common.schema.json#/$defs/text"
+            },
+            {
+              "maxLength": 4000,
+              "type": "string"
+            }
+          ]
+        },
+        "kindHint": {
+          "type": "string",
+          "enum": ["learning", "observation", "preference", "decision", "ops", "unknown"]
+        },
+        "source": {
+          "$ref": "common.schema.json#/$defs/sourceRef"
+        }
+      },
+      "required": ["text"],
+      "additionalProperties": false
+    }
+  }
+}

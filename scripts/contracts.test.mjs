@@ -133,3 +133,64 @@ describe('stance (ADR-0008)', () => {
     ]);
   });
 });
+
+describe('knowledge-loop receipts carry no content (ADR-0039)', () => {
+  /** A string property that is not constrained to ids, hashes, codes or times could carry prose. */
+  const freeText = (schema) =>
+    properties(schema).filter(
+      ([, s]) =>
+        s?.type === 'string' && !s.pattern && !s.enum && !('const' in s) && !s.format && !s.$ref,
+    );
+
+  it.each([
+    'knowledge-receipt.schema.json',
+    'write-back-receipt.schema.json',
+    'receipt-log-entry.schema.json',
+    'task-record.schema.json',
+    'memory-route.schema.json',
+  ])('%s has no free-text string field outside its request definitions', (name) => {
+    const { $defs, ...root } = load(name);
+    const shared = Object.fromEntries(
+      Object.entries($defs ?? {}).filter(([k]) => !/request|result/i.test(k)),
+    );
+    expect(freeText({ ...root, $defs: shared }).map(([p]) => p)).toEqual([]);
+  });
+
+  it('the Knowledge Receipt holds exactly ids, hashes, codes and times', () => {
+    expect(Object.keys(load('knowledge-receipt.schema.json').properties)).toEqual([
+      'receiptId',
+      'kind',
+      'agent',
+      'taskRef',
+      'queryHash',
+      'worldId',
+      'lageId',
+      'target',
+      'packageId',
+      'result',
+      'cardIds',
+      'transferId',
+      'at',
+      'hash',
+    ]);
+  });
+
+  it('usage metrics have no overall score or rank (ADR-0041)', () => {
+    expect(
+      properties(load('usage-metrics.schema.json'))
+        .map(([p]) => p)
+        .filter((p) => /score|rank|overall|verdict|grade/i.test(p)),
+    ).toEqual([]);
+  });
+
+  it('record_outcome is a proposal kind and no kind touches stances or release (ADR-0036, ADR-0039)', () => {
+    const kinds = load('common.schema.json').$defs.proposalKind.enum;
+    expect(kinds).toContain('record_outcome');
+    expect(kinds.filter((k) => /release|share/.test(k))).toEqual([]);
+    expect(Object.keys(load('proposal.schema.json').$defs.recordOutcome.properties)).toEqual([
+      'decisionId',
+      'outcome',
+      'expectedContentHash',
+    ]);
+  });
+});

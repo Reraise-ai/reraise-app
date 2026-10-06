@@ -1,0 +1,13 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/memory-route.schema.json#/$defs/request",
+  "description": "Kind hints are a closed list.",
+  "expect": {
+    "keyword": "enum",
+    "instancePath": "/kindHint"
+  },
+  "data": {
+    "text": "Something durable",
+    "kindHint": "gossip"
+  }
+}

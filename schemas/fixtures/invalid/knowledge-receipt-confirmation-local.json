@@ -1,0 +1,24 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/knowledge-receipt.schema.json",
+  "description": "Only a cloud_model connection waits for a confirmed transfer.",
+  "expect": {
+    "keyword": "const",
+    "instancePath": "/target"
+  },
+  "data": {
+    "receiptId": "01M1KM00000000000000000003",
+    "kind": "knowledge",
+    "agent": "agent:research-helper",
+    "taskRef": "TASK-2026-0043",
+    "queryHash": "sha256:a8973b45ff31bb1c40dacadbce0715e41e9eadbfb228c07da0adf76a44e22d53",
+    "worldId": "01M1DZPW00JGXPRPG4179ZPNB8",
+    "target": "local_model",
+    "packageId": "01M1KM00000000000000000011",
+    "result": "confirmation_required",
+    "cardIds": [],
+    "transferId": "01M1KM00000000000000000012",
+    "at": "2026-10-05T09:10:00Z",
+    "hash": "sha256:bd53530b02a6df9b8b093fdf59fee620d7298c3b8909315b323d84e2c2d3a249"
+  }
+}

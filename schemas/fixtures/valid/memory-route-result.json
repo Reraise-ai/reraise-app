@@ -1,0 +1,11 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/memory-route.schema.json",
+  "description": "A durable statement routed to a card proposal; signal ids only (ADR-0042).",
+  "data": {
+    "route": "ephemeral_ops_fact",
+    "ruleId": "default",
+    "signals": [],
+    "classifier": "rules:v1"
+  }
+}

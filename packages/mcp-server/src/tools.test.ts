@@ -13,6 +13,16 @@ import { describe, expect, it } from 'vitest';
 import { parse } from 'yaml';
 import { SCHEMA_BASE, TOOLS } from './tools.js';
 
+/** Tools that create a proposal; the only tools with side effects (ADR-0039). */
+const PROPOSAL_TOOLS = [
+  'proposal_create',
+  'knowledge_write_back',
+  'decision_record',
+  'decision_outcome',
+] as const;
+/** Tools only a registered agent may call: their receipts and proposals belong to one agent. */
+const AGENT_ONLY = new Set<string>([...PROPOSAL_TOOLS, 'knowledge_consult']);
+
 interface Operation {
   operationId: string;
   security?: Record<string, string[]>[];
@@ -83,10 +93,32 @@ describe('MCP tool definitions', () => {
     }
   });
 
-  it('have exactly one tool with side effects: proposal_create (ADR-0011, ADR-0016)', () => {
-    expect(TOOLS.filter((t) => !t.annotations.readOnlyHint).map((t) => t.name)).toEqual([
-      'proposal_create',
-    ]);
+  it('have side effects only in the tools that create proposals (ADR-0011, ADR-0016, ADR-0039)', () => {
+    const writing = TOOLS.filter((t) => !t.annotations.readOnlyHint);
+    expect(writing.map((t) => t.name).sort()).toEqual([...PROPOSAL_TOOLS].sort());
+    // Every write ends in a proposal: the output is a proposal or carries one.
+    for (const tool of writing) {
+      const out = JSON.stringify(resolve(tool.outputSchema.$ref));
+      expect(
+        tool.outputSchema.$ref.endsWith('proposal.schema.json') ||
+          out.includes('proposal.schema.json'),
+        tool.name,
+      ).toBe(true);
+    }
+  });
+
+  it('expose the knowledge loop under the underscore convention (ADR-0039)', () => {
+    const names = TOOLS.map((t) => t.name);
+    for (const name of [
+      'knowledge_consult',
+      'knowledge_write_back',
+      'decision_record',
+      'decision_outcome',
+      'memory_route',
+    ]) {
+      expect(names).toContain(name);
+    }
+    expect(names.every((n) => /^[a-z]+(_[a-z]+)+$/.test(n))).toBe(true);
   });
 
   it('have no stance tool and take no target, author or identity as input (ADR-0008, ADR-0012)', () => {
@@ -130,13 +162,14 @@ describe('MCP / Board API parity', () => {
     },
   );
 
-  it('lets agent tokens call every mirrored operation, and only agents propose', () => {
+  it('lets agent tokens call every mirrored operation, and only agents propose or consult', () => {
     expect(api.security).toEqual([{ sessionToken: [] }, { agentToken: [] }]);
     for (const tool of TOOLS) {
       const security = operations.get(tool.name)?.op.security;
-      // proposal_create is agent-only: humans act directly (ADR-0011, ADR-0028).
-      if (tool.name === 'proposal_create') expect(security).toEqual([{ agentToken: [] }]);
-      else expect(security).toBeUndefined();
+      // Proposal and receipt tools are agent-only: humans act directly (ADR-0011, ADR-0028,
+      // ADR-0039).
+      if (AGENT_ONLY.has(tool.name)) expect(security, tool.name).toEqual([{ agentToken: [] }]);
+      else expect(security, tool.name).toBeUndefined();
     }
   });
 
@@ -167,6 +200,7 @@ describe('MCP / Board API parity', () => {
       'proposal_reject',
       'stance_get',
       'stance_save',
+      'usage_metrics_get',
     ]);
     for (const [id, { op }] of humanOnly) {
       expect(op['x-human-only'], id).toBe(true);

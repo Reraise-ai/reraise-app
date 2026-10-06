@@ -285,8 +285,10 @@ An agent move is never a write. It is a **proposal**:
   **rejects** each. Accepting writes through the normal store path with the author kept.
 - Nothing pending counts anywhere: not in rules, not in statistics, not in context packages
   as accepted fact.
-- The agent-facing MCP tools can only create and list proposals (`proposal_create` is the only
-  agent write path). The server sets `author` from the connection's configured agent identity,
+- The agent-facing MCP tools can only create and list proposals: every agent write is a
+  proposal, made by `proposal_create` or by the knowledge-loop tools `knowledge_write_back`,
+  `decision_record` and `decision_outcome` ([ADR-0039](../adr/0039-knowledge-loop-receipts.md)).
+  The server sets `author` from the connection's configured agent identity,
   never from the payload. Accept and reject are human-only endpoints that agent credentials
   cannot call ([ADR-0026](../adr/0026-security-defaults.md)).
 - Pending or rejected proposals count nowhere: not in rules, statistics, source profiles,

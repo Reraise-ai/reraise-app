@@ -1,0 +1,14 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/task-record.schema.json",
+  "description": "Task records are for agent tasks.",
+  "expect": {
+    "keyword": "pattern",
+    "instancePath": "/agent"
+  },
+  "data": {
+    "taskRef": "TASK-1",
+    "agent": "human",
+    "completedAt": "2026-10-05T11:00:00Z"
+  }
+}

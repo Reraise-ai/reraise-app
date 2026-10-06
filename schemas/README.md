@@ -35,6 +35,13 @@ names, not addresses, and nothing fetches them. `v0` is the pre-release contract
 | `training-export-record.schema.json` | one JSONL decision trace                                                     | 0017             |
 | `finding.schema.json`                | a finding of a source connector                                              | 0014             |
 | `gate-rules.schema.json`             | disclosure-gate allow and deny rules                                         | 0012, 0031       |
+| `knowledge-receipt.schema.json`      | Knowledge Receipt, `knowledge_consult` request and result                    | 0039, 0040       |
+| `write-back-receipt.schema.json`     | Write-back Receipt, `knowledge_write_back` request and result                | 0039, 0040       |
+| `receipt-log-entry.schema.json`      | one hash-chained line of the receipt log                                     | 0040             |
+| `task-record.schema.json`            | a task hand-off citing its receipts                                          | 0040             |
+| `usage-metrics.schema.json`          | knowledge-loop metrics per agent and window, targets                         | 0041             |
+| `memory-route.schema.json`           | `memory_route` request and result                                            | 0042             |
+| `digest-page.schema.json`            | one atlas page with cited lines and source hashes                            | 0043             |
 | `api.schema.json`                    | MCP tool and Board API inputs and outputs, error                             | 0016, 0026, 0032 |
 
 The Board API is described in [`openapi/board-api.yaml`](openapi/board-api.yaml) (OpenAPI 3.1,

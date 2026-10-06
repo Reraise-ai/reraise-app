@@ -15,6 +15,7 @@ import Ajv2020Module from 'ajv/dist/2020.js';
 import addFormatsModule from 'ajv-formats';
 import { isDeepStrictEqual } from 'node:util';
 import { parse as parseYaml } from 'yaml';
+import { hashJcs } from '@worldbuilder/core';
 import { toPosix, walk } from './lib.mjs';
 import { computeContentHash, splitFrontMatter, toCanonicalCard } from './markdown-cards.mjs';
 
@@ -206,6 +207,46 @@ export const CROSS_CHECKS = {
     },
   },
   /**
+   * ADR-0039, ADR-0040: a receipt's `hash` is the JCS hash of the receipt without it; a log
+   * entry's `hash` is the JCS hash of the entry without it, and its receipt is checked too.
+   */
+  'receipt-hash': {
+    schema: [
+      'knowledge-receipt.schema.json',
+      'write-back-receipt.schema.json',
+      'receipt-log-entry.schema.json',
+    ],
+    run(value) {
+      const out = [];
+      const receipt = value.receipt ?? value;
+      if (receipt.hash !== selfHash(receipt))
+        out.push(
+          `receipt ${receipt.receiptId} has hash ${receipt.hash}, expected ${selfHash(receipt)}`,
+        );
+      if (value.receipt !== undefined && value.hash !== selfHash(value))
+        out.push(`log entry ${value.seq} has hash ${value.hash}, expected ${selfHash(value)}`);
+      return out;
+    },
+  },
+  /** ADR-0043: every line cites only sources of the page, and every source is cited. */
+  'digest-lines': {
+    schema: 'digest-page.schema.json',
+    run(page) {
+      const sources = new Set(page.sources.map((s) => s.cardId));
+      const cited = new Set(page.lines.flatMap((l) => l.cardIds));
+      const out = [];
+      for (const id of cited)
+        if (!sources.has(id)) out.push(`line cites ${id}, which is not a source`);
+      for (const id of sources) if (!cited.has(id)) out.push(`source ${id} is cited by no line`);
+      const seen = new Set();
+      for (const id of page.sources.map((s) => s.cardId)) {
+        if (seen.has(id)) out.push(`source ${id} is listed twice`);
+        seen.add(id);
+      }
+      return out;
+    },
+  },
+  /**
    * ADR-0035: every player of a level-1 request is a card on the board, named once, and every
    * assumption named by a what-if trigger is an assumption card of the request.
    */
@@ -232,10 +273,21 @@ export const CROSS_CHECKS = {
   },
 };
 
+/** The JCS hash of an object without its `hash` member (ADR-0039, ADR-0040). */
+const selfHash = (value) => {
+  const rest = { ...value };
+  delete rest.hash;
+  return hashJcs(rest);
+};
+
+/** Does a cross-check apply to the schema `name`? */
+const appliesTo = (c, name) =>
+  c.schema === '*' || (Array.isArray(c.schema) ? c.schema.includes(name) : c.schema === name);
+
 /** Run every cross-check that applies to `name`; returns [{ check, message }]. */
 export function crossCheck(name, data) {
   return Object.entries(CROSS_CHECKS)
-    .filter(([, c]) => c.schema === name || c.schema === '*')
+    .filter(([, c]) => appliesTo(c, name))
     .flatMap(([check, c]) => c.run(data).map((message) => ({ check, message })));
 }
 

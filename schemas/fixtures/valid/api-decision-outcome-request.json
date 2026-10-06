@@ -1,0 +1,10 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/api.schema.json#/$defs/decisionOutcomeRequest",
+  "description": "An agent proposes the outcome of a decision card, bound to the version it saw.",
+  "data": {
+    "decisionId": "01M1E300000000000000000002",
+    "outcome": "Rerouted two of three tankers; transit delays as expected.",
+    "expectedContentHash": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/knowledge-receipt.schema.json#/$defs/consultRequest",
+  "description": "The target comes from the connection, never from the request.",
+  "expect": {
+    "keyword": "additionalProperties",
+    "instancePath": ""
+  },
+  "data": {
+    "taskRef": "TASK-1",
+    "task": "x",
+    "worldId": "01M1DZPW00JGXPRPG4179ZPNB8",
+    "target": "screen"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/memory-route.schema.json#/$defs/request",
+  "description": "One memory item with the memory job's kind hint.",
+  "data": {
+    "text": "Insurers publish war-risk quotes weekly",
+    "kindHint": "learning",
+    "source": "https://example.org/insurer-bulletin/2026-09-16"
+  }
+}

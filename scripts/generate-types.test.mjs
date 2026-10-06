@@ -37,6 +37,6 @@ describe('generated TypeScript types', () => {
   it('turn reserved fields into never and kind/payload pairs into a union', () => {
     const { $defs } = bundle(loadSchemaFiles(repoRoot));
     expect($defs.CardContent.properties.level.tsType).toBe('never');
-    expect($defs.ProposalKindPayload.oneOf).toHaveLength(5);
+    expect($defs.ProposalKindPayload.oneOf).toHaveLength(6);
   });
 });

@@ -1,0 +1,8 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/api.schema.json#/$defs/usageMetricsRequest",
+  "description": "Input of usage_metrics_get for one ISO week.",
+  "data": {
+    "week": "2026-W41"
+  }
+}

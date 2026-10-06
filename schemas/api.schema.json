@@ -200,6 +200,73 @@
       },
       "required": ["title", "status"],
       "additionalProperties": false
+    },
+    "decisionRecordRequest": {
+      "title": "DecisionRecordRequest",
+      "description": "Input of decision_record (ADR-0039): an agent proposes a decision card with the eleven sections; the human accepts. Becomes a create_card proposal. The agent cannot release it for sharing (ADR-0036).",
+      "type": "object",
+      "properties": {
+        "decision": {
+          "type": "object",
+          "$ref": "decision.schema.json#/$defs/draft",
+          "properties": {
+            "release": {
+              "const": "private"
+            }
+          }
+        },
+        "lageId": {
+          "$ref": "common.schema.json#/$defs/cardId"
+        },
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        },
+        "rationale": {
+          "type": "string",
+          "maxLength": 2000
+        }
+      },
+      "required": ["decision"],
+      "additionalProperties": false,
+      "dependentRequired": {
+        "lageId": ["x", "y"]
+      }
+    },
+    "decisionOutcomeRequest": {
+      "title": "DecisionOutcomeRequest",
+      "description": "Input of decision_outcome (ADR-0039): an agent proposes the outcome of a decision card; becomes a record_outcome proposal.",
+      "type": "object",
+      "properties": {
+        "decisionId": {
+          "$ref": "common.schema.json#/$defs/cardId"
+        },
+        "outcome": {
+          "$ref": "proposal.schema.json#/$defs/outcomeText"
+        },
+        "expectedContentHash": {
+          "$ref": "common.schema.json#/$defs/contentHash"
+        },
+        "rationale": {
+          "type": "string",
+          "maxLength": 2000
+        }
+      },
+      "required": ["decisionId", "outcome", "expectedContentHash"],
+      "additionalProperties": false
+    },
+    "usageMetricsRequest": {
+      "title": "UsageMetricsRequest",
+      "description": "Input of the human-only usage_metrics_get: an ISO week, or nothing for the rolling 7 days before now.",
+      "type": "object",
+      "properties": {
+        "week": {
+          "$ref": "usage-metrics.schema.json#/$defs/isoWeek"
+        }
+      },
+      "additionalProperties": false
     }
   }
 }

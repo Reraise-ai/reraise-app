@@ -1,0 +1,183 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldbuilder.invalid/schemas/v0/knowledge-receipt.schema.json",
+  "title": "KnowledgeReceipt",
+  "description": "Proof that an agent consulted the knowledge for a task (ADR-0039). Returned by knowledge_consult and appended to the receipt log (ADR-0040). Holds ids, hashes, codes and times only: never the task text, a card title or any other content. `hash` is the JCS hash of the receipt without `hash`.",
+  "type": "object",
+  "properties": {
+    "receiptId": {
+      "$ref": "common.schema.json#/$defs/ulid"
+    },
+    "kind": {
+      "type": "string",
+      "const": "knowledge"
+    },
+    "agent": {
+      "$ref": "common.schema.json#/$defs/agentAuthor"
+    },
+    "taskRef": {
+      "$ref": "common.schema.json#/$defs/taskRef"
+    },
+    "queryHash": {
+      "description": "JCS hash of the task text; the text itself is never stored.",
+      "$ref": "common.schema.json#/$defs/jcsHash"
+    },
+    "worldId": {
+      "$ref": "common.schema.json#/$defs/worldId"
+    },
+    "lageId": {
+      "$ref": "common.schema.json#/$defs/cardId"
+    },
+    "target": {
+      "description": "The disclosure class of the agent connection (ADR-0037).",
+      "type": "string",
+      "enum": ["local_model", "cloud_model"]
+    },
+    "packageId": {
+      "description": "Id of the context package the consult returned.",
+      "$ref": "common.schema.json#/$defs/ulid"
+    },
+    "result": {
+      "description": "cards: the package delivered cards (cardIds lists exactly them); nothing_found: no card matched; confirmation_required: a cloud_model connection without a confirmed transfer (ADR-0031). All three prove a consult.",
+      "type": "string",
+      "enum": ["cards", "nothing_found", "confirmation_required"]
+    },
+    "cardIds": {
+      "type": "array",
+      "items": {
+        "$ref": "common.schema.json#/$defs/cardId"
+      },
+      "uniqueItems": true,
+      "maxItems": 500
+    },
+    "transferId": {
+      "$ref": "common.schema.json#/$defs/ulid"
+    },
+    "at": {
+      "$ref": "common.schema.json#/$defs/dateTime"
+    },
+    "hash": {
+      "$ref": "common.schema.json#/$defs/jcsHash"
+    }
+  },
+  "required": [
+    "receiptId",
+    "kind",
+    "agent",
+    "taskRef",
+    "queryHash",
+    "worldId",
+    "target",
+    "packageId",
+    "result",
+    "cardIds",
+    "at",
+    "hash"
+  ],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "description": "Only a consult that delivered cards names cards.",
+      "if": {
+        "properties": {
+          "result": {
+            "const": "cards"
+          }
+        },
+        "required": ["result"]
+      },
+      "then": {
+        "properties": {
+          "cardIds": {
+            "minItems": 1,
+            "type": "array"
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "cardIds": {
+            "maxItems": 0,
+            "type": "array"
+          }
+        }
+      }
+    },
+    {
+      "description": "A consult waiting for a cloud confirmation names its transfer and comes from a cloud_model connection.",
+      "if": {
+        "properties": {
+          "result": {
+            "const": "confirmation_required"
+          }
+        },
+        "required": ["result"]
+      },
+      "then": {
+        "properties": {
+          "transferId": true,
+          "target": {
+            "const": "cloud_model"
+          }
+        },
+        "required": ["transferId"]
+      }
+    }
+  ],
+  "$defs": {
+    "consultRequest": {
+      "title": "KnowledgeConsultRequest",
+      "description": "Input of knowledge_consult: a context package request (ADR-0016) plus the task. Target and agent come from the connection. The task text is hashed into the receipt and never stored.",
+      "type": "object",
+      "properties": {
+        "taskRef": {
+          "$ref": "common.schema.json#/$defs/taskRef"
+        },
+        "task": {
+          "description": "What the agent is about to do, as the question for the context package.",
+          "allOf": [
+            {
+              "$ref": "common.schema.json#/$defs/text"
+            },
+            {
+              "maxLength": 2000,
+              "type": "string"
+            }
+          ]
+        },
+        "worldId": {
+          "$ref": "common.schema.json#/$defs/worldId"
+        },
+        "lageId": {
+          "$ref": "common.schema.json#/$defs/cardId"
+        },
+        "maxItems": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 500
+        },
+        "transferId": {
+          "description": "For a cloud_model connection: the transfer the human confirmed after a first consult returned confirmation_required (ADR-0031).",
+          "$ref": "common.schema.json#/$defs/ulid"
+        }
+      },
+      "required": ["taskRef", "task", "worldId"],
+      "additionalProperties": false
+    },
+    "consultResult": {
+      "title": "KnowledgeConsultResult",
+      "description": "Output of knowledge_consult: the gate-cleared context package and the receipt for it.",
+      "type": "object",
+      "properties": {
+        "package": {
+          "$ref": "context-package.schema.json"
+        },
+        "receipt": {
+          "$ref": "knowledge-receipt.schema.json"
+        }
+      },
+      "required": ["package", "receipt"],
+      "additionalProperties": false
+    }
+  }
+}

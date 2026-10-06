@@ -1,0 +1,14 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/api.schema.json#/$defs/decisionOutcomeRequest",
+  "description": "An outcome proposal needs a known outcome, not open.",
+  "expect": {
+    "keyword": "not",
+    "instancePath": "/outcome"
+  },
+  "data": {
+    "decisionId": "01M1E300000000000000000002",
+    "outcome": " Open ",
+    "expectedContentHash": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+  }
+}

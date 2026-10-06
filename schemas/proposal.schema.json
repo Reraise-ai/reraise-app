@@ -197,6 +197,23 @@
               }
             }
           }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "record_outcome"
+              }
+            },
+            "required": ["kind"]
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "#/$defs/recordOutcome"
+              }
+            }
+          }
         }
       ]
     },
@@ -309,6 +326,43 @@
         }
       },
       "required": ["text"],
+      "additionalProperties": false
+    },
+    "outcomeText": {
+      "title": "OutcomeText",
+      "description": "A known outcome: non-empty text that is not `open`.",
+      "allOf": [
+        {
+          "$ref": "common.schema.json#/$defs/text"
+        },
+        {
+          "maxLength": 4000,
+          "type": "string"
+        },
+        {
+          "not": {
+            "type": "string",
+            "pattern": "^\\s*[Oo][Pp][Ee][Nn]\\s*$"
+          }
+        }
+      ]
+    },
+    "recordOutcome": {
+      "title": "RecordOutcomePayload",
+      "description": "Propose the outcome of a decision card (ADR-0039). On accept the service patches only sections.outcome, and only if the card still has expectedContentHash; never release or other metadata.",
+      "type": "object",
+      "properties": {
+        "decisionId": {
+          "$ref": "common.schema.json#/$defs/cardId"
+        },
+        "outcome": {
+          "$ref": "#/$defs/outcomeText"
+        },
+        "expectedContentHash": {
+          "$ref": "common.schema.json#/$defs/contentHash"
+        }
+      },
+      "required": ["decisionId", "outcome", "expectedContentHash"],
       "additionalProperties": false
     }
   }

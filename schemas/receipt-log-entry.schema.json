@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldbuilder.invalid/schemas/v0/receipt-log-entry.schema.json",
+  "title": "ReceiptLogEntry",
+  "description": "One line of <state>/receipt-log.jsonl (ADR-0040): append-only, hash-chained, written only by the service. `prev` is the hash of the previous entry (64 zeros for the first); `hash` is the JCS hash of the entry without `hash`. Holds no content.",
+  "type": "object",
+  "properties": {
+    "v": {
+      "type": "integer",
+      "const": 1
+    },
+    "seq": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "at": {
+      "$ref": "common.schema.json#/$defs/dateTime"
+    },
+    "prev": {
+      "$ref": "common.schema.json#/$defs/jcsHash"
+    },
+    "receipt": {
+      "oneOf": [
+        {
+          "$ref": "knowledge-receipt.schema.json"
+        },
+        {
+          "$ref": "write-back-receipt.schema.json"
+        }
+      ]
+    },
+    "hash": {
+      "$ref": "common.schema.json#/$defs/jcsHash"
+    }
+  },
+  "required": ["v", "seq", "at", "prev", "receipt", "hash"],
+  "additionalProperties": false
+}

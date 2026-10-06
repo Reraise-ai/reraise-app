@@ -1,0 +1,233 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldbuilder.invalid/schemas/v0/write-back-receipt.schema.json",
+  "title": "WriteBackReceipt",
+  "description": "Proof that an agent decided, for a task, whether its knowledge becomes a card (ADR-0039). Returned by knowledge_write_back and appended to the receipt log (ADR-0040). Holds ids, hashes, codes and times only; a reason is a fixed code, never free text.",
+  "type": "object",
+  "properties": {
+    "receiptId": {
+      "$ref": "common.schema.json#/$defs/ulid"
+    },
+    "kind": {
+      "type": "string",
+      "const": "write_back"
+    },
+    "agent": {
+      "$ref": "common.schema.json#/$defs/agentAuthor"
+    },
+    "taskRef": {
+      "$ref": "common.schema.json#/$defs/taskRef"
+    },
+    "consultReceiptId": {
+      "description": "The Knowledge Receipt of the same task, if the agent passed it.",
+      "$ref": "common.schema.json#/$defs/ulid"
+    },
+    "result": {
+      "type": "string",
+      "enum": ["proposed", "not_needed"]
+    },
+    "proposalId": {
+      "$ref": "common.schema.json#/$defs/ulid"
+    },
+    "draftHash": {
+      "description": "Content hash of the proposed card draft (ADR-0034).",
+      "$ref": "common.schema.json#/$defs/contentHash"
+    },
+    "reason": {
+      "$ref": "#/$defs/reason"
+    },
+    "coveredBy": {
+      "description": "Cards that already hold the knowledge (reason already_covered).",
+      "type": "array",
+      "items": {
+        "$ref": "common.schema.json#/$defs/cardId"
+      },
+      "minItems": 1,
+      "maxItems": 50,
+      "uniqueItems": true
+    },
+    "at": {
+      "$ref": "common.schema.json#/$defs/dateTime"
+    },
+    "hash": {
+      "$ref": "common.schema.json#/$defs/jcsHash"
+    }
+  },
+  "required": ["receiptId", "kind", "agent", "taskRef", "result", "at", "hash"],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "description": "A proposed card names its proposal and draft hash and gives no reason; not_needed gives a reason and names no proposal.",
+      "if": {
+        "properties": {
+          "result": {
+            "const": "proposed"
+          }
+        },
+        "required": ["result"]
+      },
+      "then": {
+        "properties": {
+          "proposalId": true,
+          "draftHash": true,
+          "reason": false,
+          "coveredBy": false
+        },
+        "required": ["proposalId", "draftHash"]
+      },
+      "else": {
+        "properties": {
+          "reason": true,
+          "proposalId": false,
+          "draftHash": false
+        },
+        "required": ["reason"]
+      }
+    },
+    {
+      "description": "already_covered names the covering cards; other reasons name none.",
+      "if": {
+        "properties": {
+          "reason": {
+            "const": "already_covered"
+          }
+        },
+        "required": ["reason"]
+      },
+      "then": {
+        "properties": {
+          "coveredBy": true
+        },
+        "required": ["coveredBy"]
+      },
+      "else": {
+        "properties": {
+          "coveredBy": false
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "reason": {
+      "title": "WriteBackReason",
+      "description": "Why no card is needed (ADR-0039).",
+      "type": "string",
+      "enum": ["no_new_knowledge", "already_covered", "ephemeral_ops_fact", "task_abandoned"]
+    },
+    "notNeeded": {
+      "title": "WriteBackNotNeeded",
+      "type": "object",
+      "properties": {
+        "reason": {
+          "$ref": "#/$defs/reason"
+        },
+        "coveredBy": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/cardId"
+          },
+          "minItems": 1,
+          "maxItems": 50,
+          "uniqueItems": true
+        }
+      },
+      "required": ["reason"],
+      "additionalProperties": false,
+      "if": {
+        "properties": {
+          "reason": {
+            "const": "already_covered"
+          }
+        },
+        "required": ["reason"]
+      },
+      "then": {
+        "properties": {
+          "coveredBy": true
+        },
+        "required": ["coveredBy"]
+      },
+      "else": {
+        "properties": {
+          "coveredBy": false
+        }
+      }
+    },
+    "request": {
+      "title": "WriteBackRequest",
+      "description": "Input of knowledge_write_back: exactly one of `card` (creates a create_card proposal; the agent cannot release it for sharing, ADR-0036) or `notNeeded`. Author and target come from the connection.",
+      "type": "object",
+      "properties": {
+        "taskRef": {
+          "$ref": "common.schema.json#/$defs/taskRef"
+        },
+        "consultReceiptId": {
+          "$ref": "common.schema.json#/$defs/ulid"
+        },
+        "card": {
+          "type": "object",
+          "$ref": "card.schema.json#/$defs/draft",
+          "properties": {
+            "release": {
+              "const": "private"
+            }
+          }
+        },
+        "lageId": {
+          "$ref": "common.schema.json#/$defs/cardId"
+        },
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        },
+        "rationale": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "notNeeded": {
+          "$ref": "#/$defs/notNeeded"
+        }
+      },
+      "required": ["taskRef"],
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "required": ["card"],
+          "properties": {
+            "card": true
+          }
+        },
+        {
+          "required": ["notNeeded"],
+          "properties": {
+            "notNeeded": true,
+            "lageId": false,
+            "x": false,
+            "y": false,
+            "rationale": false
+          }
+        }
+      ],
+      "dependentRequired": {
+        "lageId": ["x", "y"]
+      }
+    },
+    "result": {
+      "title": "WriteBackResult",
+      "description": "Output of knowledge_write_back: the receipt, and the pending proposal when a card was proposed.",
+      "type": "object",
+      "properties": {
+        "receipt": {
+          "$ref": "write-back-receipt.schema.json"
+        },
+        "proposal": {
+          "$ref": "proposal.schema.json"
+        }
+      },
+      "required": ["receipt"],
+      "additionalProperties": false
+    }
+  }
+}

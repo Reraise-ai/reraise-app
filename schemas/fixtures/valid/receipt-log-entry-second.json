@@ -1,0 +1,24 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/receipt-log-entry.schema.json",
+  "description": "Second entry: prev is the hash of the first.",
+  "data": {
+    "v": 1,
+    "seq": 1,
+    "at": "2026-10-05T09:30:00Z",
+    "prev": "sha256:ae59e2ce8e82c6fdd08af4bf0d22cea5c8bfdda9255fe929224f56c69b881d2e",
+    "receipt": {
+      "receiptId": "01M1KM00000000000000000002",
+      "kind": "write_back",
+      "agent": "agent:research-helper",
+      "taskRef": "TASK-2026-0042",
+      "consultReceiptId": "01M1KM00000000000000000001",
+      "result": "not_needed",
+      "reason": "already_covered",
+      "coveredBy": ["01M1E34QM03WVTE8T1RYS3AM18"],
+      "at": "2026-10-05T09:30:00Z",
+      "hash": "sha256:0143bd1704dbed4ec8992251ce274cd315b585242ded13af50109b485f0a4f22"
+    },
+    "hash": "sha256:37114f422a2dd18cec0d669d654f8d9ef2adb698cde3e6e0121cb5460ac1bdf1"
+  }
+}

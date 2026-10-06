@@ -1,0 +1,11 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/write-back-receipt.schema.json#/$defs/request",
+  "description": "knowledge_write_back with a coded reason, no free text.",
+  "data": {
+    "taskRef": "TASK-2026-0042",
+    "notNeeded": {
+      "reason": "ephemeral_ops_fact"
+    }
+  }
+}

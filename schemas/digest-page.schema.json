@@ -1,0 +1,121 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldbuilder.invalid/schemas/v0/digest-page.schema.json",
+  "title": "DigestPage",
+  "description": "One atlas page built by wb digest (ADR-0043): lines that each cite card ids, and the content hash of every card the page covers, for the staleness check. A derived local view built for one gate target; never shared.",
+  "type": "object",
+  "properties": {
+    "pageId": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+    },
+    "title": {
+      "$ref": "common.schema.json#/$defs/text"
+    },
+    "scope": {
+      "$ref": "#/$defs/scope"
+    },
+    "target": {
+      "$ref": "common.schema.json#/$defs/packageTarget"
+    },
+    "generatedAt": {
+      "$ref": "common.schema.json#/$defs/dateTime"
+    },
+    "generator": {
+      "type": "string",
+      "pattern": "^(deterministic|model:[A-Za-z0-9][A-Za-z0-9._-]{0,63})$"
+    },
+    "lines": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/line"
+      }
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/source"
+      }
+    }
+  },
+  "required": [
+    "pageId",
+    "title",
+    "scope",
+    "target",
+    "generatedAt",
+    "generator",
+    "lines",
+    "sources"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "scope": {
+      "title": "DigestScope",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["world", "unassigned"]
+        },
+        "worldId": {
+          "$ref": "common.schema.json#/$defs/worldId"
+        }
+      },
+      "required": ["kind"],
+      "additionalProperties": false,
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "world"
+          }
+        },
+        "required": ["kind"]
+      },
+      "then": {
+        "properties": {
+          "worldId": true
+        },
+        "required": ["worldId"]
+      },
+      "else": {
+        "properties": {
+          "worldId": false
+        }
+      }
+    },
+    "line": {
+      "title": "DigestLine",
+      "type": "object",
+      "properties": {
+        "text": {
+          "$ref": "common.schema.json#/$defs/text"
+        },
+        "cardIds": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/cardId"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      },
+      "required": ["text", "cardIds"],
+      "additionalProperties": false
+    },
+    "source": {
+      "title": "DigestSource",
+      "type": "object",
+      "properties": {
+        "cardId": {
+          "$ref": "common.schema.json#/$defs/cardId"
+        },
+        "contentHash": {
+          "$ref": "common.schema.json#/$defs/contentHash"
+        }
+      },
+      "required": ["cardId", "contentHash"],
+      "additionalProperties": false
+    }
+  }
+}

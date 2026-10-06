@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldbuilder.invalid/schemas/v0/task-record.schema.json",
+  "title": "TaskRecord",
+  "description": "The hand-off of one agent task as the verifier reads it (ADR-0040): which receipts the task cites. Both receipts are optional here so that the verifier, not the parser, reports a missing one. A JSON file or the YAML front matter of a Markdown file.",
+  "type": "object",
+  "properties": {
+    "taskRef": {
+      "$ref": "common.schema.json#/$defs/taskRef"
+    },
+    "agent": {
+      "$ref": "common.schema.json#/$defs/agentAuthor"
+    },
+    "startedAt": {
+      "$ref": "common.schema.json#/$defs/dateTime"
+    },
+    "completedAt": {
+      "$ref": "common.schema.json#/$defs/dateTime"
+    },
+    "knowledgeReceipt": {
+      "$ref": "#/$defs/receiptRef"
+    },
+    "writeBackReceipt": {
+      "$ref": "#/$defs/receiptRef"
+    }
+  },
+  "required": ["taskRef", "agent", "completedAt"],
+  "additionalProperties": false,
+  "$defs": {
+    "receiptRef": {
+      "title": "ReceiptRef",
+      "description": "A receipt cited by id and hash.",
+      "type": "object",
+      "properties": {
+        "receiptId": {
+          "$ref": "common.schema.json#/$defs/ulid"
+        },
+        "hash": {
+          "$ref": "common.schema.json#/$defs/jcsHash"
+        }
+      },
+      "required": ["receiptId", "hash"],
+      "additionalProperties": false
+    }
+  }
+}

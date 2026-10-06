@@ -1,0 +1,10 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/task-record.schema.json",
+  "description": "A record without receipts parses; the verifier reports them as missing.",
+  "data": {
+    "taskRef": "TASK-2026-0050",
+    "agent": "agent:research-helper",
+    "completedAt": "2026-10-05T11:00:00Z"
+  }
+}

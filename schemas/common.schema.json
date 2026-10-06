@@ -152,7 +152,7 @@
     "proposalKind": {
       "title": "ProposalKind",
       "type": "string",
-      "enum": ["place_card", "move_card", "add_edge", "create_card", "comment"]
+      "enum": ["place_card", "move_card", "add_edge", "create_card", "comment", "record_outcome"]
     },
     "isoDate": {
       "title": "IsoDate",
@@ -182,6 +182,18 @@
       "type": "string",
       "minLength": 1,
       "pattern": "\\S"
+    },
+    "taskRef": {
+      "title": "TaskRef",
+      "description": "An opaque task reference chosen by the agent system (for example its task id), 1 to 128 characters without spaces, so it cannot carry prose (ADR-0039).",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/#-]{0,127}$"
+    },
+    "jcsHash": {
+      "title": "JcsHash",
+      "description": "sha256:<lower-case hex> over the RFC 8785 (JCS) serialisation of a JSON value (ADR-0034, ADR-0039).",
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
     }
   }
 }
