@@ -12,9 +12,10 @@
     "format": true,
     "type": true,
     "title": true,
-    "author": true
+    "author": true,
+    "contentHash": true
   },
-  "required": ["id", "externalId", "uri", "format", "type", "title", "author"],
+  "required": ["id", "externalId", "uri", "format", "type", "title", "author", "contentHash"],
   "$defs": {
     "content": {
       "title": "CardContent",
@@ -72,8 +73,8 @@
           "type": "string"
         },
         "contentHash": {
-          "description": "SHA-256 over the canonical card content, computed by the product (ADR-0006).",
-          "$ref": "common.schema.json#/$defs/sha256"
+          "description": "Hash of the canonical card content, computed by the product (ADR-0006, ADR-0034). Required on every card an adapter returns; optional on drafts, where the store recomputes it.",
+          "$ref": "common.schema.json#/$defs/contentHash"
         },
         "status": {
           "$ref": "common.schema.json#/$defs/cardStatus"
@@ -417,9 +418,6 @@
           "not": {}
         },
         "author": {
-          "not": {}
-        },
-        "contentHash": {
           "not": {}
         },
         "type": true,

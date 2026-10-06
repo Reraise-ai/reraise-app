@@ -60,3 +60,4 @@ MCP tool definitions, the adapter interfaces, or the product canon
 | [0031](0031-gate-rules-and-confirmation-binding.md) | Declarative gate rules and hash-bound cloud confirmations | accepted | 2026-10-06 |
 | [0032](0032-m1-proposal-polling.md) | The M1 board polls for proposals; the M2 live channel replaces polling | accepted | 2026-10-06 |
 | [0033](0033-derived-index-reference-adapter.md) | In-memory derived index for the reference adapter; SQLite only on measured need | accepted | 2026-10-06 |
+| [0034](0034-content-hash.md) | Content hash is SHA-256 over the JCS serialisation of the card content | accepted | 2026-10-06 |

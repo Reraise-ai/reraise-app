@@ -8,7 +8,7 @@
 //   describeStorageAdapterConformance('my adapter', async () => ({ adapter, reopen, raw, seed }));
 
 import type { CardDraft, CardId, StorageAdapter } from '@worldbuilder/core';
-import { deriveCardId, isWbUri, parseUri } from '@worldbuilder/core';
+import { computeContentHash, deriveCardId, isWbUri, parseUri } from '@worldbuilder/core';
 import { describe, expect, it } from 'vitest';
 
 /** Direct access to the backend that the kit needs to check what was written. */
@@ -140,6 +140,18 @@ export function describeStorageAdapterConformance(
         if (adapter.capabilities.ids === 'derived') expect(card.id).toBe(deriveCardId(card.uri));
         else expect(card.externalId).toBe(card.id);
       }
+    });
+
+    it('returns every card with its content hash, stable across instances (ADR-0034)', async () => {
+      const { adapter, reopen, seed } = await factory();
+      const id = await seed.cardWithForeignFields();
+      const card = await adapter.read(id);
+      expect(card?.contentHash).toBe(computeContentHash(card!));
+      expect((await (await reopen()).read(id))?.contentHash).toBe(card?.contentHash);
+      await adapter.patch(id, { title: 'Hash changes' });
+      const patched = await adapter.read(id);
+      expect(patched?.contentHash).toBe(computeContentHash(patched!));
+      expect(patched?.contentHash).not.toBe(card?.contentHash);
     });
 
     it('patches one field and leaves every other byte of the stored card unchanged', async () => {

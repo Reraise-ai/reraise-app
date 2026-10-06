@@ -36,7 +36,12 @@ export type Cursor = string;
  * Canonical card (ADR-0023). Every store maps to this model; card format v2 rules (layer, author, provenance, player fields, Lage, decision sections) apply to format-2 cards (ADR-0007, ADR-0009). Stance data is never part of a card (ADR-0008).
  */
 export type Card = CardContent &
-  Required<Pick<CardContent, 'id' | 'externalId' | 'uri' | 'format' | 'type' | 'title' | 'author'>>;
+  Required<
+    Pick<
+      CardContent,
+      'id' | 'externalId' | 'uri' | 'format' | 'type' | 'title' | 'author' | 'contentHash'
+    >
+  >;
 /**
  * Reference to a card in its home store: wb:<storeInstanceId>/<externalId percent-encoded per RFC 3986, upper-case hex>. storeInstanceId is a random UUID, never a hostname, path or user name (ADR-0005, ADR-0023).
  */
@@ -47,9 +52,9 @@ export type WbUri = string;
 export type Collection = 'actors' | 'evidence' | 'decisions';
 export type IsoDate = string;
 /**
- * Lower-case hex SHA-256 digest.
+ * sha256:<lower-case hex> over the RFC 8785 (JCS) serialisation of the hashed card content (ADR-0034).
  */
-export type Sha256 = string;
+export type ContentHash = string;
 export type CardStatus = 'draft' | 'checked' | 'released';
 /**
  * Sensitivity class; input to disclosure-gate rules (ADR-0023).
@@ -141,7 +146,6 @@ export type CardDraft = CardContent &
     externalId?: never;
     uri?: never;
     author?: never;
-    contentHash?: never;
   };
 /**
  * An agent identity: agent:<name>.
@@ -172,6 +176,10 @@ export type ProbabilityBand =
   | 'likely'
   | 'very_likely'
   | 'almost_certain';
+/**
+ * Lower-case hex SHA-256 digest.
+ */
+export type Sha256 = string;
 /**
  * Strength with which the position is held: 1 = weak, 2 = moderate, 3 = strong. Deliberately coarse; no percentages (ADR-0008).
  */
@@ -277,7 +285,7 @@ export interface CardContent {
    * SHA-256 of the original source document (not `contentHash`). Must be SHA-256 on collection evidence.
    */
   sourceChecksum?: string;
-  contentHash?: Sha256;
+  contentHash?: ContentHash;
   status?: CardStatus;
   /**
    * Carried as stored, without product semantics yet.

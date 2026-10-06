@@ -16,6 +16,7 @@ const card: Card = {
   layer: 'said',
   author: 'human',
   source: 'https://example.org/a',
+  contentHash: 'sha256:5f059177300e2c462fbc2597881b0dc6793d009f0a6e6f92625e4f98093cbcec',
 };
 
 const proposal: Proposal = {

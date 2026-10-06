@@ -18,10 +18,21 @@
 // - Type `rule`: the structured rule as a ```json block under `## Rule`.
 // - Format-2 type `decision`: the eleven sections as `##` headings (DECISION_HEADINGS);
 //   `Cards used` is a list of card ids.
+// - `contentHash` is computed as in packages/core (ADR-0034); a shared test vector keeps
+//   both implementations equal.
+import { createHash } from 'node:crypto';
 import { parse as parseYaml } from 'yaml';
 
 /** Front-matter keys that are derived from the file or the body and must not be stored. */
-export const DERIVED_KEYS = ['externalId', 'uri', 'body', 'lage', 'sections', 'rule'];
+export const DERIVED_KEYS = [
+  'externalId',
+  'uri',
+  'body',
+  'lage',
+  'sections',
+  'rule',
+  'contentHash',
+];
 
 /** Fields whose presence makes a card format 2 (ADR-0023). */
 export const FORMAT_2_FIELDS = [
@@ -59,6 +70,42 @@ export const DECISION_HEADINGS = [
 ];
 
 const ULID_RE = /[0-7][0-9A-HJKMNP-TV-Z]{25}/;
+
+/** Fields excluded from the content hash (ADR-0034); same list as packages/core. */
+export const CONTENT_HASH_EXCLUDED = [
+  'id',
+  'externalId',
+  'uri',
+  'contentHash',
+  'signature',
+  'level',
+  'typeRaw',
+  'rating',
+  'carrier',
+  'affiliation',
+];
+
+/** RFC 8785 (JCS) serialisation. */
+export function canonicalJson(value) {
+  if (Array.isArray(value)) {
+    return `[${value.map((v) => (v === undefined ? 'null' : canonicalJson(v))).join(',')}]`;
+  }
+  if (value !== null && typeof value === 'object') {
+    const entries = Object.entries(value)
+      .filter(([, v]) => v !== undefined)
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+    return `{${entries.map(([k, v]) => `${JSON.stringify(k)}:${canonicalJson(v)}`).join(',')}}`;
+  }
+  if (typeof value === 'number' && !Number.isFinite(value)) throw new Error('not finite');
+  return JSON.stringify(value);
+}
+
+/** `sha256:<hex>` over the JCS serialisation of the card without the excluded fields. */
+export function computeContentHash(card) {
+  const content = { ...card };
+  for (const key of CONTENT_HASH_EXCLUDED) delete content[key];
+  return `sha256:${createHash('sha256').update(canonicalJson(content), 'utf8').digest('hex')}`;
+}
 
 /** Split a Markdown file into parsed front matter and body. Throws on malformed input. */
 export function splitFrontMatter(text) {
@@ -219,5 +266,6 @@ export function toCanonicalCard(text, { storeInstanceId, worlds }) {
     card.rule = parseJsonSection(body, 'Rule');
   }
   if (data.type === 'decision' && card.format === 2) card.sections = parseDecisionSections(body);
+  card.contentHash = computeContentHash(card);
   return card;
 }

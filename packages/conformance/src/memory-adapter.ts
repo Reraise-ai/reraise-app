@@ -25,7 +25,7 @@ import type {
   World,
   WriteGuard,
 } from '@worldbuilder/core';
-import { buildUri, deriveCardId, encodeUlid } from '@worldbuilder/core';
+import { buildUri, computeContentHash, deriveCardId, encodeUlid } from '@worldbuilder/core';
 import type { StorageAdapterHarness } from './storage.js';
 
 /** Canonical card fields the fake understands; everything else is a foreign store field. */
@@ -163,12 +163,14 @@ export class MemoryStorageAdapter implements StorageAdapter {
     card['format'] = format;
     if (card['author'] === undefined && format === 1) card['author'] = 'unknown';
     card['training'] ??= false;
-    return {
+    const result = {
       ...card,
       id: this.store.idOf(externalId),
       externalId,
       uri: buildUri(this.store.storeInstanceId, externalId),
     } as Card;
+    // The hash is always computed from the content, never trusted from storage (ADR-0034).
+    return { ...result, contentHash: computeContentHash(result) };
   }
 
   async read(id: CardId): Promise<Card | undefined> {
@@ -204,13 +206,13 @@ export class MemoryStorageAdapter implements StorageAdapter {
   }
 
   async create(draft: CardDraft, author: KnownAuthor): Promise<CardId> {
-    const forbidden = ['id', 'externalId', 'uri', 'author', 'contentHash'].filter(
-      (k) => k in draft,
-    );
+    const forbidden = ['id', 'externalId', 'uri', 'author'].filter((k) => k in draft);
     if (forbidden.length > 0) throw new Error(`a draft must not set ${forbidden.join(', ')}`);
     this.assertKnown(Object.keys(draft));
-    const externalId = this.store.nextExternalId();
-    return this.store.seed(externalId, { ...draft, author });
+    // A draft's contentHash is not stored: the hash is recomputed on every read.
+    const content: Record<string, unknown> = { ...draft, author };
+    delete content['contentHash'];
+    return this.store.seed(this.store.nextExternalId(), content);
   }
 
   async patch(id: CardId, patch: CardPatch, guard: WriteGuard = {}): Promise<void> {

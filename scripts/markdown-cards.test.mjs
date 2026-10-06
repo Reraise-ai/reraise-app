@@ -3,6 +3,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildUri,
+  canonicalJson,
+  computeContentHash,
   encodeExternalId,
   parseDecisionSections,
   parseEdges,
@@ -27,6 +29,26 @@ describe('uri', () => {
   it('NFC-normalises before encoding and preserves case', () => {
     expect(encodeExternalId('Müller')).toBe(encodeExternalId('Müller'));
     expect(encodeExternalId('Müller')).toBe('M%C3%BCller');
+  });
+});
+
+describe('content hash (ADR-0034)', () => {
+  it('matches the vector pinned in packages/core', () => {
+    const card = {
+      format: 2,
+      type: 'claim',
+      title: 'A claim',
+      layer: 'said',
+      author: 'human',
+      source: 'https://example.org/a',
+    };
+    expect(computeContentHash({ ...card, id: ID, rating: 3 })).toBe(
+      'sha256:5f059177300e2c462fbc2597881b0dc6793d009f0a6e6f92625e4f98093cbcec',
+    );
+    expect(canonicalJson({ b: 1, '\u20ac': [1e21, undefined], a: { d: 0.1 } })).toBe(
+      '{"a":{"d":0.1},"b":1,"€":[1e+21,null]}',
+    );
+    expect(() => canonicalJson(Number.NaN)).toThrow();
   });
 });
 
@@ -95,6 +117,7 @@ describe('toCanonicalCard', () => {
       externalId: ID,
       uri: `wb:${STORE}/${ID}`,
       body: 'Text\n',
+      contentHash: expect.stringMatching(/^sha256:[0-9a-f]{64}$/),
     });
   });
 

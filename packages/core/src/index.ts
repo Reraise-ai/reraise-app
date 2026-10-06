@@ -8,6 +8,12 @@ export type * from './generated/contracts.js';
 /** Adapter interfaces (ADR-0005). */
 export type * from './adapters/index.js';
 export {
+  CONTENT_HASH_EXCLUDED,
+  canonicalJson,
+  computeContentHash,
+  hashedContent,
+} from './content-hash.js';
+export {
   buildUri,
   deriveCardId,
   encodeExternalId,

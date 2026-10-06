@@ -35,7 +35,15 @@
     "sourceRef": {
       "title": "SourceRef",
       "description": "A card id or an absolute URI (for example a wb: URI or a web address). Used where provenance must be machine-resolvable, e.g. player fields (ADR-0009).",
-      "anyOf": [{ "$ref": "#/$defs/ulid" }, { "type": "string", "format": "uri" }]
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ulid"
+        },
+        {
+          "type": "string",
+          "format": "uri"
+        }
+      ]
     },
     "agentAuthor": {
       "title": "AgentAuthor",
@@ -155,6 +163,12 @@
       "description": "Lower-case hex SHA-256 digest.",
       "type": "string",
       "pattern": "^[0-9a-f]{64}$"
+    },
+    "contentHash": {
+      "title": "ContentHash",
+      "description": "sha256:<lower-case hex> over the RFC 8785 (JCS) serialisation of the hashed card content (ADR-0034).",
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
     },
     "text": {
       "title": "Text",

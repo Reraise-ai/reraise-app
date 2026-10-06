@@ -32,7 +32,8 @@
         "rationale": "My reroute rule fires; the cost of delay outweighs the extra distance.",
         "cardsUsed": ["01M1E34QM03WVTE8T1RYS3AM18", "01M1EMA1R0AH9ZTK3YJK33TNER"],
         "outcome": "open"
-      }
+      },
+      "contentHash": "sha256:fbf55681b500bd134733e2e8722d9cfc0fe7ccab8c313204804ab4e5a6769a4e"
     },
     "usedCards": [
       {
@@ -52,7 +53,8 @@
         "training": true,
         "externalId": "01M1E34QM03WVTE8T1RYS3AM18",
         "uri": "wb:45aaff12-777f-40e3-a97c-8a592e1ea4f6/01M1E34QM03WVTE8T1RYS3AM18",
-        "body": "A (fictional) wire agency reports that the coastal state will restrict night\ntransits of laden tankers through the strait from 1 October.\n\nThis card is the origin of the provenance chain in this example: the two\nmedia cards below only repeat it.\n"
+        "body": "A (fictional) wire agency reports that the coastal state will restrict night\ntransits of laden tankers through the strait from 1 October.\n\nThis card is the origin of the provenance chain in this example: the two\nmedia cards below only repeat it.\n",
+        "contentHash": "sha256:d7954dd6878f5649ed8638d1d62b7627343e020e6153cada845e6ad270ec9985"
       },
       {
         "id": "01M1EMA1R0AH9ZTK3YJK33TNER",
@@ -66,7 +68,8 @@
         "training": false,
         "externalId": "01M1EMA1R0AH9ZTK3YJK33TNER",
         "uri": "wb:45aaff12-777f-40e3-a97c-8a592e1ea4f6/01M1EMA1R0AH9ZTK3YJK33TNER",
-        "body": "Own (invented) experience: during an earlier tension phase, war-risk\ninsurance quotes for the strait rose sharply within one day of the first\nannouncement.\n"
+        "body": "Own (invented) experience: during an earlier tension phase, war-risk\ninsurance quotes for the strait rose sharply within one day of the first\nannouncement.\n",
+        "contentHash": "sha256:623e86756d42bad52573b6f5fb51c12a6d6a55474321e30aa14458ef9991db0c"
       }
     ],
     "lage": {
