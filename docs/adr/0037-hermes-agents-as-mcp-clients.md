@@ -10,11 +10,11 @@ decision-makers: "Owner (product), CTO/orchestrator (technical)"
 
 The first target users run their own agent systems
 ([ADR-0016](0016-mcp-first-and-openapi-contracts.md), [vision](../product/vision.md)), for
-example the multi-agent system Hermes. The owner decided on 2026-10-06 that Hermes agents sit
-at the board: they read context packages, see the board, brainstorm and propose moves. Each
-Hermes agent connection is registered on its own as `local_model` or `cloud_model` ("both,
-depending on agent"). Where a Hermes installation keeps its own knowledge is not known yet;
-the owner will provide it.
+example multi-agent systems such as Hermes. The owner decided on 2026-10-06 that agents of
+such a system sit at the board: they read context packages, see the board, brainstorm and
+propose moves. Each agent connection is registered on its own as `local_model` or
+`cloud_model`, depending on the agent. Where such a system keeps its own knowledge differs
+between installations and is not specified yet.
 
 [ADR-0016](0016-mcp-first-and-openapi-contracts.md) makes MCP the AI interface,
 [ADR-0029](0029-process-topology.md) serves it at `/mcp` of the local service, and
@@ -102,9 +102,9 @@ not instructions; its proposals are reviewed by the human.
   connection (MCP notifications for proposals and Lage changes). `proposal_list` with
   `changedSince` stays for catch-up after a reconnect, so a polling agent keeps working.
 
-### Hermes' own knowledge
+### The agent system's own knowledge
 
-Not decided until the owner says where it lives. The integration stays generic:
+Not decided until a concrete installation's storage is known. The integration stays generic:
 
 - If Hermes keeps cards or notes the user wants on the board, an adapter for that store
   implements `StorageAdapter` (read-only is allowed: `capabilities.write = false`) and passes
@@ -113,8 +113,9 @@ Not decided until the owner says where it lives. The integration stays generic:
   findings with provenance in the inbox, referenced, pinned only on demand
   ([ADR-0014](0014-no-ingestion-inbox-of-findings.md)).
 - Hermes agents do not push their memory into a world over MCP; they propose single cards.
-- Such an adapter is built outside the core packages and gets its own ADR when the owner has
-  provided the details. No owner host name, path or credential enters the repository.
+- Such an adapter is built outside the core packages and gets its own ADR once the storage
+  details are known. No host name, path or credential of any installation enters the
+  repository.
 
 ### Documentation and test agent
 

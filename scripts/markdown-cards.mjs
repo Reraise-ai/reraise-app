@@ -203,7 +203,10 @@ export function toCanonicalCard(text, { storeInstanceId, worlds }) {
   for (const field of PLAYER_FIELDS) {
     if (Array.isArray(data[field])) card[field] = parsePlayerField(data[field]);
   }
-  if (typeof data.personalityType === 'string') {
+  if (data.personalityType !== undefined) {
+    if (typeof data.personalityType !== 'string') {
+      throw new Error('personalityType must be one "text|source" value, not a list or mapping');
+    }
     card.personalityType = parsePlayerField([data.personalityType])[0];
   }
   card.body = body;

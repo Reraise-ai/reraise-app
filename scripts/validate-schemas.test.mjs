@@ -246,6 +246,19 @@ describe('cross-checks', () => {
     expect(
       crossCheck(name, { players: [player, player], cards: [{ id }] }).map((f) => f.message),
     ).toEqual([`player ${id} is named twice`]);
+    const a = '01M1F8X7G0TTV1CC1FNKTNN0TJ';
+    const whatIf = (cards) => ({
+      trigger: { kind: 'assumption_changed', cardIds: [a] },
+      players: [player],
+      cards: [{ id }, ...cards],
+    });
+    expect(crossCheck(name, whatIf([{ id: a, type: 'assumption' }]))).toEqual([]);
+    expect(crossCheck(name, whatIf([])).map((f) => f.message)).toEqual([
+      `trigger card ${a} is not a card of the request`,
+    ]);
+    expect(crossCheck(name, whatIf([{ id: a, type: 'claim' }])).map((f) => f.message)).toEqual([
+      `trigger card ${a} is not an assumption card`,
+    ]);
   });
 
   it('flag any card id in a training record that did not opt in, but not world or proposal ids', () => {

@@ -247,7 +247,7 @@ export function createDisclosureGate(options: DisclosureGateOptions = {}): Discl
         o.id === confirmed.objects[i]!.id && o.contentHash === confirmed.objects[i]!.contentHash,
     );
 
-  return {
+  const gate: DisclosureGate = {
     decide(item, target) {
       if (configError)
         return result(
@@ -376,7 +376,7 @@ export function createDisclosureGate(options: DisclosureGateOptions = {}): Discl
       const objects = [];
       const denied = [];
       for (const card of cards) {
-        const d = this.decide({ kind: 'card', card }, 'share');
+        const d = gate.decide({ kind: 'card', card }, 'share');
         if (d.decision === 'allow') objects.push(shareProjection(card));
         else denied.push({ cardId: card.id, reason: d.reason });
       }
@@ -408,4 +408,5 @@ export function createDisclosureGate(options: DisclosureGateOptions = {}): Discl
       };
     },
   };
+  return gate;
 }

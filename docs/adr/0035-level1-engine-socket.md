@@ -147,6 +147,13 @@ pass:
   and with a release whose card was edited after confirmation (content hash differs), and
   predicts with the release of exactly the request's cards.
 
+The engine's release check is a consistency check, not the consent itself: the kit builds
+releases of the right shape with `releaseOf`, which an engine cannot tell from genuine ones.
+Consent is enforced by the service, which gets the release only from `DisclosureGate.redeem`
+(single use, bound to the confirmed envelope hash and to the session or connection) and passes
+it unchanged to the engine. The cross-check `level1-players` also checks that every card named
+by an `assumption_changed` trigger is an assumption card of the request.
+
 The kit runs in M1 against `createFixedLevel1Engine` (a trivial fake, local and cloud
 variants); real engines run it in their own slice.
 

@@ -135,6 +135,9 @@ describe('toCanonicalCard', () => {
     expect(() =>
       toCanonicalCard(`---\nid: ${ID}\ntitle: T\npersonalityType: ISTJ\n---\n`, store),
     ).toThrow('must have 2 non-empty parts');
+    expect(() =>
+      toCanonicalCard(`---\nid: ${ID}\ntitle: T\npersonalityType: [ISTJ|${WORLD}]\n---\n`, store),
+    ).toThrow('one "text|source" value');
   });
 
   it('refuses derived fields in front matter', () => {

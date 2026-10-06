@@ -205,13 +205,23 @@ export const CROSS_CHECKS = {
         );
     },
   },
-  /** ADR-0035: every player of a level-1 request is a card on the board, named once. */
+  /**
+   * ADR-0035: every player of a level-1 request is a card on the board, named once, and every
+   * assumption named by a what-if trigger is an assumption card of the request.
+   */
   'level1-players': {
     schema: 'level1-prediction.schema.json#/$defs/request',
     run(request) {
       const onBoard = new Set(request.cards.map((c) => c.id));
       const seen = new Set();
       const out = [];
+      const byId = new Map(request.cards.map((c) => [c.id, c]));
+      for (const id of request.trigger?.cardIds ?? []) {
+        const card = byId.get(id);
+        if (!card) out.push(`trigger card ${id} is not a card of the request`);
+        else if (String(card.type).trim().toLowerCase() !== 'assumption')
+          out.push(`trigger card ${id} is not an assumption card`);
+      }
       for (const { playerCardId: id } of request.players) {
         if (!onBoard.has(id)) out.push(`player ${id} is not a card of the request`);
         if (seen.has(id)) out.push(`player ${id} is named twice`);

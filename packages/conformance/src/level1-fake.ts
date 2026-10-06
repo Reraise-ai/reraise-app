@@ -22,6 +22,12 @@ export interface FixedLevel1EngineOptions {
 /**
  * True if the release carries exactly the request's cards, object for object (id and content
  * hash): what a cloud engine must check before anything is sent (ADR-0031, ADR-0035).
+ *
+ * This is a consistency check, not a proof of consent: an engine cannot tell a genuine release
+ * from a forged object of the same shape. Genuineness comes from the service, which obtains the
+ * release from `DisclosureGate.redeem` (single use, bound to the confirmed envelope hash and to
+ * the session or connection) and hands it straight to the engine. The engine's check only stops
+ * it from sending a request that differs from what the human confirmed.
  */
 export function releaseCoversRequest(
   request: Level1PredictionRequest,
