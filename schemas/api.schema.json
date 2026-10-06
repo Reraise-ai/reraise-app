@@ -14,7 +14,12 @@
       "title": "WorldList",
       "type": "object",
       "properties": {
-        "worlds": { "type": "array", "items": { "$ref": "world.schema.json" } }
+        "worlds": {
+          "type": "array",
+          "items": {
+            "$ref": "world.schema.json"
+          }
+        }
       },
       "required": ["worlds"],
       "additionalProperties": false
@@ -23,16 +28,42 @@
       "title": "LageGetRequest",
       "type": "object",
       "properties": {
-        "lageId": { "$ref": "common.schema.json#/$defs/cardId" }
+        "lageId": {
+          "$ref": "common.schema.json#/$defs/cardId"
+        }
       },
       "required": ["lageId"],
+      "additionalProperties": false
+    },
+    "lageCreateRequest": {
+      "title": "LageCreateRequest",
+      "description": "Body of the human-only lage_create operation: a new Lage card. The store assigns the id; the author is the human.",
+      "type": "object",
+      "properties": {
+        "title": {
+          "$ref": "common.schema.json#/$defs/text"
+        },
+        "worlds": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/worldId"
+          },
+          "uniqueItems": true
+        },
+        "lage": {
+          "$ref": "lage.schema.json"
+        }
+      },
+      "required": ["title", "lage"],
       "additionalProperties": false
     },
     "cardGetRequest": {
       "title": "CardGetRequest",
       "type": "object",
       "properties": {
-        "cardId": { "$ref": "common.schema.json#/$defs/cardId" }
+        "cardId": {
+          "$ref": "common.schema.json#/$defs/cardId"
+        }
       },
       "required": ["cardId"],
       "additionalProperties": false
@@ -41,12 +72,31 @@
       "title": "CardsSearchRequest",
       "type": "object",
       "properties": {
-        "worldId": { "$ref": "common.schema.json#/$defs/worldId" },
-        "text": { "type": "string", "minLength": 1, "maxLength": 500 },
-        "type": { "type": "string", "minLength": 1, "maxLength": 100 },
-        "layer": { "$ref": "common.schema.json#/$defs/layer" },
-        "limit": { "type": "integer", "minimum": 1, "maximum": 200, "default": 50 },
-        "cursor": { "$ref": "#/$defs/cursor" }
+        "worldId": {
+          "$ref": "common.schema.json#/$defs/worldId"
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "type": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "layer": {
+          "$ref": "common.schema.json#/$defs/layer"
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 200,
+          "default": 50
+        },
+        "cursor": {
+          "$ref": "#/$defs/cursor"
+        }
       },
       "additionalProperties": false
     },
@@ -55,8 +105,15 @@
       "description": "Gate-cleared cards for the caller's target; denied cards are omitted.",
       "type": "object",
       "properties": {
-        "cards": { "type": "array", "items": { "$ref": "card.schema.json" } },
-        "nextCursor": { "$ref": "#/$defs/cursor" }
+        "cards": {
+          "type": "array",
+          "items": {
+            "$ref": "card.schema.json"
+          }
+        },
+        "nextCursor": {
+          "$ref": "#/$defs/cursor"
+        }
       },
       "required": ["cards"],
       "additionalProperties": false
@@ -65,10 +122,26 @@
       "title": "ProposalListRequest",
       "type": "object",
       "properties": {
-        "status": { "type": "string", "enum": ["pending", "accepted", "rejected"] },
-        "lageId": { "$ref": "common.schema.json#/$defs/cardId" },
-        "limit": { "type": "integer", "minimum": 1, "maximum": 200, "default": 50 },
-        "cursor": { "$ref": "#/$defs/cursor" }
+        "status": {
+          "type": "string",
+          "enum": ["pending", "accepted", "rejected"]
+        },
+        "lageId": {
+          "$ref": "common.schema.json#/$defs/cardId"
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 200,
+          "default": 50
+        },
+        "cursor": {
+          "$ref": "#/$defs/cursor"
+        },
+        "changedSince": {
+          "description": "Polling (ADR-0032): return only proposals created or decided after this opaque cursor. Pass the `nextCursor` of the previous page.",
+          "$ref": "#/$defs/cursor"
+        }
       },
       "additionalProperties": false
     },
@@ -76,8 +149,16 @@
       "title": "ProposalPage",
       "type": "object",
       "properties": {
-        "proposals": { "type": "array", "items": { "$ref": "proposal.schema.json" } },
-        "nextCursor": { "$ref": "#/$defs/cursor" }
+        "proposals": {
+          "type": "array",
+          "items": {
+            "$ref": "proposal.schema.json"
+          }
+        },
+        "nextCursor": {
+          "description": "Opaque cursor: pass it as `cursor` for the next page or as `changedSince` to poll for later changes.",
+          "$ref": "#/$defs/cursor"
+        }
       },
       "required": ["proposals"],
       "additionalProperties": false
@@ -94,10 +175,21 @@
       "description": "Error response (RFC 9457). Never contains card content (ADR-0026).",
       "type": "object",
       "properties": {
-        "type": { "type": "string", "format": "uri-reference" },
-        "title": { "type": "string" },
-        "status": { "type": "integer", "minimum": 400, "maximum": 599 },
-        "detail": { "type": "string" }
+        "type": {
+          "type": "string",
+          "format": "uri-reference"
+        },
+        "title": {
+          "type": "string"
+        },
+        "status": {
+          "type": "integer",
+          "minimum": 400,
+          "maximum": 599
+        },
+        "detail": {
+          "type": "string"
+        }
       },
       "required": ["title", "status"],
       "additionalProperties": false

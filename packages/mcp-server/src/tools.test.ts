@@ -135,6 +135,18 @@ describe('MCP / Board API parity', () => {
     for (const tool of TOOLS) expect(operations.get(tool.name)?.op.security).toBeUndefined();
   });
 
+  it('reaches stances only through human-only operations (ADR-0008)', () => {
+    const stanceOps = [...operations].filter(([id, { op }]) => {
+      const refs = JSON.stringify(op);
+      return /stance/i.test(id) || refs.includes('stance.schema.json');
+    });
+    expect(stanceOps.map(([id]) => id).sort()).toEqual(['stance_get', 'stance_save']);
+    for (const [id, { op }] of stanceOps) {
+      expect(op['x-human-only'], id).toBe(true);
+      expect(op.security, id).toEqual([{ sessionToken: [] }]);
+    }
+  });
+
   it('marks every other operation human-only with the session token only (ADR-0026)', () => {
     const tools = new Set<string>(TOOLS.map((t) => t.name));
     const humanOnly = [...operations].filter(([id]) => !tools.has(id));
@@ -143,9 +155,12 @@ describe('MCP / Board API parity', () => {
       'decision_save',
       'disclosure_confirm',
       'disclosure_transfer_get',
+      'lage_create',
       'lage_save',
       'proposal_accept',
       'proposal_reject',
+      'stance_get',
+      'stance_save',
     ]);
     for (const [id, { op }] of humanOnly) {
       expect(op['x-human-only'], id).toBe(true);

@@ -25,6 +25,22 @@ export type Release = 'private' | 'community' | 'commercial';
  */
 export type CardId = Ulid;
 /**
+ * Directed edge kinds of card format v2 (ADR-0023).
+ */
+export type EdgeKind =
+  | 'supports'
+  | 'refutes'
+  | 'represents'
+  | 'cites'
+  | 'based_on'
+  | 'depends_on'
+  | 'relation'
+  | 'unspecified';
+/**
+ * human or agent:<name>.
+ */
+export type KnownAuthor = string;
+/**
  * Epistemic kind of a card (ADR-0007). believed is never a layer; it is a private stance (ADR-0008).
  */
 export type Layer = 'evidenced' | 'said' | 'experience';
@@ -65,18 +81,6 @@ export type CardClass = 'A' | 'B' | 'C';
  */
 export type Author = string;
 /**
- * Directed edge kinds of card format v2 (ADR-0023).
- */
-export type EdgeKind =
-  | 'supports'
-  | 'refutes'
-  | 'represents'
-  | 'cites'
-  | 'based_on'
-  | 'depends_on'
-  | 'relation'
-  | 'unspecified';
-/**
  * A card id or an absolute URI (for example a wb: URI or a web address). Used where provenance must be machine-resolvable, e.g. player fields (ADR-0009).
  */
 export type SourceRef = Ulid;
@@ -88,10 +92,6 @@ export type Ulid = string;
  * Player-field entries; each needs a source (ADR-0009).
  */
 export type PlayerField = PlayerEntry[];
-/**
- * human or agent:<name>.
- */
-export type KnownAuthor = string;
 export type RuleCondition =
   CardOnLageCondition | CardFieldCondition | EdgeCondition | StanceCondition;
 export type StancePosition = 'believed' | 'rejected' | 'undecided';
@@ -235,6 +235,59 @@ export interface World {
 export interface LageGetRequest {
   lageId: CardId;
 }
+/**
+ * Body of the human-only lage_create operation: a new Lage card. The store assigns the id; the author is the human.
+ */
+export interface LageCreateRequest {
+  title: Text;
+  worlds?: WorldId[];
+  lage: Lage;
+}
+/**
+ * Board state of a Lage (a card of type `lage`). Stored as a JSON block in the card body; a rewrite archives the previous version (ADR-0006, ADR-0023). Only the Lage format is persisted, never canvas-library state (ADR-0019).
+ */
+export interface Lage {
+  question: Text;
+  /**
+   * The options under consideration.
+   */
+  options: Text[];
+  /**
+   * Cards placed on the board with their positions.
+   */
+  cards: LagePlacement[];
+  /**
+   * Players at the table: humans and agents.
+   */
+  seats: LageSeat[];
+  /**
+   * Edges drawn on this board.
+   */
+  edges: LageEdge[];
+  /**
+   * Version number of this state; increases on every rewrite. Used for optimistic concurrency.
+   */
+  version: number;
+  /**
+   * Time (or date, as some stores record it) of the last change.
+   */
+  updatedAt: string;
+}
+export interface LagePlacement {
+  id: CardId;
+  x: number;
+  y: number;
+}
+export interface LageSeat {
+  name: Text;
+  kind: 'human' | 'agent';
+}
+export interface LageEdge {
+  from: CardId;
+  to: CardId;
+  kind: EdgeKind;
+  by: KnownAuthor;
+}
 export interface CardGetRequest {
   cardId: CardId;
 }
@@ -347,51 +400,6 @@ export interface PlayerEntry {
   source: SourceRef;
 }
 /**
- * Board state of a Lage (a card of type `lage`). Stored as a JSON block in the card body; a rewrite archives the previous version (ADR-0006, ADR-0023). Only the Lage format is persisted, never canvas-library state (ADR-0019).
- */
-export interface Lage {
-  question: Text;
-  /**
-   * The options under consideration.
-   */
-  options: Text[];
-  /**
-   * Cards placed on the board with their positions.
-   */
-  cards: LagePlacement[];
-  /**
-   * Players at the table: humans and agents.
-   */
-  seats: LageSeat[];
-  /**
-   * Edges drawn on this board.
-   */
-  edges: LageEdge[];
-  /**
-   * Version number of this state; increases on every rewrite. Used for optimistic concurrency.
-   */
-  version: number;
-  /**
-   * Time (or date, as some stores record it) of the last change.
-   */
-  updatedAt: string;
-}
-export interface LagePlacement {
-  id: CardId;
-  x: number;
-  y: number;
-}
-export interface LageSeat {
-  name: Text;
-  kind: 'human' | 'agent';
-}
-export interface LageEdge {
-  from: CardId;
-  to: CardId;
-  kind: EdgeKind;
-  by: KnownAuthor;
-}
-/**
  * Exactly eleven sections, none empty (ADR-0017). `cardsUsed` ids must exist; `outcome` is `open` until known.
  */
 export interface DecisionSections {
@@ -473,6 +481,7 @@ export interface ProposalListRequest {
   lageId?: CardId;
   limit?: number;
   cursor?: Cursor;
+  changedSince?: Cursor;
 }
 export interface ProposalPage {
   proposals: Proposal[];

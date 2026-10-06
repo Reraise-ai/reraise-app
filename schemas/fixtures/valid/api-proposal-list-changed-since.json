@@ -1,0 +1,9 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/api.schema.json#/$defs/proposalListRequest",
+  "description": "Polling proposal_list with the cursor of the previous page (ADR-0032).",
+  "data": {
+    "status": "pending",
+    "changedSince": "opaque-7"
+  }
+}

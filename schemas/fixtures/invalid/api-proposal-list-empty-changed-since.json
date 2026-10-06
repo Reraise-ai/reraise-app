@@ -1,0 +1,12 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/api.schema.json#/$defs/proposalListRequest",
+  "description": "A polling cursor is never empty.",
+  "expect": {
+    "keyword": "minLength",
+    "instancePath": "/changedSince"
+  },
+  "data": {
+    "changedSince": ""
+  }
+}

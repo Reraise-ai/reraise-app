@@ -7,7 +7,8 @@ info:
     Contract-first HTTP API of The Worldbuilder (ADR-0016). Every operation that mirrors an
     MCP tool has the tool's name as `operationId` and uses the same JSON Schemas for input and
     output; a parity test enforces this. Operations marked `x-human-only: true` accept only the
-    human session token: agent tokens are rejected with 403 (ADR-0011, ADR-0026).
+    human session token: agent tokens are rejected with 403 (ADR-0011, ADR-0026). Stances are
+    reachable only through the human-only stance operations, for the local screen.
 
     The server binds to loopback by default. Every response passes the disclosure gate for the
     caller's registered target; denied cards are omitted (ADR-0012). The disclosure target and
@@ -43,6 +44,36 @@ paths:
                 $ref: '../api.schema.json#/$defs/worldList'
         '401':
           $ref: '#/components/responses/Unauthorized'
+  /lagen:
+    post:
+      operationId: lage_create
+      summary: Create a Lage
+      description: >-
+        Human-only. Creates a new Lage card with its first board state and returns it with the
+        id assigned by the store (ADR-0023).
+      tags: [human-only]
+      x-human-only: true
+      security:
+        - sessionToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../api.schema.json#/$defs/lageCreateRequest'
+      responses:
+        '201':
+          description: The new Lage card.
+          content:
+            application/json:
+              schema:
+                $ref: '../card.schema.json'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/HumanOnly'
   /lagen/{lageId}:
     parameters:
       - name: lageId
@@ -161,6 +192,68 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
+  /cards/{cardId}/stance:
+    parameters:
+      - name: cardId
+        in: path
+        required: true
+        schema:
+          $ref: '../common.schema.json#/$defs/cardId'
+    get:
+      operationId: stance_get
+      summary: Get the user's own stance on a card
+      description: >-
+        Human-only, for the local screen. Stances never leave the device and never reach a
+        model or agent (ADR-0008, ADR-0012).
+      tags: [human-only]
+      x-human-only: true
+      security:
+        - sessionToken: []
+      responses:
+        '200':
+          description: The stance with its history.
+          content:
+            application/json:
+              schema:
+                $ref: '../stance.schema.json'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/HumanOnly'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      operationId: stance_save
+      summary: Set the user's own stance on a card
+      description: >-
+        Human-only. Stored on the device, never in a card file and never through a
+        StorageAdapter; the previous version moves into `history` (ADR-0008). `cardId` in the
+        body must equal the path.
+      tags: [human-only]
+      x-human-only: true
+      security:
+        - sessionToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../stance.schema.json'
+      responses:
+        '200':
+          description: The saved stance.
+          content:
+            application/json:
+              schema:
+                $ref: '../stance.schema.json'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/HumanOnly'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /context-packages:
     post:
       operationId: context_package_get
@@ -237,6 +330,11 @@ paths:
           in: query
           schema:
             $ref: '../api.schema.json#/$defs/proposalListRequest/properties/cursor'
+        - name: changedSince
+          in: query
+          description: Poll for proposals created or decided after this cursor (ADR-0032).
+          schema:
+            $ref: '../api.schema.json#/$defs/proposalListRequest/properties/changedSince'
       responses:
         '200':
           description: Proposals, newest first.
