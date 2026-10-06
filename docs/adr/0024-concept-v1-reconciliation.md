@@ -9,8 +9,8 @@ decision-makers: "Owner (product), CTO/orchestrator (technical)"
 ## Context and Problem Statement
 
 Concept v1 (German, `docs/01-vision.md` to `docs/05-roadmap.md`, plus the
-frozen click prototype) was written before the owner's hand-over and his
-decisions of 2026-10-05/06. The hand-over wins where they conflict, and
+frozen click prototype) was written before the owner's hand-over and the
+owner decisions of 2026-10-05/06. The hand-over wins where they conflict, and
 every resolution must be recorded. Many smaller concept items are not
 worth an ADR each. This ADR lists every concept v1 decision that the
 hand-over touches, with a verdict: kept, changed, deferred or dropped.

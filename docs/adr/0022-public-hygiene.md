@@ -9,9 +9,10 @@ decision-makers: "Owner (product), CTO/orchestrator (technical)"
 ## Context and Problem Statement
 
 This is the owner's first public project. The product is built to hold
-highly sensitive personal data, and the owner's real store contains
-identity documents, tax identifiers and bank statements. Agents working on
-the repository see hand-over material with owner-specific details. A
+highly sensitive personal data: a user's store can contain identity
+documents, tax identifiers and bank statements. People and agents working
+on the repository may see private material from the systems they work
+with. A
 single leak into the public history is permanent. How do we keep the
 repository and its history clean?
 
@@ -38,7 +39,7 @@ owner's goal of a public project.
   Palma) and every example card has `synthetic: true` in its front matter.
 - Never in the repository or its history: secrets, tokens, real personal
   data, real card contents, owner infrastructure details (server names,
-  paths, IPs), names of the owner, his assistants or agents, customer
+  paths, IPs), names of the owner or of the owner's assistants and agents, customer
   names, or internal tooling names. The owner's store is referred to
   generically ("the owner's card store", "the owner store's write
   channel"). Hand-over material is never committed.
