@@ -76,7 +76,7 @@ C4Container
 | disclosure-gate | `packages/disclosure-gate` | Apache-2.0 | exists (M0 skeleton): a default-deny function, no rules | M1: rule evaluation per card and target, decision log, blocks a private card for `cloud_model` |
 | Storage adapter (reference) | `packages/adapters/storage-markdown-files` | Apache-2.0 | exists (M0 skeleton): adapter id only | M1: reads and patches the reference card format, archive on rewrite, derived index |
 | Source and model connectors | `packages/adapters/*` | Apache-2.0 | not started | M2+: local model, cloud model, Jev stub; Obsidian vault, HTTP/JSON, document management, paid news |
-| local-state | `packages/local-state` | Apache-2.0 | not created yet | M1: proposals, stances, gate log and gate rules in the per-user state directory behind a core interface ([ADR-0030](../adr/0030-local-state-on-the-device.md)) |
+| local-state | `packages/local-state` | Apache-2.0 | M1: implemented (store, state-directory resolution and safety check, gate log, rules loader); service wiring pending | M1: proposals, stances, gate log and gate rules in the per-user state directory behind a core interface ([ADR-0030](../adr/0030-local-state-on-the-device.md)) |
 | training-export | `packages/training-export` | Apache-2.0 | exists (M0 skeleton): the `training: true` eligibility predicate | M2+: JSONL export behind the gate with per-export confirmation |
 | conformance | `packages/conformance` | Apache-2.0 | exists (M0 skeleton): version constant. Kit skeleton with mapping-rule tests against an in-memory fake in progress (M0) | M1: full kit run against the reference adapter |
 | Card files | user-chosen folder | user data | none (the synthetic example worlds are in progress, M0) | M1 |
