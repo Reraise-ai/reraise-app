@@ -2,7 +2,7 @@
   "name": "@worldbuilder/conformance",
   "version": "0.0.0",
   "private": true,
-  "description": "Conformance test kit for storage adapters (skeleton)",
+  "description": "Conformance test kits for storage adapters and disclosure gates",
   "license": "Apache-2.0",
   "type": "module",
   "main": "./dist/index.js",
@@ -19,5 +19,13 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@worldbuilder/core": "workspace:*",
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1"
+  },
+  "peerDependencies": {
+    "vitest": "^5.0.3"
   }
 }

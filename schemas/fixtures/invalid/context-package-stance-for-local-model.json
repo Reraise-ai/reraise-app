@@ -29,10 +29,12 @@
           "status": "checked",
           "class": "C",
           "worlds": ["01M1DZPW00JGXPRPG4179ZPNB8"],
+          "tags": ["shipping", "transit"],
           "training": true,
           "externalId": "01M1E34QM03WVTE8T1RYS3AM18",
           "uri": "wb:45aaff12-777f-40e3-a97c-8a592e1ea4f6/01M1E34QM03WVTE8T1RYS3AM18",
-          "body": "A (fictional) wire agency reports that the coastal state will restrict night\ntransits of laden tankers through the strait from 1 October.\n\nThis card is the origin of the provenance chain in this example: the two\nmedia cards below only repeat it.\n"
+          "body": "A (fictional) wire agency reports that the coastal state will restrict night\ntransits of laden tankers through the strait from 1 October.\n\nThis card is the origin of the provenance chain in this example: the two\nmedia cards below only repeat it.\n",
+          "contentHash": "sha256:0da4ef9bbdf630dd457e6f843ffd3c6090fce56b1d2eee23e8cfa19710cb51ac"
         },
         "provenance": {
           "uri": "wb:45aaff12-777f-40e3-a97c-8a592e1ea4f6/01M1E34QM03WVTE8T1RYS3AM18",
@@ -84,7 +86,8 @@
           "training": false,
           "externalId": "01M1E6JK80GR8G0JHMPVT7TDX4",
           "uri": "wb:45aaff12-777f-40e3-a97c-8a592e1ea4f6/01M1E6JK80GR8G0JHMPVT7TDX4",
-          "body": "A (fictional) daily newspaper repeats the wire report and adds that the\nrestrictions are \"very likely\" to last beyond October. It cites the wire\nreport and adds no own sources.\n"
+          "body": "A (fictional) daily newspaper repeats the wire report and adds that the\nrestrictions are \"very likely\" to last beyond October. It cites the wire\nreport and adds no own sources.\n",
+          "contentHash": "sha256:44b9d38a2fc45acc7ea0e58ac4037363ac0a6887ad12517e9bc1814810c7ce8e"
         },
         "provenance": {
           "uri": "wb:45aaff12-777f-40e3-a97c-8a592e1ea4f6/01M1E6JK80GR8G0JHMPVT7TDX4",
@@ -122,7 +125,8 @@
           "training": false,
           "externalId": "01M1EA0EW0V90F04X7AKQJSKK2",
           "uri": "wb:45aaff12-777f-40e3-a97c-8a592e1ea4f6/01M1EA0EW0V90F04X7AKQJSKK2",
-          "body": "A (fictional) evening broadcast repeats the newspaper story. Proposed by an\nagent and accepted by the user, so the author stays `agent:research-helper`.\n\nThree findings, one origin: wire report, newspaper and broadcaster are a\nsingle chain.\n"
+          "body": "A (fictional) evening broadcast repeats the newspaper story. Proposed by an\nagent and accepted by the user, so the author stays `agent:research-helper`.\n\nThree findings, one origin: wire report, newspaper and broadcaster are a\nsingle chain.\n",
+          "contentHash": "sha256:821625a7963f48a495cbf75461f22c343f5731691b408f8decfcf94a4732c981"
         },
         "provenance": {
           "uri": "wb:45aaff12-777f-40e3-a97c-8a592e1ea4f6/01M1EA0EW0V90F04X7AKQJSKK2",

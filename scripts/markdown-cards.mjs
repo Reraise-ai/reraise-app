@@ -18,10 +18,23 @@
 // - Type `rule`: the structured rule as a ```json block under `## Rule`.
 // - Format-2 type `decision`: the eleven sections as `##` headings (DECISION_HEADINGS);
 //   `Cards used` is a list of card ids.
+// - `contentHash` is computed by packages/core (ADR-0034).
+import { buildUri, canonicalJson, computeContentHash, encodeExternalId } from '@worldbuilder/core';
 import { parse as parseYaml } from 'yaml';
 
+// Identity and hashing come from packages/core, never a second implementation.
+export { buildUri, canonicalJson, computeContentHash, encodeExternalId };
+
 /** Front-matter keys that are derived from the file or the body and must not be stored. */
-export const DERIVED_KEYS = ['externalId', 'uri', 'body', 'lage', 'sections', 'rule'];
+export const DERIVED_KEYS = [
+  'externalId',
+  'uri',
+  'body',
+  'lage',
+  'sections',
+  'rule',
+  'contentHash',
+];
 
 /** Fields whose presence makes a card format 2 (ADR-0023). */
 export const FORMAT_2_FIELDS = [
@@ -69,23 +82,6 @@ export function splitFrontMatter(text) {
     throw new Error('front matter is not a mapping');
   }
   return { data, body: (m[2] ?? '').replace(/^\r?\n/, '') };
-}
-
-/** RFC 3986 percent-encoding of an NFC-normalised external id (ADR-0023). */
-export function encodeExternalId(externalId) {
-  let out = '';
-  for (const byte of new TextEncoder().encode(externalId.normalize('NFC'))) {
-    const ch = String.fromCharCode(byte);
-    out += /[A-Za-z0-9\-._~]/.test(ch)
-      ? ch
-      : `%${byte.toString(16).toUpperCase().padStart(2, '0')}`;
-  }
-  return out;
-}
-
-/** wb:<storeInstanceId>/<externalId percent-encoded> (ADR-0023). */
-export function buildUri(storeInstanceId, externalId) {
-  return `wb:${storeInstanceId}/${encodeExternalId(externalId)}`;
 }
 
 /** Split `a|b|c` into exactly `n` parts. */
@@ -219,5 +215,6 @@ export function toCanonicalCard(text, { storeInstanceId, worlds }) {
     card.rule = parseJsonSection(body, 'Rule');
   }
   if (data.type === 'decision' && card.format === 2) card.sections = parseDecisionSections(body);
+  card.contentHash = computeContentHash(card);
   return card;
 }

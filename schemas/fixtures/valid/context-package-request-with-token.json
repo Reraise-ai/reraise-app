@@ -1,0 +1,11 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/context-package.schema.json#/$defs/request",
+  "description": "A cloud send carries the transfer and its single-use confirmation token (ADR-0031).",
+  "data": {
+    "worldId": "01M1DZPW00JGXPRPG4179ZPNB8",
+    "lageId": "01M1F21G80R816A1T0V2P6RACH",
+    "transferId": "01M1HA4MC0T8585XX5H0E6NVRP",
+    "confirmationToken": "synthetic-token-0000000000"
+  }
+}

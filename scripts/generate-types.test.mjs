@@ -4,7 +4,14 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { OUTPUT, bundle, generateTypes, loadSchemaFiles } from './generate-types.mjs';
+import {
+  OUTPUT,
+  SCHEMAS_OUTPUT,
+  bundle,
+  generateSchemasModule,
+  generateTypes,
+  loadSchemaFiles,
+} from './generate-types.mjs';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -12,6 +19,11 @@ describe('generated TypeScript types', () => {
   it('are up to date with the schemas (run pnpm generate:types)', async () => {
     const committed = readFileSync(path.join(repoRoot, OUTPUT), 'utf8');
     expect(committed).toBe(await generateTypes(repoRoot));
+  }, 30_000);
+
+  it('and the schemas module are up to date with the schemas', async () => {
+    const committed = readFileSync(path.join(repoRoot, SCHEMAS_OUTPUT), 'utf8');
+    expect(committed).toBe(await generateSchemasModule(repoRoot));
   }, 30_000);
 
   it('name every schema and definition', () => {

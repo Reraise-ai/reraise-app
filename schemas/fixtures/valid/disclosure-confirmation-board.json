@@ -1,0 +1,14 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/disclosure-decision.schema.json#/$defs/confirmation",
+  "description": "Confirmation of a board-requested transfer with its single-use token.",
+  "data": {
+    "transferId": "01M1HA4MC0T8585XX5H0E6NVRP",
+    "payloadHash": "sha256:db4bc27a862c21237ea43dec0c237eb75ce72127bb653b45a16d03f9d493c373",
+    "cardIds": ["01M1E34QM03WVTE8T1RYS3AM18"],
+    "token": "synthetic-token-0000000000",
+    "tokenExpiresAt": "2026-09-16T10:25:00Z",
+    "confirmedBy": "human",
+    "confirmedAt": "2026-09-16T10:20:00Z"
+  }
+}

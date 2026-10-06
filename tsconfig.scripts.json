@@ -6,7 +6,10 @@
     "noEmit": true,
     "declaration": false,
     "noImplicitAny": false,
-    "verbatimModuleSyntax": false
+    "verbatimModuleSyntax": false,
+    "paths": {
+      "@worldbuilder/core": ["./packages/core/src/index.ts"]
+    }
   },
   "include": ["scripts/**/*.mjs", "*.js", "*.ts"]
 }

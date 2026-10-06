@@ -1,0 +1,21 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/gate-rules.schema.json",
+  "description": "Targets are the four of ADR-0012.",
+  "expect": {
+    "keyword": "enum",
+    "instancePath": "/rules/0/targets/0"
+  },
+  "data": {
+    "rules": [
+      {
+        "id": "mail",
+        "effect": "allow",
+        "targets": ["email"],
+        "match": {
+          "class": ["C"]
+        }
+      }
+    ]
+  }
+}

@@ -16,7 +16,7 @@ import addFormatsModule from 'ajv-formats';
 import { isDeepStrictEqual } from 'node:util';
 import { parse as parseYaml } from 'yaml';
 import { toPosix, walk } from './lib.mjs';
-import { splitFrontMatter, toCanonicalCard } from './markdown-cards.mjs';
+import { computeContentHash, splitFrontMatter, toCanonicalCard } from './markdown-cards.mjs';
 
 // ajv ships CommonJS; under NodeNext its default export is typed as the module namespace.
 const Ajv2020 = /** @type {any} */ (Ajv2020Module);
@@ -80,11 +80,12 @@ export function loadSchemas(repoRoot) {
   return { ajv, names, problems };
 }
 
-/** Count a passing valid case or a correctly failing invalid case for a schema. */
+/** Count a passing valid case or a correctly failing invalid case for a schema file. */
 function bump(coverage, name, kind) {
-  const c = coverage.get(name) ?? { valid: 0, invalid: 0 };
+  const file = name.split('#')[0];
+  const c = coverage.get(file) ?? { valid: 0, invalid: 0 };
   c[kind]++;
-  coverage.set(name, c);
+  coverage.set(file, c);
 }
 
 const formatErrors = (errors) =>
@@ -147,6 +148,41 @@ export const CROSS_CHECKS = {
         .map((id) => `card ${id} did not opt in to training but appears in the record`);
     },
   },
+  /** ADR-0034: every canonical card in an envelope carries the hash of its own content. */
+  'content-hash': {
+    schema: '*',
+    run(data) {
+      const out = [];
+      const visit = (v) => {
+        if (Array.isArray(v)) v.forEach(visit);
+        else if (v !== null && typeof v === 'object') {
+          if (
+            typeof v.uri === 'string' &&
+            v.uri.startsWith('wb:') &&
+            typeof v.contentHash === 'string'
+          ) {
+            const want = computeContentHash(v);
+            if (v.contentHash !== want)
+              out.push(`card ${v.id} has contentHash ${v.contentHash}, expected ${want}`);
+          }
+          Object.values(v).forEach(visit);
+        }
+      };
+      visit(data);
+      return out;
+    },
+  },
+  /** ADR-0031: a cloud package carries only the cards of its confirmed transfer. */
+  'transfer-items': {
+    schema: 'context-package.schema.json',
+    run(pkg) {
+      if (!pkg.transfer) return [];
+      const allowed = new Set(pkg.transfer.cardIds);
+      return pkg.items
+        .filter((i) => !allowed.has(i.card.id))
+        .map((i) => `item ${i.card.id} is not in confirmed transfer ${pkg.transfer.transferId}`);
+    },
+  },
   /** ADR-0015: the choice of a level-1 answer is one of its options. */
   'level1-choice': {
     schema: 'level1-answer.schema.json',
@@ -161,7 +197,7 @@ export const CROSS_CHECKS = {
 /** Run every cross-check that applies to `name`; returns [{ check, message }]. */
 export function crossCheck(name, data) {
   return Object.entries(CROSS_CHECKS)
-    .filter(([, c]) => c.schema === name)
+    .filter(([, c]) => c.schema === name || c.schema === '*')
     .flatMap(([check, c]) => c.run(data).map((message) => ({ check, message })));
 }
 
@@ -172,8 +208,11 @@ function checkEnvelope(doc, rel, names, problems, { requireSynthetic, requireExp
     return null;
   }
   if (requireSynthetic && doc.synthetic !== true) problems.push(`${rel}: needs "synthetic": true`);
+  // `<$id>` or `<$id>#/$defs/<name>` for a definition inside a schema.
   const name = typeof doc.schema === 'string' ? doc.schema.replace(SCHEMA_BASE, '') : '';
-  if (!doc.schema?.startsWith?.(SCHEMA_BASE) || !names.includes(name)) {
+  const [file, fragment] = name.split('#');
+  const fragmentOk = fragment === undefined || /^\/\$defs\/[A-Za-z0-9]+$/.test(fragment);
+  if (!doc.schema?.startsWith?.(SCHEMA_BASE) || !names.includes(file ?? '') || !fragmentOk) {
     problems.push(`${rel}: "schema" must be the $id of a schema in schemas/ (got ${doc.schema})`);
     return null;
   }

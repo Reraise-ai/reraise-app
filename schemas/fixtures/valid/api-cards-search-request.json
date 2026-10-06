@@ -1,0 +1,11 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/api.schema.json#/$defs/cardsSearchRequest",
+  "description": "cards_search input.",
+  "data": {
+    "worldId": "01M1DZPW00JGXPRPG4179ZPNB8",
+    "text": "transit",
+    "layer": "said",
+    "limit": 20
+  }
+}

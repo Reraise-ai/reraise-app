@@ -1,0 +1,35 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/card.schema.json",
+  "description": "contentHash is sha256:<hex> (ADR-0034).",
+  "expect": {
+    "keyword": "pattern",
+    "instancePath": "/contentHash"
+  },
+  "data": {
+    "id": "01M1E6JK80GR8G0JHMPVT7TDX4",
+    "format": 2,
+    "collection": "evidence",
+    "type": "claim",
+    "title": "Daily newspaper repeats the transit restriction report",
+    "layer": "said",
+    "author": "human",
+    "source": "https://example.org/daily-a/2026-09-15-strait",
+    "sourceDate": "2026-09-15",
+    "status": "checked",
+    "class": "C",
+    "worlds": ["01M1DZPW00JGXPRPG4179ZPNB8"],
+    "edges": [
+      {
+        "target": "01M1E34QM03WVTE8T1RYS3AM18",
+        "kind": "cites",
+        "by": "human"
+      }
+    ],
+    "training": false,
+    "externalId": "01M1E6JK80GR8G0JHMPVT7TDX4",
+    "uri": "wb:45aaff12-777f-40e3-a97c-8a592e1ea4f6/01M1E6JK80GR8G0JHMPVT7TDX4",
+    "body": "A (fictional) daily newspaper repeats the wire report and adds that the\nrestrictions are \"very likely\" to last beyond October. It cites the wire\nreport and adds no own sources.\n",
+    "contentHash": "44b9d38a2fc45acc7ea0e58ac4037363ac0a6887ad12517e9bc1814810c7ce8e"
+  }
+}

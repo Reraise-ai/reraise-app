@@ -1,8 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright The Worldbuilder contributors
+import * as core from '@worldbuilder/core';
 import { describe, expect, it } from 'vitest';
 import {
   buildUri,
+  canonicalJson,
+  computeContentHash,
   encodeExternalId,
   parseDecisionSections,
   parseEdges,
@@ -27,6 +30,14 @@ describe('uri', () => {
   it('NFC-normalises before encoding and preserves case', () => {
     expect(encodeExternalId('Müller')).toBe(encodeExternalId('Müller'));
     expect(encodeExternalId('Müller')).toBe('M%C3%BCller');
+  });
+});
+
+describe('shared implementation', () => {
+  it('uses identity and hashing from packages/core, not a copy', () => {
+    expect(buildUri).toBe(core.buildUri);
+    expect(computeContentHash).toBe(core.computeContentHash);
+    expect(canonicalJson).toBe(core.canonicalJson);
   });
 });
 
@@ -95,6 +106,7 @@ describe('toCanonicalCard', () => {
       externalId: ID,
       uri: `wb:${STORE}/${ID}`,
       body: 'Text\n',
+      contentHash: expect.stringMatching(/^sha256:[0-9a-f]{64}$/),
     });
   });
 

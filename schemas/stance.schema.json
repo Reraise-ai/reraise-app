@@ -5,15 +5,28 @@
   "description": "The local user's private stance on one card (ADR-0008). Only a human sets it; it is stored on the device only, never in card files, and is disclosed to target screen only (ADR-0012). Every change keeps the previous version in `history`.",
   "type": "object",
   "properties": {
-    "cardId": { "$ref": "common.schema.json#/$defs/cardId" },
-    "position": { "$ref": "common.schema.json#/$defs/stancePosition" },
-    "weight": { "$ref": "#/$defs/weight" },
-    "note": { "description": "Free note, e.g. a mapped own assessment.", "type": "string" },
-    "updatedAt": { "$ref": "common.schema.json#/$defs/dateTime" },
+    "cardId": {
+      "$ref": "common.schema.json#/$defs/cardId"
+    },
+    "position": {
+      "$ref": "common.schema.json#/$defs/stancePosition"
+    },
+    "weight": {
+      "$ref": "#/$defs/weight"
+    },
+    "note": {
+      "description": "Free note, e.g. a mapped own assessment.",
+      "type": "string"
+    },
+    "updatedAt": {
+      "$ref": "common.schema.json#/$defs/dateTime"
+    },
     "history": {
       "description": "Previous versions, oldest first.",
       "type": "array",
-      "items": { "$ref": "#/$defs/version" }
+      "items": {
+        "$ref": "#/$defs/version"
+      }
     }
   },
   "required": ["cardId", "position", "weight", "updatedAt", "history"],
@@ -30,12 +43,38 @@
       "title": "StanceVersion",
       "type": "object",
       "properties": {
-        "position": { "$ref": "common.schema.json#/$defs/stancePosition" },
-        "weight": { "$ref": "#/$defs/weight" },
-        "note": { "type": "string" },
-        "updatedAt": { "$ref": "common.schema.json#/$defs/dateTime" }
+        "position": {
+          "$ref": "common.schema.json#/$defs/stancePosition"
+        },
+        "weight": {
+          "$ref": "#/$defs/weight"
+        },
+        "note": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "$ref": "common.schema.json#/$defs/dateTime"
+        }
       },
       "required": ["position", "weight", "updatedAt"],
+      "additionalProperties": false
+    },
+    "input": {
+      "title": "StanceInput",
+      "description": "Body of the human-only stance_save operation. The server sets cardId (from the path), updatedAt and history.",
+      "type": "object",
+      "properties": {
+        "position": {
+          "$ref": "common.schema.json#/$defs/stancePosition"
+        },
+        "weight": {
+          "$ref": "#/$defs/weight"
+        },
+        "note": {
+          "type": "string"
+        }
+      },
+      "required": ["position", "weight"],
       "additionalProperties": false
     }
   }

@@ -28,14 +28,22 @@
     },
     "wbUri": {
       "title": "WbUri",
-      "description": "Reference to a card in its home store: wb:<storeInstanceId>/<externalId percent-encoded per RFC 3986, upper-case hex>. storeInstanceId is a random UUID, never a hostname, path or user name (ADR-0005, ADR-0023).",
+      "description": "Reference to a card in its home store: wb:<storeInstanceId>/<externalId>, in canonical form only: the external id NFC-normalised, UTF-8, every unreserved character literal and every other byte %XX with upper-case hex (RFC 3986). A URI that differs from buildUri(storeInstanceId, externalId) is not a card URI (for example %2D for '-'). storeInstanceId is a random UUID, never a hostname, path or user name (ADR-0005, ADR-0023).",
       "type": "string",
       "pattern": "^wb:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/(?:[A-Za-z0-9._~-]|%[0-9A-F]{2})+$"
     },
     "sourceRef": {
       "title": "SourceRef",
       "description": "A card id or an absolute URI (for example a wb: URI or a web address). Used where provenance must be machine-resolvable, e.g. player fields (ADR-0009).",
-      "anyOf": [{ "$ref": "#/$defs/ulid" }, { "type": "string", "format": "uri" }]
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ulid"
+        },
+        {
+          "type": "string",
+          "format": "uri"
+        }
+      ]
     },
     "agentAuthor": {
       "title": "AgentAuthor",
@@ -155,6 +163,12 @@
       "description": "Lower-case hex SHA-256 digest.",
       "type": "string",
       "pattern": "^[0-9a-f]{64}$"
+    },
+    "contentHash": {
+      "title": "ContentHash",
+      "description": "sha256:<lower-case hex> over the RFC 8785 (JCS) serialisation of the hashed card content (ADR-0034).",
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
     },
     "text": {
       "title": "Text",

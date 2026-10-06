@@ -1,0 +1,17 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/finding.schema.json",
+  "description": "Every finding carries provenance: a source or an origin system (ADR-0014).",
+  "expect": {
+    "keyword": "anyOf",
+    "instancePath": ""
+  },
+  "data": {
+    "uri": "https://example.org/insurer-bulletin/2026-09-16",
+    "connector": "example-news",
+    "title": "Insurer bulletin: war-risk premiums doubled",
+    "snippet": "War-risk premiums for the strait doubled overnight (invented).",
+    "sourceDate": "2026-09-16",
+    "retrievedAt": "2026-09-16T10:00:00Z"
+  }
+}

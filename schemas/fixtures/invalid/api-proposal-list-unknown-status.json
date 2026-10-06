@@ -1,0 +1,12 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/api.schema.json#/$defs/proposalListRequest",
+  "description": "Status filters are pending, accepted or rejected.",
+  "expect": {
+    "keyword": "enum",
+    "instancePath": "/status"
+  },
+  "data": {
+    "status": "ghost"
+  }
+}

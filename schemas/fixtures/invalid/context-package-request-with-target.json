@@ -1,0 +1,13 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/context-package.schema.json#/$defs/request",
+  "description": "The target comes from the connection (ADR-0012).",
+  "expect": {
+    "keyword": "additionalProperties",
+    "instancePath": ""
+  },
+  "data": {
+    "worldId": "01M1DZPW00JGXPRPG4179ZPNB8",
+    "target": "screen"
+  }
+}

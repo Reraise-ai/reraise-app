@@ -1,0 +1,205 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldbuilder.invalid/schemas/v0/api.schema.json",
+  "title": "Api",
+  "description": "Inputs and outputs of the MCP tools and Board API operations that are not domain objects themselves (ADR-0016). Each MCP tool and its HTTP counterpart use the same definitions. Identity, author and disclosure target are never inputs: they come from the caller's registered connection (ADR-0012, ADR-0026).",
+  "$defs": {
+    "emptyRequest": {
+      "title": "EmptyRequest",
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "worldList": {
+      "title": "WorldList",
+      "type": "object",
+      "properties": {
+        "worlds": {
+          "type": "array",
+          "items": {
+            "$ref": "world.schema.json"
+          }
+        }
+      },
+      "required": ["worlds"],
+      "additionalProperties": false
+    },
+    "lageGetRequest": {
+      "title": "LageGetRequest",
+      "type": "object",
+      "properties": {
+        "lageId": {
+          "$ref": "common.schema.json#/$defs/cardId"
+        }
+      },
+      "required": ["lageId"],
+      "additionalProperties": false
+    },
+    "lageCreateRequest": {
+      "title": "LageCreateRequest",
+      "description": "Body of the human-only lage_create operation: a new Lage card. The store assigns the id; the author is the human.",
+      "type": "object",
+      "properties": {
+        "title": {
+          "$ref": "common.schema.json#/$defs/text"
+        },
+        "worlds": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/worldId"
+          },
+          "uniqueItems": true
+        },
+        "lage": {
+          "$ref": "lage.schema.json"
+        }
+      },
+      "required": ["title", "lage"],
+      "additionalProperties": false
+    },
+    "cardGetRequest": {
+      "title": "CardGetRequest",
+      "type": "object",
+      "properties": {
+        "cardId": {
+          "$ref": "common.schema.json#/$defs/cardId"
+        }
+      },
+      "required": ["cardId"],
+      "additionalProperties": false
+    },
+    "cardsSearchRequest": {
+      "title": "CardsSearchRequest",
+      "type": "object",
+      "properties": {
+        "worldId": {
+          "$ref": "common.schema.json#/$defs/worldId"
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "type": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "layer": {
+          "$ref": "common.schema.json#/$defs/layer"
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 200,
+          "default": 50
+        },
+        "cursor": {
+          "$ref": "#/$defs/cursor"
+        }
+      },
+      "additionalProperties": false
+    },
+    "cardPage": {
+      "title": "CardPage",
+      "description": "Gate-cleared cards for the caller's target; denied cards are omitted.",
+      "type": "object",
+      "properties": {
+        "cards": {
+          "type": "array",
+          "items": {
+            "$ref": "card.schema.json"
+          }
+        },
+        "nextCursor": {
+          "$ref": "#/$defs/cursor"
+        },
+        "denied": {
+          "description": "Cards the gate withheld for the caller's target, by id and reason (ADR-0031).",
+          "type": "array",
+          "items": {
+            "$ref": "disclosure-decision.schema.json#/$defs/denied"
+          }
+        }
+      },
+      "required": ["cards"],
+      "additionalProperties": false
+    },
+    "proposalListRequest": {
+      "title": "ProposalListRequest",
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["pending", "accepted", "rejected"]
+        },
+        "lageId": {
+          "$ref": "common.schema.json#/$defs/cardId"
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 200,
+          "default": 50
+        },
+        "cursor": {
+          "$ref": "#/$defs/cursor"
+        },
+        "changedSince": {
+          "description": "Polling (ADR-0032): return only proposals created or decided after this opaque cursor. Pass the `nextCursor` of the previous page.",
+          "$ref": "#/$defs/cursor"
+        }
+      },
+      "additionalProperties": false
+    },
+    "proposalPage": {
+      "title": "ProposalPage",
+      "type": "object",
+      "properties": {
+        "proposals": {
+          "type": "array",
+          "items": {
+            "$ref": "proposal.schema.json"
+          }
+        },
+        "nextCursor": {
+          "description": "Opaque cursor: pass it as `cursor` for the next page or as `changedSince` to poll for later changes.",
+          "$ref": "#/$defs/cursor"
+        }
+      },
+      "required": ["proposals"],
+      "additionalProperties": false
+    },
+    "cursor": {
+      "title": "Cursor",
+      "description": "Opaque pagination cursor.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512
+    },
+    "problem": {
+      "title": "Problem",
+      "description": "Error response (RFC 9457). Never contains card content (ADR-0026).",
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "format": "uri-reference"
+        },
+        "title": {
+          "type": "string"
+        },
+        "status": {
+          "type": "integer",
+          "minimum": 400,
+          "maximum": 599
+        },
+        "detail": {
+          "type": "string"
+        }
+      },
+      "required": ["title", "status"],
+      "additionalProperties": false
+    }
+  }
+}

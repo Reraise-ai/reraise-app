@@ -1,0 +1,18 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/gate-rules.schema.json#/$defs/fragment",
+  "description": "An adapter fragment with deny rules only (ADR-0031).",
+  "data": {
+    "source": "example-store-adapter",
+    "rules": [
+      {
+        "id": "identity-documents",
+        "effect": "deny",
+        "targets": ["local_model", "cloud_model", "demo"],
+        "match": {
+          "type": ["identity-document"]
+        }
+      }
+    ]
+  }
+}

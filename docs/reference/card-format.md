@@ -77,8 +77,8 @@ contain a comma or square brackets.
 | Field | Type | Required | Meaning |
 | --- | --- | --- | --- |
 | `id` | string (ULID) | yes | canonical, globally unique card id, see [Identity](#identity) |
-| `externalId` | string | for foreign stores | the store-local id (for example `x-14`) |
-| `uri` | string | for foreign stores | `wb:<storeInstanceId>/<externalId percent-encoded>` |
+| `externalId` | string | derived | the store-local id (for example `x-14`). Derived by the adapter, never written to the front matter of the reference format, where it equals `id`. |
+| `uri` | string | derived | `wb:<storeInstanceId>/<externalId percent-encoded>`. Derived by the adapter, never written to the front matter. |
 | `format` | `1` or `2` | yes (canonical) | see [Format versions](#format-versions) |
 | `collection` | enum | no | `actors`, `evidence`, `decisions` |
 | `type` | string | yes | open vocabulary, see [Types](#types) |
@@ -89,14 +89,15 @@ contain a comma or square brackets.
 | `source` | string | see rules | text, URI or card id |
 | `sourceDate` | ISO date | no | date of the source |
 | `sourceChecksum` | string | no | SHA-256 of the **original source document**. Must be SHA-256 on `collection: evidence`. On other cards any string is accepted with a warning only. |
-| `contentHash` | string | no | SHA-256 of the canonical card content, computed by the product. Not the same as `sourceChecksum`. |
+| `contentHash` | string | derived | `sha256:` plus lower-case hex SHA-256 of the RFC 8785 (JCS) serialisation of the card content ([ADR-0034](../adr/0034-content-hash.md)). Computed by the product on every read, never written to the front matter. Not the same as `sourceChecksum`. |
 | `status` | enum | no | `draft`, `checked`, `released` |
-| `rating` | string | no | carried as stored |
+| `rating` | string or number | no | carried as stored |
 | `release` | enum | no | `private`, `community`, `commercial` |
 | `visibility` | enum | no | `private`, `company_internal`, `cross_partner`, `customer_visible`, `public` |
 | `carrier` | string | no | carried as stored |
 | `affiliation` | string | no | carried as stored |
 | `class` | enum | no | `A`, `B`, `C`. An input to disclosure-gate rules. |
+| `tags` | list of text | no | free tags, unique. An input to disclosure-gate rules. |
 | `level` | reserved | no | reserved for future card tiers. Unused. **Not** an epistemic field. |
 | `signature` | reserved | no | reserved for author signatures. Unused. |
 
@@ -260,26 +261,43 @@ introduced by a `##` heading and none may be empty. The canonical keys, and the 
 legacy store that map to them ([ADR-0017](../adr/0017-decision-card-and-training-export.md),
 [ADR-0023](../adr/0023-core-domain-model.md)):
 
-| # | Key | Store heading |
-| --- | --- | --- |
-| 1 | `situation` | Situation |
-| 2 | `trigger` | Ausloeser |
-| 3 | `conditions` | Bedingungen |
-| 4 | `facts` | Fakten |
-| 5 | `priorities` | Prioritaeten |
-| 6 | `action` | Handlung |
-| 7 | `alternatives` | Alternativen |
-| 8 | `exclusions` | Ausschluss |
-| 9 | `rationale` | Begruendung |
-| 10 | `cardsUsed` | Verwendete Karten |
-| 11 | `outcome` | Ergebnis |
+| # | Key | Reference heading | Store heading |
+| --- | --- | --- | --- |
+| 1 | `situation` | Situation | Situation |
+| 2 | `trigger` | Trigger | Ausloeser |
+| 3 | `conditions` | Conditions | Bedingungen |
+| 4 | `facts` | Facts | Fakten |
+| 5 | `priorities` | Priorities | Prioritaeten |
+| 6 | `action` | Action | Handlung |
+| 7 | `alternatives` | Alternatives | Alternativen |
+| 8 | `exclusions` | Exclusions | Ausschluss |
+| 9 | `rationale` | Rationale | Begruendung |
+| 10 | `cardsUsed` | Cards used | Verwendete Karten |
+| 11 | `outcome` | Outcome | Ergebnis |
 
-Store headings are matched with and without umlaut transliteration (`ae`, `oe`, `ue`). The
-heading text the reference adapter writes for new cards is fixed by the schema and the
-conformance kit.
+The reference format writes the English headings of the third column, in this order
+([ADR-0028](../adr/0028-json-schema-contract-conventions.md)). Store headings are matched with
+and without umlaut transliteration (`ae`, `oe`, `ue`). Under `Cards used` each list item starts
+with a card id.
 
 While no outcome is known, the outcome section holds `open` (the store's word `offen` maps to
 it). Ids named in `cardsUsed` must exist. Decision cards without `format: 2` are not affected.
+
+### Rule cards
+
+A card with `type: rule` may hold a structured rule ([ADR-0013](../adr/0013-rules-panel-replaces-barometer.md))
+as one JSON block under a `## Rule` heading, like the Lage block. Its keys are `when` and
+`unless` (lists of conditions) and `then` (the preferred action, as written); the shape is
+fixed by `schemas/rule.schema.json`. Rule cards without the block stay valid as prose; only
+structured rules are evaluated.
+
+```json
+{
+  "when": [{ "kind": "card_on_lage", "card": "01J9ZQ7K3M5V8W2X4Y6Z0A1B2C" }],
+  "then": "Reroute via the Cape",
+  "unless": [{ "kind": "edge", "edgeKind": "refutes", "to": "01J9ZQ7K3M5V8W2X4Y6Z0A1B2C" }]
+}
+```
 
 ## 9. What the validator checks
 

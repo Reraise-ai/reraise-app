@@ -1,0 +1,8 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/disclosure-decision.schema.json#/$defs/confirmRequest",
+  "description": "The confirmation echoes the payload hash.",
+  "data": {
+    "payloadHash": "sha256:db4bc27a862c21237ea43dec0c237eb75ce72127bb653b45a16d03f9d493c373"
+  }
+}

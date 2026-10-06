@@ -19,7 +19,7 @@
       "$ref": "common.schema.json#/$defs/text"
     },
     "ruleId": {
-      "description": "The allow rule that matched, if any.",
+      "description": "Id of the rule that decided: the matching deny rule, or else the matching allow rule. Absent for default deny.",
       "type": "string",
       "minLength": 1
     },
@@ -28,7 +28,7 @@
       "type": "boolean"
     },
     "confirmation": {
-      "$ref": "#/$defs/confirmation"
+      "$ref": "#/$defs/confirmationRef"
     },
     "decidedAt": {
       "$ref": "common.schema.json#/$defs/dateTime"
@@ -120,15 +120,11 @@
     },
     "transfer": {
       "title": "DisclosureTransfer",
-      "description": "A pending cloud_model transfer awaiting the user's confirmation; lists exactly which cards would be sent. Exports use cloud_model semantics (ADR-0012).",
+      "description": "A previewed cloud_model transfer awaiting the user's confirmation (ADR-0012, ADR-0031). The record lives in memory on the service, expires 5 minutes after the preview, and is void after a restart. `cardIds` lists the ids of the objects in the envelope; `payloadHash` must be echoed by the confirmation.",
       "type": "object",
       "properties": {
         "transferId": {
           "$ref": "common.schema.json#/$defs/ulid"
-        },
-        "target": {
-          "type": "string",
-          "const": "cloud_model"
         },
         "purpose": {
           "type": "string",
@@ -142,37 +138,58 @@
           "minItems": 1,
           "uniqueItems": true
         },
+        "payloadHash": {
+          "$ref": "#/$defs/payloadHash"
+        },
+        "preview": {
+          "$ref": "#/$defs/previewEnvelope"
+        },
         "createdAt": {
           "$ref": "common.schema.json#/$defs/dateTime"
+        },
+        "expiresAt": {
+          "$ref": "common.schema.json#/$defs/dateTime"
+        },
+        "requestedBy": {
+          "description": "Who will send: the board session (token flow) or a registered MCP connection (released to that connection only).",
+          "type": "string",
+          "enum": ["board", "mcp_connection"]
         }
       },
-      "required": ["transferId", "target", "purpose", "cardIds", "createdAt"],
+      "required": [
+        "transferId",
+        "purpose",
+        "cardIds",
+        "payloadHash",
+        "preview",
+        "createdAt",
+        "expiresAt",
+        "requestedBy"
+      ],
       "additionalProperties": false
     },
     "confirmRequest": {
       "title": "DisclosureConfirmRequest",
-      "description": "Body of the human-only confirm operation: the user confirms exactly the listed cards of one transfer.",
+      "description": "Body of the human-only confirm operation (the transferId is in the path). The service rejects a payloadHash that differs from the stored one or from the hash of the current envelope, and a second confirmation (409), and an expired transfer (410).",
       "type": "object",
       "properties": {
-        "cardIds": {
-          "type": "array",
-          "items": {
-            "$ref": "common.schema.json#/$defs/cardId"
-          },
-          "minItems": 1,
-          "uniqueItems": true
+        "payloadHash": {
+          "$ref": "#/$defs/payloadHash"
         }
       },
-      "required": ["cardIds"],
+      "required": ["payloadHash"],
       "additionalProperties": false
     },
     "confirmation": {
       "title": "DisclosureConfirmation",
-      "description": "The user's confirmation of one transfer. No standing consent: it covers this transfer only.",
+      "description": "Response of the human-only confirm operation (ADR-0031, ADR-0028). For a transfer the board previewed for its own send, it carries a single-use token (at least 128 random bits, held server side, bound to the confirming human session, valid 5 minutes, void after a restart) that the send call carries; the service consumes it atomically before sending. For a transfer an MCP connection registered as cloud_model asked for, there is no token: the agent re-calls with the transferId and the service releases the content to that connection only. Never logged.",
       "type": "object",
       "properties": {
         "transferId": {
           "$ref": "common.schema.json#/$defs/ulid"
+        },
+        "payloadHash": {
+          "$ref": "#/$defs/payloadHash"
         },
         "cardIds": {
           "type": "array",
@@ -181,6 +198,12 @@
           },
           "minItems": 1,
           "uniqueItems": true
+        },
+        "token": {
+          "$ref": "#/$defs/confirmationToken"
+        },
+        "tokenExpiresAt": {
+          "$ref": "common.schema.json#/$defs/dateTime"
         },
         "confirmedBy": {
           "$ref": "common.schema.json#/$defs/humanAuthor"
@@ -189,7 +212,160 @@
           "$ref": "common.schema.json#/$defs/dateTime"
         }
       },
-      "required": ["transferId", "cardIds", "confirmedBy", "confirmedAt"],
+      "required": ["transferId", "payloadHash", "cardIds", "confirmedBy", "confirmedAt"],
+      "additionalProperties": false,
+      "dependentRequired": {
+        "token": ["tokenExpiresAt"]
+      }
+    },
+    "payloadHash": {
+      "title": "PayloadHash",
+      "description": "sha256:<lower-case hex> over the RFC 8785 (JCS) serialisation of the preview envelope (ADR-0031, ADR-0034).",
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "modelRequest": {
+      "title": "DisclosureModelRequest",
+      "description": "The request parameters that go to the model with the objects.",
+      "type": "object",
+      "properties": {
+        "question": {
+          "$ref": "common.schema.json#/$defs/text"
+        },
+        "options": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/text"
+          },
+          "uniqueItems": true
+        },
+        "outputSchema": {
+          "description": "JSON Schema the answer must follow (level 1).",
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    "previewEnvelope": {
+      "title": "DisclosurePreviewEnvelope",
+      "description": "Exactly what would leave the device: the target, the connector, the request parameters and the canonical objects after the gate decision. The payload hash covers this envelope.",
+      "type": "object",
+      "properties": {
+        "target": {
+          "type": "string",
+          "const": "cloud_model"
+        },
+        "connectorId": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"
+        },
+        "request": {
+          "$ref": "#/$defs/modelRequest"
+        },
+        "objects": {
+          "type": "array",
+          "items": {
+            "$ref": "card.schema.json"
+          },
+          "minItems": 1
+        }
+      },
+      "required": ["target", "connectorId", "request", "objects"],
+      "additionalProperties": false
+    },
+    "previewRequest": {
+      "title": "DisclosurePreviewRequest",
+      "description": "Body of the human-only preview operation: what the user wants to send. The server builds the envelope from gate-cleared canonical objects only.",
+      "type": "object",
+      "properties": {
+        "connectorId": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"
+        },
+        "purpose": {
+          "type": "string",
+          "enum": ["context_package", "level1", "export"]
+        },
+        "request": {
+          "$ref": "#/$defs/modelRequest"
+        },
+        "cardIds": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/cardId"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      },
+      "required": ["connectorId", "purpose", "request", "cardIds"],
+      "additionalProperties": false
+    },
+    "confirmationToken": {
+      "title": "ConfirmationToken",
+      "description": "Opaque single-use token, base64url of at least 16 random bytes (128 bits).",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{22,128}$",
+      "maxLength": 128
+    },
+    "confirmationRef": {
+      "title": "DisclosureConfirmationRef",
+      "description": "Reference to a confirmed transfer whose token was consumed for this send; recorded in gate decisions and context packages. Contains no token.",
+      "type": "object",
+      "properties": {
+        "transferId": {
+          "$ref": "common.schema.json#/$defs/ulid"
+        },
+        "payloadHash": {
+          "$ref": "#/$defs/payloadHash"
+        },
+        "cardIds": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/cardId"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "confirmedAt": {
+          "$ref": "common.schema.json#/$defs/dateTime"
+        }
+      },
+      "required": ["transferId", "payloadHash", "cardIds", "confirmedAt"],
+      "additionalProperties": false
+    },
+    "denied": {
+      "title": "DeniedCard",
+      "description": "A card the gate withheld from this response, with the reason; never its content.",
+      "type": "object",
+      "properties": {
+        "cardId": {
+          "$ref": "common.schema.json#/$defs/cardId"
+        },
+        "reason": {
+          "$ref": "common.schema.json#/$defs/text"
+        }
+      },
+      "required": ["cardId", "reason"],
+      "additionalProperties": false
+    },
+    "release": {
+      "title": "DisclosureRelease",
+      "description": "Result of consuming a confirmation for one send (DisclosureGate.redeem): exactly the canonical objects the human confirmed, nothing else. Cloud content leaves the device only as these objects.",
+      "type": "object",
+      "properties": {
+        "confirmation": {
+          "$ref": "#/$defs/confirmationRef"
+        },
+        "objects": {
+          "type": "array",
+          "items": {
+            "$ref": "card.schema.json"
+          },
+          "minItems": 1
+        }
+      },
+      "required": ["confirmation", "objects"],
       "additionalProperties": false
     }
   }

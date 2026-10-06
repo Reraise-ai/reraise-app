@@ -1,0 +1,11 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/api.schema.json#/$defs/problem",
+  "description": "A 403 for an agent token on a human-only endpoint, without card content.",
+  "data": {
+    "type": "https://worldbuilder.invalid/problems/human-only",
+    "title": "Human-only operation",
+    "status": 403,
+    "detail": "Agent credentials cannot accept proposals."
+  }
+}

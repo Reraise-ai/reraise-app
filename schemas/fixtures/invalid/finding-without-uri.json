@@ -1,0 +1,18 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/finding.schema.json",
+  "description": "Every finding has a URI reference (ADR-0014).",
+  "expect": {
+    "keyword": "format",
+    "instancePath": "/uri"
+  },
+  "data": {
+    "uri": "not a uri",
+    "connector": "example-news",
+    "title": "Insurer bulletin: war-risk premiums doubled",
+    "snippet": "War-risk premiums for the strait doubled overnight (invented).",
+    "source": "Example insurer bulletin",
+    "sourceDate": "2026-09-16",
+    "retrievedAt": "2026-09-16T10:00:00Z"
+  }
+}

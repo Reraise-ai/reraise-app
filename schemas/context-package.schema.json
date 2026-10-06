@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://worldbuilder.invalid/schemas/v0/context-package.schema.json",
   "title": "ContextPackage",
-  "description": "What a model or agent receives about the active world (ADR-0016, ADR-0024 item 34). Built after the disclosure gate: every item is gate-cleared for `target`; denied cards are omitted and only counted in `withheld`. Layers are never merged into a score. Only accepted content appears as items; pending proposals are listed separately. Stance data appears only for target screen; a cloud_model package needs the user's per-transfer confirmation.",
+  "description": "What a model or agent receives about the active world (ADR-0016, ADR-0024 item 34). Built after the disclosure gate: every item is gate-cleared for `target`; denied cards are omitted and only counted in `withheld`. Layers are never merged into a score. Only accepted content appears as items; pending proposals are listed separately. Stance data appears only for target screen; a cloud_model package carries content only with a confirmed, consumed transfer token.",
   "type": "object",
   "properties": {
     "id": {
@@ -45,7 +45,26 @@
       "minimum": 0
     },
     "transfer": {
-      "$ref": "#/$defs/transferRef"
+      "description": "The confirmed transfer whose objects this package carries; its cardIds list every item.",
+      "$ref": "disclosure-decision.schema.json#/$defs/confirmationRef"
+    },
+    "denied": {
+      "description": "Cards the gate withheld, by id and reason. A cloud_model package without a confirmed transfer contains only these (ADR-0031).",
+      "type": "array",
+      "items": {
+        "$ref": "disclosure-decision.schema.json#/$defs/denied"
+      }
+    },
+    "confirmationRequired": {
+      "description": "Set when a cloud_model caller asked without a confirmed transfer: the human must confirm transfer `transferId` on the board; the caller then asks again with that transferId. The package then has no content.",
+      "type": "object",
+      "properties": {
+        "transferId": {
+          "$ref": "common.schema.json#/$defs/ulid"
+        }
+      },
+      "required": ["transferId"],
+      "additionalProperties": false
     }
   },
   "required": [
@@ -85,7 +104,7 @@
       }
     },
     {
-      "description": "A cloud_model package carries the user's confirmation of this transfer.",
+      "description": "A cloud_model package carries content only from a confirmed, released transfer (ADR-0031, ADR-0028); without one it has no items, no question and no pending proposals, only denied ids and possibly confirmationRequired.",
       "if": {
         "properties": {
           "target": {
@@ -95,17 +114,44 @@
         "required": ["target"]
       },
       "then": {
-        "properties": {
-          "transfer": true
-        },
-        "required": ["transfer"]
+        "anyOf": [
+          {
+            "properties": {
+              "transfer": true
+            },
+            "required": ["transfer"]
+          },
+          {
+            "properties": {
+              "items": {
+                "type": "array",
+                "maxItems": 0
+              },
+              "pendingProposals": {
+                "type": "array",
+                "maxItems": 0
+              },
+              "question": false
+            }
+          }
+        ]
       },
       "else": {
         "not": {
-          "properties": {
-            "transfer": true
-          },
-          "required": ["transfer"]
+          "anyOf": [
+            {
+              "properties": {
+                "transfer": true
+              },
+              "required": ["transfer"]
+            },
+            {
+              "properties": {
+                "confirmationRequired": true
+              },
+              "required": ["confirmationRequired"]
+            }
+          ]
         }
       }
     }
@@ -211,24 +257,9 @@
       "additionalProperties": false,
       "description": "A pending proposal, by id and kind only: no free text from agents reaches a model as context."
     },
-    "transferRef": {
-      "title": "ContextTransferRef",
-      "description": "The confirmed cloud_model transfer this package belongs to.",
-      "type": "object",
-      "properties": {
-        "transferId": {
-          "$ref": "common.schema.json#/$defs/ulid"
-        },
-        "confirmedAt": {
-          "$ref": "common.schema.json#/$defs/dateTime"
-        }
-      },
-      "required": ["transferId", "confirmedAt"],
-      "additionalProperties": false
-    },
     "request": {
       "title": "ContextPackageRequest",
-      "description": "Input of context_package_get. The target is taken from the caller's registered connection, never from the request (ADR-0012).",
+      "description": "Input of context_package_get. The target is taken from the caller's registered connection, never from the request (ADR-0012). A board send to a cloud model carries the transferId and the confirmation token; an MCP connection registered as cloud_model carries only the transferId of the transfer the human confirmed, and the service releases it to that connection (ADR-0031, ADR-0028).",
       "type": "object",
       "properties": {
         "worldId": {
@@ -244,10 +275,19 @@
           "type": "integer",
           "minimum": 1,
           "maximum": 500
+        },
+        "transferId": {
+          "$ref": "common.schema.json#/$defs/ulid"
+        },
+        "confirmationToken": {
+          "$ref": "disclosure-decision.schema.json#/$defs/confirmationToken"
         }
       },
       "required": ["worldId"],
-      "additionalProperties": false
+      "additionalProperties": false,
+      "dependentRequired": {
+        "confirmationToken": ["transferId"]
+      }
     }
   }
 }

@@ -12,6 +12,7 @@ sourceChecksum: 846e5971241fdefb2d193751027b4d9a1f79b8e4fc1de533d5335d0cb04f6b9f
 status: checked
 class: C
 worlds: [Hormuz]
+tags: [shipping, transit]
 training: true
 synthetic: true
 ---

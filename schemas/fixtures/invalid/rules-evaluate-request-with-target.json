@@ -1,0 +1,13 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/rule-evaluation.schema.json#/$defs/request",
+  "description": "The target comes from the connection (ADR-0013).",
+  "expect": {
+    "keyword": "additionalProperties",
+    "instancePath": ""
+  },
+  "data": {
+    "lageId": "01M1F21G80R816A1T0V2P6RACH",
+    "target": "screen"
+  }
+}

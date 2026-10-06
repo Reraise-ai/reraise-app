@@ -32,7 +32,8 @@
         "rationale": "My reroute rule fires; the cost of delay outweighs the extra distance.",
         "cardsUsed": ["01M1E34QM03WVTE8T1RYS3AM18", "01M1EMA1R0AH9ZTK3YJK33TNER"],
         "outcome": "open"
-      }
+      },
+      "contentHash": "sha256:e247c4e6864533115b816d165e463ec62d439b8547432e667ecaf219daa0fe6d"
     },
     "usedCards": [
       {
@@ -49,10 +50,12 @@
         "status": "checked",
         "class": "C",
         "worlds": ["01M1DZPW00JGXPRPG4179ZPNB8"],
+        "tags": ["shipping", "transit"],
         "training": true,
         "externalId": "01M1E34QM03WVTE8T1RYS3AM18",
         "uri": "wb:45aaff12-777f-40e3-a97c-8a592e1ea4f6/01M1E34QM03WVTE8T1RYS3AM18",
-        "body": "A (fictional) wire agency reports that the coastal state will restrict night\ntransits of laden tankers through the strait from 1 October.\n\nThis card is the origin of the provenance chain in this example: the two\nmedia cards below only repeat it.\n"
+        "body": "A (fictional) wire agency reports that the coastal state will restrict night\ntransits of laden tankers through the strait from 1 October.\n\nThis card is the origin of the provenance chain in this example: the two\nmedia cards below only repeat it.\n",
+        "contentHash": "sha256:0da4ef9bbdf630dd457e6f843ffd3c6090fce56b1d2eee23e8cfa19710cb51ac"
       },
       {
         "id": "01M1EMA1R0AH9ZTK3YJK33TNER",
@@ -66,7 +69,8 @@
         "training": false,
         "externalId": "01M1EMA1R0AH9ZTK3YJK33TNER",
         "uri": "wb:45aaff12-777f-40e3-a97c-8a592e1ea4f6/01M1EMA1R0AH9ZTK3YJK33TNER",
-        "body": "Own (invented) experience: during an earlier tension phase, war-risk\ninsurance quotes for the strait rose sharply within one day of the first\nannouncement.\n"
+        "body": "Own (invented) experience: during an earlier tension phase, war-risk\ninsurance quotes for the strait rose sharply within one day of the first\nannouncement.\n",
+        "contentHash": "sha256:656f2dbcda2b610966efdf8f87196e05c14b1d604db14dd13caf0f1b2060c465"
       }
     ],
     "lage": {
@@ -113,7 +117,8 @@
         "edges": [],
         "version": 3,
         "updatedAt": "2026-09-16T09:30:00Z"
-      }
+      },
+      "contentHash": "sha256:bb5db729804f379d6cabdce2c7216cae160379966e8c3e4c7cca460ff70d68d2"
     },
     "brainstorm": [
       {

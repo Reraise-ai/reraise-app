@@ -1,0 +1,153 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldbuilder.invalid/schemas/v0/gate-rules.schema.json",
+  "title": "GateRules",
+  "description": "Disclosure-gate configuration (ADR-0012, ADR-0031): the user's rule file (`<state>/gate-rules.yaml`), with allow and deny rules per target. A card is allowed for a target only if at least one allow rule matches it and no deny rule does: deny wins, and without a matching allow rule the decision is deny. Rules match card fields only; nothing matches stance data, which stays on the screen whatever the rules say (ADR-0008).",
+  "type": "object",
+  "properties": {
+    "rules": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/rule"
+      }
+    }
+  },
+  "required": ["rules"],
+  "additionalProperties": false,
+  "$defs": {
+    "rule": {
+      "title": "GateRule",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"
+        },
+        "effect": {
+          "type": "string",
+          "enum": ["allow", "deny"]
+        },
+        "targets": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/disclosureTarget"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "match": {
+          "$ref": "#/$defs/match"
+        },
+        "description": {
+          "type": "string"
+        }
+      },
+      "required": ["id", "effect", "targets", "match"],
+      "additionalProperties": false
+    },
+    "match": {
+      "title": "GateMatch",
+      "description": "All given criteria must hold (AND); within one criterion any listed value matches (OR). An empty match matches every card.",
+      "type": "object",
+      "properties": {
+        "visibility": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/visibility"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "class": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/cardClass"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "collection": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/collection"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "worlds": {
+          "description": "Matches if the card appears in any of these worlds, given by name or id.",
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/text"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "type": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/text"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "tags": {
+          "description": "Matches if the card has any of these tags.",
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/text"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "ids": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/cardId"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "syntheticStore": {
+          "description": "Matches cards of a store whose configuration says synthetic: true (demo clearance, ADR-0028).",
+          "type": "boolean",
+          "const": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "fragment": {
+      "title": "GateRuleFragment",
+      "description": "Rules supplied by an adapter for its sensitive classes (ADR-0031). Deny rules only: a fragment with an allow rule is rejected at load time, so an adapter can only narrow what leaves the device.",
+      "type": "object",
+      "properties": {
+        "source": {
+          "description": "The adapter that supplies the fragment.",
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._@/-]{0,127}$"
+        },
+        "rules": {
+          "type": "array",
+          "items": {
+            "allOf": [
+              {
+                "$ref": "#/$defs/rule"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "effect": {
+                    "type": "string",
+                    "const": "deny"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "required": ["source", "rules"],
+      "additionalProperties": false
+    }
+  }
+}

@@ -4,6 +4,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { computeContentHash } from './markdown-cards.mjs';
 import { makeTree } from './test-helpers.mjs';
 import {
   SCHEMA_BASE,
@@ -103,6 +104,36 @@ describe('fixtures', () => {
       ),
     });
     expect(validateSchemas(root).problems).toEqual([]);
+  });
+
+  it('accepts fixtures for a definition inside a schema, but no other fragment', () => {
+    const withDefs = JSON.stringify({
+      ...JSON.parse(good('thing.schema.json')),
+      $defs: { part: { type: 'object', properties: { n: { type: 'integer' } } } },
+    });
+    const root = makeTree({
+      'schemas/thing.schema.json': withDefs,
+      'schemas/fixtures/valid/part.json': JSON.stringify({
+        schema: `${schemaId('thing.schema.json')}#/$defs/part`,
+        description: 'x',
+        data: { n: 1 },
+      }),
+      'schemas/fixtures/invalid/part.json': JSON.stringify({
+        schema: `${schemaId('thing.schema.json')}#/$defs/part`,
+        description: 'x',
+        expect: { keyword: 'type', instancePath: '/n' },
+        data: { n: 'one' },
+      }),
+      'schemas/fixtures/valid/pointer.json': JSON.stringify({
+        schema: `${schemaId('thing.schema.json')}#/properties/at`,
+        description: 'x',
+        data: 'x',
+      }),
+    });
+    const { problems } = validateSchemas(root);
+    expect(problems).toEqual([
+      `schemas/fixtures/valid/pointer.json: "schema" must be the $id of a schema in schemas/ (got ${schemaId('thing.schema.json')}#/properties/at)`,
+    ]);
   });
 
   it('reports invalid fixtures that pass or fail for another reason', () => {
@@ -212,5 +243,22 @@ describe('cross-checks', () => {
         message: `card ${other} did not opt in to training but appears in the record`,
       },
     ]);
+  });
+});
+
+describe('content-hash cross-check (ADR-0034)', () => {
+  it('flags a card in an envelope whose contentHash is stale', () => {
+    const card = {
+      id: '01M1E34QM03WVTE8T1RYS3AM18',
+      uri: 'wb:45aaff12-777f-40e3-a97c-8a592e1ea4f6/01M1E34QM03WVTE8T1RYS3AM18',
+      type: 'claim',
+      title: 'A claim',
+    };
+    const fresh = { ...card, contentHash: computeContentHash(card) };
+    expect(crossCheck('api.schema.json#/$defs/cardPage', { cards: [fresh] })).toEqual([]);
+    const stale = { ...fresh, title: 'Edited' };
+    expect(
+      crossCheck('api.schema.json#/$defs/cardPage', { cards: [stale] }).map((f) => f.check),
+    ).toEqual(['content-hash']);
   });
 });
