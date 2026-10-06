@@ -1,0 +1,3 @@
+# Store configuration of the synthetic Palma example store (markdown-files format).
+synthetic: true
+storeInstanceId: 56eb65bc-301e-4633-afb0-e1f3deff8f57

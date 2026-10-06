@@ -1,0 +1,3 @@
+# Store configuration of the synthetic Hormuz example store (markdown-files format).
+synthetic: true
+storeInstanceId: 45aaff12-777f-40e3-a97c-8a592e1ea4f6

@@ -1,0 +1,12 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/store-config.schema.json",
+  "description": "storeInstanceId is a random UUID, never a hostname (ADR-0023).",
+  "expect": {
+    "keyword": "pattern",
+    "instancePath": "/storeInstanceId"
+  },
+  "data": {
+    "storeInstanceId": "analyst-laptop"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/rule.schema.json",
+  "description": "Conditions use the defined kinds.",
+  "expect": {
+    "keyword": "oneOf",
+    "instancePath": "/when/0"
+  },
+  "data": {
+    "when": [
+      {
+        "kind": "gut_feeling"
+      },
+      {
+        "kind": "card_field",
+        "card": "01M1E34QM03WVTE8T1RYS3AM18",
+        "field": "layer",
+        "equals": "evidenced"
+      }
+    ],
+    "then": "Reroute laden tankers via the Cape of Good Hope",
+    "unless": [
+      {
+        "kind": "edge",
+        "edgeKind": "refutes",
+        "to": "01M1E34QM03WVTE8T1RYS3AM18"
+      }
+    ]
+  }
+}

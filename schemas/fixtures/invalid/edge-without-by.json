@@ -1,0 +1,13 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/edge.schema.json",
+  "description": "Every edge records who drew it (ADR-0009).",
+  "expect": {
+    "keyword": "required",
+    "instancePath": ""
+  },
+  "data": {
+    "target": "01M1E34QM03WVTE8T1RYS3AM18",
+    "kind": "supports"
+  }
+}

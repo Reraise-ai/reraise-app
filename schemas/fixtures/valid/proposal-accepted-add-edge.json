@@ -1,0 +1,19 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/proposal.schema.json",
+  "description": "An accepted proposal records the human decision.",
+  "data": {
+    "id": "01M1HDJG00152WRCXVJBW0VRRT",
+    "author": "agent:research-helper",
+    "kind": "add_edge",
+    "payload": {
+      "from": "01M1EA0EW0V90F04X7AKQJSKK2",
+      "to": "01M1E6JK80GR8G0JHMPVT7TDX4",
+      "kind": "based_on"
+    },
+    "status": "accepted",
+    "createdAt": "2026-09-15T20:00:00Z",
+    "decidedBy": "human",
+    "decidedAt": "2026-09-15T20:05:00Z"
+  }
+}

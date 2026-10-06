@@ -1,0 +1,11 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/world.schema.json",
+  "description": "A synthetic personal world: renting a flat.",
+  "data": {
+    "id": "01M1FT2HM0E3MQT1VVQNC3WKZ8",
+    "name": "Palma",
+    "visibility": "private",
+    "release": "private"
+  }
+}

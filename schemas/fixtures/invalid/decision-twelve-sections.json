@@ -1,0 +1,41 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/decision.schema.json",
+  "description": "No twelfth section (ADR-0017).",
+  "expect": {
+    "keyword": "additionalProperties",
+    "instancePath": "/sections"
+  },
+  "data": {
+    "id": "01M1F5FBW0DPQND9KSXC12WHJW",
+    "format": 2,
+    "collection": "decisions",
+    "type": "decision",
+    "title": "Q4 routing decision",
+    "author": "human",
+    "class": "C",
+    "worlds": ["01M1DZPW00JGXPRPG4179ZPNB8"],
+    "training": true,
+    "externalId": "01M1F5FBW0DPQND9KSXC12WHJW",
+    "uri": "wb:45aaff12-777f-40e3-a97c-8a592e1ea4f6/01M1F5FBW0DPQND9KSXC12WHJW",
+    "body": "## Situation\n\nNight transit restrictions are announced from 1 October; Q4 cargoes are booked.\n\n## Trigger\n\nThe wire report of 14 September.\n\n## Conditions\n\nRestrictions are evidenced by one origin only; nothing on the board refutes them.\n\n## Facts\n\nOne evidenced report, repeated by two media (one origin). Insurance quotes rose\nfast last time.\n\n## Priorities\n\nDelivery reliability before freight cost.\n\n## Action\n\nReroute the next three laden tankers via the Cape of Good Hope.\n\n## Alternatives\n\nHold course with war-risk cover; delay sailings by two weeks.\n\n## Exclusions\n\nNo night transits while restrictions apply.\n\n## Rationale\n\nMy reroute rule fires; the cost of delay outweighs the extra distance.\n\n## Cards used\n\n- 01M1E34QM03WVTE8T1RYS3AM18\n- 01M1EDEAG082WZ7T7D204BHZDC\n- 01M1EMA1R0AH9ZTK3YJK33TNER\n\n## Outcome\n\nopen\n",
+    "sections": {
+      "situation": "Night transit restrictions are announced from 1 October; Q4 cargoes are booked.",
+      "trigger": "The wire report of 14 September.",
+      "conditions": "Restrictions are evidenced by one origin only; nothing on the board refutes them.",
+      "facts": "One evidenced report, repeated by two media (one origin). Insurance quotes rose\nfast last time.",
+      "priorities": "Delivery reliability before freight cost.",
+      "action": "Reroute the next three laden tankers via the Cape of Good Hope.",
+      "alternatives": "Hold course with war-risk cover; delay sailings by two weeks.",
+      "exclusions": "No night transits while restrictions apply.",
+      "rationale": "My reroute rule fires; the cost of delay outweighs the extra distance.",
+      "cardsUsed": [
+        "01M1E34QM03WVTE8T1RYS3AM18",
+        "01M1EDEAG082WZ7T7D204BHZDC",
+        "01M1EMA1R0AH9ZTK3YJK33TNER"
+      ],
+      "outcome": "open",
+      "review": "in three months"
+    }
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/world.schema.json",
+  "description": "A world has a name.",
+  "expect": {
+    "keyword": "required",
+    "instancePath": ""
+  },
+  "data": {
+    "id": "01M1DZPW00JGXPRPG4179ZPNB8",
+    "description": "Invented tanker-routing scenario around transit restrictions in the strait.",
+    "visibility": "private",
+    "release": "private"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/edge.schema.json",
+  "description": "Edge kinds are the eight of card format v2.",
+  "expect": {
+    "keyword": "enum",
+    "instancePath": "/kind"
+  },
+  "data": {
+    "target": "01M1E34QM03WVTE8T1RYS3AM18",
+    "kind": "contradicts",
+    "by": "human"
+  }
+}

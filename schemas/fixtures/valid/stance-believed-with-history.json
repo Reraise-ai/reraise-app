@@ -1,0 +1,19 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/stance.schema.json",
+  "description": "A stance with one previous version.",
+  "data": {
+    "cardId": "01M1E6JK80GR8G0JHMPVT7TDX4",
+    "position": "believed",
+    "weight": 2,
+    "note": "Matches what I saw last time.",
+    "updatedAt": "2026-09-16T08:00:00Z",
+    "history": [
+      {
+        "position": "undecided",
+        "weight": 1,
+        "updatedAt": "2026-09-15T19:00:00Z"
+      }
+    ]
+  }
+}

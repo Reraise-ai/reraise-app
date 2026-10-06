@@ -1,0 +1,37 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/card.schema.json",
+  "description": "Stance data is never part of a card (ADR-0008).",
+  "expect": {
+    "keyword": "additionalProperties",
+    "instancePath": ""
+  },
+  "data": {
+    "id": "01M1E6JK80GR8G0JHMPVT7TDX4",
+    "format": 2,
+    "collection": "evidence",
+    "type": "claim",
+    "title": "Daily newspaper repeats the transit restriction report",
+    "layer": "said",
+    "author": "human",
+    "source": "https://example.org/daily-a/2026-09-15-strait",
+    "sourceDate": "2026-09-15",
+    "status": "checked",
+    "class": "C",
+    "worlds": ["01M1DZPW00JGXPRPG4179ZPNB8"],
+    "edges": [
+      {
+        "target": "01M1E34QM03WVTE8T1RYS3AM18",
+        "kind": "cites",
+        "by": "human"
+      }
+    ],
+    "training": false,
+    "externalId": "01M1E6JK80GR8G0JHMPVT7TDX4",
+    "uri": "wb:45aaff12-777f-40e3-a97c-8a592e1ea4f6/01M1E6JK80GR8G0JHMPVT7TDX4",
+    "body": "A (fictional) daily newspaper repeats the wire report and adds that the\nrestrictions are \"very likely\" to last beyond October. It cites the wire\nreport and adds no own sources.\n",
+    "stance": {
+      "position": "believed"
+    }
+  }
+}
