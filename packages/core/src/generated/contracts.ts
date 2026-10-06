@@ -307,6 +307,10 @@ export interface CardContent {
    * Worlds this card appears in, by reference; cards are never copied between worlds.
    */
   worlds?: WorldId[];
+  /**
+   * Free tags; disclosure-gate rules may match them (ADR-0031).
+   */
+  tags?: Text[];
   author?: Author;
   originSystem?: Text;
   /**

@@ -120,6 +120,14 @@
           },
           "uniqueItems": true
         },
+        "tags": {
+          "description": "Free tags; disclosure-gate rules may match them (ADR-0031).",
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/text"
+          },
+          "uniqueItems": true
+        },
         "author": {
           "$ref": "common.schema.json#/$defs/author"
         },

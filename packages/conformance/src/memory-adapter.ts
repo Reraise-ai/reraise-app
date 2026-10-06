@@ -50,6 +50,7 @@ const CONTENT_FIELDS = new Set([
   'class',
   'layer',
   'worlds',
+  'tags',
   'author',
   'originSystem',
   'training',
