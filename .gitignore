@@ -1,0 +1,16 @@
+node_modules/
+dist/
+coverage/
+playwright-report/
+test-results/
+*.tsbuildinfo
+.vitepress/cache/
+.vitepress/dist/
+# Local worlds and private data never belong in the repository
+worlds/
+*.local.*
+.worldbuilder/
+HANDOVER*
+.env*
+!.env.example
+.DS_Store
