@@ -40,8 +40,13 @@ right now, and why" without the system taking a position.
 - `rules_evaluate(lage)` returns a list: per rule `fired: true | false`,
   the triggering card ids, and unmet or unknown conditions. No percentage,
   no score, no aggregate, no "net" field, no recommended option.
-- Only accepted cards count as triggers; pending proposals, stances of
-  other users and level-1 answers do not.
+- Only accepted cards count as triggers; pending or rejected proposals and
+  level-1 answers never trigger a rule.
+- Conditions may reference the user's own stances. When `rules_evaluate`
+  answers a non-screen target (an MCP client or model), such a condition
+  is redacted to a `private condition` marker without content or status,
+  and a rule whose result depends on it reports `fired: private`. The
+  stance itself is never revealed ([ADR-0012](0012-disclosure-gate.md)).
 - The panel shows the rule's own `then` text as the user wrote it; it does
   not combine several rules into a recommendation.
 - Provenance counts ("N findings · M origins", [ADR-0009](0009-mandatory-provenance.md))

@@ -44,10 +44,17 @@ and maps the legacy value cleanly.
 - Stances never leave the device: the disclosure gate allows them only for
   target `screen` ([ADR-0012](0012-disclosure-gate.md)); context packages
   for any model, demos, exports and shared cards never contain them.
+- Persistence: stances are local files under `.worldbuilder/stances/` on
+  the user's device (gitignored), one file per card with the current
+  stance and its previous versions. They are never written into card
+  files and never pass through a `StorageAdapter` of a shared or remote
+  store.
 - Legacy mapping (implemented by the owner's adapter, rule tested by
   `packages/conformance`): a card with `ebene: geglaubt` becomes
-  `layer: said` with `author` = the user, plus a stance `position:
-  believed` for that user.
+  `layer: said` with `author: human`, plus a stance `position: believed`
+  for the user. An `einordnung` value becomes that stance's note, or a
+  stance `position: undecided` with this note if the card is not
+  `geglaubt` ([ADR-0023](0023-core-domain-model.md)).
 - Experience is a layer, not a stance; it is never shown as "believed".
 
 ### Consequences
@@ -66,7 +73,8 @@ and maps the legacy value cleanly.
 
 Schema tests for `Stance`; conformance test for the `geglaubt` mapping;
 disclosure-gate tests that a stance is denied for every target except
-`screen`; MCP contract has no stance-writing tool.
+`screen`; MCP contract has no stance-writing tool; a conformance test
+proves that no adapter writes stance data into card files.
 
 ## Pros and Cons of the Options
 

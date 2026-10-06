@@ -104,5 +104,8 @@ schema validation, OpenAPI lint and (from M1) Playwright on all three OS.
   better-sqlite3 storage (see [ADR-0006](0006-files-are-the-truth.md)) and
   the optional Tauri shell (`docs/05-roadmap.md` §4 decision 2; dropped,
   browser only).
+- Supersedes hand-over §4: "zod" in `services/api`. JSON Schema 2020-12
+  validated by Ajv is the single source of truth; zod may be used only if
+  generated from the JSON Schemas, never as a canonical definition.
 - Related: [ADR-0004](0004-two-tier-licensing.md),
   [ADR-0016](0016-mcp-first-and-openapi-contracts.md).

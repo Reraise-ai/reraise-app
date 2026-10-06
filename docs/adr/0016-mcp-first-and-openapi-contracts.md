@@ -50,8 +50,9 @@ board needs plain HTTP, and JSON Schema is readable by every language.
   Agent credentials cannot call human-only endpoints.
 - Every response leaving the process passes the disclosure gate
   ([ADR-0012](0012-disclosure-gate.md)).
-- TypeScript types are written against or generated from the schemas;
-  they never become a second source of truth.
+- TypeScript types (and zod schemas, if any are used for Fastify route
+  validation) are generated from or tested against the JSON Schemas; they
+  never become a second source of truth.
 
 ### Consequences
 
@@ -99,6 +100,9 @@ that `proposal_create` is the only MCP tool with side effects.
   `prediction_log` → `proposal_create`; `source_profile_get` deferred to
   the source-profile slice) and zod as schema source (`docs/03-datenmodell.md`
   introduction, `docs/04-architektur.md` §3).
+- Supersedes hand-over §4: "Fastify, OpenAPI-first, zod" for
+  `services/api`; zod is allowed only as an artefact generated from the
+  JSON Schemas, never canonical.
 - Related: [ADR-0003](0003-typescript-monorepo-stack.md),
   [ADR-0011](0011-agent-moves-are-proposals.md),
   [ADR-0013](0013-rules-panel-replaces-barometer.md).

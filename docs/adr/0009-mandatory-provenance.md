@@ -35,13 +35,18 @@ Chosen option: "Provenance mandatory by layer and on every player field",
 because it is the only option validators can enforce and it matches card
 format v2.
 
-- Every card has `author` (`human` or `agent:<name>`).
+- Rules apply to format-2 cards, as in the card format v2 validator
+  ([ADR-0023](0023-core-domain-model.md)); legacy format-1 cards are read
+  as stored.
+- Every format-2 card has `author` (`human` or `agent:<name>`). A legacy
+  card without an author is read as `author: unknown` (allowed only on
+  format 1) and shown as such; it is never guessed.
 - `layer: evidenced` and `layer: said` require `source` or `originSystem`.
-- `layer: experience` requires `author`.
+- `layer: experience` requires an explicit `author` (not `unknown`).
 - Player fields `interests`, `capabilities`, `dependencies`, `moves` are
   lists of `{text, source}`; `source` (card id or URI) is required. An
   unsourced entry is rejected; an own assessment must first be a card of
-  its own (`layer: said`, author = the user) that the entry can cite.
+  its own (`layer: said`, `author: human`) that the entry can cite.
 - Every edge records `by` (who drew it), see
   [ADR-0023](0023-core-domain-model.md).
 - Independence: the number of distinct origin roots, computed in
@@ -89,7 +94,7 @@ cycles, unknown origin); conformance tests for player-field sources.
 
 - Supersedes concept v1: `docs/03-datenmodell.md` §4.1 (`PlayerEntry` with
   possibly empty `basisCardIds` as "own assessment", and `redLines` as a
-  fifth player field, dropped from the contract, see
+  fifth player field, deferred, see
   [ADR-0024](0024-concept-v1-reconciliation.md)). The origin-root idea of
   §6 is kept, re-keyed on `contentHash` / URI instead of blob hashes.
 - Related: [ADR-0007](0007-epistemic-layer-field.md),

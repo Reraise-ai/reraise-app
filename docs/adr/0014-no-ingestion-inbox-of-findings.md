@@ -42,13 +42,15 @@ an intake pipeline.
 - Nothing in the inbox is part of a world. Pinning is an explicit human
   action: it places an existing card on a Lage or creates a reference card
   (`uri` plus minimal display text) through the `StorageAdapter`.
-- Agents may suggest findings or pins only as proposals
+- Agents may suggest pins only as proposals of kind `place_card` (existing
+  card) or `create_card` (new reference card)
   ([ADR-0011](0011-agent-moves-are-proposals.md)).
 - Humans may still author a card directly on the board; that is authoring,
   not ingestion.
 - Planned connectors (M2+): Obsidian vault, generic HTTP/JSON, a
-  document-management system; later paid news services and legal
-  databases. All go through the disclosure gate on egress.
+  document-management system, and paid news services (an owner must-have
+  connector, scheduled M2+); legal databases later. All go through the
+  disclosure gate on egress.
 
 ### Consequences
 

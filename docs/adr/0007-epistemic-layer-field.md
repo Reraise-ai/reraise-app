@@ -42,9 +42,12 @@ is reserved and an explicit field maps 1:1 to the owner's store.
     kind, never "believed".
 - "Believed" is not a layer value; it is a private stance overlay
   ([ADR-0008](0008-believed-as-private-stance.md)).
-- The JSON Schema states where `layer` is required (at least on claim and
-  evidence cards and on actors, mirroring card format v2) and enforces the
-  provenance rules of [ADR-0009](0009-mandatory-provenance.md).
+- Requirements follow card format v2 and apply only to format-2 cards
+  ([ADR-0023](0023-core-domain-model.md)): `layer` is required when
+  `format = 2` and `collection ∈ {evidence, actors}`; the provenance rules
+  of [ADR-0009](0009-mandatory-provenance.md) apply when a `layer` is set.
+- Legacy (format-1) cards may have no `layer`; they are valid and shown as
+  "unclassified", never defaulted to a layer.
 - `level` is reserved for card tiers. Schemas reserve the name; nothing in
   this repository may use it until an ADR defines it.
 - Adapter mapping for card format v2: `ebene: belegt` → `evidenced`,

@@ -52,8 +52,9 @@ letting a fast answer pose as the user's or the system's judgement.
 - Any level-1 answer can be escalated to a level-2 board: a new Lage with
   the question, the options and the input cards placed.
 - Level-1 answers do not count as decisions, do not trigger rules and do
-  not enter statistics; world changes they imply are proposals
-  ([ADR-0011](0011-agent-moves-are-proposals.md)).
+  not enter statistics; world changes they imply are proposals (kinds
+  `create_card`, `add_edge`, `place_card` or `comment`) with
+  `author: agent:<engine-name>` ([ADR-0011](0011-agent-moves-are-proposals.md)).
 
 ### Consequences
 

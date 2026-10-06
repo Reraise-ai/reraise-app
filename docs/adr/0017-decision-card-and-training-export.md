@@ -46,13 +46,19 @@ decision traces for training.
 - Outcome loop (M2 slice): recording an outcome updates rule statistics,
   hit statistics of forecasts referenced in `cardsUsed`, and source
   profiles ([ADR-0018](0018-multidimensional-source-profile.md)); it may
-  create a proposal for a new experience card.
+  create a proposal (kind `create_card`) for a new experience card.
 - Training export (`packages/training-export`): JSONL, one decision trace
-  per line (decision card, referenced card ids, Lage version, accepted
-  brainstorm trace, outcome). Only cards with `training: true` are
-  exported with content (default `false`); others appear as ids only.
-- The export is a local file; it passes the disclosure gate and never
-  contains stances.
+  per line (decision card, used cards, Lage version, accepted brainstorm
+  trace, outcome). A trace is exported only if the decision card itself
+  has `training: true`. Used cards are included only if they have
+  `training: true`; cards that did not opt in are omitted entirely, not
+  even as ids or opaque references.
+- `training` defaults to `false`. The flag is read and persisted by
+  adapters from M1; the exporter itself is an M2+ slice.
+- An export is decided by the disclosure gate under `cloud_model`
+  semantics, including a per-export confirmation
+  ([ADR-0012](0012-disclosure-gate.md)); it never contains stances or
+  other conclusions.
 - Fine-tuning itself is out of scope until enough decisions with outcomes
   exist and a consistency test shows a gain over the base model with
   context packages.
@@ -71,8 +77,10 @@ decision traces for training.
 ### Confirmation
 
 Decision schema tests (missing section, empty section, unknown
-`cardsUsed` id rejected). Training-export tests: `training: false` cards
-never appear with content; output is valid JSONL against its schema.
+`cardsUsed` id rejected). Training-export tests: a decision without
+`training: true` produces no trace; `training: false` cards never appear,
+not even by id; export without confirmation is refused; output is valid
+JSONL against its schema.
 
 ## Pros and Cons of the Options
 

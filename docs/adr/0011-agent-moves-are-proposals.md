@@ -53,7 +53,8 @@ secure.
 - Agents can never create or change a stance
   ([ADR-0008](0008-believed-as-private-stance.md)).
 - Model answers and level-1 results that propose world changes arrive as
-  proposals with author = the engine.
+  proposals with `author: agent:<engine-name>` (for example
+  `agent:local-rules`).
 
 ### Consequences
 
