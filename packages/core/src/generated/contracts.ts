@@ -397,6 +397,9 @@ export interface CardContent {
   capabilities?: PlayerField;
   dependencies?: PlayerField;
   moves?: PlayerField;
+  redLines?: PlayerField;
+  assumedGoals?: PlayerField;
+  personalityType?: PlayerEntry;
   lage?: Lage;
   sections?: DecisionSections;
   rule?: Rule;

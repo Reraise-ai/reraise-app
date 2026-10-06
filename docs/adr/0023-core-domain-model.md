@@ -128,6 +128,7 @@ index, and lost on rebuild); store ids are not globally unique.
 | `kanten` `ziel\|art\|von` | `edges[{target, kind, by}]` | `stuetzt`→`supports`, `widerlegt`→`refutes`, `vertritt`→`represents`, `zitiert`→`cites`, `beruht_auf`→`based_on`, `abhaengig_von`→`depends_on`, `beziehung`→`relation`, `unbestimmt`→`unspecified`; `von` as `urheber` |
 | `verknuepfungen` (legacy) | `edges` of kind `unspecified`, `by: unknown` | dangling targets are a warning, not an error |
 | `interessen`, `faehigkeiten`, `abhaengigkeiten`, `zuege` | `interests`, `capabilities`, `dependencies`, `moves` | each `{text, source}`; only on `collection: actors` |
+| `rote_linien`, `angenommene_ziele`, `persoenlichkeitstyp` | `redLines`, `assumedGoals`, `personalityType` | added by [ADR-0038](0038-player-fields-red-lines-goals-personality.md) |
 | – | `level`, `signature` | reserved, unused |
 
 Store `typ` values map to canonical `type`:

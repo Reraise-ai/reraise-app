@@ -18,6 +18,9 @@ card format, the table gives the field of our model that it maps to.
 | Board | board | the central UX where cards become a situation |
 | Sitz, Sitze | seat, seats | a participant at the board: `{name, kind: human or agent}` |
 | Spieler | player | an actor card shown as a seat with interests, capabilities, dependencies and moves |
+| Rote Linien, `rote_linien` | red lines, `redLines` | what an actor has shown or declared it will not accept; a sourced player field ([ADR-0038](./adr/0038-player-fields-red-lines-goals-personality.md)) |
+| Angenommene Ziele, `angenommene_ziele` | assumed goals, `assumedGoals` | goals the user assumes an actor (person or organisation) pursues; a sourced player field, private when it cites the user's own assessment |
+| Persönlichkeitstyp, `persoenlichkeitstyp` | personality type, `personalityType` | for example an MBTI type of a natural person; one sourced value, always private |
 | Zug, Züge | move, moves | an action taken by a player (a player field), or, in the proposal system, a proposed change to the board |
 | Strategem | stratagem | one of the 36 Stratagems (Rieck), a thinking tool offered as a proposal, never as a verdict |
 | Tür | the door | the owner store's validator. Our equivalent is the JSON Schemas plus the conformance kit. |

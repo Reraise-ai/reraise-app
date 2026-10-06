@@ -253,6 +253,21 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
           capabilities: { $ref: '#/$defs/playerField' },
           dependencies: { $ref: '#/$defs/playerField' },
           moves: { $ref: '#/$defs/playerField' },
+          redLines: {
+            description:
+              'Red lines the actor has shown or declared: what it will not accept. Each entry needs a source (ADR-0038).',
+            $ref: '#/$defs/playerField',
+          },
+          assumedGoals: {
+            description:
+              "Goals the user assumes the actor pursues (actors, including organisations). Each entry needs a source; an entry whose source is the user's own assessment card is user-originated and private (ADR-0036, ADR-0038).",
+            $ref: '#/$defs/playerField',
+          },
+          personalityType: {
+            description:
+              'Personality type of a natural person (for example an MBTI type), with its source. Only on cards of type person. Always private: it is never shared, whatever its source (ADR-0036, ADR-0038).',
+            $ref: '#/$defs/playerEntry',
+          },
           lage: {
             description: 'Board state; required on cards of type lage.',
             $ref: 'lage.schema.json',
@@ -315,9 +330,17 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
                 { properties: { capabilities: true }, required: ['capabilities'] },
                 { properties: { dependencies: true }, required: ['dependencies'] },
                 { properties: { moves: true }, required: ['moves'] },
+                { properties: { redLines: true }, required: ['redLines'] },
+                { properties: { assumedGoals: true }, required: ['assumedGoals'] },
+                { properties: { personalityType: true }, required: ['personalityType'] },
               ],
             },
             then: { properties: { collection: { const: 'actors' } }, required: ['collection'] },
+          },
+          {
+            description: 'A personality type exists only on natural persons (ADR-0038).',
+            if: { properties: { personalityType: true }, required: ['personalityType'] },
+            then: { properties: { type: { const: 'person' } }, required: ['type'] },
           },
           {
             description: 'Evidence cards carry a SHA-256 source checksum if any (ADR-0023).',

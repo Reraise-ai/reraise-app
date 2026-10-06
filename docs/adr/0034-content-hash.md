@@ -6,6 +6,9 @@ decision-makers: "Owner (product), CTO/orchestrator (technical)"
 
 # ADR-0034: Content hash is SHA-256 over the JCS serialisation of the card content
 
+> Amended by [ADR-0038](0038-player-fields-red-lines-goals-personality.md): `redLines` and
+> `assumedGoals` join the hashed fields; `personalityType` does not.
+
 ## Context and Problem Statement
 
 [ADR-0006](0006-files-are-the-truth.md) and [ADR-0021](0021-privacy-and-sharing-model.md)

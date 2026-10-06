@@ -87,11 +87,23 @@
             "source": "01M1E34QM03WVTE8T1RYS3AM18"
           }
         ],
+        "redLines": [
+          {
+            "text": "No foreign warships inside territorial waters",
+            "source": "https://example.org/naval-review/2026-09-10-territorial-waters-statement"
+          }
+        ],
+        "assumedGoals": [
+          {
+            "text": "Use the restrictions as leverage in fee talks",
+            "source": "01M2MYHHT07BBT348TS317FFBD"
+          }
+        ],
         "training": false,
         "externalId": "01M1EDEAG082WZ7T7D204BHZDC",
         "uri": "wb:45aaff12-777f-40e3-a97c-8a592e1ea4f6/01M1EDEAG082WZ7T7D204BHZDC",
-        "body": "A fictional actor profile. Every player-field entry names its source.\n",
-        "contentHash": "sha256:7146d9058f0928fd13859dce5a24ca3261d178427ae7219b974da69404cf2334"
+        "body": "A fictional actor profile. Every player-field entry names its source. The red line cites a\npublic statement; the assumed goal cites the user's own assessment card and is therefore\nprivate (ADR-0036, ADR-0038).\n",
+        "contentHash": "sha256:3fef82e373d84a7b8cfa1717c6e53daadeba9ab8f363b374c3292b3394344f66"
       },
       {
         "id": "01M1EGW640BMD0RDT5NGRMFD70",
@@ -110,11 +122,23 @@
             "source": "https://example.org/consortium/2026-q4-outlook"
           }
         ],
+        "redLines": [
+          {
+            "text": "No sailings without war-risk cover",
+            "source": "https://example.org/consortium/2026-09-15-member-circular"
+          }
+        ],
+        "assumedGoals": [
+          {
+            "text": "Protect Q4 margins",
+            "source": "https://example.org/consortium/2026-q4-outlook"
+          }
+        ],
         "training": false,
         "externalId": "01M1EGW640BMD0RDT5NGRMFD70",
         "uri": "wb:45aaff12-777f-40e3-a97c-8a592e1ea4f6/01M1EGW640BMD0RDT5NGRMFD70",
         "body": "A fictional association of tanker operators.\n",
-        "contentHash": "sha256:1dd53ee2bb19c59db86f40df6d7ffb70655683902336e79890607e7ee0ebf8e8"
+        "contentHash": "sha256:acea4ce2ab5fc935b9ee61c91657e7396492da337c7cf0c71242ca9379b043ea"
       },
       {
         "id": "01M1EMA1R0AH9ZTK3YJK33TNER",

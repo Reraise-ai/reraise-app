@@ -102,10 +102,17 @@ describe('computeContentHash (ADR-0034)', () => {
       status: 'checked' as const,
       training: true,
       tags: ['x'],
+      personalityType: { text: 'ISTJ', source: '01M2MY8CV00ZV7GMSF29143S19' },
       edges: [{ target: '01M1E34QM03WVTE8T1RYS3AM18', kind: 'cites' as const, by: 'human' }],
     };
     expect(computeContentHash(reordered)).toBe(computeContentHash(card));
     expect(computeContentHash(withIdentity)).toBe(computeContentHash(card));
+  });
+
+  it('hashes red lines and assumed goals as content, not the private personality type (ADR-0038)', () => {
+    const entry = [{ text: 'No foreign warships', source: 'https://example.org/statement' }];
+    expect(computeContentHash({ ...card, redLines: entry })).not.toBe(computeContentHash(card));
+    expect(computeContentHash({ ...card, assumedGoals: entry })).not.toBe(computeContentHash(card));
   });
 
   it('hashes the same information in two stores identically (ADR-0009, ADR-0021)', () => {
