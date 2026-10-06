@@ -16,7 +16,7 @@ import addFormatsModule from 'ajv-formats';
 import { isDeepStrictEqual } from 'node:util';
 import { parse as parseYaml } from 'yaml';
 import { toPosix, walk } from './lib.mjs';
-import { splitFrontMatter, toCanonicalCard } from './markdown-cards.mjs';
+import { computeContentHash, splitFrontMatter, toCanonicalCard } from './markdown-cards.mjs';
 
 // ajv ships CommonJS; under NodeNext its default export is typed as the module namespace.
 const Ajv2020 = /** @type {any} */ (Ajv2020Module);
@@ -148,6 +148,30 @@ export const CROSS_CHECKS = {
         .map((id) => `card ${id} did not opt in to training but appears in the record`);
     },
   },
+  /** ADR-0034: every canonical card in an envelope carries the hash of its own content. */
+  'content-hash': {
+    schema: '*',
+    run(data) {
+      const out = [];
+      const visit = (v) => {
+        if (Array.isArray(v)) v.forEach(visit);
+        else if (v !== null && typeof v === 'object') {
+          if (
+            typeof v.uri === 'string' &&
+            v.uri.startsWith('wb:') &&
+            typeof v.contentHash === 'string'
+          ) {
+            const want = computeContentHash(v);
+            if (v.contentHash !== want)
+              out.push(`card ${v.id} has contentHash ${v.contentHash}, expected ${want}`);
+          }
+          Object.values(v).forEach(visit);
+        }
+      };
+      visit(data);
+      return out;
+    },
+  },
   /** ADR-0015: the choice of a level-1 answer is one of its options. */
   'level1-choice': {
     schema: 'level1-answer.schema.json',
@@ -162,7 +186,7 @@ export const CROSS_CHECKS = {
 /** Run every cross-check that applies to `name`; returns [{ check, message }]. */
 export function crossCheck(name, data) {
   return Object.entries(CROSS_CHECKS)
-    .filter(([, c]) => c.schema === name)
+    .filter(([, c]) => c.schema === name || c.schema === '*')
     .flatMap(([check, c]) => c.run(data).map((message) => ({ check, message })));
 }
 
