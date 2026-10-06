@@ -2,11 +2,14 @@
   "name": "@worldbuilder/api",
   "version": "0.0.0",
   "private": true,
-  "description": "Board HTTP API service (skeleton)",
+  "description": "Board HTTP API service and the worldbuilder command line",
   "license": "AGPL-3.0-or-later",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "bin": {
+    "worldbuilder": "./dist/cli.js"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -19,9 +22,19 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "start": "node dist/server.js"
+    "start": "node dist/cli.js serve"
   },
   "dependencies": {
-    "fastify": "^5.12.5"
+    "@worldbuilder/core": "workspace:*",
+    "@worldbuilder/disclosure-gate": "workspace:*",
+    "@worldbuilder/local-state": "workspace:*",
+    "@worldbuilder/storage-markdown-files": "workspace:*",
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1",
+    "fastify": "^5.12.5",
+    "yaml": "^2.9.1"
+  },
+  "devDependencies": {
+    "@worldbuilder/conformance": "workspace:*"
   }
 }

@@ -201,9 +201,34 @@ importers:
 
   services/api:
     dependencies:
+      '@worldbuilder/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@worldbuilder/disclosure-gate':
+        specifier: workspace:*
+        version: link:../../packages/disclosure-gate
+      '@worldbuilder/local-state':
+        specifier: workspace:*
+        version: link:../../packages/local-state
+      '@worldbuilder/storage-markdown-files':
+        specifier: workspace:*
+        version: link:../../packages/adapters/storage-markdown-files
+      ajv:
+        specifier: ^8.20.0
+        version: 8.20.0
+      ajv-formats:
+        specifier: ^3.0.1
+        version: 3.0.1(ajv@8.20.0)
       fastify:
         specifier: ^5.12.5
         version: 5.12.5
+      yaml:
+        specifier: ^2.9.1
+        version: 2.9.1
+    devDependencies:
+      '@worldbuilder/conformance':
+        specifier: workspace:*
+        version: link:../../packages/conformance
 
 packages:
 
