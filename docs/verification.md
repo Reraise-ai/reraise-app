@@ -8,6 +8,34 @@ This table maps each acceptance criterion to the test that proves it, the CI job
 the test, and an honest status. It starts as a skeleton: almost everything is "not started".
 It is updated as tests land.
 
+## Last local verification
+
+**Date:** 2026-10-06  
+**Platform:** Linux (Ubuntu)  
+**Node:** v22.22.0  
+**pnpm:** 10.28.0  
+**Python:** 3.11.15
+
+**Results:**
+- lint: PASS
+- format:check: PASS
+- typecheck: PASS
+- check:generated: PASS
+- lint:openapi: PASS
+- test:coverage: PASS
+- check:spdx: PASS
+- check:licence-imports: PASS
+- check:no-real-data: PASS
+- validate:schemas: PASS
+- build: PASS
+- audit: PASS
+- reuse-lint: PASS
+- gitleaks: PASS
+- docs:build: PASS
+- check:doc-anchors: PASS
+
+**Note:** Windows and macOS platforms remain unverified until CI runs.
+
 Status values:
 
 - **not started**: no test exists yet.
@@ -116,3 +144,19 @@ the milestone in which the criterion is first expected to be demonstrated.
 | AC-31 | Provenance is mandatory for players, moves, assumptions and decisions, and imported cards keep their original provenance. | M2+ | not yet written | not yet defined | not started |
 | AC-32 | The project exists as its own repository with CI. | M0 | not yet written | not yet defined | in progress |
 | AC-33 | UX and architecture are separate documents with the links between them written down. | M0 | link table in `docs/architecture/index.md`; dead links and anchors fail `pnpm docs:build` and `pnpm check:doc-anchors` | `build` in `docs.yml` | in progress (passes locally; no CI run yet) |
+
+## Known follow-ups from review (non-blocking)
+
+Items to address targeting M1 (not started):
+
+- **gate: expired transfer/token returns `unknown` (409) instead of `expired` (410) because pruning runs first** - The gate's pruning step runs before classifying tokens, causing expired tokens to report as unknown. This needs reordering so expired is identified before pruning.
+
+- **validate-schemas: cross-check canonical URI (`buildUri(parseUri(uri)) === uri`) and id/externalId consistency for fixtures** - Schema fixtures should validate that URI parsing and building round-trip correctly, and that id and externalId fields remain consistent.
+
+- **training opt-in scan only matches upper-case ULIDs in free text** - The training-opt-in check needs to handle both upper and lower-case ULIDs when scanning for decision references in free text.
+
+- **unconfirmed cloud context package may carry non-zero independence counts (counts only)** - An unconfirmed cloud package should not carry independence counts, or if it does, this needs to be explicitly validated. Currently only counts are affected.
+
+- **storage conformance legacy-stance mapping tests are optional; owner-store adapter must provide believedCard and assessmentOnlyCard** - The conformance suite needs optional tests for legacy stance mapping, and the owner-store adapter implementation must ensure it provides believedCard and assessmentOnlyCard fixtures.
+
+- **concurrent-send race test, restart voiding, runtime agent-token 403s, proposal polling behaviour: need the M1 service** - These runtime behaviors cannot be tested in M0 without the service running; they are planned for the M1 integration test suite.
