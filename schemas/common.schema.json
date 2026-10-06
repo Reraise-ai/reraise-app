@@ -1,0 +1,167 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldbuilder.invalid/schemas/v0/common.schema.json",
+  "title": "Common",
+  "description": "Shared definitions for all Worldbuilder contracts (ADR-0023). This file only holds $defs; it validates nothing on its own.",
+  "$defs": {
+    "ulid": {
+      "title": "Ulid",
+      "description": "A ULID: 26 Crockford base32 characters, upper case. Canonical ids are minted ULIDs or derived from the card URI (first 128 bits of SHA-256(uri), ADR-0023).",
+      "type": "string",
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+    },
+    "cardId": {
+      "title": "CardId",
+      "description": "Canonical card id (ULID). Canonical objects always hold this id, never a store-local id.",
+      "$ref": "#/$defs/ulid"
+    },
+    "worldId": {
+      "title": "WorldId",
+      "description": "Canonical world id (ULID).",
+      "$ref": "#/$defs/ulid"
+    },
+    "uuid": {
+      "title": "Uuid",
+      "description": "A lower-case RFC 9562 UUID.",
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+    },
+    "wbUri": {
+      "title": "WbUri",
+      "description": "Reference to a card in its home store: wb:<storeInstanceId>/<externalId percent-encoded per RFC 3986, upper-case hex>. storeInstanceId is a random UUID, never a hostname, path or user name (ADR-0005, ADR-0023).",
+      "type": "string",
+      "pattern": "^wb:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/(?:[A-Za-z0-9._~-]|%[0-9A-F]{2})+$"
+    },
+    "sourceRef": {
+      "title": "SourceRef",
+      "description": "A card id or an absolute URI (for example a wb: URI or a web address). Used where provenance must be machine-resolvable, e.g. player fields (ADR-0009).",
+      "anyOf": [{ "$ref": "#/$defs/ulid" }, { "type": "string", "format": "uri" }]
+    },
+    "agentAuthor": {
+      "title": "AgentAuthor",
+      "description": "An agent identity: agent:<name>.",
+      "type": "string",
+      "pattern": "^agent:[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+    },
+    "humanAuthor": {
+      "title": "HumanAuthor",
+      "description": "The local human user. Human-only operations record this value.",
+      "type": "string",
+      "const": "human"
+    },
+    "knownAuthor": {
+      "title": "KnownAuthor",
+      "description": "human or agent:<name>.",
+      "type": "string",
+      "pattern": "^(?:human|agent:[A-Za-z0-9][A-Za-z0-9._-]{0,63})$"
+    },
+    "author": {
+      "title": "Author",
+      "description": "human, agent:<name>, or unknown. unknown is valid only on legacy format-1 cards and on edges read from legacy links (ADR-0009, ADR-0023).",
+      "type": "string",
+      "pattern": "^(?:human|unknown|agent:[A-Za-z0-9][A-Za-z0-9._-]{0,63})$"
+    },
+    "layer": {
+      "title": "Layer",
+      "description": "Epistemic kind of a card (ADR-0007). believed is never a layer; it is a private stance (ADR-0008).",
+      "type": "string",
+      "enum": ["evidenced", "said", "experience"]
+    },
+    "edgeKind": {
+      "title": "EdgeKind",
+      "description": "Directed edge kinds of card format v2 (ADR-0023).",
+      "type": "string",
+      "enum": [
+        "supports",
+        "refutes",
+        "represents",
+        "cites",
+        "based_on",
+        "depends_on",
+        "relation",
+        "unspecified"
+      ]
+    },
+    "collection": {
+      "title": "Collection",
+      "description": "Store collection a card lives in (ADR-0023).",
+      "type": "string",
+      "enum": ["actors", "evidence", "decisions"]
+    },
+    "cardStatus": {
+      "title": "CardStatus",
+      "type": "string",
+      "enum": ["draft", "checked", "released"]
+    },
+    "release": {
+      "title": "Release",
+      "description": "Release tier, recorded without behaviour (ADR-0021).",
+      "type": "string",
+      "enum": ["private", "community", "commercial"]
+    },
+    "visibility": {
+      "title": "Visibility",
+      "type": "string",
+      "enum": ["private", "company_internal", "cross_partner", "customer_visible", "public"]
+    },
+    "cardClass": {
+      "title": "CardClass",
+      "description": "Sensitivity class; input to disclosure-gate rules (ADR-0023).",
+      "type": "string",
+      "enum": ["A", "B", "C"]
+    },
+    "disclosureTarget": {
+      "title": "DisclosureTarget",
+      "description": "Where content may go (ADR-0012).",
+      "type": "string",
+      "enum": ["screen", "local_model", "cloud_model", "demo"]
+    },
+    "stancePosition": {
+      "title": "StancePosition",
+      "type": "string",
+      "enum": ["believed", "rejected", "undecided"]
+    },
+    "probabilityBand": {
+      "title": "ProbabilityBand",
+      "description": "ICD 203 band keys (ADR-0010).",
+      "type": "string",
+      "enum": [
+        "almost_no_chance",
+        "very_unlikely",
+        "unlikely",
+        "roughly_even",
+        "likely",
+        "very_likely",
+        "almost_certain"
+      ]
+    },
+    "proposalKind": {
+      "title": "ProposalKind",
+      "type": "string",
+      "enum": ["place_card", "move_card", "add_edge", "create_card", "comment"]
+    },
+    "isoDate": {
+      "title": "IsoDate",
+      "type": "string",
+      "format": "date"
+    },
+    "dateTime": {
+      "title": "DateTime",
+      "type": "string",
+      "format": "date-time"
+    },
+    "sha256": {
+      "title": "Sha256",
+      "description": "Lower-case hex SHA-256 digest.",
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "text": {
+      "title": "Text",
+      "description": "Non-empty text that is not only whitespace.",
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S"
+    }
+  }
+}

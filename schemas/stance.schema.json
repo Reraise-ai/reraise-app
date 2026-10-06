@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldbuilder.invalid/schemas/v0/stance.schema.json",
+  "title": "Stance",
+  "description": "The local user's private stance on one card (ADR-0008). Only a human sets it; it is stored on the device only, never in card files, and is disclosed to target screen only (ADR-0012). Every change keeps the previous version in `history`.",
+  "type": "object",
+  "properties": {
+    "cardId": { "$ref": "common.schema.json#/$defs/cardId" },
+    "position": { "$ref": "common.schema.json#/$defs/stancePosition" },
+    "weight": { "$ref": "#/$defs/weight" },
+    "note": { "description": "Free note, e.g. a mapped own assessment.", "type": "string" },
+    "updatedAt": { "$ref": "common.schema.json#/$defs/dateTime" },
+    "history": {
+      "description": "Previous versions, oldest first.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/version" }
+    }
+  },
+  "required": ["cardId", "position", "weight", "updatedAt", "history"],
+  "additionalProperties": false,
+  "$defs": {
+    "weight": {
+      "title": "StanceWeight",
+      "description": "Strength with which the position is held: 1 = weak, 2 = moderate, 3 = strong. Deliberately coarse; no percentages (ADR-0008).",
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 3
+    },
+    "version": {
+      "title": "StanceVersion",
+      "type": "object",
+      "properties": {
+        "position": { "$ref": "common.schema.json#/$defs/stancePosition" },
+        "weight": { "$ref": "#/$defs/weight" },
+        "note": { "type": "string" },
+        "updatedAt": { "$ref": "common.schema.json#/$defs/dateTime" }
+      },
+      "required": ["position", "weight", "updatedAt"],
+      "additionalProperties": false
+    }
+  }
+}

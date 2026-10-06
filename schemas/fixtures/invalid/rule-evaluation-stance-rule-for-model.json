@@ -1,0 +1,69 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/rule-evaluation.schema.json",
+  "description": "A rule with a stance condition is withheld from every non-screen target (ADR-0013).",
+  "expect": {
+    "keyword": "not",
+    "instancePath": "/results/1/rule/when/0"
+  },
+  "data": {
+    "lageId": "01M1F21G80R816A1T0V2P6RACH",
+    "lageVersion": 3,
+    "target": "local_model",
+    "evaluatedAt": "2026-09-16T10:11:00Z",
+    "results": [
+      {
+        "ruleId": "01M1EV5S00YXKKGEG772AZM7P9",
+        "fired": true,
+        "triggeringCardIds": ["01M1E34QM03WVTE8T1RYS3AM18"],
+        "unmet": [],
+        "unknown": [],
+        "rule": {
+          "when": [
+            {
+              "kind": "card_on_lage",
+              "card": "01M1E34QM03WVTE8T1RYS3AM18"
+            },
+            {
+              "kind": "card_field",
+              "card": "01M1E34QM03WVTE8T1RYS3AM18",
+              "field": "layer",
+              "equals": "evidenced"
+            }
+          ],
+          "then": "Reroute laden tankers via the Cape of Good Hope",
+          "unless": [
+            {
+              "kind": "edge",
+              "edgeKind": "refutes",
+              "to": "01M1E34QM03WVTE8T1RYS3AM18"
+            }
+          ]
+        }
+      },
+      {
+        "ruleId": "01M1EYKMM0PW82HRM7RY5175E7",
+        "fired": false,
+        "triggeringCardIds": [],
+        "unmet": [
+          {
+            "clause": "when",
+            "index": 0
+          }
+        ],
+        "unknown": [],
+        "rule": {
+          "when": [
+            {
+              "kind": "stance",
+              "card": "01M1E6JK80GR8G0JHMPVT7TDX4",
+              "position": "believed"
+            }
+          ],
+          "then": "Delay sailings by two weeks"
+        }
+      }
+    ],
+    "withheld": 0
+  }
+}

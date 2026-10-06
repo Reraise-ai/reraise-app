@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldbuilder.invalid/schemas/v0/world.schema.json",
+  "title": "World",
+  "description": "A modelled slice of reality from a perspective. Cards appear in worlds by reference (`Card.worlds`), never as copies. Private by default (ADR-0021).",
+  "type": "object",
+  "properties": {
+    "id": { "$ref": "common.schema.json#/$defs/worldId" },
+    "name": {
+      "description": "Display name; stores that reference worlds by name resolve them through it (ADR-0023).",
+      "$ref": "common.schema.json#/$defs/text"
+    },
+    "description": { "type": "string" },
+    "visibility": { "$ref": "common.schema.json#/$defs/visibility", "default": "private" },
+    "release": { "$ref": "common.schema.json#/$defs/release", "default": "private" }
+  },
+  "required": ["id", "name"],
+  "additionalProperties": false
+}

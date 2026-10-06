@@ -1,0 +1,19 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/disclosure-decision.schema.json",
+  "description": "Stance data is allowed for screen only (ADR-0008, ADR-0012).",
+  "expect": {
+    "keyword": "const",
+    "instancePath": "/target"
+  },
+  "data": {
+    "subject": {
+      "kind": "stance",
+      "cardId": "01M1E6JK80GR8G0JHMPVT7TDX4"
+    },
+    "target": "local_model",
+    "decision": "allow",
+    "reason": "stance data is shown on the local screen",
+    "decidedAt": "2026-09-16T10:00:00Z"
+  }
+}

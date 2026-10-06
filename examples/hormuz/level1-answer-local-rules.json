@@ -1,0 +1,28 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/level1-answer.schema.json",
+  "description": "A level-1 answer by the local rules engine, shown as \"local-rules estimates 0.82 for Reroute via the Cape of Good Hope\".",
+  "data": {
+    "id": "01M1FPMP00JPY22H9B6K58JD7E",
+    "engine": "local-rules",
+    "question": "Reroute laden tankers around the Cape for Q4?",
+    "options": [
+      "Reroute via the Cape of Good Hope",
+      "Hold course and buy war-risk cover",
+      "Delay sailings by two weeks"
+    ],
+    "choice": "Reroute via the Cape of Good Hope",
+    "confidence": 0.82,
+    "inputs": [
+      {
+        "kind": "card",
+        "id": "01M1E34QM03WVTE8T1RYS3AM18"
+      },
+      {
+        "kind": "rule",
+        "id": "01M1EV5S00YXKKGEG772AZM7P9"
+      }
+    ],
+    "answeredAt": "2026-09-16T10:12:00Z"
+  }
+}

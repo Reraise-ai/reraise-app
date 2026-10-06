@@ -1,0 +1,172 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldbuilder.invalid/schemas/v0/rule-evaluation.schema.json",
+  "title": "RuleEvaluation",
+  "description": "Result of rules_evaluate for one Lage and one disclosure target (ADR-0013). Lists which rules fire and why. There is deliberately no percentage, score, ratio, aggregate, net value or recommended option, and no field may be added for one. Only accepted cards trigger rules. For non-screen targets, rules with a stance-dependent condition or a condition on a card not cleared for the target are omitted and only counted in `withheld`.",
+  "type": "object",
+  "properties": {
+    "lageId": {
+      "$ref": "common.schema.json#/$defs/cardId"
+    },
+    "lageVersion": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "target": {
+      "$ref": "common.schema.json#/$defs/disclosureTarget"
+    },
+    "evaluatedAt": {
+      "$ref": "common.schema.json#/$defs/dateTime"
+    },
+    "results": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/result"
+      }
+    },
+    "withheld": {
+      "description": "Number of rules omitted for this target. Always 0 for target screen.",
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "required": ["lageId", "lageVersion", "target", "evaluatedAt", "results", "withheld"],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "description": "Nothing is withheld from the screen; for any other target no returned rule has a stance-dependent condition (ADR-0013).",
+      "if": {
+        "properties": {
+          "target": {
+            "const": "screen"
+          }
+        },
+        "required": ["target"]
+      },
+      "then": {
+        "properties": {
+          "withheld": {
+            "const": 0
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "results": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "rule": {
+                  "type": "object",
+                  "properties": {
+                    "when": {
+                      "type": "array",
+                      "items": {
+                        "not": {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "const": "stance"
+                            }
+                          },
+                          "required": ["kind"]
+                        }
+                      }
+                    },
+                    "unless": {
+                      "type": "array",
+                      "items": {
+                        "not": {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "const": "stance"
+                            }
+                          },
+                          "required": ["kind"]
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "result": {
+      "title": "RuleResult",
+      "type": "object",
+      "properties": {
+        "ruleId": {
+          "description": "Id of the rule card.",
+          "$ref": "common.schema.json#/$defs/cardId"
+        },
+        "fired": {
+          "type": "boolean"
+        },
+        "triggeringCardIds": {
+          "description": "Accepted cards that satisfied the conditions, filtered by the gate for the target.",
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/cardId"
+          },
+          "uniqueItems": true
+        },
+        "unmet": {
+          "description": "Conditions that were evaluated and did not hold.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/conditionRef"
+          }
+        },
+        "unknown": {
+          "description": "Conditions that could not be evaluated (for example a referenced card is missing).",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/conditionRef"
+          }
+        },
+        "rule": {
+          "description": "The rule text; included only if the rule card itself is cleared for the target.",
+          "$ref": "rule.schema.json"
+        }
+      },
+      "required": ["ruleId", "fired", "triggeringCardIds", "unmet", "unknown"],
+      "additionalProperties": false
+    },
+    "conditionRef": {
+      "title": "RuleConditionRef",
+      "description": "Points at one condition of the rule by clause and position.",
+      "type": "object",
+      "properties": {
+        "clause": {
+          "type": "string",
+          "enum": ["when", "unless"]
+        },
+        "index": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": ["clause", "index"],
+      "additionalProperties": false
+    },
+    "request": {
+      "title": "RulesEvaluateRequest",
+      "description": "Input of rules_evaluate. The target is taken from the caller's registered connection, never from the request.",
+      "type": "object",
+      "properties": {
+        "lageId": {
+          "$ref": "common.schema.json#/$defs/cardId"
+        }
+      },
+      "required": ["lageId"],
+      "additionalProperties": false
+    }
+  }
+}

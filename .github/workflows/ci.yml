@@ -12,9 +12,10 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
-# Jobs for schema validation (against real schemas), OpenAPI contract tests, adapter
-# conformance and e2e (Playwright) are added in the PRs that introduce those artefacts.
-# Nothing here is a placeholder that passes without checking something.
+# validate:schemas compiles every JSON Schema in Ajv strict mode, validates every example
+# and valid fixture, and requires every invalid fixture to fail with its declared error.
+# OpenAPI contract tests, adapter conformance and e2e (Playwright) are added in the PRs that
+# introduce those artefacts. Nothing here is a placeholder that passes without checking something.
 
 jobs:
   lint-format:
@@ -44,6 +45,8 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
+      - name: Generated types match the JSON Schemas
+        run: pnpm check:generated
   checks:
     name: Tests and checks (${{ matrix.os }})
     runs-on: ${{ matrix.os }}

@@ -1,0 +1,138 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/context-package.schema.json",
+  "description": "believed is never a layer, also not in a context package.",
+  "expect": {
+    "keyword": "enum",
+    "instancePath": "/items/0/card/layer"
+  },
+  "data": {
+    "id": "01M1FK6TC038DQ5MVEW3P3ZGQ9",
+    "target": "local_model",
+    "worldId": "01M1DZPW00JGXPRPG4179ZPNB8",
+    "lageId": "01M1F21G80R816A1T0V2P6RACH",
+    "question": "Reroute laden tankers around the Cape for Q4?",
+    "createdAt": "2026-09-16T10:10:00Z",
+    "items": [
+      {
+        "card": {
+          "id": "01M1E34QM03WVTE8T1RYS3AM18",
+          "format": 2,
+          "collection": "evidence",
+          "type": "event",
+          "title": "Wire report announces transit restrictions in the strait",
+          "layer": "believed",
+          "author": "human",
+          "source": "https://example.org/wire/2026-09-14-transit-restrictions",
+          "sourceDate": "2026-09-14",
+          "sourceChecksum": "846e5971241fdefb2d193751027b4d9a1f79b8e4fc1de533d5335d0cb04f6b9f",
+          "status": "checked",
+          "class": "C",
+          "worlds": ["01M1DZPW00JGXPRPG4179ZPNB8"],
+          "training": true,
+          "externalId": "01M1E34QM03WVTE8T1RYS3AM18",
+          "uri": "wb:45aaff12-777f-40e3-a97c-8a592e1ea4f6/01M1E34QM03WVTE8T1RYS3AM18",
+          "body": "A (fictional) wire agency reports that the coastal state will restrict night\ntransits of laden tankers through the strait from 1 October.\n\nThis card is the origin of the provenance chain in this example: the two\nmedia cards below only repeat it.\n"
+        },
+        "provenance": {
+          "uri": "wb:45aaff12-777f-40e3-a97c-8a592e1ea4f6/01M1E34QM03WVTE8T1RYS3AM18",
+          "source": "https://example.org/wire/2026-09-14-transit-restrictions",
+          "sourceDate": "2026-09-14",
+          "originRoot": "https://example.org/wire/2026-09-14-transit-restrictions",
+          "originKnown": true
+        },
+        "gate": {
+          "decision": "allow",
+          "reason": "allow rule \"class C cards of this world to local models\""
+        }
+      },
+      {
+        "card": {
+          "id": "01M1E6JK80GR8G0JHMPVT7TDX4",
+          "format": 2,
+          "collection": "evidence",
+          "type": "claim",
+          "title": "Daily newspaper repeats the transit restriction report",
+          "layer": "said",
+          "author": "human",
+          "source": "https://example.org/daily-a/2026-09-15-strait",
+          "sourceDate": "2026-09-15",
+          "status": "checked",
+          "class": "C",
+          "worlds": ["01M1DZPW00JGXPRPG4179ZPNB8"],
+          "edges": [
+            {
+              "target": "01M1E34QM03WVTE8T1RYS3AM18",
+              "kind": "cites",
+              "by": "human"
+            }
+          ],
+          "training": false,
+          "externalId": "01M1E6JK80GR8G0JHMPVT7TDX4",
+          "uri": "wb:45aaff12-777f-40e3-a97c-8a592e1ea4f6/01M1E6JK80GR8G0JHMPVT7TDX4",
+          "body": "A (fictional) daily newspaper repeats the wire report and adds that the\nrestrictions are \"very likely\" to last beyond October. It cites the wire\nreport and adds no own sources.\n"
+        },
+        "provenance": {
+          "uri": "wb:45aaff12-777f-40e3-a97c-8a592e1ea4f6/01M1E6JK80GR8G0JHMPVT7TDX4",
+          "source": "https://example.org/daily-a/2026-09-15-strait",
+          "sourceDate": "2026-09-15",
+          "originRoot": "https://example.org/wire/2026-09-14-transit-restrictions",
+          "originKnown": true
+        },
+        "gate": {
+          "decision": "allow",
+          "reason": "allow rule \"class C cards of this world to local models\""
+        }
+      },
+      {
+        "card": {
+          "id": "01M1EA0EW0V90F04X7AKQJSKK2",
+          "format": 2,
+          "collection": "evidence",
+          "type": "claim",
+          "title": "Broadcaster repeats the newspaper story",
+          "layer": "said",
+          "author": "agent:research-helper",
+          "source": "https://example.org/broadcaster-b/2026-09-15-evening",
+          "sourceDate": "2026-09-15",
+          "status": "draft",
+          "class": "C",
+          "worlds": ["01M1DZPW00JGXPRPG4179ZPNB8"],
+          "edges": [
+            {
+              "target": "01M1E6JK80GR8G0JHMPVT7TDX4",
+              "kind": "based_on",
+              "by": "agent:research-helper"
+            }
+          ],
+          "training": false,
+          "externalId": "01M1EA0EW0V90F04X7AKQJSKK2",
+          "uri": "wb:45aaff12-777f-40e3-a97c-8a592e1ea4f6/01M1EA0EW0V90F04X7AKQJSKK2",
+          "body": "A (fictional) evening broadcast repeats the newspaper story. Proposed by an\nagent and accepted by the user, so the author stays `agent:research-helper`.\n\nThree findings, one origin: wire report, newspaper and broadcaster are a\nsingle chain.\n"
+        },
+        "provenance": {
+          "uri": "wb:45aaff12-777f-40e3-a97c-8a592e1ea4f6/01M1EA0EW0V90F04X7AKQJSKK2",
+          "source": "https://example.org/broadcaster-b/2026-09-15-evening",
+          "sourceDate": "2026-09-15",
+          "originRoot": "https://example.org/wire/2026-09-14-transit-restrictions",
+          "originKnown": true
+        },
+        "gate": {
+          "decision": "allow",
+          "reason": "allow rule \"class C cards of this world to local models\""
+        }
+      }
+    ],
+    "independence": {
+      "findings": 3,
+      "origins": 1
+    },
+    "pendingProposals": [
+      {
+        "proposalId": "01M1FFRYR0CNCMTND011BG5QPC",
+        "kind": "create_card"
+      }
+    ],
+    "withheld": 1
+  }
+}

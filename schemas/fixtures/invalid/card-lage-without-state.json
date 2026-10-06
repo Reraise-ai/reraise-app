@@ -1,0 +1,23 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/card.schema.json",
+  "description": "A card of type lage carries its board state.",
+  "expect": {
+    "keyword": "required",
+    "instancePath": ""
+  },
+  "data": {
+    "id": "01M1F21G80R816A1T0V2P6RACH",
+    "format": 2,
+    "collection": "decisions",
+    "type": "lage",
+    "title": "Q4 tanker routing",
+    "author": "human",
+    "class": "C",
+    "worlds": ["01M1DZPW00JGXPRPG4179ZPNB8"],
+    "training": false,
+    "externalId": "01M1F21G80R816A1T0V2P6RACH",
+    "uri": "wb:45aaff12-777f-40e3-a97c-8a592e1ea4f6/01M1F21G80R816A1T0V2P6RACH",
+    "body": "## Position\n\n```json\n{\n  \"question\": \"Reroute laden tankers around the Cape for Q4?\",\n  \"options\": [\n    \"Reroute via the Cape of Good Hope\",\n    \"Hold course and buy war-risk cover\",\n    \"Delay sailings by two weeks\"\n  ],\n  \"cards\": [\n    { \"id\": \"01M1E34QM03WVTE8T1RYS3AM18\", \"x\": 120, \"y\": 80 },\n    { \"id\": \"01M1E6JK80GR8G0JHMPVT7TDX4\", \"x\": 320, \"y\": 80 },\n    { \"id\": \"01M1EA0EW0V90F04X7AKQJSKK2\", \"x\": 520, \"y\": 80 },\n    { \"id\": \"01M1EDEAG082WZ7T7D204BHZDC\", \"x\": 120, \"y\": 300 },\n    { \"id\": \"01M1EGW640BMD0RDT5NGRMFD70\", \"x\": 520, \"y\": 300 },\n    { \"id\": \"01M1EMA1R0AH9ZTK3YJK33TNER\", \"x\": 320, \"y\": 460 }\n  ],\n  \"seats\": [\n    { \"name\": \"Analyst\", \"kind\": \"human\" },\n    { \"name\": \"research-helper\", \"kind\": \"agent\" }\n  ],\n  \"edges\": [\n    {\n      \"from\": \"01M1EDEAG082WZ7T7D204BHZDC\",\n      \"to\": \"01M1E34QM03WVTE8T1RYS3AM18\",\n      \"kind\": \"represents\",\n      \"by\": \"human\"\n    },\n    {\n      \"from\": \"01M1EMA1R0AH9ZTK3YJK33TNER\",\n      \"to\": \"01M1EGW640BMD0RDT5NGRMFD70\",\n      \"kind\": \"relation\",\n      \"by\": \"human\"\n    }\n  ]\n}\n```\n"
+  }
+}

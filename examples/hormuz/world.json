@@ -1,0 +1,12 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/world.schema.json",
+  "description": "The synthetic geopolitics reference world (M1 scenario).",
+  "data": {
+    "id": "01M1DZPW00JGXPRPG4179ZPNB8",
+    "name": "Hormuz",
+    "description": "Invented tanker-routing scenario around transit restrictions in the strait.",
+    "visibility": "private",
+    "release": "private"
+  }
+}

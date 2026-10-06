@@ -1,0 +1,20 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/rule.schema.json",
+  "description": "A rule has at least one when condition.",
+  "expect": {
+    "keyword": "minItems",
+    "instancePath": "/when"
+  },
+  "data": {
+    "when": [],
+    "then": "Reroute laden tankers via the Cape of Good Hope",
+    "unless": [
+      {
+        "kind": "edge",
+        "edgeKind": "refutes",
+        "to": "01M1E34QM03WVTE8T1RYS3AM18"
+      }
+    ]
+  }
+}

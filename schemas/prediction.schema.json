@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldbuilder.invalid/schemas/v0/prediction.schema.json",
+  "title": "Prediction",
+  "description": "An estimative statement found on a card (ADR-0010). Stores the source's original `phrase` verbatim and the mapped ICD 203 `band` (almost_no_chance 1-5 %, very_unlikely 5-20 %, unlikely 20-45 %, roughly_even 45-55 %, likely 55-80 %, very_likely 80-95 %, almost_certain 95-99 %). A number is stored only if the source stated one. The UI shows words. Mappings are made by a human or a deterministic lookup table; an agent's mapping is a proposal.",
+  "type": "object",
+  "properties": {
+    "id": {
+      "$ref": "common.schema.json#/$defs/ulid"
+    },
+    "cardId": {
+      "description": "The card that contains the estimate.",
+      "$ref": "common.schema.json#/$defs/cardId"
+    },
+    "statement": {
+      "description": "What is estimated.",
+      "$ref": "common.schema.json#/$defs/text"
+    },
+    "phrase": {
+      "description": "The source's wording, verbatim, any language.",
+      "$ref": "common.schema.json#/$defs/text"
+    },
+    "language": {
+      "description": "BCP 47 language tag of the phrase.",
+      "type": "string",
+      "pattern": "^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$"
+    },
+    "band": {
+      "$ref": "common.schema.json#/$defs/probabilityBand"
+    },
+    "mappedBy": {
+      "description": "human, or lookup:<table> for a deterministic lookup table. Never an agent.",
+      "type": "string",
+      "pattern": "^(?:human|lookup:[a-z0-9][a-z0-9-]{0,63})$"
+    },
+    "statedProbability": {
+      "description": "Only if the source itself stated a number, as a fraction.",
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "resolveBy": {
+      "$ref": "common.schema.json#/$defs/isoDate"
+    },
+    "resolution": {
+      "$ref": "#/$defs/resolution"
+    }
+  },
+  "required": ["id", "cardId", "statement", "phrase"],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "description": "A mapped band records who or what mapped it.",
+      "if": {
+        "properties": {
+          "band": true
+        },
+        "required": ["band"]
+      },
+      "then": {
+        "properties": {
+          "mappedBy": true
+        },
+        "required": ["mappedBy"]
+      }
+    }
+  ],
+  "$defs": {
+    "resolution": {
+      "title": "PredictionResolution",
+      "description": "Recorded through the outcome loop by a human (ADR-0017).",
+      "type": "object",
+      "properties": {
+        "outcome": {
+          "type": "string",
+          "enum": ["occurred", "did_not_occur", "undeterminable"]
+        },
+        "resolvedAt": {
+          "$ref": "common.schema.json#/$defs/dateTime"
+        },
+        "decisionId": {
+          "$ref": "common.schema.json#/$defs/cardId"
+        },
+        "resolvedBy": {
+          "$ref": "common.schema.json#/$defs/humanAuthor"
+        }
+      },
+      "required": ["outcome", "resolvedAt", "resolvedBy"],
+      "additionalProperties": false
+    }
+  }
+}

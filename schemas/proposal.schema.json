@@ -1,0 +1,308 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldbuilder.invalid/schemas/v0/proposal.schema.json",
+  "title": "Proposal",
+  "description": "An agent move (ADR-0011). `proposal_create` is the only write path for agents; the server sets `id`, `author` (from the connection's agent identity), `status` and `createdAt`. Accept and reject are human-only. Pending or rejected proposals never count anywhere.",
+  "type": "object",
+  "$ref": "#/$defs/kindPayload",
+  "properties": {
+    "id": {
+      "$ref": "common.schema.json#/$defs/ulid"
+    },
+    "author": {
+      "$ref": "common.schema.json#/$defs/agentAuthor"
+    },
+    "kind": {
+      "$ref": "common.schema.json#/$defs/proposalKind"
+    },
+    "payload": {
+      "type": "object"
+    },
+    "rationale": {
+      "description": "Why the agent proposes this.",
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["pending", "accepted", "rejected"]
+    },
+    "createdAt": {
+      "$ref": "common.schema.json#/$defs/dateTime"
+    },
+    "decidedBy": {
+      "description": "Who accepted or rejected: always the human (human-only operation).",
+      "$ref": "common.schema.json#/$defs/humanAuthor"
+    },
+    "decidedAt": {
+      "$ref": "common.schema.json#/$defs/dateTime"
+    }
+  },
+  "required": ["id", "author", "kind", "payload", "status", "createdAt"],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "description": "A pending proposal has no decision; a decided one records who and when.",
+      "if": {
+        "properties": {
+          "status": {
+            "const": "pending"
+          }
+        },
+        "required": ["status"]
+      },
+      "then": {
+        "not": {
+          "anyOf": [
+            {
+              "properties": {
+                "decidedBy": true
+              },
+              "required": ["decidedBy"]
+            },
+            {
+              "properties": {
+                "decidedAt": true
+              },
+              "required": ["decidedAt"]
+            }
+          ]
+        }
+      },
+      "else": {
+        "properties": {
+          "decidedBy": true,
+          "decidedAt": true
+        },
+        "required": ["decidedBy", "decidedAt"]
+      }
+    }
+  ],
+  "$defs": {
+    "create": {
+      "title": "ProposalCreate",
+      "description": "Input of proposal_create. Contains no author, id or status; the server sets them.",
+      "type": "object",
+      "$ref": "#/$defs/kindPayload",
+      "properties": {
+        "kind": {
+          "$ref": "common.schema.json#/$defs/proposalKind"
+        },
+        "payload": {
+          "type": "object"
+        },
+        "rationale": {
+          "type": "string"
+        }
+      },
+      "required": ["kind", "payload"],
+      "additionalProperties": false
+    },
+    "decide": {
+      "title": "ProposalDecide",
+      "description": "Body of the human-only accept or reject operation.",
+      "type": "object",
+      "properties": {
+        "note": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "kindPayload": {
+      "title": "ProposalKindPayload",
+      "description": "The payload shape is fixed by `kind`.",
+      "type": "object",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "place_card"
+              }
+            },
+            "required": ["kind"]
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "#/$defs/placeCard"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "move_card"
+              }
+            },
+            "required": ["kind"]
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "#/$defs/moveCard"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "add_edge"
+              }
+            },
+            "required": ["kind"]
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "#/$defs/addEdge"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "create_card"
+              }
+            },
+            "required": ["kind"]
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "#/$defs/createCard"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "comment"
+              }
+            },
+            "required": ["kind"]
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "#/$defs/comment"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "placeCard": {
+      "title": "PlaceCardPayload",
+      "description": "Place an existing card on a Lage.",
+      "type": "object",
+      "properties": {
+        "lageId": {
+          "$ref": "common.schema.json#/$defs/cardId"
+        },
+        "cardId": {
+          "$ref": "common.schema.json#/$defs/cardId"
+        },
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": ["lageId", "cardId", "x", "y"],
+      "additionalProperties": false
+    },
+    "moveCard": {
+      "title": "MoveCardPayload",
+      "description": "Move a card that is already on a Lage.",
+      "type": "object",
+      "properties": {
+        "lageId": {
+          "$ref": "common.schema.json#/$defs/cardId"
+        },
+        "cardId": {
+          "$ref": "common.schema.json#/$defs/cardId"
+        },
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": ["lageId", "cardId", "x", "y"],
+      "additionalProperties": false
+    },
+    "addEdge": {
+      "title": "AddEdgePayload",
+      "description": "Draw an edge: on a Lage if `lageId` is given, otherwise as a card edge on `from`. `by` becomes the proposal author on accept.",
+      "type": "object",
+      "properties": {
+        "lageId": {
+          "$ref": "common.schema.json#/$defs/cardId"
+        },
+        "from": {
+          "$ref": "common.schema.json#/$defs/cardId"
+        },
+        "to": {
+          "$ref": "common.schema.json#/$defs/cardId"
+        },
+        "kind": {
+          "$ref": "common.schema.json#/$defs/edgeKind"
+        }
+      },
+      "required": ["from", "to", "kind"],
+      "additionalProperties": false
+    },
+    "createCard": {
+      "title": "CreateCardPayload",
+      "description": "Create a new card (for example a reference card for a finding, ADR-0014), optionally placed on a Lage.",
+      "type": "object",
+      "properties": {
+        "card": {
+          "$ref": "card.schema.json#/$defs/draft"
+        },
+        "lageId": {
+          "$ref": "common.schema.json#/$defs/cardId"
+        },
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": ["card"],
+      "additionalProperties": false,
+      "dependentRequired": {
+        "lageId": ["x", "y"]
+      }
+    },
+    "comment": {
+      "title": "CommentPayload",
+      "type": "object",
+      "properties": {
+        "text": {
+          "$ref": "common.schema.json#/$defs/text"
+        },
+        "cardId": {
+          "$ref": "common.schema.json#/$defs/cardId"
+        },
+        "lageId": {
+          "$ref": "common.schema.json#/$defs/cardId"
+        }
+      },
+      "required": ["text"],
+      "additionalProperties": false
+    }
+  }
+}

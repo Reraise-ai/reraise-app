@@ -23,7 +23,9 @@
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
     "docs:preview": "vitepress preview docs",
-    "check:doc-anchors": "node scripts/check-doc-anchors.mjs"
+    "check:doc-anchors": "node scripts/check-doc-anchors.mjs",
+    "generate:types": "node scripts/generate-types.mjs",
+    "check:generated": "node scripts/generate-types.mjs --check"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
@@ -35,13 +37,15 @@
     "eslint": "^9.39.5",
     "globals": "^17.13.0",
     "jsdom": "^30.1.2",
+    "json-schema-to-typescript": "^16.0.0",
     "mermaid": "^12.1.0",
     "prettier": "^3.9.9",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.71.1",
     "vitepress": "^1.6.4",
     "vitepress-plugin-mermaid": "^2.0.17",
-    "vitest": "^5.0.3"
+    "vitest": "^5.0.3",
+    "yaml": "^2.9.1"
   },
   "pnpm": {
     "overrides": {

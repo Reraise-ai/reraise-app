@@ -1,0 +1,27 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/card.schema.json",
+  "description": "Format-2 evidence and actor cards state their layer (ADR-0007).",
+  "expect": {
+    "keyword": "required",
+    "instancePath": ""
+  },
+  "data": {
+    "id": "01M1E34QM03WVTE8T1RYS3AM18",
+    "format": 2,
+    "collection": "evidence",
+    "type": "event",
+    "title": "Wire report announces transit restrictions in the strait",
+    "author": "human",
+    "source": "https://example.org/wire/2026-09-14-transit-restrictions",
+    "sourceDate": "2026-09-14",
+    "sourceChecksum": "846e5971241fdefb2d193751027b4d9a1f79b8e4fc1de533d5335d0cb04f6b9f",
+    "status": "checked",
+    "class": "C",
+    "worlds": ["01M1DZPW00JGXPRPG4179ZPNB8"],
+    "training": true,
+    "externalId": "01M1E34QM03WVTE8T1RYS3AM18",
+    "uri": "wb:45aaff12-777f-40e3-a97c-8a592e1ea4f6/01M1E34QM03WVTE8T1RYS3AM18",
+    "body": "A (fictional) wire agency reports that the coastal state will restrict night\ntransits of laden tankers through the strait from 1 October.\n\nThis card is the origin of the provenance chain in this example: the two\nmedia cards below only repeat it.\n"
+  }
+}

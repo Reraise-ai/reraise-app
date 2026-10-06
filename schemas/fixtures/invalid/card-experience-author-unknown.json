@@ -1,0 +1,23 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/card.schema.json",
+  "description": "Experience needs an explicit author; author unknown is valid only on format-1 cards, and a layer makes a card format 2 (ADR-0009, ADR-0023).",
+  "expect": {
+    "keyword": "pattern",
+    "instancePath": "/author"
+  },
+  "data": {
+    "id": "01M1EMA1R0AH9ZTK3YJK33TNER",
+    "format": 2,
+    "type": "experience",
+    "title": "Last time, war-risk quotes jumped within a day",
+    "layer": "experience",
+    "author": "unknown",
+    "class": "C",
+    "worlds": ["01M1DZPW00JGXPRPG4179ZPNB8"],
+    "training": true,
+    "externalId": "01M1EMA1R0AH9ZTK3YJK33TNER",
+    "uri": "wb:45aaff12-777f-40e3-a97c-8a592e1ea4f6/01M1EMA1R0AH9ZTK3YJK33TNER",
+    "body": "Own (invented) experience: during an earlier tension phase, war-risk\ninsurance quotes for the strait rose sharply within one day of the first\nannouncement.\n"
+  }
+}

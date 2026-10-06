@@ -1,0 +1,15 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/disclosure-decision.schema.json",
+  "description": "Default deny for a class-A card.",
+  "data": {
+    "subject": {
+      "kind": "card",
+      "cardId": "01M1F8X7G0TTV1CC1FNKTNN0TJ"
+    },
+    "target": "local_model",
+    "decision": "deny",
+    "reason": "default deny: no allow rule matches class A",
+    "decidedAt": "2026-09-16T10:10:00Z"
+  }
+}

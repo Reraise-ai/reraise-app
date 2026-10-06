@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldbuilder.invalid/schemas/v0/rule.schema.json",
+  "title": "Rule",
+  "description": "A user-authored decision rule (ADR-0013). It is stored as the `rule` field of a card of type `rule`; the rule id is that card's id. `when` and `unless` are conditions over accepted cards on a Lage, card fields, edges or the user's own stances; `then` is the user's preferred action, shown verbatim, never combined into a recommendation.",
+  "type": "object",
+  "properties": {
+    "when": {
+      "description": "All conditions must hold for the rule to fire.",
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/condition" }
+    },
+    "then": {
+      "description": "The preferred action, as the user wrote it.",
+      "$ref": "common.schema.json#/$defs/text"
+    },
+    "unless": {
+      "description": "If any of these conditions holds, the rule does not fire.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/condition" }
+    }
+  },
+  "required": ["when", "then"],
+  "additionalProperties": false,
+  "$defs": {
+    "condition": {
+      "title": "RuleCondition",
+      "oneOf": [
+        { "$ref": "#/$defs/cardOnLage" },
+        { "$ref": "#/$defs/cardField" },
+        { "$ref": "#/$defs/edgeExists" },
+        { "$ref": "#/$defs/stance" }
+      ]
+    },
+    "cardOnLage": {
+      "title": "CardOnLageCondition",
+      "description": "The card is placed on the Lage and accepted.",
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "const": "card_on_lage" },
+        "card": { "$ref": "common.schema.json#/$defs/cardId" }
+      },
+      "required": ["kind", "card"],
+      "additionalProperties": false
+    },
+    "cardField": {
+      "title": "CardFieldCondition",
+      "description": "A canonical card field equals a value: on `card` if given, otherwise on any accepted card placed on the Lage.",
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "const": "card_field" },
+        "card": { "$ref": "common.schema.json#/$defs/cardId" },
+        "field": {
+          "type": "string",
+          "enum": [
+            "type",
+            "layer",
+            "collection",
+            "status",
+            "class",
+            "visibility",
+            "release",
+            "originSystem",
+            "author"
+          ]
+        },
+        "equals": { "$ref": "common.schema.json#/$defs/text" }
+      },
+      "required": ["kind", "field", "equals"],
+      "additionalProperties": false
+    },
+    "edgeExists": {
+      "title": "EdgeCondition",
+      "description": "An accepted edge of this kind exists on the Lage, optionally restricted to its endpoints.",
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "const": "edge" },
+        "edgeKind": { "$ref": "common.schema.json#/$defs/edgeKind" },
+        "from": { "$ref": "common.schema.json#/$defs/cardId" },
+        "to": { "$ref": "common.schema.json#/$defs/cardId" }
+      },
+      "required": ["kind", "edgeKind"],
+      "additionalProperties": false
+    },
+    "stance": {
+      "title": "StanceCondition",
+      "description": "The user's own stance on a card. Rules with such a condition are withheld from every non-screen target (ADR-0013).",
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "const": "stance" },
+        "card": { "$ref": "common.schema.json#/$defs/cardId" },
+        "position": { "$ref": "common.schema.json#/$defs/stancePosition" }
+      },
+      "required": ["kind", "card", "position"],
+      "additionalProperties": false
+    }
+  }
+}

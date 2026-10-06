@@ -1,0 +1,20 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/disclosure-decision.schema.json",
+  "description": "cloud_model needs a per-transfer confirmation (ADR-0012).",
+  "expect": {
+    "keyword": "required",
+    "instancePath": ""
+  },
+  "data": {
+    "subject": {
+      "kind": "card",
+      "cardId": "01M1E34QM03WVTE8T1RYS3AM18"
+    },
+    "target": "cloud_model",
+    "decision": "allow",
+    "reason": "allow rule \"class C cards of this world to cloud models\" and confirmed transfer",
+    "ruleId": "class-c-cloud",
+    "decidedAt": "2026-09-16T10:20:01Z"
+  }
+}

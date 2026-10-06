@@ -1,0 +1,15 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/prediction.schema.json",
+  "description": "An estimate on the newspaper card: the phrase is kept verbatim and mapped to an ICD 203 band by the English lookup table.",
+  "data": {
+    "id": "01M1FCB34095505P25N4504VQB",
+    "cardId": "01M1E6JK80GR8G0JHMPVT7TDX4",
+    "statement": "The transit restrictions will last beyond October",
+    "phrase": "very likely",
+    "language": "en",
+    "band": "very_likely",
+    "mappedBy": "lookup:icd203-en",
+    "resolveBy": "2026-11-01"
+  }
+}

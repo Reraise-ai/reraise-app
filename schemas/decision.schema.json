@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldbuilder.invalid/schemas/v0/decision.schema.json",
+  "title": "Decision",
+  "description": "A decision card: a format-2 card of type decision with exactly eleven non-empty sections (ADR-0017). Saving one is a human-only operation (ADR-0016).",
+  "type": "object",
+  "$ref": "card.schema.json",
+  "properties": {
+    "type": { "type": "string", "const": "decision" },
+    "format": { "type": "integer", "const": 2 },
+    "sections": { "$ref": "card.schema.json#/$defs/decisionSections" }
+  },
+  "required": ["sections"]
+}

@@ -1,0 +1,118 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldbuilder.invalid/schemas/v0/training-export-record.schema.json",
+  "title": "TrainingExportRecord",
+  "description": "One JSONL line of the training export: a decision trace (ADR-0017, ADR-0028). Exported only if the decision card has training: true. Used cards appear only with training: true; cards that did not opt in are omitted entirely, not even as ids: the decision's cardsUsed, the Lage placements and edges list only opted-in cards, and a brainstorm proposal touching any other card is dropped. The Lage is exported only if the Lage card itself opted in. Never contains stance data.",
+  "type": "object",
+  "properties": {
+    "exportedAt": {
+      "$ref": "common.schema.json#/$defs/dateTime"
+    },
+    "decision": {
+      "allOf": [
+        {
+          "$ref": "decision.schema.json"
+        },
+        {
+          "$ref": "#/$defs/optedIn"
+        },
+        {
+          "$ref": "#/$defs/structuredOnly"
+        }
+      ]
+    },
+    "usedCards": {
+      "type": "array",
+      "items": {
+        "allOf": [
+          {
+            "$ref": "card.schema.json"
+          },
+          {
+            "$ref": "#/$defs/optedIn"
+          }
+        ]
+      }
+    },
+    "lage": {
+      "description": "The Lage card, only if it has training: true, with placements and edges filtered to opted-in cards.",
+      "allOf": [
+        {
+          "$ref": "card.schema.json"
+        },
+        {
+          "$ref": "#/$defs/optedIn"
+        },
+        {
+          "$ref": "#/$defs/lageCard"
+        },
+        {
+          "$ref": "#/$defs/structuredOnly"
+        }
+      ]
+    },
+    "brainstorm": {
+      "description": "Accepted proposals that shaped the decision.",
+      "type": "array",
+      "items": {
+        "allOf": [
+          {
+            "$ref": "proposal.schema.json"
+          },
+          {
+            "$ref": "#/$defs/accepted"
+          }
+        ]
+      }
+    },
+    "outcome": {
+      "$ref": "common.schema.json#/$defs/text"
+    }
+  },
+  "required": ["exportedAt", "decision", "usedCards", "brainstorm", "outcome"],
+  "additionalProperties": false,
+  "$defs": {
+    "optedIn": {
+      "title": "TrainingOptIn",
+      "type": "object",
+      "properties": {
+        "training": {
+          "type": "boolean",
+          "const": true
+        }
+      },
+      "required": ["training"]
+    },
+    "accepted": {
+      "title": "AcceptedProposal",
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string",
+          "const": "accepted"
+        }
+      },
+      "required": ["status"]
+    },
+    "lageCard": {
+      "title": "TrainingLageCard",
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "lage"
+        },
+        "lage": true
+      },
+      "required": ["type", "lage"]
+    },
+    "structuredOnly": {
+      "title": "TrainingStructuredCard",
+      "description": "Decision and Lage cards are exported by their structured sections only: their Markdown body repeats card ids and is left out.",
+      "type": "object",
+      "properties": {
+        "body": false
+      }
+    }
+  }
+}

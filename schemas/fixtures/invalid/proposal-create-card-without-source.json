@@ -1,0 +1,31 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/proposal.schema.json",
+  "description": "Provenance rules apply to proposed cards too.",
+  "expect": {
+    "keyword": "anyOf",
+    "instancePath": "/payload/card"
+  },
+  "data": {
+    "id": "01M1FFRYR0CNCMTND011BG5QPC",
+    "author": "agent:research-helper",
+    "kind": "create_card",
+    "payload": {
+      "card": {
+        "format": 2,
+        "collection": "evidence",
+        "type": "claim",
+        "title": "Insurer bulletin: war-risk premiums doubled",
+        "layer": "evidenced",
+        "sourceDate": "2026-09-16",
+        "worlds": ["01M1DZPW00JGXPRPG4179ZPNB8"]
+      },
+      "lageId": "01M1F21G80R816A1T0V2P6RACH",
+      "x": 720,
+      "y": 80
+    },
+    "rationale": "New finding from a connected source; supports the insurance experience card.",
+    "status": "pending",
+    "createdAt": "2026-09-16T10:05:00Z"
+  }
+}
