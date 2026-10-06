@@ -13,25 +13,32 @@ names, not addresses, and nothing fetches them. `v0` is the pre-release contract
 
 ## Schemas
 
-| File                                 | Contract                                                     | ADR              |
-| ------------------------------------ | ------------------------------------------------------------ | ---------------- |
-| `common.schema.json`                 | shared definitions: ULID, `wb:` URI, author forms, enums     | 0023             |
-| `card.schema.json`                   | canonical card, card draft, player fields, decision sections | 0007, 0009, 0023 |
-| `edge.schema.json`                   | typed card edge                                              | 0023             |
-| `lage.schema.json`                   | board state of a Lage                                        | 0006, 0023       |
-| `decision.schema.json`               | decision card with eleven sections                           | 0017             |
-| `rule.schema.json`                   | structured rule (`when`, `then`, `unless`)                   | 0013             |
-| `rule-evaluation.schema.json`        | `rules_evaluate` result, no percentage, `withheld` count     | 0013             |
-| `stance.schema.json`                 | private stance with history                                  | 0008             |
-| `world.schema.json`                  | world                                                        | 0021, 0023       |
-| `store-config.schema.json`           | per-store configuration (`storeInstanceId`)                  | 0023             |
-| `proposal.schema.json`               | agent proposal, create input, accept/reject body             | 0011             |
-| `source-profile.schema.json`         | eight dimensions, each with `n`                              | 0018             |
-| `prediction.schema.json`             | estimate: phrase and ICD 203 band                            | 0010             |
-| `disclosure-decision.schema.json`    | gate decision, transfer, confirmation                        | 0012             |
-| `level1-answer.schema.json`          | level-1 answer and request                                   | 0015             |
-| `context-package.schema.json`        | context package for a target                                 | 0012, 0016       |
-| `training-export-record.schema.json` | one JSONL decision trace                                     | 0017             |
+| File                                 | Contract                                                       | ADR              |
+| ------------------------------------ | -------------------------------------------------------------- | ---------------- |
+| `common.schema.json`                 | shared definitions: ULID, `wb:` URI, author forms, enums       | 0023             |
+| `card.schema.json`                   | canonical card, card draft, player fields, decision sections   | 0007, 0009, 0023 |
+| `edge.schema.json`                   | typed card edge                                                | 0023             |
+| `lage.schema.json`                   | board state of a Lage                                          | 0006, 0023       |
+| `decision.schema.json`               | decision card with eleven sections                             | 0017             |
+| `rule.schema.json`                   | structured rule (`when`, `then`, `unless`)                     | 0013             |
+| `rule-evaluation.schema.json`        | `rules_evaluate` result, no percentage, `withheld` count       | 0013             |
+| `stance.schema.json`                 | private stance with history                                    | 0008             |
+| `world.schema.json`                  | world                                                          | 0021, 0023       |
+| `store-config.schema.json`           | per-store configuration (`storeInstanceId`)                    | 0023             |
+| `proposal.schema.json`               | agent proposal, create input, accept/reject body               | 0011             |
+| `source-profile.schema.json`         | eight dimensions, each with `n`                                | 0018             |
+| `prediction.schema.json`             | estimate: phrase and ICD 203 band                              | 0010             |
+| `disclosure-decision.schema.json`    | gate decision, transfer preview and payload hash, confirmation | 0012, 0031       |
+| `level1-answer.schema.json`          | level-1 answer and request                                     | 0015             |
+| `context-package.schema.json`        | context package for a target                                   | 0012, 0016       |
+| `training-export-record.schema.json` | one JSONL decision trace                                       | 0017             |
+| `finding.schema.json`                | a finding of a source connector                                | 0014             |
+| `gate-rules.schema.json`             | disclosure-gate allow and deny rules                           | 0012, 0031       |
+| `api.schema.json`                    | MCP tool and Board API inputs and outputs, error               | 0016, 0026, 0032 |
+
+The Board API is described in [`openapi/board-api.yaml`](openapi/board-api.yaml) (OpenAPI 3.1,
+`pnpm lint:openapi`); it references these schemas. The MCP tools in
+`packages/mcp-server/src/tools.ts` use the same schemas, proven by a parity test.
 
 ## Fixtures
 

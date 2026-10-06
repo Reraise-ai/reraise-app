@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-10-06
 decision-makers: "Owner (product), CTO/orchestrator (technical)"
 ---
@@ -67,6 +67,10 @@ the contracts free of `$schema` and `synthetic` members that only tests need.
   field. A structured rule is `rule.schema.json`, held by a card of type `rule` in its `rule`
   field; the rule id is the card id. `rule` is optional on rule cards, because existing store
   rule cards are prose; only structured rules are evaluated.
+- Every card an adapter returns carries `contentHash` (`sha256:<hex>`,
+  [ADR-0034](0034-content-hash.md)); drafts may omit it, the store recomputes it.
+- Cards have optional, unique free `tags`. They are not a card format v2 field and do not make
+  a card format 2; disclosure-gate rules may match them (ADR-0031).
 
 ### Examples and fixtures
 
@@ -84,7 +88,9 @@ the contracts free of `$schema` and `synthetic` members that only tests need.
   validate:schemas` enforces all of this in CI.
 - `synthetic: true` is the repository hygiene marker ([ADR-0022](0022-public-hygiene.md)),
   not a card field. Demo clearance ([ADR-0012](0012-disclosure-gate.md)) comes from gate
-  rules, for example on the store configuration's `synthetic` flag.
+  rules: an allow rule for target `demo` may match every card of a store whose configuration
+  (`store-config.schema.json`) says `synthetic: true`. Without such a rule, demo stays
+  default deny.
 
 ### Reference card format details
 
@@ -108,7 +114,7 @@ In addition to [ADR-0023](0023-core-domain-model.md) and
 | [0013](0013-rules-panel-replaces-barometer.md) | Conditions are `card_on_lage`, `card_field`, `edge` and `stance`. Results list `unmet` and `unknown` conditions by clause and index; `withheld` is 0 for `screen`, and for any other target no returned rule has a stance condition. |
 | [0015](0015-two-thinking-levels.md) | `Level1Answer` adds `question` and `answeredAt`; `choice` is one of `options`; `Level1Request` is the connector input. |
 | [0016](0016-mcp-first-and-openapi-contracts.md) | Request objects (`ContextPackageRequest`, `RulesEvaluateRequest`, `ProposalCreate`) take no target and no author: both come from the caller's registered connection. |
-| [0017](0017-decision-card-and-training-export.md) | A training record names no card that did not opt in, not even by id: the decision lists in `cardsUsed` only opted-in cards, and a trace whose decision would keep no used card is not exported, because `cardsUsed` is never empty. The Lage is exported only if the Lage card itself has `training: true`; its placements and edges are filtered to opted-in cards, and a brainstorm proposal touching any other card is dropped entirely. Decision and Lage cards are exported without their Markdown `body`, which repeats card ids; their structured sections carry the content. |
+| [0017](0017-decision-card-and-training-export.md) | Resolves the conflict between "cards that did not opt in are omitted, not even as ids" and "`cardsUsed` is never empty" (CTO decision): a training record's decision lists in `cardsUsed` only opted-in cards, and a trace whose decision would keep no used card is not exported. |
 | [0018](0018-multidimensional-source-profile.md) | Dimension values are in [0, 1]; a value is required when `n` ≥ 1 and forbidden when `n` = 0; `minimumN` is part of the profile. |
 
 ### Board API, MCP tools and adapter interfaces
@@ -125,9 +131,23 @@ In addition to [ADR-0023](0023-core-domain-model.md) and
 - Security schemes ([ADR-0026](0026-security-defaults.md)): `sessionToken` (header
   `X-Worldbuilder-Session`, the board's random session token) and `agentToken` (bearer token
   of one registered agent connection). Mirrored operations accept both; operations marked
-  `x-human-only: true` accept only `sessionToken` and answer 403 to agent tokens. They are
-  proposal accept and reject, Lage save, decision create and save, and the disclosure
-  transfer view and confirm.
+  `x-human-only: true` accept only `sessionToken` and answer 403 to agent tokens (CTO
+  decision: Lage create and the user's own stance on the screen are human-only too). They are
+  proposal accept and reject, Lage save, decision create and save, the disclosure
+  transfer view and confirm, Lage create (`POST /lagen`, body `LageCreateRequest`) and the
+  user's own stance (`GET` and `PUT /cards/{cardId}/stance`, body `stance.schema.json`,
+  target screen only). No MCP tool reads or writes stances.
+- `proposal_list` supports polling (ADR-0032), on MCP and HTTP and for both token kinds: the
+  request takes `changedSince` (an opaque cursor) and the page returns `nextCursor`, to pass as
+  `cursor` for the next page or as `changedSince` for the next poll.
+- Cloud transfers (ADR-0031): `POST /disclosure/transfers` previews a transfer whose
+  envelope holds the target, the connector, the request parameters and the gate-cleared
+  canonical objects; `payloadHash` is the RFC 8785 SHA-256 of the envelope
+  ([ADR-0034](0034-content-hash.md)). The confirm body carries `payloadHash`; a mismatch or a
+  second confirmation is 409, an expired transfer 410.
+- `gate-rules.schema.json` is the disclosure-gate configuration: allow and deny rules per
+  target matching `visibility`, `class`, `collection`, `worlds`, `type`, `tags`, card `ids` or
+  a synthetic store; deny wins, no rule matches stance data.
 - MCP tools (`packages/mcp-server/src/tools.ts`) reference the schemas by `$id`; the MCP
   annotation `readOnlyHint` is false only for `proposal_create`.
 - The adapter interfaces live in `packages/core/src/adapters/`; `packages/conformance`
