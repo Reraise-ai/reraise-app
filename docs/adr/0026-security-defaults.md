@@ -37,7 +37,9 @@ of an account system, and allows a deliberate, documented widening.
 - The Board API and the MCP HTTP transport bind to `127.0.0.1` by
   default. Binding elsewhere requires explicit configuration and is
   documented as "put your own access control (VPN, reverse proxy with
-  authentication) in front".
+  authentication) in front". Documentation and examples use `127.0.0.1`
+  and `localhost`; loopback addresses are on the allow-list of the
+  "no real data" check ([ADR-0022](0022-public-hygiene.md)).
 - The board UI uses a random session token created at start; CORS allows
   only the board's own origin.
 - MCP over Streamable HTTP requires a bearer token per registered agent

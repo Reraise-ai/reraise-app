@@ -57,8 +57,7 @@ decision traces for training.
   adapters from M1; the exporter itself is an M2+ slice.
 - An export is decided by the disclosure gate under `cloud_model`
   semantics, including a per-export confirmation
-  ([ADR-0012](0012-disclosure-gate.md)); it never contains stances or
-  other conclusions.
+  ([ADR-0012](0012-disclosure-gate.md)); it never contains stance data.
 - Fine-tuning itself is out of scope until enough decisions with outcomes
   exist and a consistency test shows a gain over the base model with
   context packages.

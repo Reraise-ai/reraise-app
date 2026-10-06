@@ -43,10 +43,15 @@ right now, and why" without the system taking a position.
 - Only accepted cards count as triggers; pending or rejected proposals and
   level-1 answers never trigger a rule.
 - Conditions may reference the user's own stances. When `rules_evaluate`
-  answers a non-screen target (an MCP client or model), such a condition
-  is redacted to a `private condition` marker without content or status,
-  and a rule whose result depends on it reports `fired: private`. The
-  stance itself is never revealed ([ADR-0012](0012-disclosure-gate.md)).
+  answers a non-screen target (an MCP client or model,
+  [ADR-0012](0012-disclosure-gate.md)):
+  - rules with any stance-dependent condition are omitted entirely; the
+    result only reports their number as `withheld: n`;
+  - for every other rule it returns the rule id, `fired`, and the
+    triggering card ids filtered by the gate for that target;
+  - the rule text (`when`, `then`, `unless`) is included only if the rule
+    card itself is gate-cleared for that target, including the
+    per-transfer confirmation for `cloud_model`.
 - The panel shows the rule's own `then` text as the user wrote it; it does
   not combine several rules into a recommendation.
 - Provenance counts ("N findings · M origins", [ADR-0009](0009-mandatory-provenance.md))
@@ -64,7 +69,8 @@ right now, and why" without the system taking a position.
 ### Confirmation
 
 The `rules_evaluate` result schema has no numeric score field (schema
-test). Unit tests: fired / not fired with triggering ids; proposals never
+test). Unit tests: fired / not fired with triggering ids; stance-dependent
+rules withheld and counted for non-screen targets; proposals never
 trigger. Reviewers reject any UI element that aggregates evidence into a
 percentage.
 

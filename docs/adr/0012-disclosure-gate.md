@@ -46,21 +46,20 @@ a news claim in the same world, and default deny fails safe.
   user (human-only endpoint), showing exactly which cards will be sent.
   No standing consent.
 - `demo` allows only cards cleared for demos (for example synthetic).
-- Conclusions are the user's private judgement: stances (position,
-  weight, note, history), notes mapped from a store's own-assessment field
-  (`einordnung`, [ADR-0023](0023-core-domain-model.md)), and any other
-  assessment the user wrote about a card. Conclusions are allowed for
-  `screen` only, for every card, with no rule able to widen this. Context
+- Conclusions are stance data only: position, weight, note (including a
+  note mapped from a store's own-assessment field `einordnung`,
+  [ADR-0023](0023-core-domain-model.md)) and stance history. Conclusions
+  are allowed for `screen` only, with no rule able to widen this. Context
   packages never contain them.
-- The user's own decision cards and rule cards leave the screen only if
-  the gate allows them for the target and the user confirms that transfer
-  explicitly, for every non-screen target.
+- Cards the user wrote, including own-assessment, decision and rule cards,
+  are ordinary cards: they fall under the normal per-card gate decision
+  and, for `cloud_model`, the per-transfer confirmation.
 - Every egress path calls the gate: context packages, `ModelConnector`
   calls (including the level-1 Jev connector), MCP responses and exports.
 - Exports (training export, any file export meant to leave the device) are
   decided under `cloud_model` semantics: allow rule required per card plus
   a per-export confirmation listing what is exported.
-  Each MCP client connection is registered with the target class it
+- Each MCP client connection is registered with the target class it
   represents (`local_model` or `cloud_model`); an unregistered connection
   is denied.
 - Gate decisions are logged locally (card id, target, decision, reason),

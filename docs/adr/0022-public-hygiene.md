@@ -47,7 +47,8 @@ owner's goal of a public project.
   `.worldbuilder/`) and `HANDOVER*`.
 - CI "no real data" check: scans for IBAN patterns, German tax-ID
   patterns, passport-like numbers, e-mail addresses outside an allow-list,
-  private IP ranges, and data files under data directories without
+  private IP ranges (loopback `127.0.0.1` / `localhost` is allow-listed),
+  and data files under data directories without
   `synthetic: true`.
 - Secret scanning in CI on every push and pull request, plus the hosting
   platform's secret scanning and push protection when available.

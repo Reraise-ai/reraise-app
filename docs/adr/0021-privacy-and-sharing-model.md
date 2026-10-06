@@ -40,8 +40,9 @@ Privacy rules (binding now):
 
 - Worlds and cards are private by default (`visibility` private,
   `release: private`).
-- A shared card carries content and provenance only. The user's stances
-  and conclusions never leave the device
+- A shared card carries content and provenance only. The user's stance
+  data (the conclusions of [ADR-0012](0012-disclosure-gate.md)) never
+  leaves the device
   ([ADR-0008](0008-believed-as-private-stance.md)).
 - Users explicitly unlock what they share and how; the disclosure gate
   enforces it ([ADR-0012](0012-disclosure-gate.md)).
