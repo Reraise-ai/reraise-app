@@ -38,7 +38,7 @@ standard with tooling, and fits one-decision-per-pull-request review.
 Rules:
 
 - One file per decision: `docs/adr/NNNN-kebab-title.md`, numbered
-  sequentially, never renumbered. The index is [README.md](README.md),
+  sequentially, never renumbered. The index is [the index](./),
   the blank form is [template.md](template.md).
 - Front matter holds `status`, `date` and `decision-makers`. Allowed
   statuses: `proposed`, `accepted`, `rejected`, `deprecated`,

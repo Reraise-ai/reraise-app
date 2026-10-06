@@ -47,6 +47,10 @@ flowchart LR
 ```
 
 Monorepo layout: `apps/board`, `services/api`, `packages/*`, `schemas/`, `examples/`, `docs/`.
+More in the [documentation](docs/index.md): [vision](docs/product/vision.md),
+[board UX](docs/product/board-ux.md), [card format](docs/reference/card-format.md),
+[glossary](docs/glossary.md), [roadmap](docs/roadmap.md) and
+[verification](docs/verification.md).
 See [LICENSING.md](LICENSING.md) for which licence applies where.
 
 ## Quickstart
@@ -57,6 +61,8 @@ Available from M1. Until then, to work on the foundations:
 corepack enable
 pnpm install
 pnpm lint && pnpm typecheck && pnpm test && pnpm build
+pnpm docs:dev      # preview the docs site locally
+pnpm docs:build    # build it (dead links fail the build)
 ```
 
 ## Repository settings
@@ -65,5 +71,5 @@ GitHub secret scanning and push protection must be enabled in the repository set
 
 ## Links
 
-[Contributing](CONTRIBUTING.md) · [Code of Conduct](CODE_OF_CONDUCT.md) · [Security](SECURITY.md) ·
+[Docs](docs/index.md) · [Roadmap](docs/roadmap.md) · [Contributing](CONTRIBUTING.md) · [Code of Conduct](CODE_OF_CONDUCT.md) · [Security](SECURITY.md) ·
 [Governance](GOVERNANCE.md) · [Support](SUPPORT.md) · [Changelog](CHANGELOG.md) · [Licensing](LICENSING.md)
