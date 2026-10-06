@@ -1,0 +1,14 @@
+The Worldbuilder is licensed under a two-tier scheme.
+
+There is no single licence for the whole repository. Which licence applies
+depends on the directory a file lives in:
+
+  * Apache-2.0           libraries, adapters, schemas, examples, docs
+  * AGPL-3.0-or-later    the application (board app, API service, MCP server)
+
+See LICENSING.md for the authoritative table. The LICENSE file inside each
+package or directory governs that directory. Full licence texts are in the
+LICENSES/ directory. Every source file carries an SPDX-License-Identifier
+header.
+
+Copyright The Worldbuilder contributors
