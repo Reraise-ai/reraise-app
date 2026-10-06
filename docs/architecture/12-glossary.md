@@ -18,6 +18,7 @@ repeat them. It only adds terms that are used in the architecture documentation 
 | Patch write | A write that changes only the fields the product changed and leaves every other byte of the store file verbatim. |
 | Write path, write channel | The single sanctioned way to write into a store: validate, lock, write. "The owner store's write channel" is that store's own implementation. |
 | stdio bridge | The command `worldbuilder mcp --stdio` that connects stdio-only MCP clients to the running service; it holds no state and never writes ([ADR-0029](../adr/0029-process-topology.md)). |
+| State directory | The per-user directory for device-only state (proposals, stances, gate log, gate rules) ([ADR-0030](../adr/0030-local-state-on-the-device.md)). |
 | Derived index | Any search index, graph cache or vector store built from the files; deletable and rebuildable. |
 | Walking skeleton | Milestone M1: the thinnest end-to-end path, everything real, nothing pretty. |
 | Vertical slice | One M2+ pull request that adds UI, API, adapter and tests for one capability. |

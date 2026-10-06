@@ -29,9 +29,9 @@ decided by ADRs; two remain owner questions.
 | ID | Question | Decision |
 | --- | --- | --- |
 | OD-1 | Process layout of the Board API and the MCP server, given one write path per store ([ADR-0006](../adr/0006-files-are-the-truth.md)) | One local service process hosts the Board API and the MCP server over Streamable HTTP at `/mcp`; stdio-only clients use the stateless bridge `worldbuilder mcp --stdio` ([ADR-0029](../adr/0029-process-topology.md)) |
-| OD-2 | Where proposals, stances, the gate log and gate rules are stored, and who owns them | Files under `.worldbuilder/`, owned by `packages/local-state` behind a core interface; `services/api` is the only writer; human-only `PUT /cards/{id}/stance` ([ADR-0030](../adr/0030-local-state-on-the-device.md)) |
-| OD-3 | Gate rule language and binding of a cloud confirmation to the cards shown | Declarative YAML allow and deny rules per target over canonical card fields, deny wins, default deny; single-use token bound to the SHA-256 of the exact canonical payload, valid 5 minutes ([ADR-0031](../adr/0031-gate-rules-and-confirmation-binding.md)) |
-| OD-5 | How the M1 board learns about new proposals | Polls `GET /proposals?since=<cursor>` every 2 seconds; the M2 live channel replaces polling ([ADR-0032](../adr/0032-m1-proposal-polling.md)) |
+| OD-2 | Where proposals, stances, the gate log and gate rules are stored, and who owns them | Files in the per-user OS state directory (never inside a store or Git working tree), owned by `packages/local-state` behind a core interface; `services/api` is the only writer; human-only `PUT /cards/{id}/stance` ([ADR-0030](../adr/0030-local-state-on-the-device.md)) |
+| OD-3 | Gate rule language and binding of a cloud confirmation to the cards shown | Declarative YAML allow and deny rules per target over canonical card fields, deny wins, default deny; transfer record and single-use, session-bound token over the SHA-256 of the whole canonical envelope, valid 5 minutes ([ADR-0031](../adr/0031-gate-rules-and-confirmation-binding.md)) |
+| OD-5 | How the M1 board learns about new proposals | Polls `proposal_list` with `changedSince=<cursor>` every 2 seconds, on MCP and HTTP alike; the M2 live channel replaces polling ([ADR-0032](../adr/0032-m1-proposal-polling.md)) |
 | OD-6 | Derived-index technology of the reference adapter | In memory, rebuilt from the files at start, refreshed by a file watcher with rescan fallback; SQLite only on measured need ([ADR-0033](../adr/0033-derived-index-reference-adapter.md)) |
 
 ### Still open

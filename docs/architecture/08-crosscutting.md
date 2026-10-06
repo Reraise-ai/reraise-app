@@ -118,15 +118,21 @@ Privacy is structural, not a setting ([ADR-0012](../adr/0012-disclosure-gate.md)
 
 - **Targets.** `screen`, `local_model`, `cloud_model`, `demo`. Each MCP connection is
   registered with the target class it represents; an unregistered connection is denied.
-- **Rules.** Declarative YAML allow and deny rules per target in `.worldbuilder/gate-rules.yaml`,
+- **Rules.** Declarative YAML allow and deny rules per target in `gate-rules.yaml` in the state directory,
   matching canonical card fields only (`visibility`, `class`, `collection`, `worlds`, `type`,
-  tags once defined, explicit ids). Deny rules win over allow rules; an invalid rule file means
-  deny everywhere ([ADR-0031](../adr/0031-gate-rules-and-confirmation-binding.md)).
+  tags once defined, explicit ids), validated against `schemas/gate-rules.schema.json` (to be
+  added with the contracts). Adapter-supplied rule fragments join the effective rule set, which
+  the board shows with each rule's source. Deny rules win over allow rules; an invalid rule file
+  means deny everywhere ([ADR-0031](../adr/0031-gate-rules-and-confirmation-binding.md)).
 - **Default deny.** No matching allow rule means deny. The reference configuration allows
   `screen` for the local user. `cloud_model` additionally needs a per-transfer confirmation by
-  the human that lists exactly which cards leave. The confirmation is a single-use token bound to
-  the SHA-256 of the exact canonical payload shown, valid for 5 minutes; any change to the
-  payload invalidates it ([ADR-0031](../adr/0031-gate-rules-and-confirmation-binding.md)).
+  the human that lists exactly which cards leave. The preview shows the whole transfer envelope
+  (target, connector, request parameters, canonical objects) and creates a server-side transfer
+  record with its SHA-256. Confirming yields a single-use, session-bound token valid for
+  5 minutes; any change to the envelope invalidates it ([ADR-0031](../adr/0031-gate-rules-and-confirmation-binding.md)).
+- **MCP connections.** A connection registered as `cloud_model` receives card content only
+  after a confirmed, hash-bound transfer; a `local_model` connection follows the gate rules without
+  per-transfer confirmation ([ADR-0031](../adr/0031-gate-rules-and-confirmation-binding.md)).
 - **Every egress path calls the gate:** context packages, MCP responses, `ModelConnector`
   calls (including Jev), `rules_evaluate` for non-screen targets, and exports (decided under
   `cloud_model` semantics with a per-export confirmation).
@@ -136,7 +142,7 @@ Privacy is structural, not a setting ([ADR-0012](../adr/0012-disclosure-gate.md)
   this. Because stances are not part of a card, sending or sharing a card cannot carry them
   ([ADR-0008](../adr/0008-believed-as-private-stance.md)).
 - **Logging.** The gate logs card id, target, decision and reason to the append-only
-  `.worldbuilder/gate-log.jsonl`, never content ([ADR-0030](../adr/0030-local-state-on-the-device.md)).
+  `gate-log.jsonl` in the state directory, never content ([ADR-0030](../adr/0030-local-state-on-the-device.md)).
 
 ## 8.4 Identity and references
 
@@ -161,8 +167,9 @@ Privacy is structural, not a setting ([ADR-0012](../adr/0012-disclosure-gate.md)
   Concurrent writers use optimistic concurrency on `version` or `contentHash`.
 - Writes are patches: only the canonical fields the product changed are written; everything
   else stays byte-identical ([runtime 6.3](./06-runtime.md#63-write-back-patch-to-an-external-store)).
-- Stances, proposals, the gate log and gate rules are local files under `.worldbuilder/`,
-  never in shared or remote stores. `packages/local-state` owns them behind a core interface and
+- Stances, proposals, the gate log and gate rules are local files in the per-user state
+  directory, never in shared or remote stores, and never inside a store root or Git working
+  tree (the service refuses to start otherwise). `packages/local-state` owns them behind a core interface and
   `services/api` is the only writer. Stances are written only through the human-only
   `PUT /cards/{id}/stance` ([ADR-0030](../adr/0030-local-state-on-the-device.md)).
 - The reference adapter's derived index is in memory, rebuilt from the files at start and
@@ -171,7 +178,8 @@ Privacy is structural, not a setting ([ADR-0012](../adr/0012-disclosure-gate.md)
 ## 8.6 Agents and proposals
 
 - Agents act only through `proposal_create`. The server sets `author` from the connection.
-- In M1 the board polls `GET /proposals?since=<cursor>` every 2 seconds; the M2 live channel
+- In M1 the board polls `proposal_list` with `changedSince=<cursor>` every 2 seconds (the same
+  parameter exists for agents over MCP); the M2 live channel
   replaces polling ([ADR-0032](../adr/0032-m1-proposal-polling.md)).
 - Accept and reject are human-only. On accept, the change is written through the
   `StorageAdapter` with the agent kept as author.
@@ -185,6 +193,9 @@ Privacy is structural, not a setting ([ADR-0012](../adr/0012-disclosure-gate.md)
 
 - Loopback binding by default for the Board API and the MCP HTTP transport; widening is a
   documented, deliberate configuration ([ADR-0026](../adr/0026-security-defaults.md)).
+- `/mcp` validates `Origin` and `Host` against DNS rebinding; agent tokens are passed by
+  environment variable or token file, never on the command line
+  ([ADR-0029](../adr/0029-process-topology.md)).
 - Two token kinds: a random human session token created at start, and one bearer token per
   registered agent connection. Human-only endpoints never accept agent tokens.
 - All agent and HTTP input is schema-validated with size limits.

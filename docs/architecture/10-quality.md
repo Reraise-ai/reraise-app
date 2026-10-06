@@ -41,7 +41,7 @@ verification row or the planned test.
 | QS-P1 | A context package for `cloud_model` is requested for a Lage containing a card with `visibility: private` and no allow rule. | The card is denied with a reason, shown as denied in the preview, and not in the package. | M1-01, AC-26, ADR-C13 | planned (M1) |
 | QS-P2 | A user with a fresh installation asks for any context package. | Every card is denied for every target except `screen` (default deny). | ADR-C13 | not started |
 | QS-P3 | An agent calls any MCP tool or the Board API to read or write a stance. | No such tool or endpoint exists for agents; stance data never appears in an MCP response, context package or export. | ADR-C14, schema and contract tests | not started |
-| QS-P4 | A user confirms a cloud transfer, then the card set changes before sending. | The confirmation no longer matches; nothing is sent until the user confirms the new set. | unit tests of [ADR-0031](../adr/0031-gate-rules-and-confirmation-binding.md) | not started |
+| QS-P4 | A user confirms a cloud transfer, then a card, the engine, the question or the output schema changes before sending, or the token is replayed or expired. | The confirmation no longer matches; nothing is sent until the user previews and confirms again. | unit tests of [ADR-0031](../adr/0031-gate-rules-and-confirmation-binding.md) | not started |
 | QS-P5 | The service starts with default configuration. | Board API and MCP HTTP listen only on `127.0.0.1`; a request without a token is rejected. | ADR-C15 | not started (default bind exists in the skeleton, untested) |
 
 ### Provenance integrity

@@ -23,7 +23,7 @@ sequenceDiagram
   participant G as Disclosure gate
   participant SA as markdown-files adapter
   participant F as Card files
-  participant P as local-state (.worldbuilder)
+  participant P as local-state
   participant MCP as MCP server at /mcp
   participant A as Test agent
 
@@ -53,8 +53,8 @@ sequenceDiagram
   MCP->>C: validate proposal, status pending
   C->>P: store pending proposal
   MCP-->>A: proposal id, status pending
-  UI->>API: GET /proposals?since=cursor, polled every 2 s
-  API-->>UI: pending proposal, drawn dashed with its author
+  UI->>API: proposal_list with changedSince cursor, polled every 2 s
+  API-->>UI: pending proposal and nextCursor, drawn dashed with its author
 
   Note over H,P: A human accepts
   H->>UI: Accept
@@ -114,7 +114,7 @@ sequenceDiagram
   participant G as Disclosure gate
   participant JC as Jev connector
   participant J as Jev
-  participant P as local-state (.worldbuilder)
+  participant P as local-state
 
   H->>UI: Quick question with options, engine Jev
   UI->>API: Level 1 request (question, options, engine)
@@ -124,19 +124,21 @@ sequenceDiagram
     G-->>C: allow or deny with reason
   end
   Note over C,G: Stance data and stance-dependent rules are never candidates
-  C-->>API: transfer preview: cleared cards, denied cards with reasons
-  API->>API: SHA-256 of the exact canonical payload
-  API-->>UI: confirmation dialog listing exactly what would leave the device
+  C-->>API: cleared cards, denied cards with reasons
+  API->>API: envelope = target, connectorId, question, options, output schema, cleared objects
+  API->>API: transfer record: transferId, SHA-256 of the RFC 8785 envelope, expiry in 5 min
+  API-->>UI: preview of the whole envelope, transferId and hash
   alt the human declines
     H->>UI: Cancel
     UI->>API: cancel transfer
     Note over API,G: Nothing is sent. The gate log keeps card ids and decisions, never content.
   else the human confirms
     H->>UI: Confirm this transfer
-    UI->>API: disclosure confirm (human-only endpoint)
-    API-->>UI: single-use token bound to the payload hash, valid 5 minutes
+    UI->>API: disclosure confirm with transferId and previewed hash (human-only)
+    API->>API: recompute current envelope hash, compare with record and previewed hash
+    API-->>UI: single-use token, 128-bit random, bound to this session, valid 5 minutes
     UI->>API: send with token
-    API->>API: payload hash equals the bound hash, token unused and not expired
+    API->>API: consume token atomically, envelope hash still equals the record
     API->>JC: decide(output schema, cleared canonical objects)
     JC->>J: POST /v1/decide over HTTPS, credential from environment or keychain
     J-->>JC: typed answer with calibrated confidence
@@ -159,8 +161,10 @@ sequenceDiagram
   end
 ```
 
-If anything in the payload changes after the preview, its hash changes and the token is
-invalid; the user must confirm again ([ADR-0031](../adr/0031-gate-rules-and-confirmation-binding.md)).
+If anything in the envelope changes after the preview (a card, the engine, the question, the
+options or the output schema), its hash changes and the confirmation fails; the user must
+preview and confirm again. Tokens and transfer records are held in memory only and are void
+after a restart ([ADR-0031](../adr/0031-gate-rules-and-confirmation-binding.md)).
 A Level 1 answer is not a decision, triggers no rule and enters no statistics. The same flow
 with a local rules engine or a local model uses target `local_model` and needs no per-transfer
 confirmation, but still a gate decision per card.
