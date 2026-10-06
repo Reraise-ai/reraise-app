@@ -1,0 +1,269 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldbuilder.invalid/schemas/v0/context-package.schema.json",
+  "title": "ContextPackage",
+  "description": "What a model or agent receives about the active world (ADR-0016, ADR-0024 item 34). Built after the disclosure gate: every item is gate-cleared for `target`; denied cards are omitted and only counted in `withheld`. Layers are never merged into a score. Only accepted content appears as items; pending proposals are listed separately. Stance data appears only for target screen; a cloud_model package needs the user's per-transfer confirmation.",
+  "type": "object",
+  "properties": {
+    "id": {
+      "$ref": "common.schema.json#/$defs/ulid"
+    },
+    "target": {
+      "$ref": "common.schema.json#/$defs/disclosureTarget"
+    },
+    "worldId": {
+      "$ref": "common.schema.json#/$defs/worldId"
+    },
+    "lageId": {
+      "$ref": "common.schema.json#/$defs/cardId"
+    },
+    "question": {
+      "$ref": "common.schema.json#/$defs/text"
+    },
+    "createdAt": {
+      "$ref": "common.schema.json#/$defs/dateTime"
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/item"
+      }
+    },
+    "independence": {
+      "$ref": "#/$defs/independence"
+    },
+    "pendingProposals": {
+      "description": "Proposals that have not been accepted. Never facts; listed only in this section (ADR-0011).",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/pendingProposal"
+      }
+    },
+    "withheld": {
+      "description": "Number of cards the gate denied for this target.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "transfer": {
+      "$ref": "#/$defs/transferRef"
+    }
+  },
+  "required": [
+    "id",
+    "target",
+    "worldId",
+    "createdAt",
+    "items",
+    "independence",
+    "pendingProposals",
+    "withheld"
+  ],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "description": "Stance data never leaves the screen (ADR-0008, ADR-0012).",
+      "if": {
+        "properties": {
+          "target": {
+            "const": "screen"
+          }
+        },
+        "required": ["target"]
+      },
+      "else": {
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "stance": false
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "description": "A cloud_model package carries the user's confirmation of this transfer.",
+      "if": {
+        "properties": {
+          "target": {
+            "const": "cloud_model"
+          }
+        },
+        "required": ["target"]
+      },
+      "then": {
+        "properties": {
+          "transfer": true
+        },
+        "required": ["transfer"]
+      },
+      "else": {
+        "not": {
+          "properties": {
+            "transfer": true
+          },
+          "required": ["transfer"]
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "item": {
+      "title": "ContextItem",
+      "type": "object",
+      "properties": {
+        "card": {
+          "description": "The canonical card, serialised after the gate decision (never a raw store file).",
+          "$ref": "card.schema.json"
+        },
+        "layer": {
+          "description": "The card's layer, or unclassified for a legacy card without one (ADR-0007).",
+          "type": "string",
+          "enum": ["evidenced", "said", "experience", "unclassified"]
+        },
+        "author": {
+          "$ref": "common.schema.json#/$defs/author"
+        },
+        "provenance": {
+          "$ref": "#/$defs/provenance"
+        },
+        "gate": {
+          "$ref": "#/$defs/gate"
+        },
+        "stance": {
+          "description": "The user's stance; only in packages for target screen.",
+          "$ref": "stance.schema.json"
+        }
+      },
+      "required": ["card", "layer", "author", "provenance", "gate"],
+      "additionalProperties": false
+    },
+    "provenance": {
+      "title": "ContextProvenance",
+      "description": "Where the card comes from and which independent origin it belongs to (ADR-0009).",
+      "type": "object",
+      "properties": {
+        "uri": {
+          "$ref": "common.schema.json#/$defs/wbUri"
+        },
+        "source": {
+          "$ref": "common.schema.json#/$defs/text"
+        },
+        "sourceDate": {
+          "$ref": "common.schema.json#/$defs/isoDate"
+        },
+        "originSystem": {
+          "$ref": "common.schema.json#/$defs/text"
+        },
+        "originRoot": {
+          "description": "Identity of the origin root reached by following cites/based_on edges and source identity: a card id, source URI or content hash.",
+          "$ref": "common.schema.json#/$defs/text"
+        },
+        "originKnown": {
+          "description": "False if the origin could not be traced; such a card counts as its own root and is flagged.",
+          "type": "boolean"
+        }
+      },
+      "required": ["uri", "originRoot", "originKnown"],
+      "additionalProperties": false
+    },
+    "gate": {
+      "title": "ContextGate",
+      "description": "The gate decision for this item and target. Items are always allowed; denied cards never appear.",
+      "type": "object",
+      "properties": {
+        "decision": {
+          "type": "string",
+          "const": "allow"
+        },
+        "reason": {
+          "$ref": "common.schema.json#/$defs/text"
+        }
+      },
+      "required": ["decision", "reason"],
+      "additionalProperties": false
+    },
+    "independence": {
+      "title": "ContextIndependence",
+      "description": "'N findings \u00b7 M origins' over the items; never a bare card count.",
+      "type": "object",
+      "properties": {
+        "findings": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "origins": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": ["findings", "origins"],
+      "additionalProperties": false
+    },
+    "pendingProposal": {
+      "title": "ContextPendingProposal",
+      "type": "object",
+      "properties": {
+        "proposalId": {
+          "$ref": "common.schema.json#/$defs/ulid"
+        },
+        "author": {
+          "$ref": "common.schema.json#/$defs/agentAuthor"
+        },
+        "kind": {
+          "$ref": "common.schema.json#/$defs/proposalKind"
+        },
+        "status": {
+          "type": "string",
+          "const": "pending"
+        },
+        "summary": {
+          "$ref": "common.schema.json#/$defs/text"
+        }
+      },
+      "required": ["proposalId", "author", "kind", "status", "summary"],
+      "additionalProperties": false
+    },
+    "transferRef": {
+      "title": "ContextTransferRef",
+      "description": "The confirmed cloud_model transfer this package belongs to.",
+      "type": "object",
+      "properties": {
+        "transferId": {
+          "$ref": "common.schema.json#/$defs/ulid"
+        },
+        "confirmedAt": {
+          "$ref": "common.schema.json#/$defs/dateTime"
+        }
+      },
+      "required": ["transferId", "confirmedAt"],
+      "additionalProperties": false
+    },
+    "request": {
+      "title": "ContextPackageRequest",
+      "description": "Input of context_package_get. The target is taken from the caller's registered connection, never from the request (ADR-0012).",
+      "type": "object",
+      "properties": {
+        "worldId": {
+          "$ref": "common.schema.json#/$defs/worldId"
+        },
+        "lageId": {
+          "$ref": "common.schema.json#/$defs/cardId"
+        },
+        "question": {
+          "$ref": "common.schema.json#/$defs/text"
+        },
+        "maxItems": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 500
+        }
+      },
+      "required": ["worldId"],
+      "additionalProperties": false
+    }
+  }
+}

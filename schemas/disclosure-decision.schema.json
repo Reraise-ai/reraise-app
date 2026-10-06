@@ -1,0 +1,196 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldbuilder.invalid/schemas/v0/disclosure-decision.schema.json",
+  "title": "DisclosureDecision",
+  "description": "Result of DisclosureGate.decide(card, target) (ADR-0012). Default deny: without a matching allow rule the decision is deny. An allow for cloud_model is only valid with the user's per-transfer confirmation. Stance data is allowed for target screen only. Decisions are logged without card content.",
+  "type": "object",
+  "properties": {
+    "subject": {
+      "$ref": "#/$defs/subject"
+    },
+    "target": {
+      "$ref": "common.schema.json#/$defs/disclosureTarget"
+    },
+    "decision": {
+      "type": "string",
+      "enum": ["allow", "deny"]
+    },
+    "reason": {
+      "$ref": "common.schema.json#/$defs/text"
+    },
+    "ruleId": {
+      "description": "The allow rule that matched, if any.",
+      "type": "string",
+      "minLength": 1
+    },
+    "confirmationRequired": {
+      "description": "True when the decision is deny only because the per-transfer confirmation is missing.",
+      "type": "boolean"
+    },
+    "confirmation": {
+      "$ref": "#/$defs/confirmation"
+    },
+    "decidedAt": {
+      "$ref": "common.schema.json#/$defs/dateTime"
+    }
+  },
+  "required": ["subject", "target", "decision", "reason", "decidedAt"],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "description": "cloud_model requires a per-transfer confirmation for every allow.",
+      "if": {
+        "properties": {
+          "target": {
+            "const": "cloud_model"
+          },
+          "decision": {
+            "const": "allow"
+          }
+        },
+        "required": ["target", "decision"]
+      },
+      "then": {
+        "properties": {
+          "confirmation": true
+        },
+        "required": ["confirmation"]
+      }
+    },
+    {
+      "description": "Confirmations exist only for cloud_model transfers.",
+      "if": {
+        "properties": {
+          "confirmation": true
+        },
+        "required": ["confirmation"]
+      },
+      "then": {
+        "properties": {
+          "target": {
+            "const": "cloud_model"
+          }
+        }
+      }
+    },
+    {
+      "description": "Stance data never leaves the screen (ADR-0008).",
+      "if": {
+        "properties": {
+          "subject": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "stance"
+              }
+            },
+            "required": ["kind"]
+          },
+          "decision": {
+            "const": "allow"
+          }
+        },
+        "required": ["subject", "decision"]
+      },
+      "then": {
+        "properties": {
+          "target": {
+            "const": "screen"
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "subject": {
+      "title": "DisclosureSubject",
+      "description": "What is being disclosed: a card, or the user's stance data on a card.",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["card", "stance"]
+        },
+        "cardId": {
+          "$ref": "common.schema.json#/$defs/cardId"
+        }
+      },
+      "required": ["kind", "cardId"],
+      "additionalProperties": false
+    },
+    "transfer": {
+      "title": "DisclosureTransfer",
+      "description": "A pending cloud_model transfer awaiting the user's confirmation; lists exactly which cards would be sent. Exports use cloud_model semantics (ADR-0012).",
+      "type": "object",
+      "properties": {
+        "transferId": {
+          "$ref": "common.schema.json#/$defs/ulid"
+        },
+        "target": {
+          "type": "string",
+          "const": "cloud_model"
+        },
+        "purpose": {
+          "type": "string",
+          "enum": ["context_package", "level1", "export"]
+        },
+        "cardIds": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/cardId"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "createdAt": {
+          "$ref": "common.schema.json#/$defs/dateTime"
+        }
+      },
+      "required": ["transferId", "target", "purpose", "cardIds", "createdAt"],
+      "additionalProperties": false
+    },
+    "confirmRequest": {
+      "title": "DisclosureConfirmRequest",
+      "description": "Body of the human-only confirm operation: the user confirms exactly the listed cards of one transfer.",
+      "type": "object",
+      "properties": {
+        "cardIds": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/cardId"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      },
+      "required": ["cardIds"],
+      "additionalProperties": false
+    },
+    "confirmation": {
+      "title": "DisclosureConfirmation",
+      "description": "The user's confirmation of one transfer. No standing consent: it covers this transfer only.",
+      "type": "object",
+      "properties": {
+        "transferId": {
+          "$ref": "common.schema.json#/$defs/ulid"
+        },
+        "cardIds": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/cardId"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "confirmedBy": {
+          "$ref": "common.schema.json#/$defs/humanAuthor"
+        },
+        "confirmedAt": {
+          "$ref": "common.schema.json#/$defs/dateTime"
+        }
+      },
+      "required": ["transferId", "cardIds", "confirmedBy", "confirmedAt"],
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldbuilder.invalid/schemas/v0/store-config.schema.json",
+  "title": "StoreConfig",
+  "description": "Configuration persisted once per store. `storeInstanceId` is the random UUID used in card URIs (ADR-0023); it must never be a hostname, path or user name.",
+  "type": "object",
+  "properties": {
+    "storeInstanceId": { "$ref": "common.schema.json#/$defs/uuid" },
+    "synthetic": {
+      "description": "True if every card in this store is invented example data (ADR-0022).",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": ["storeInstanceId"],
+  "additionalProperties": false
+}

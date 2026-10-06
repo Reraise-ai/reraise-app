@@ -1,0 +1,152 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldbuilder.invalid/schemas/v0/source-profile.schema.json",
+  "title": "SourceProfile",
+  "description": "Multi-dimensional profile of a source (ADR-0018). Never one score: there is no aggregate field and no overall ranking. Every dimension carries its sample size `n`; below `minimumN` the UI shows 'insufficient data'. Derived from resolved estimates and decision outcomes, never edited by hand. agreement, deviation and counterPerspectiveValue use the user's stances and stay on the device.",
+  "type": "object",
+  "properties": {
+    "source": {
+      "description": "The profiled source: a card id or URI.",
+      "$ref": "common.schema.json#/$defs/sourceRef"
+    },
+    "computedAt": {
+      "$ref": "common.schema.json#/$defs/dateTime"
+    },
+    "minimumN": {
+      "description": "Sample size below which a value is shown as insufficient data.",
+      "type": "integer",
+      "minimum": 1
+    },
+    "dimensions": {
+      "type": "object",
+      "properties": {
+        "hitAccuracy": {
+          "$ref": "#/$defs/dimension"
+        },
+        "reliability": {
+          "$ref": "#/$defs/dimension"
+        },
+        "topicCompetence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/topicDimension"
+          }
+        },
+        "agreement": {
+          "$ref": "#/$defs/dimension"
+        },
+        "deviation": {
+          "$ref": "#/$defs/dimension"
+        },
+        "sourceQuality": {
+          "$ref": "#/$defs/dimension"
+        },
+        "historicalPerformance": {
+          "$ref": "#/$defs/dimension"
+        },
+        "counterPerspectiveValue": {
+          "$ref": "#/$defs/dimension"
+        }
+      },
+      "required": [
+        "hitAccuracy",
+        "reliability",
+        "topicCompetence",
+        "agreement",
+        "deviation",
+        "sourceQuality",
+        "historicalPerformance",
+        "counterPerspectiveValue"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": ["source", "computedAt", "minimumN", "dimensions"],
+  "additionalProperties": false,
+  "$defs": {
+    "dimension": {
+      "title": "SourceProfileDimension",
+      "description": "One dimension: a value in [0, 1] and its sample size. A value is required once n >= 1.",
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "n": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": ["n"],
+      "additionalProperties": false,
+      "if": {
+        "properties": {
+          "n": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": ["n"]
+      },
+      "then": {
+        "properties": {
+          "value": true
+        },
+        "required": ["value"]
+      },
+      "else": {
+        "not": {
+          "properties": {
+            "value": true
+          },
+          "required": ["value"]
+        }
+      }
+    },
+    "topicDimension": {
+      "title": "SourceProfileTopicDimension",
+      "type": "object",
+      "properties": {
+        "topic": {
+          "$ref": "common.schema.json#/$defs/text"
+        },
+        "value": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "n": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": ["topic", "n"],
+      "additionalProperties": false,
+      "if": {
+        "properties": {
+          "n": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": ["n"]
+      },
+      "then": {
+        "properties": {
+          "value": true
+        },
+        "required": ["value"]
+      },
+      "else": {
+        "not": {
+          "properties": {
+            "value": true
+          },
+          "required": ["value"]
+        }
+      }
+    }
+  }
+}

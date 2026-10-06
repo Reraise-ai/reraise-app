@@ -1,0 +1,530 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldbuilder.invalid/schemas/v0/card.schema.json",
+  "title": "Card",
+  "description": "Canonical card (ADR-0023). Every store maps to this model; card format v2 rules (layer, author, provenance, player fields, Lage, decision sections) apply to format-2 cards (ADR-0007, ADR-0009). Stance data is never part of a card (ADR-0008).",
+  "type": "object",
+  "$ref": "#/$defs/content",
+  "properties": {
+    "id": true,
+    "externalId": true,
+    "uri": true,
+    "format": true,
+    "type": true,
+    "title": true,
+    "author": true
+  },
+  "required": ["id", "externalId", "uri", "format", "type", "title", "author"],
+  "$defs": {
+    "content": {
+      "title": "CardContent",
+      "description": "All card fields with the format v2 rules. Shared by Card (identity required) and CardDraft (identity forbidden).",
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "Canonical id: minted ULID, or derived from `uri` for stores with their own id scheme (ADR-0023).",
+          "$ref": "common.schema.json#/$defs/cardId"
+        },
+        "externalId": {
+          "description": "The card's id in its home store (store-local).",
+          "type": "string",
+          "minLength": 1
+        },
+        "uri": {
+          "description": "wb:<storeInstanceId>/<externalId>; the home-store reference (ADR-0005).",
+          "$ref": "common.schema.json#/$defs/wbUri"
+        },
+        "format": {
+          "description": "1 = legacy card, 2 = card format v2. Cards written by the product are always format 2.",
+          "type": "integer",
+          "enum": [1, 2]
+        },
+        "collection": {
+          "$ref": "common.schema.json#/$defs/collection"
+        },
+        "type": {
+          "description": "Canonical type; an open vocabulary (actor, person, organisation, evidence, source, claim, event, experience, assumption, rating, decision, rule, topic, lage, ...).",
+          "$ref": "common.schema.json#/$defs/text"
+        },
+        "typeRaw": {
+          "description": "The store's original type value, kept so that a patch never rewrites it.",
+          "type": "string"
+        },
+        "title": {
+          "$ref": "common.schema.json#/$defs/text"
+        },
+        "body": {
+          "description": "Markdown body.",
+          "type": "string"
+        },
+        "date": {
+          "$ref": "common.schema.json#/$defs/isoDate"
+        },
+        "source": {
+          "description": "Source as text, URI or card id.",
+          "$ref": "common.schema.json#/$defs/text"
+        },
+        "sourceDate": {
+          "$ref": "common.schema.json#/$defs/isoDate"
+        },
+        "sourceChecksum": {
+          "description": "SHA-256 of the original source document (not `contentHash`). Must be SHA-256 on collection evidence.",
+          "type": "string"
+        },
+        "contentHash": {
+          "description": "SHA-256 over the canonical card content, computed by the product (ADR-0006).",
+          "$ref": "common.schema.json#/$defs/sha256"
+        },
+        "status": {
+          "$ref": "common.schema.json#/$defs/cardStatus"
+        },
+        "rating": {
+          "description": "Carried as stored, without product semantics yet.",
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "number"
+            }
+          ]
+        },
+        "release": {
+          "$ref": "common.schema.json#/$defs/release",
+          "default": "private"
+        },
+        "carrier": {
+          "description": "Carried as stored.",
+          "type": "string"
+        },
+        "affiliation": {
+          "description": "Carried as stored.",
+          "type": "string"
+        },
+        "visibility": {
+          "$ref": "common.schema.json#/$defs/visibility",
+          "default": "private"
+        },
+        "class": {
+          "$ref": "common.schema.json#/$defs/cardClass"
+        },
+        "layer": {
+          "$ref": "common.schema.json#/$defs/layer"
+        },
+        "worlds": {
+          "description": "Worlds this card appears in, by reference; cards are never copied between worlds.",
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/worldId"
+          },
+          "uniqueItems": true
+        },
+        "author": {
+          "$ref": "common.schema.json#/$defs/author"
+        },
+        "originSystem": {
+          "description": "System the content comes from.",
+          "$ref": "common.schema.json#/$defs/text"
+        },
+        "training": {
+          "description": "Opt-in for training export (ADR-0017).",
+          "type": "boolean",
+          "default": false
+        },
+        "edges": {
+          "type": "array",
+          "items": {
+            "$ref": "edge.schema.json"
+          }
+        },
+        "interests": {
+          "$ref": "#/$defs/playerField"
+        },
+        "capabilities": {
+          "$ref": "#/$defs/playerField"
+        },
+        "dependencies": {
+          "$ref": "#/$defs/playerField"
+        },
+        "moves": {
+          "$ref": "#/$defs/playerField"
+        },
+        "lage": {
+          "description": "Board state; required on cards of type lage.",
+          "$ref": "lage.schema.json"
+        },
+        "sections": {
+          "description": "The eleven decision sections; required on format-2 cards of type decision.",
+          "$ref": "#/$defs/decisionSections"
+        },
+        "rule": {
+          "description": "Structured rule; only on cards of type rule.",
+          "$ref": "rule.schema.json"
+        },
+        "level": {
+          "description": "Reserved for card tiers (ADR-0007, ADR-0021). Must not be used until an ADR defines it.",
+          "not": {}
+        },
+        "signature": {
+          "description": "Reserved for an author key-pair signature (ADR-0021). Must not be used until an ADR defines it.",
+          "not": {}
+        }
+      },
+      "allOf": [
+        {
+          "description": "Format-2 cards have a known author (ADR-0009).",
+          "if": {
+            "properties": {
+              "format": {
+                "const": 2
+              }
+            },
+            "required": ["format"]
+          },
+          "then": {
+            "properties": {
+              "author": {
+                "$ref": "common.schema.json#/$defs/knownAuthor"
+              }
+            }
+          }
+        },
+        {
+          "description": "Format-2 evidence and actor cards state their layer (ADR-0007).",
+          "if": {
+            "properties": {
+              "format": {
+                "const": 2
+              },
+              "collection": {
+                "enum": ["evidence", "actors"]
+              }
+            },
+            "required": ["format", "collection"]
+          },
+          "then": {
+            "properties": {
+              "layer": true
+            },
+            "required": ["layer"]
+          }
+        },
+        {
+          "description": "A layer is a card format v2 field: cards with a layer are format 2 (ADR-0023).",
+          "if": {
+            "properties": {
+              "layer": true
+            },
+            "required": ["layer"]
+          },
+          "then": {
+            "properties": {
+              "format": {
+                "const": 2
+              }
+            }
+          }
+        },
+        {
+          "description": "Evidenced and said cards need a source or an origin system (ADR-0009).",
+          "if": {
+            "properties": {
+              "layer": {
+                "enum": ["evidenced", "said"]
+              }
+            },
+            "required": ["layer"]
+          },
+          "then": {
+            "anyOf": [
+              {
+                "properties": {
+                  "source": true
+                },
+                "required": ["source"]
+              },
+              {
+                "properties": {
+                  "originSystem": true
+                },
+                "required": ["originSystem"]
+              }
+            ]
+          }
+        },
+        {
+          "description": "Experience needs an explicit author (ADR-0009).",
+          "if": {
+            "properties": {
+              "layer": {
+                "const": "experience"
+              }
+            },
+            "required": ["layer"]
+          },
+          "then": {
+            "properties": {
+              "author": {
+                "$ref": "common.schema.json#/$defs/knownAuthor"
+              }
+            }
+          }
+        },
+        {
+          "description": "Player fields exist only on actor cards (ADR-0023).",
+          "if": {
+            "anyOf": [
+              {
+                "properties": {
+                  "interests": true
+                },
+                "required": ["interests"]
+              },
+              {
+                "properties": {
+                  "capabilities": true
+                },
+                "required": ["capabilities"]
+              },
+              {
+                "properties": {
+                  "dependencies": true
+                },
+                "required": ["dependencies"]
+              },
+              {
+                "properties": {
+                  "moves": true
+                },
+                "required": ["moves"]
+              }
+            ]
+          },
+          "then": {
+            "properties": {
+              "collection": {
+                "const": "actors"
+              }
+            },
+            "required": ["collection"]
+          }
+        },
+        {
+          "description": "Evidence cards carry a SHA-256 source checksum if any (ADR-0023).",
+          "if": {
+            "properties": {
+              "collection": {
+                "const": "evidence"
+              }
+            },
+            "required": ["collection"]
+          },
+          "then": {
+            "properties": {
+              "sourceChecksum": {
+                "$ref": "common.schema.json#/$defs/sha256"
+              }
+            }
+          }
+        },
+        {
+          "description": "Cards of type lage carry their board state.",
+          "if": {
+            "properties": {
+              "type": {
+                "const": "lage"
+              }
+            },
+            "required": ["type"]
+          },
+          "then": {
+            "properties": {
+              "lage": true
+            },
+            "required": ["lage"]
+          }
+        },
+        {
+          "description": "Only cards of type lage carry a board state.",
+          "if": {
+            "properties": {
+              "lage": true
+            },
+            "required": ["lage"]
+          },
+          "then": {
+            "properties": {
+              "type": {
+                "const": "lage"
+              }
+            }
+          }
+        },
+        {
+          "description": "Format-2 decision cards have all eleven sections (ADR-0017).",
+          "if": {
+            "properties": {
+              "type": {
+                "const": "decision"
+              },
+              "format": {
+                "const": 2
+              }
+            },
+            "required": ["type", "format"]
+          },
+          "then": {
+            "properties": {
+              "sections": true
+            },
+            "required": ["sections"]
+          }
+        },
+        {
+          "description": "Only decision cards carry decision sections.",
+          "if": {
+            "properties": {
+              "sections": true
+            },
+            "required": ["sections"]
+          },
+          "then": {
+            "properties": {
+              "type": {
+                "const": "decision"
+              }
+            }
+          }
+        },
+        {
+          "description": "Only rule cards carry a structured rule.",
+          "if": {
+            "properties": {
+              "rule": true
+            },
+            "required": ["rule"]
+          },
+          "then": {
+            "properties": {
+              "type": {
+                "const": "rule"
+              }
+            }
+          }
+        }
+      ],
+      "additionalProperties": false
+    },
+    "draft": {
+      "title": "CardDraft",
+      "description": "A card proposed for creation (proposal kind create_card). Identity is assigned by the store on accept; the author is set by the server from the agent connection, never taken from the payload (ADR-0011).",
+      "type": "object",
+      "$ref": "#/$defs/content",
+      "properties": {
+        "format": {
+          "type": "integer",
+          "const": 2
+        },
+        "id": {
+          "not": {}
+        },
+        "externalId": {
+          "not": {}
+        },
+        "uri": {
+          "not": {}
+        },
+        "author": {
+          "not": {}
+        },
+        "contentHash": {
+          "not": {}
+        },
+        "type": true,
+        "title": true
+      },
+      "required": ["format", "type", "title"]
+    },
+    "playerField": {
+      "title": "PlayerField",
+      "description": "Player-field entries; each needs a source (ADR-0009).",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/playerEntry"
+      }
+    },
+    "playerEntry": {
+      "title": "PlayerEntry",
+      "type": "object",
+      "properties": {
+        "text": {
+          "$ref": "common.schema.json#/$defs/text"
+        },
+        "source": {
+          "$ref": "common.schema.json#/$defs/sourceRef"
+        }
+      },
+      "required": ["text", "source"],
+      "additionalProperties": false
+    },
+    "decisionSections": {
+      "title": "DecisionSections",
+      "description": "Exactly eleven sections, none empty (ADR-0017). `cardsUsed` ids must exist; `outcome` is `open` until known.",
+      "type": "object",
+      "properties": {
+        "situation": {
+          "$ref": "common.schema.json#/$defs/text"
+        },
+        "trigger": {
+          "$ref": "common.schema.json#/$defs/text"
+        },
+        "conditions": {
+          "$ref": "common.schema.json#/$defs/text"
+        },
+        "facts": {
+          "$ref": "common.schema.json#/$defs/text"
+        },
+        "priorities": {
+          "$ref": "common.schema.json#/$defs/text"
+        },
+        "action": {
+          "$ref": "common.schema.json#/$defs/text"
+        },
+        "alternatives": {
+          "$ref": "common.schema.json#/$defs/text"
+        },
+        "exclusions": {
+          "$ref": "common.schema.json#/$defs/text"
+        },
+        "rationale": {
+          "$ref": "common.schema.json#/$defs/text"
+        },
+        "cardsUsed": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/cardId"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "outcome": {
+          "$ref": "common.schema.json#/$defs/text"
+        }
+      },
+      "required": [
+        "situation",
+        "trigger",
+        "conditions",
+        "facts",
+        "priorities",
+        "action",
+        "alternatives",
+        "exclusions",
+        "rationale",
+        "cardsUsed",
+        "outcome"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

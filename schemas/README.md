@@ -1,0 +1,47 @@
+# Schemas
+
+The JSON Schemas (2020-12) in this directory are the source of truth for every contract of
+The Worldbuilder ([ADR-0016](../docs/adr/0016-mcp-first-and-openapi-contracts.md)). The
+conventions are recorded in
+[ADR-0028](../docs/adr/0028-json-schema-contract-conventions.md).
+
+## Identifiers
+
+Every schema has the `$id` `https://worldbuilder.invalid/schemas/v0/<file>`. The domain
+`worldbuilder.invalid` is a reserved, never-resolving placeholder (RFC 2606): the ids are
+names, not addresses, and nothing fetches them. `v0` is the pre-release contract version.
+
+## Schemas
+
+| File                                 | Contract                                                     | ADR              |
+| ------------------------------------ | ------------------------------------------------------------ | ---------------- |
+| `common.schema.json`                 | shared definitions: ULID, `wb:` URI, author forms, enums     | 0023             |
+| `card.schema.json`                   | canonical card, card draft, player fields, decision sections | 0007, 0009, 0023 |
+| `edge.schema.json`                   | typed card edge                                              | 0023             |
+| `lage.schema.json`                   | board state of a Lage                                        | 0006, 0023       |
+| `decision.schema.json`               | decision card with eleven sections                           | 0017             |
+| `rule.schema.json`                   | structured rule (`when`, `then`, `unless`)                   | 0013             |
+| `rule-evaluation.schema.json`        | `rules_evaluate` result, no percentage, `withheld` count     | 0013             |
+| `stance.schema.json`                 | private stance with history                                  | 0008             |
+| `world.schema.json`                  | world                                                        | 0021, 0023       |
+| `store-config.schema.json`           | per-store configuration (`storeInstanceId`)                  | 0023             |
+| `proposal.schema.json`               | agent proposal, create input, accept/reject body             | 0011             |
+| `source-profile.schema.json`         | eight dimensions, each with `n`                              | 0018             |
+| `prediction.schema.json`             | estimate: phrase and ICD 203 band                            | 0010             |
+| `disclosure-decision.schema.json`    | gate decision, transfer, confirmation                        | 0012             |
+| `level1-answer.schema.json`          | level-1 answer and request                                   | 0015             |
+| `context-package.schema.json`        | context package for a target                                 | 0012, 0016       |
+| `training-export-record.schema.json` | one JSONL decision trace                                     | 0017             |
+
+## Fixtures
+
+`fixtures/valid/` and `fixtures/invalid/` hold envelopes
+`{ "schema": "<$id>", "description", "data" }`; an invalid fixture adds
+`"expect": { "keyword", "instancePath" }`, the Ajv error it must produce. The example worlds
+in [`examples/`](../examples/README.md) are valid cases too.
+
+```sh
+pnpm validate:schemas   # compile strictly, check examples and fixtures
+pnpm generate:types     # regenerate packages/core/src/generated/contracts.ts
+pnpm check:generated    # fail if the generated types are out of date
+```

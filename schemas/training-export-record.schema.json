@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldbuilder.invalid/schemas/v0/training-export-record.schema.json",
+  "title": "TrainingExportRecord",
+  "description": "One JSONL line of the training export: a decision trace (ADR-0017). Exported only if the decision card has training: true; used cards appear only with training: true (others are omitted entirely, not even as ids); only accepted proposals form the brainstorm trace. Never contains stance data.",
+  "type": "object",
+  "properties": {
+    "exportedAt": {
+      "$ref": "common.schema.json#/$defs/dateTime"
+    },
+    "decision": {
+      "allOf": [
+        {
+          "$ref": "decision.schema.json"
+        },
+        {
+          "$ref": "#/$defs/optedIn"
+        }
+      ]
+    },
+    "usedCards": {
+      "type": "array",
+      "items": {
+        "allOf": [
+          {
+            "$ref": "card.schema.json"
+          },
+          {
+            "$ref": "#/$defs/optedIn"
+          }
+        ]
+      }
+    },
+    "lage": {
+      "$ref": "#/$defs/lageVersion"
+    },
+    "brainstorm": {
+      "description": "Accepted proposals that shaped the decision.",
+      "type": "array",
+      "items": {
+        "allOf": [
+          {
+            "$ref": "proposal.schema.json"
+          },
+          {
+            "$ref": "#/$defs/accepted"
+          }
+        ]
+      }
+    },
+    "outcome": {
+      "$ref": "common.schema.json#/$defs/text"
+    }
+  },
+  "required": ["exportedAt", "decision", "usedCards", "brainstorm", "outcome"],
+  "additionalProperties": false,
+  "$defs": {
+    "optedIn": {
+      "title": "TrainingOptIn",
+      "type": "object",
+      "properties": {
+        "training": {
+          "type": "boolean",
+          "const": true
+        }
+      },
+      "required": ["training"]
+    },
+    "accepted": {
+      "title": "AcceptedProposal",
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string",
+          "const": "accepted"
+        }
+      },
+      "required": ["status"]
+    },
+    "lageVersion": {
+      "title": "TrainingLageVersion",
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/cardId"
+        },
+        "state": {
+          "$ref": "lage.schema.json"
+        }
+      },
+      "required": ["id", "state"],
+      "additionalProperties": false
+    }
+  }
+}

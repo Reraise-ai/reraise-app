@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldbuilder.invalid/schemas/v0/edge.schema.json",
+  "title": "Edge",
+  "description": "A directed, typed edge from the card that holds it to `target` (ADR-0023). `by` records who drew it (ADR-0009); `unknown` only for edges read from legacy links.",
+  "type": "object",
+  "properties": {
+    "target": { "$ref": "common.schema.json#/$defs/cardId" },
+    "kind": { "$ref": "common.schema.json#/$defs/edgeKind" },
+    "by": { "$ref": "common.schema.json#/$defs/author" }
+  },
+  "required": ["target", "kind", "by"],
+  "additionalProperties": false
+}

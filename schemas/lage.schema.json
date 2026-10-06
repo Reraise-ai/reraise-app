@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldbuilder.invalid/schemas/v0/lage.schema.json",
+  "title": "Lage",
+  "description": "Board state of a Lage (a card of type `lage`). Stored as a JSON block in the card body; a rewrite archives the previous version (ADR-0006, ADR-0023). Only the Lage format is persisted, never canvas-library state (ADR-0019).",
+  "type": "object",
+  "properties": {
+    "question": {
+      "description": "The guiding question of the Lage (required).",
+      "$ref": "common.schema.json#/$defs/text"
+    },
+    "options": {
+      "description": "The options under consideration.",
+      "type": "array",
+      "items": { "$ref": "common.schema.json#/$defs/text" },
+      "uniqueItems": true
+    },
+    "cards": {
+      "description": "Cards placed on the board with their positions.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/placement" }
+    },
+    "seats": {
+      "description": "Players at the table: humans and agents.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/seat" }
+    },
+    "edges": {
+      "description": "Edges drawn on this board.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/lageEdge" }
+    },
+    "version": {
+      "description": "Version number of this state; increases on every rewrite. Used for optimistic concurrency.",
+      "type": "integer",
+      "minimum": 1
+    },
+    "updatedAt": {
+      "description": "Time (or date, as some stores record it) of the last change.",
+      "type": "string",
+      "anyOf": [{ "format": "date-time" }, { "format": "date" }]
+    }
+  },
+  "required": ["question", "options", "cards", "seats", "edges", "version", "updatedAt"],
+  "additionalProperties": false,
+  "$defs": {
+    "placement": {
+      "title": "LagePlacement",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/cardId" },
+        "x": { "type": "number" },
+        "y": { "type": "number" }
+      },
+      "required": ["id", "x", "y"],
+      "additionalProperties": false
+    },
+    "seat": {
+      "title": "LageSeat",
+      "type": "object",
+      "properties": {
+        "name": { "$ref": "common.schema.json#/$defs/text" },
+        "kind": { "type": "string", "enum": ["human", "agent"] }
+      },
+      "required": ["name", "kind"],
+      "additionalProperties": false
+    },
+    "lageEdge": {
+      "title": "LageEdge",
+      "type": "object",
+      "properties": {
+        "from": { "$ref": "common.schema.json#/$defs/cardId" },
+        "to": { "$ref": "common.schema.json#/$defs/cardId" },
+        "kind": { "$ref": "common.schema.json#/$defs/edgeKind" },
+        "by": { "$ref": "common.schema.json#/$defs/knownAuthor" }
+      },
+      "required": ["from", "to", "kind", "by"],
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldbuilder.invalid/schemas/v0/level1-answer.schema.json",
+  "title": "Level1Answer",
+  "description": "A fast, typed level-1 answer (ADR-0015). It is an attributed engine estimate ('<engine> estimates 0.82 for X'), never a verdict: it does not count as a decision, does not trigger rules and does not enter statistics. `choice` is one of `options`. World changes it implies arrive as proposals by agent:<engine>.",
+  "type": "object",
+  "properties": {
+    "id": {
+      "$ref": "common.schema.json#/$defs/ulid"
+    },
+    "engine": {
+      "description": "Engine name, e.g. local-rules, a local model, or the Jev connector.",
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"
+    },
+    "question": {
+      "$ref": "common.schema.json#/$defs/text"
+    },
+    "options": {
+      "description": "The closed set of options (the enum of the output schema).",
+      "type": "array",
+      "items": {
+        "$ref": "common.schema.json#/$defs/text"
+      },
+      "minItems": 2,
+      "uniqueItems": true
+    },
+    "choice": {
+      "description": "One of `options`.",
+      "$ref": "common.schema.json#/$defs/text"
+    },
+    "confidence": {
+      "description": "The engine's own confidence for `choice`, shown attributed to the engine. Not an ICD 203 estimate.",
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "inputs": {
+      "description": "Cards and rules the engine received (after the disclosure gate).",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/input"
+      }
+    },
+    "answeredAt": {
+      "$ref": "common.schema.json#/$defs/dateTime"
+    }
+  },
+  "required": ["engine", "question", "options", "choice", "confidence", "inputs", "answeredAt"],
+  "additionalProperties": false,
+  "$defs": {
+    "input": {
+      "title": "Level1Input",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["card", "rule"]
+        },
+        "id": {
+          "$ref": "common.schema.json#/$defs/cardId"
+        }
+      },
+      "required": ["kind", "id"],
+      "additionalProperties": false
+    },
+    "request": {
+      "title": "Level1Request",
+      "description": "What a ModelConnector receives for a level-1 decision: the question, the closed options, and gate-cleared inputs.",
+      "type": "object",
+      "properties": {
+        "question": {
+          "$ref": "common.schema.json#/$defs/text"
+        },
+        "options": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/text"
+          },
+          "minItems": 2,
+          "uniqueItems": true
+        },
+        "inputs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/input"
+          }
+        }
+      },
+      "required": ["question", "options", "inputs"],
+      "additionalProperties": false
+    }
+  }
+}
