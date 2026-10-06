@@ -35,7 +35,7 @@ widely used in analysis, uses bands rather than false point precision, and
 covers the full range.
 
 | Band key | Phrase | Range |
-|---|---|---|
+| --- | --- | --- |
 | `almost_no_chance` | almost no chance | 1–5 % |
 | `very_unlikely` | very unlikely | 5–20 % |
 | `unlikely` | unlikely | 20–45 % |

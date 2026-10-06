@@ -38,7 +38,7 @@ same validators, and the MCP SDK and canvas library are native to it.
 Binding choices:
 
 | Concern | Choice |
-|---|---|
+| --- | --- |
 | Language | TypeScript, `strict`, ESM only |
 | Runtime | Node 22 LTS (`.nvmrc`, `engines`) |
 | Packages | pnpm 10 workspaces |

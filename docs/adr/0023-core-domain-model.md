@@ -57,7 +57,7 @@ Mapping card format v2 → canonical (implemented by adapters, rules tested
 by the conformance kit):
 
 | Card format v2 | Canonical |
-|---|---|
+| --- | --- |
 | `typ`, `titel` | `type`, `title` |
 | `quelle`, `quelle_datum`, `herkunft_system` | `source`, `sourceDate`, `originSystem` |
 | `ebene` | `layer` (`geglaubt` → [ADR-0008](0008-believed-as-private-stance.md)) |

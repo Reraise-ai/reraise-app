@@ -45,7 +45,7 @@ letting a fast answer pose as the user's or the system's judgement.
   documented request/response shape, always behind the disclosure gate as
   target `cloud_model` with per-transfer confirmation
   ([ADR-0012](0012-disclosure-gate.md)).
-- UI wording: "<engine> estimates 0.82 for X", with its inputs; never "the
+- UI wording: "`<engine>` estimates 0.82 for X", with its inputs; never "the
   answer is X". The engine's confidence is the engine's own output and is
   shown attributed; it is not an ICD 203 estimate by a source
   ([ADR-0010](0010-estimative-probability-scale.md)).

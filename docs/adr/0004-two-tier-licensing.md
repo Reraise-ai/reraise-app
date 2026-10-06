@@ -38,7 +38,7 @@ Chosen option: "Two-tier", because it maximises adoption of the format and
 the adapter interfaces while keeping the application open when hosted.
 
 | Tier | Licence | Paths |
-|---|---|---|
+| --- | --- | --- |
 | Spec and libraries | Apache-2.0 | `packages/core`, `packages/adapters/*`, `packages/disclosure-gate`, `packages/training-export`, `packages/conformance`, `schemas/`, `examples/`, `docs/` (including the card format specification) |
 | Application | AGPL-3.0-or-later | `apps/board`, `services/api`, `packages/mcp-server` |
 

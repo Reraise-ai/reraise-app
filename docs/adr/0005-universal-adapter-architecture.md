@@ -40,7 +40,7 @@ Four interfaces, defined as TypeScript types in `packages/core` and
 documented in `docs/reference/`:
 
 | Interface | Responsibility | Writes? |
-|---|---|---|
+| --- | --- | --- |
 | `StorageAdapter` | Read and write cards, worlds, Lagen (board states), decision cards and archived versions in one backend; report capabilities | yes, through the backend's own write path and validator |
 | `SourceConnector` | Search or list new findings in an external source and return references with provenance | no (read only) |
 | `ModelConnector` | Send a gate-cleared context package or a level-1 request to a model and return the answer as a proposal or typed level-1 result | no direct writes |
