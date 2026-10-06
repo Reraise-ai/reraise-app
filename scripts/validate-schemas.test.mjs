@@ -8,6 +8,7 @@ import { makeTree } from './test-helpers.mjs';
 import {
   SCHEMA_BASE,
   collectUlids,
+  crossCheck,
   loadSchemas,
   schemaId,
   validateSchemas,
@@ -181,5 +182,35 @@ describe('collectUlids', () => {
         b: { c: 'not 01M1E34QM03WVTE8T1RYS3AM18' },
       }),
     ).toEqual([{ id: '01M1E34QM03WVTE8T1RYS3AM18', at: '/a/0' }]);
+  });
+});
+
+describe('cross-checks', () => {
+  it('flag a level-1 choice outside the options', () => {
+    const answer = { options: ['a', 'b'], choice: 'c' };
+    expect(crossCheck('level1-answer.schema.json', answer).map((f) => f.check)).toEqual([
+      'level1-choice',
+    ]);
+    expect(crossCheck('level1-answer.schema.json', { ...answer, choice: 'a' })).toEqual([]);
+  });
+
+  it('flag any card id in a training record that did not opt in, but not world or proposal ids', () => {
+    const opted = '01M1E34QM03WVTE8T1RYS3AM18';
+    const other = '01M1E6JK80GR8G0JHMPVT7TDX4';
+    const world = '01M1DZPW00JGXPRPG4179ZPNB8';
+    const proposal = '01M1HDJG00152WRCXVJBW0VRRT';
+    const record = {
+      decision: { id: opted, training: true, worlds: [world], sections: { cardsUsed: [opted] } },
+      usedCards: [],
+      brainstorm: [{ id: proposal, payload: { cardId: opted } }],
+    };
+    expect(crossCheck('training-export-record.schema.json', record)).toEqual([]);
+    record.decision.sections.cardsUsed.push(other);
+    expect(crossCheck('training-export-record.schema.json', record)).toEqual([
+      {
+        check: 'training-opt-in',
+        message: `card ${other} did not opt in to training but appears in the record`,
+      },
+    ]);
   });
 });

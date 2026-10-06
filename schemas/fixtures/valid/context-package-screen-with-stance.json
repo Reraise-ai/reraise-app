@@ -30,8 +30,6 @@
           "uri": "wb:45aaff12-777f-40e3-a97c-8a592e1ea4f6/01M1E34QM03WVTE8T1RYS3AM18",
           "body": "A (fictional) wire agency reports that the coastal state will restrict night\ntransits of laden tankers through the strait from 1 October.\n\nThis card is the origin of the provenance chain in this example: the two\nmedia cards below only repeat it.\n"
         },
-        "layer": "evidenced",
-        "author": "human",
         "provenance": {
           "uri": "wb:45aaff12-777f-40e3-a97c-8a592e1ea4f6/01M1E34QM03WVTE8T1RYS3AM18",
           "source": "https://example.org/wire/2026-09-14-transit-restrictions",
@@ -70,8 +68,6 @@
           "uri": "wb:45aaff12-777f-40e3-a97c-8a592e1ea4f6/01M1E6JK80GR8G0JHMPVT7TDX4",
           "body": "A (fictional) daily newspaper repeats the wire report and adds that the\nrestrictions are \"very likely\" to last beyond October. It cites the wire\nreport and adds no own sources.\n"
         },
-        "layer": "said",
-        "author": "human",
         "provenance": {
           "uri": "wb:45aaff12-777f-40e3-a97c-8a592e1ea4f6/01M1E6JK80GR8G0JHMPVT7TDX4",
           "source": "https://example.org/daily-a/2026-09-15-strait",
@@ -124,8 +120,6 @@
           "uri": "wb:45aaff12-777f-40e3-a97c-8a592e1ea4f6/01M1EA0EW0V90F04X7AKQJSKK2",
           "body": "A (fictional) evening broadcast repeats the newspaper story. Proposed by an\nagent and accepted by the user, so the author stays `agent:research-helper`.\n\nThree findings, one origin: wire report, newspaper and broadcaster are a\nsingle chain.\n"
         },
-        "layer": "said",
-        "author": "agent:research-helper",
         "provenance": {
           "uri": "wb:45aaff12-777f-40e3-a97c-8a592e1ea4f6/01M1EA0EW0V90F04X7AKQJSKK2",
           "source": "https://example.org/broadcaster-b/2026-09-15-evening",
@@ -146,10 +140,7 @@
     "pendingProposals": [
       {
         "proposalId": "01M1FFRYR0CNCMTND011BG5QPC",
-        "author": "agent:research-helper",
-        "kind": "create_card",
-        "status": "pending",
-        "summary": "Create card \"Insurer bulletin: war-risk premiums doubled\" on this Lage"
+        "kind": "create_card"
       }
     ],
     "withheld": 0

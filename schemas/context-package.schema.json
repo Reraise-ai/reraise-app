@@ -119,14 +119,6 @@
           "description": "The canonical card, serialised after the gate decision (never a raw store file).",
           "$ref": "card.schema.json"
         },
-        "layer": {
-          "description": "The card's layer, or unclassified for a legacy card without one (ADR-0007).",
-          "type": "string",
-          "enum": ["evidenced", "said", "experience", "unclassified"]
-        },
-        "author": {
-          "$ref": "common.schema.json#/$defs/author"
-        },
         "provenance": {
           "$ref": "#/$defs/provenance"
         },
@@ -138,8 +130,9 @@
           "$ref": "stance.schema.json"
         }
       },
-      "required": ["card", "layer", "author", "provenance", "gate"],
-      "additionalProperties": false
+      "required": ["card", "provenance", "gate"],
+      "additionalProperties": false,
+      "description": "One card for the target, with its provenance and gate decision. Layer and author are those of the card; a card without a layer is unclassified (ADR-0007)."
     },
     "provenance": {
       "title": "ContextProvenance",
@@ -210,22 +203,13 @@
         "proposalId": {
           "$ref": "common.schema.json#/$defs/ulid"
         },
-        "author": {
-          "$ref": "common.schema.json#/$defs/agentAuthor"
-        },
         "kind": {
           "$ref": "common.schema.json#/$defs/proposalKind"
-        },
-        "status": {
-          "type": "string",
-          "const": "pending"
-        },
-        "summary": {
-          "$ref": "common.schema.json#/$defs/text"
         }
       },
-      "required": ["proposalId", "author", "kind", "status", "summary"],
-      "additionalProperties": false
+      "required": ["proposalId", "kind"],
+      "additionalProperties": false,
+      "description": "A pending proposal, by id and kind only: no free text from agents reaches a model as context."
     },
     "transferRef": {
       "title": "ContextTransferRef",

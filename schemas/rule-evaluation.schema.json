@@ -34,7 +34,7 @@
   "additionalProperties": false,
   "allOf": [
     {
-      "description": "Nothing is withheld from the screen.",
+      "description": "Nothing is withheld from the screen; for any other target no returned rule has a stance-dependent condition (ADR-0013).",
       "if": {
         "properties": {
           "target": {
@@ -47,6 +47,51 @@
         "properties": {
           "withheld": {
             "const": 0
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "results": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "rule": {
+                  "type": "object",
+                  "properties": {
+                    "when": {
+                      "type": "array",
+                      "items": {
+                        "not": {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "const": "stance"
+                            }
+                          },
+                          "required": ["kind"]
+                        }
+                      }
+                    },
+                    "unless": {
+                      "type": "array",
+                      "items": {
+                        "not": {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "const": "stance"
+                            }
+                          },
+                          "required": ["kind"]
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }

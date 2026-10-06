@@ -421,13 +421,11 @@ export interface ContextPackage {
   withheld: number;
   transfer?: ContextTransferRef;
 }
+/**
+ * One card for the target, with its provenance and gate decision. Layer and author are those of the card; a card without a layer is unclassified (ADR-0007).
+ */
 export interface ContextItem {
   card: Card;
-  /**
-   * The card's layer, or unclassified for a legacy card without one (ADR-0007).
-   */
-  layer: 'evidenced' | 'said' | 'experience' | 'unclassified';
-  author: Author;
   provenance: ContextProvenance;
   gate: ContextGate;
   stance?: Stance;
@@ -483,12 +481,12 @@ export interface ContextIndependence {
   findings: number;
   origins: number;
 }
+/**
+ * A pending proposal, by id and kind only: no free text from agents reaches a model as context.
+ */
 export interface ContextPendingProposal {
   proposalId: Ulid;
-  author: AgentAuthor;
   kind: ProposalKind;
-  status: 'pending';
-  summary: Text;
 }
 /**
  * The confirmed cloud_model transfer this package belongs to.
@@ -776,13 +774,16 @@ export interface StoreConfig {
   synthetic?: boolean;
 }
 /**
- * One JSONL line of the training export: a decision trace (ADR-0017). Exported only if the decision card has training: true; used cards appear only with training: true (others are omitted entirely, not even as ids); only accepted proposals form the brainstorm trace. Never contains stance data.
+ * One JSONL line of the training export: a decision trace (ADR-0017, ADR-0028). Exported only if the decision card has training: true. Used cards appear only with training: true; cards that did not opt in are omitted entirely, not even as ids: the decision's cardsUsed, the Lage placements and edges list only opted-in cards, and a brainstorm proposal touching any other card is dropped. The Lage is exported only if the Lage card itself opted in. Never contains stance data.
  */
 export interface TrainingExportRecord {
   exportedAt: DateTime;
   decision: Decision & TrainingOptIn;
   usedCards: (Card & TrainingOptIn)[];
-  lage?: TrainingLageVersion;
+  /**
+   * The Lage card, only if it has training: true, with placements and edges filtered to opted-in cards.
+   */
+  lage?: Card & TrainingOptIn & TrainingLageCard;
   /**
    * Accepted proposals that shaped the decision.
    */
@@ -792,9 +793,9 @@ export interface TrainingExportRecord {
 export interface TrainingOptIn {
   training: true;
 }
-export interface TrainingLageVersion {
-  id: CardId;
-  state: Lage;
+export interface TrainingLageCard {
+  type: 'lage';
+  lage: unknown;
 }
 export interface AcceptedProposal {
   status: 'accepted';

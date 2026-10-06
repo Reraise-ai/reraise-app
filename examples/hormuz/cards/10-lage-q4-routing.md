@@ -7,6 +7,7 @@ title: Q4 tanker routing
 author: human
 class: C
 worlds: [Hormuz]
+training: true
 question: Reroute laden tankers around the Cape for Q4?
 version: 3
 updatedAt: 2026-09-16T09:30:00Z

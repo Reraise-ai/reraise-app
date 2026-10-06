@@ -111,6 +111,58 @@ function readJson(file, rel, problems) {
   }
 }
 
+/** All ULIDs anywhere in `value`, except under the given keys (which hold other kinds of id). */
+function ulidsOutside(value, skipKeys, out = []) {
+  if (typeof value === 'string') {
+    if (ULID_EXACT.test(value)) out.push(value);
+  } else if (Array.isArray(value)) {
+    value.forEach((v) => ulidsOutside(v, skipKeys, out));
+  } else if (value !== null && typeof value === 'object') {
+    for (const [k, v] of Object.entries(value))
+      if (!skipKeys.has(k)) ulidsOutside(v, skipKeys, out);
+  }
+  return out;
+}
+
+/**
+ * Rules JSON Schema cannot express. Each returns the problems found in a valid instance;
+ * an invalid fixture may expect one by name (`"expect": { "check": "<name>" }`).
+ */
+export const CROSS_CHECKS = {
+  /** ADR-0017, ADR-0028: a training record names no card that did not opt in, not even by id. */
+  'training-opt-in': {
+    schema: 'training-export-record.schema.json',
+    run(record) {
+      const opted = new Set(
+        [record.decision, ...(record.usedCards ?? []), record.lage]
+          .filter((c) => c?.training === true)
+          .map((c) => c.id),
+      );
+      const proposals = new Set((record.brainstorm ?? []).map((p) => p.id));
+      // World ids are not card ids; proposal ids name the proposals themselves.
+      return ulidsOutside(record, new Set(['worlds']))
+        .filter((id) => !opted.has(id) && !proposals.has(id))
+        .map((id) => `card ${id} did not opt in to training but appears in the record`);
+    },
+  },
+  /** ADR-0015: the choice of a level-1 answer is one of its options. */
+  'level1-choice': {
+    schema: 'level1-answer.schema.json',
+    run(answer) {
+      return answer.options.includes(answer.choice)
+        ? []
+        : [`choice "${answer.choice}" is not one of the options`];
+    },
+  },
+};
+
+/** Run every cross-check that applies to `name`; returns [{ check, message }]. */
+export function crossCheck(name, data) {
+  return Object.entries(CROSS_CHECKS)
+    .filter(([, c]) => c.schema === name)
+    .flatMap(([check, c]) => c.run(data).map((message) => ({ check, message })));
+}
+
 /** Check an example/fixture envelope: { synthetic, schema, description, data, expect? }. */
 function checkEnvelope(doc, rel, names, problems, { requireSynthetic, requireExpect }) {
   if (doc === null || typeof doc !== 'object' || Array.isArray(doc)) {
@@ -130,11 +182,13 @@ function checkEnvelope(doc, rel, names, problems, { requireSynthetic, requireExp
     problems.push(`${rel}: "data" missing`);
     return null;
   }
-  if (
-    requireExpect &&
-    (typeof doc.expect !== 'object' || typeof doc.expect?.keyword !== 'string')
-  ) {
-    problems.push(`${rel}: "expect": { "keyword", "instancePath"? } missing`);
+  const expectOk =
+    typeof doc.expect === 'object' &&
+    (typeof doc.expect?.keyword === 'string' || CROSS_CHECKS[doc.expect?.check] !== undefined);
+  if (requireExpect && !expectOk) {
+    problems.push(
+      `${rel}: "expect": { "keyword", "instancePath"? } or { "check": <cross-check> } missing`,
+    );
     return null;
   }
   return name;
@@ -231,6 +285,8 @@ function validateExamples(repoRoot, ajv, names, coverage, problems) {
         if (name === null) continue;
         examples++;
         if (!check(name, doc.data, rel)) continue;
+        for (const f of crossCheck(name, doc.data))
+          problems.push(`${rel}: ${f.check}: ${f.message}`);
         if (typeof doc.data?.id === 'string') defined.add(doc.data.id);
         if (name === 'world.schema.json') worldNames.set(doc.data.name, doc.data.id);
         referencing.push({ rel, value: doc.data, skip: '/id', name });
@@ -282,9 +338,11 @@ function validateFixtures(repoRoot, ajv, names, coverage, problems) {
       if (name === null) continue;
       const validate = ajv.getSchema(schemaId(name));
       const ok = validate(doc.data);
+      const crossFindings = ok ? crossCheck(name, doc.data) : [];
       if (kind === 'valid') {
         valid++;
-        if (ok) bump(coverage, name, 'valid');
+        for (const f of crossFindings) problems.push(`${rel}: ${f.check}: ${f.message}`);
+        if (ok && crossFindings.length === 0) bump(coverage, name, 'valid');
         else
           problems.push(
             `${rel}: should be valid against ${name}: ${formatErrors(validate.errors)}`,
@@ -292,6 +350,18 @@ function validateFixtures(repoRoot, ajv, names, coverage, problems) {
         continue;
       }
       invalid++;
+      if (doc.expect.check !== undefined) {
+        if (!ok) {
+          problems.push(
+            `${rel}: must pass the schema and fail cross-check ${doc.expect.check}: ${formatErrors(validate.errors)}`,
+          );
+        } else if (crossFindings.some((f) => f.check === doc.expect.check)) {
+          bump(coverage, name, 'invalid');
+        } else {
+          problems.push(`${rel}: should fail cross-check ${doc.expect.check} but passed`);
+        }
+        continue;
+      }
       if (ok) {
         problems.push(`${rel}: should be INVALID against ${name} but passed`);
         continue;

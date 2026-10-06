@@ -253,24 +253,6 @@
           }
         },
         {
-          "description": "Experience needs an explicit author (ADR-0009).",
-          "if": {
-            "properties": {
-              "layer": {
-                "const": "experience"
-              }
-            },
-            "required": ["layer"]
-          },
-          "then": {
-            "properties": {
-              "author": {
-                "$ref": "common.schema.json#/$defs/knownAuthor"
-              }
-            }
-          }
-        },
-        {
           "description": "Player fields exist only on actor cards (ADR-0023).",
           "if": {
             "anyOf": [

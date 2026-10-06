@@ -76,6 +76,9 @@ the contracts free of `$schema` and `synthetic` members that only tests need.
   `storeInstanceId`, cards in `cards/*.md`) plus JSON envelopes. Every card is read into the
   canonical card and validated; every id-like value must name a card, world or object of the
   same world; a context package must carry the canonical cards exactly as the store yields them.
+- Rules JSON Schema cannot express run as named cross-checks in `validate:schemas`
+  (`training-opt-in`: every card id in a training record opted in; `level1-choice`); an
+  invalid fixture may expect one with `"expect": { "check": "<name>" }`.
 - Every schema except `common` has at least one valid and one invalid case. `pnpm
   validate:schemas` enforces all of this in CI.
 - `synthetic: true` is the repository hygiene marker ([ADR-0022](0022-public-hygiene.md)),
@@ -97,14 +100,14 @@ In addition to [ADR-0023](0023-core-domain-model.md) and
 
 | ADR | Fixed here |
 | --- | --- |
-| [0007](0007-epistemic-layer-field.md) | A context item states `layer`, or `unclassified` for a legacy card without one. |
+| [0007](0007-epistemic-layer-field.md) | A context item carries the canonical card; its layer and author are the card's, and a card without a layer is unclassified. Pending proposals appear by id and kind only, so no agent free text reaches a model as context. |
 | [0008](0008-believed-as-private-stance.md) | Stance `weight` is an integer 1 (weak) to 3 (strong). |
 | [0010](0010-estimative-probability-scale.md) | Estimates are `Prediction` objects: `phrase` (verbatim), `band` (ICD 203 key), `mappedBy` (`human` or `lookup:<table>`, never an agent), `statedProbability` (a fraction, only if the source stated one), `resolution`. |
 | [0012](0012-disclosure-gate.md) | `DisclosureDecision` has a `subject` (`card` or `stance`); a cloud allow carries a `DisclosureConfirmation` (`confirmedBy: human`) of one `DisclosureTransfer`. |
-| [0013](0013-rules-panel-replaces-barometer.md) | Conditions are `card_on_lage`, `card_field`, `edge` and `stance`. Results list `unmet` and `unknown` conditions by clause and index; `withheld` is 0 for `screen`. |
-| [0015](0015-two-thinking-levels.md) | `Level1Answer` adds `question` and `answeredAt`; `Level1Request` is the connector input. |
+| [0013](0013-rules-panel-replaces-barometer.md) | Conditions are `card_on_lage`, `card_field`, `edge` and `stance`. Results list `unmet` and `unknown` conditions by clause and index; `withheld` is 0 for `screen`, and for any other target no returned rule has a stance condition. |
+| [0015](0015-two-thinking-levels.md) | `Level1Answer` adds `question` and `answeredAt`; `choice` is one of `options`; `Level1Request` is the connector input. |
 | [0016](0016-mcp-first-and-openapi-contracts.md) | Request objects (`ContextPackageRequest`, `RulesEvaluateRequest`, `ProposalCreate`) take no target and no author: both come from the caller's registered connection. |
-| [0017](0017-decision-card-and-training-export.md) | A training record's decision lists in `cardsUsed` only opted-in cards; a trace whose decision would keep no used card is not exported, because `cardsUsed` is never empty. |
+| [0017](0017-decision-card-and-training-export.md) | A training record names no card that did not opt in, not even by id: the decision lists in `cardsUsed` only opted-in cards, and a trace whose decision would keep no used card is not exported, because `cardsUsed` is never empty. The Lage is exported only if the Lage card itself has `training: true`; its placements and edges are filtered to opted-in cards, and a brainstorm proposal touching any other card is dropped entirely. |
 | [0018](0018-multidimensional-source-profile.md) | Dimension values are in [0, 1]; a value is required when `n` ≥ 1 and forbidden when `n` = 0; `minimumN` is part of the profile. |
 
 ### Generated types
