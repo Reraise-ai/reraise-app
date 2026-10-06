@@ -226,6 +226,9 @@ export function createDisclosureGate(options: DisclosureGateOptions = {}): Discl
     decidedAt: now().toISOString(),
   });
 
+  const isSyntheticCard = (card: Card) =>
+    (ctx.syntheticStores ?? []).includes(parseUri(card.uri).storeInstanceId);
+
   /** The rule that decides: a matching deny rule wins, else a matching allow rule. */
   const decidingRule = (card: Card, target: DisclosureTarget) => {
     const matching = rules.filter((r) => r.targets.includes(target) && ruleMatches(r, card, ctx));
@@ -264,6 +267,22 @@ export function createDisclosureGate(options: DisclosureGateOptions = {}): Discl
         }
         if ((item.card.release ?? 'private') === 'private') {
           return result(item, target, 'deny', 'not released for sharing by the user');
+        }
+      }
+      if (target === 'demo' && !isSyntheticCard(item.card)) {
+        // Until the owner rules on demos (OD-8), an audience counts as other people for
+        // conclusions and the personality type; synthetic stores stay demo material.
+        const origin = originOf(item.card);
+        if (origin.originClass === 'conclusion') {
+          return result(
+            item,
+            target,
+            'deny',
+            `conclusions are never shown in demos: ${origin.reason}`,
+          );
+        }
+        if (item.card.personalityType !== undefined) {
+          return result(item, target, 'deny', 'a personality type is never shown in demos');
         }
       }
       const rule = decidingRule(item.card, target);

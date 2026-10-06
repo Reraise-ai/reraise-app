@@ -135,8 +135,12 @@ cites the article it assesses.
   under the gate rules and to a `cloud_model` only through a confirmed, hash-bound transfer.
   `decide` never allows `cloud_model`; the transfer must list them explicitly. Stance data
   never goes to any model.
-- `demo` is unchanged (rules only, default deny). Whether a demo in front of an audience
-  counts as "other people" is an open owner question.
+- `demo`: whether a demo in front of an audience counts as "other people" is an open owner
+  question (OD-8). Until the owner rules, the gate applies the conclusion ceiling to `demo`
+  too: a card of class `conclusion` or with a `personalityType` is denied for `demo`, whatever
+  the rules say, unless its store is marked synthetic (`synthetic: true` in the store
+  configuration, [ADR-0028](0028-json-schema-contract-conventions.md)). Synthetic example
+  worlds stay demo material. Everything else on `demo` follows the rules as before.
 
 ### Consequences
 

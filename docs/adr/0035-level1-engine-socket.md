@@ -81,9 +81,12 @@ several.
 
 - `Level1PredictionRequest` (`#/$defs/request`): `lageId`, `question` (the Lage's question),
   `trigger`, `players[]` (`playerCardId`, `moveOptions`) and `cards[]`.
-  - "Player" in the owner's wording is an actor card on the Lage (type `actor`, `person` or
-    `organisation`). The Lage `seats` remain the participants at the board (the user and
-    agents, [ADR-0023](0023-core-domain-model.md)) and are not predicted.
+  - "Player" in the owner's wording ("per player (seat)") is read as an actor card on the
+    Lage (type `actor`, `person` or `organisation`). The Lage `seats` remain the participants
+    at the board (the user and agents, [ADR-0023](0023-core-domain-model.md)) and are not
+    predicted. This is an architect interpretation pending owner confirmation (OD-9 in the
+    [architecture decisions](../architecture/09-decisions.md)); if the owner means seats, the
+    request gains a seat reference and nothing else changes.
   - `moveOptions` is the closed set of at least two moves for that player: the enum of the
     engine's output schema. Who supplies them (the user, the player's `moves`, or an agent
     proposal that the user accepted) is board UX of the level-1 slice.

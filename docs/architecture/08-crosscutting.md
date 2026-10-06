@@ -123,7 +123,9 @@ Privacy is structural, not a setting ([ADR-0012](../adr/0012-disclosure-gate.md)
   Lagen, agent output and any card without a public external source. Own experience and
   external-source cards are shared only after the user released the card (`release`) and a
   rule allows it, and only as the share projection: content and provenance
-  ([ADR-0036](../adr/0036-conclusions-are-private.md)).
+  ([ADR-0036](../adr/0036-conclusions-are-private.md)). Until the owner rules (OD-8), the same
+  ceiling holds for `demo`: no conclusion and no personality type unless the store is
+  synthetic.
 - **Rules.** Declarative YAML allow and deny rules per target in `gate-rules.yaml` in the state directory,
   matching canonical card fields only (`visibility`, `class`, `collection`, `worlds`, `type`,
   tags once defined, explicit ids), validated against `schemas/gate-rules.schema.json` (to be

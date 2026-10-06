@@ -95,6 +95,23 @@ describe('rule matching', () => {
       syntheticStores: [SYNTHETIC_STORE],
     });
     expect(gate.decide({ kind: 'card', card: demoCard }, 'demo').decision).toBe('allow');
+    // OD-8: conclusions of a synthetic store stay demo material; a real store's do not.
+    const syntheticDecision = card(
+      '01M1J0000000000000000000G1',
+      { type: 'decision' },
+      SYNTHETIC_STORE,
+    );
+    const realDecision = card('01M1J0000000000000000000G2', { type: 'decision' });
+    const allowDemo = createDisclosureGate({
+      rules: { rules: [{ id: 'demo-all', effect: 'allow', targets: ['demo'], match: {} }] },
+      syntheticStores: [SYNTHETIC_STORE],
+    });
+    expect(allowDemo.decide({ kind: 'card', card: syntheticDecision }, 'demo').decision).toBe(
+      'allow',
+    );
+    expect(allowDemo.decide({ kind: 'card', card: realDecision }, 'demo').reason).toMatch(
+      /conclusions are never shown in demos/,
+    );
     expect(gate.decide({ kind: 'card', card: shared }, 'demo').decision).toBe('deny');
   });
 

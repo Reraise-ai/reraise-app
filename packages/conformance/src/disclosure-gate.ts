@@ -36,6 +36,7 @@ export interface DisclosureGateHarness {
   withConfig(config: DisclosureGateConfig): DisclosureGate;
   /** The `configured` allow rules, to build variants from. */
   readonly allowRule: unknown;
+  /** A card from a store that is not marked synthetic. */
   readonly card: Card;
   readonly deniedCard: Card;
   /** A card no rule matches. */
@@ -495,6 +496,22 @@ export function describeDisclosureGateConformance(
         ]) {
           expect(shared, k).not.toHaveProperty(k);
         }
+      });
+
+      it('shows no conclusion and no personality type in a demo of a real store (OD-8)', () => {
+        const h = setup();
+        const gate = allowAll(h);
+        const { external, conclusions } = cards(h.card);
+        for (const [what, card] of Object.entries(conclusions)) {
+          expect(gate.decide({ kind: 'card', card }, 'demo').decision, what).toBe('deny');
+        }
+        const person = variant(h.card, '01M1J0000000000000000000C2', {
+          collection: 'actors',
+          type: 'person',
+          personalityType: { text: 'ISTJ', source: PUBLIC },
+        });
+        expect(gate.decide({ kind: 'card', card: person }, 'demo').decision).toBe('deny');
+        expect(gate.decide({ kind: 'card', card: external }, 'demo').decision).toBe('allow');
       });
 
       it('lets decision and rule cards go to a cloud model only through a confirmed transfer', () => {

@@ -21,8 +21,9 @@ still open.
 
 ## 9.2 Open decisions
 
-Seven questions came up while this documentation was written (OD-1 to OD-7). Six are now
-decided by ADRs; one remains an owner question.
+Seven questions came up while this documentation was written (OD-1 to OD-7); six are now
+decided by ADRs. The owner decisions of 2026-10-06 added OD-8 and OD-9. Three remain owner
+questions.
 
 ### Resolved
 
@@ -39,4 +40,6 @@ decided by ADRs; one remains an owner question.
 
 | ID | Question | Working assumption | Decided by | Needed before |
 | --- | --- | --- | --- | --- |
+| OD-8 | Whether a demo in front of an audience counts as "other people" for conclusions | Yes until the owner rules: the gate denies conclusions and personality types for `demo` unless the store is synthetic ([ADR-0036](../adr/0036-conclusions-are-private.md)) | Owner | before demos of real stores |
+| OD-9 | Whether the owner's "player (seat)" of level 1 means an actor card on the Lage | Yes: players are actor cards on the Lage (`actor`, `person`, `organisation`); the Lage `seats` (the user and agents at the board) are not predicted ([ADR-0035](../adr/0035-level1-engine-socket.md)) | Owner confirmation | level-1 slice (after M1) |
 | OD-4 | The Jev request and response interface. | Jev is one `Level1Engine` adapter; its wire shape (`POST /v1/decide`, output schema plus state, typed answer with confidence) stays inside the adapter ([ADR-0035](../adr/0035-level1-engine-socket.md)). | Owner | Jev adapter (after the level-1 slice) |
