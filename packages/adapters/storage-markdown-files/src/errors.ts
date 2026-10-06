@@ -7,6 +7,7 @@ export class MarkdownStoreError extends Error {
     readonly code:
       | 'invalid_card'
       | 'invalid_patch'
+      | 'invalid_query'
       | 'not_found'
       | 'conflict'
       | 'locked'

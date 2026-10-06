@@ -526,12 +526,20 @@ describe('the derived index', () => {
       `---\nid: ${newId()}\nformat: 2\ntype: claim\ntitle: T\nlayer: said\nauthor: human\n---\n`,
     );
     await writeCardFile(dir, 'dup.md', await readFile(await fileOf(dir, WIRE), 'utf8'));
-    expect((await adapter.list()).items).toHaveLength(12);
+    expect((await adapter.list()).items).toHaveLength(11); // the duplicated id is left out
     const problems = adapter
       .diagnostics()
       .map((d) => d.path)
       .sort();
-    expect(problems).toEqual(['cards/broken.md', 'cards/dup.md', 'cards/invalid.md']);
+    expect(problems).toEqual([
+      'cards/01-wire-report-transit-restrictions.md',
+      'cards/broken.md',
+      'cards/dup.md',
+      'cards/invalid.md',
+    ]);
+    expect(await adapter.read(WIRE)).toBeUndefined();
+    await rejects(adapter.patch(WIRE, { title: 'x' }), 'not_found');
+    await rejects(adapter.archive(WIRE), 'not_found');
     expect(adapter.diagnostics().find((d) => d.path.endsWith('dup.md'))?.message).toMatch(
       /duplicate id/,
     );

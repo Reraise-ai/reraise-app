@@ -16,7 +16,7 @@
 
 import { createHash, randomUUID } from 'node:crypto';
 import { watch, type FSWatcher } from 'node:fs';
-import { mkdir, readFile, readdir, rename, stat, unlink, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, stat, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { canonicalJson, encodeUlid } from '@worldbuilder/core';
 import type {
@@ -45,6 +45,7 @@ import {
 } from './codec.js';
 import { MarkdownStoreError } from './errors.js';
 import { parseFrontMatter } from './frontmatter.js';
+import { writeAtomic } from './atomic.js';
 import { acquireLock, type LockOptions } from './lock.js';
 import { describeErrors, schemaValidator } from './validate.js';
 import { mintUlid } from './ulid.js';
@@ -60,6 +61,8 @@ export const LOCK_FILE = '.worldbuilder/write.lock';
 /** A file modified this recently may share its timestamp with a later write: always re-read. */
 const RACY_MS = 2000;
 const DEFAULT_LIMIT = 50;
+/** An unknown id triggers at most one rescan per this many milliseconds. */
+const MISS_RESCAN_MS = 1000;
 const STRUCTURED_TYPES: ReadonlySet<string> = new Set(['lage', 'rule', 'decision']);
 
 export interface OpenOptions {
@@ -138,18 +141,6 @@ async function exists(file: string): Promise<boolean> {
   );
 }
 
-/** Write through a temporary file and a rename, so a reader never sees half a card. */
-async function writeAtomic(file: string, text: string): Promise<void> {
-  const tmp = path.join(path.dirname(file), `.${path.basename(file)}.${randomUUID()}.tmp`);
-  try {
-    await writeFile(tmp, text, 'utf8');
-    await rename(tmp, file);
-  } catch (err) {
-    await unlink(tmp).catch(() => undefined);
-    throw err;
-  }
-}
-
 export class MarkdownFilesAdapter implements StorageAdapter {
   readonly capabilities: StorageCapabilities = { write: true, search: true, ids: 'native' };
 
@@ -170,6 +161,8 @@ export class MarkdownFilesAdapter implements StorageAdapter {
   private watchers: FSWatcher[] = [];
   private timers: NodeJS.Timeout[] = [];
   private closed = false;
+  private lastMissRescan = 0;
+  private readonly duplicates = new Map<string, string>();
 
   private readonly ctx: CodecContext;
 
@@ -240,7 +233,7 @@ export class MarkdownFilesAdapter implements StorageAdapter {
 
   /** Files the index could not use (malformed, invalid or duplicate cards). */
   diagnostics(): readonly Diagnostic[] {
-    return [...this.problems].map(([p, message]) => ({ path: p, message }));
+    return [...this.problems, ...this.duplicates].map(([path, message]) => ({ path, message }));
   }
 
   /** Throw the index away and rebuild it from the files (ADR-0033). */
@@ -253,8 +246,10 @@ export class MarkdownFilesAdapter implements StorageAdapter {
   async read(id: CardId): Promise<Card | undefined> {
     await this.ensureFresh();
     let entry = this.byId.get(id);
-    if (!entry) {
-      // Watcher events are hints: a miss falls back to a rescan.
+    if (!entry && this.watching && Date.now() - this.lastMissRescan > MISS_RESCAN_MS) {
+      // Watcher events are hints: a miss falls back to a rescan, at most once per interval.
+      // Without a watcher ensureFresh() has just rescanned.
+      this.lastMissRescan = Date.now();
       await this.sync();
       entry = this.byId.get(id);
     }
@@ -452,7 +447,7 @@ export class MarkdownFilesAdapter implements StorageAdapter {
   private page(entries: readonly Entry[], query: CardListQuery): Page<Card> {
     const start = query.cursor === undefined ? 0 : Number(query.cursor);
     if (!Number.isInteger(start) || start < 0) {
-      throw new MarkdownStoreError('invalid_patch', 'invalid cursor');
+      throw new MarkdownStoreError('invalid_query', 'invalid cursor');
     }
     const limit = query.limit ?? DEFAULT_LIMIT;
     const items = entries.slice(start, start + limit).map((e) => structuredClone(e.card));
@@ -632,13 +627,21 @@ export class MarkdownFilesAdapter implements StorageAdapter {
       if (!seenArchive.has(rel)) this.archived.delete(rel);
     }
 
+    // An id found in more than one file is ambiguous: none of its files is indexed or written.
+    const byIdAll = new Map<string, Entry[]>();
+    for (const entry of this.entries.values()) {
+      byIdAll.set(entry.card.id, [...(byIdAll.get(entry.card.id) ?? []), entry]);
+    }
     this.byId.clear();
-    for (const entry of [...this.entries.values()].sort((a, b) => (a.path < b.path ? -1 : 1))) {
-      const clash = this.byId.get(entry.card.id);
-      if (clash) {
-        this.problems.set(entry.path, `duplicate id ${entry.card.id}, also in ${clash.path}`);
-      } else {
-        this.byId.set(entry.card.id, entry);
+    this.duplicates.clear();
+    for (const [id, group] of byIdAll) {
+      if (group.length === 1) {
+        this.byId.set(id, group[0]!);
+        continue;
+      }
+      const paths = group.map((e) => e.path).sort();
+      for (const p of paths) {
+        this.duplicates.set(p, `duplicate id ${id} in ${paths.join(', ')}; none of them is used`);
       }
     }
     this.rebuildWorldNames();
@@ -768,7 +771,7 @@ export class MarkdownFilesAdapter implements StorageAdapter {
   /** Names for explicit worlds plus the worlds that cards name without a world file. */
   private rebuildWorldNames(): void {
     const names = new Map(this.explicitWorlds.map((w) => [w.id, w.name]));
-    for (const entry of this.entries.values()) {
+    for (const entry of this.byId.values()) {
       for (const name of entry.worldNames) {
         names.set(this.ctx.worldId(name), name);
       }

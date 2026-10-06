@@ -139,7 +139,11 @@ export function describeStorageAdapterConformance(
         expect(b?.id).toBe(id);
         expect(b?.uri).toBe(a?.uri);
       }
-      const ids = async (s: StorageAdapter) => (await s.list()).items.map((c) => c.id).sort();
+      const ids = async (s: StorageAdapter) => {
+        const page = await s.list({ limit: Number.MAX_SAFE_INTEGER });
+        expect(page.nextCursor, 'the whole store fits one page').toBeUndefined();
+        return page.items.map((c) => c.id).sort();
+      };
       expect(await ids(other)).toEqual(await ids(adapter));
     });
 
@@ -149,8 +153,11 @@ export function describeStorageAdapterConformance(
       await seed.legacyCard();
       const moved = await relocate();
       expect(moved.storeInstanceId).toBe(adapter.storeInstanceId);
-      const pairs = async (s: StorageAdapter) =>
-        (await s.list()).items.map((c) => `${c.id} ${c.uri}`).sort();
+      const pairs = async (s: StorageAdapter) => {
+        const page = await s.list({ limit: Number.MAX_SAFE_INTEGER });
+        expect(page.nextCursor, 'the whole store fits one page').toBeUndefined();
+        return page.items.map((c) => `${c.id} ${c.uri}`).sort();
+      };
       expect(await pairs(moved)).toEqual(await pairs(adapter));
     });
 

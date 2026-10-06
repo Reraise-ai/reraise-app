@@ -106,7 +106,7 @@ describe('the Hormuz example store', () => {
     expect(third.nextCursor).toBeUndefined();
     const ids = [...first.items, ...second.items, ...third.items].map((c) => c.id);
     expect(new Set(ids).size).toBe(12);
-    await expect(adapter.list({ cursor: 'x' })).rejects.toThrow(/cursor/);
+    await expect(adapter.list({ cursor: 'x' })).rejects.toMatchObject({ code: 'invalid_query' });
   });
 
   it('rewrites the Lage with a new version and archives the previous one next to it', async () => {
