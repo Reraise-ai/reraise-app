@@ -22,7 +22,8 @@
     "validate:schemas": "node scripts/validate-schemas.mjs",
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
-    "docs:preview": "vitepress preview docs"
+    "docs:preview": "vitepress preview docs",
+    "check:doc-anchors": "node scripts/check-doc-anchors.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",

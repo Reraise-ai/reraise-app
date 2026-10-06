@@ -23,6 +23,21 @@ pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm build
 pnpm check:spdx && pnpm check:no-real-data
 ```
 
+## Documentation
+
+```sh
+pnpm docs:dev          # live preview
+pnpm docs:build        # build; dead links fail the build
+pnpm check:doc-anchors # every #fragment link must point at an existing heading
+```
+
+## Dependency notes
+
+- `pnpm.overrides` in the root `package.json` forces `vitepress>vite` to `^7.3.2`. VitePress 1.x
+  bundles Vite 5, which has known advisories (one high severity, several moderate) that would
+  fail the blocking `pnpm audit --audit-level high` job. Remove the override when VitePress
+  ships a Vite release without them.
+
 ## Definition of Done (every PR)
 
 - [ ] Tests: automated tests cover the change; CI is green.
