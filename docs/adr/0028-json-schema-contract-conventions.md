@@ -82,7 +82,9 @@ the contracts free of `$schema` and `synthetic` members that only tests need.
   canonical card and validated; every id-like value must name a card, world or object of the
   same world; a context package must carry the canonical cards exactly as the store yields them.
 - Rules JSON Schema cannot express run as named cross-checks in `validate:schemas`
-  (`training-opt-in`: every card id in a training record opted in; `level1-choice`); an
+  (`training-opt-in`: every card id in a training record opted in; `level1-choice`;
+  `content-hash`: every card in an envelope carries the hash of its content;
+  `transfer-items`); an
   invalid fixture may expect one with `"expect": { "check": "<name>" }`.
 - Every schema except `common` has at least one valid and one invalid case. `pnpm
   validate:schemas` enforces all of this in CI.
@@ -110,7 +112,7 @@ In addition to [ADR-0023](0023-core-domain-model.md) and
 | [0007](0007-epistemic-layer-field.md) | A context item carries the canonical card; its layer and author are the card's, and a card without a layer is unclassified. Pending proposals appear by id and kind only, so no agent free text reaches a model as context. |
 | [0008](0008-believed-as-private-stance.md) | Stance `weight` is an integer 1 (weak) to 3 (strong). |
 | [0010](0010-estimative-probability-scale.md) | Estimates are `Prediction` objects: `phrase` (verbatim), `band` (ICD 203 key), `mappedBy` (`human` or `lookup:<table>`, never an agent), `statedProbability` (a fraction, only if the source stated one), `resolution`. |
-| [0012](0012-disclosure-gate.md) | `DisclosureDecision` has a `subject` (`card` or `stance`); a cloud allow carries a `DisclosureConfirmation` (`confirmedBy: human`) of one `DisclosureTransfer`. |
+| [0012](0012-disclosure-gate.md) | `DisclosureDecision` has a `subject` (`card` or `stance`) and names its deciding `ruleId`; a logged cloud release carries a `DisclosureConfirmationRef` (never the token) of one `DisclosureTransfer`. |
 | [0013](0013-rules-panel-replaces-barometer.md) | Conditions are `card_on_lage`, `card_field`, `edge` and `stance`. Results list `unmet` and `unknown` conditions by clause and index; `withheld` is 0 for `screen`, and for any other target no returned rule has a stance condition. |
 | [0015](0015-two-thinking-levels.md) | `Level1Answer` adds `question` and `answeredAt`; `choice` is one of `options`; `Level1Request` is the connector input. |
 | [0016](0016-mcp-first-and-openapi-contracts.md) | Request objects (`ContextPackageRequest`, `RulesEvaluateRequest`, `ProposalCreate`) take no target and no author: both come from the caller's registered connection. |
@@ -130,42 +132,64 @@ In addition to [ADR-0023](0023-core-domain-model.md) and
   in `packages/mcp-server` proves this for every tool.
 - Security schemes ([ADR-0026](0026-security-defaults.md)): `sessionToken` (header
   `X-Worldbuilder-Session`, the board's random session token) and `agentToken` (bearer token
-  of one registered agent connection). Mirrored operations accept both; operations marked
-  `x-human-only: true` accept only `sessionToken` and answer 403 to agent tokens (CTO
-  decision: Lage create and the user's own stance on the screen are human-only too). They are
-  proposal accept and reject, Lage save, decision create and save, the disclosure
-  transfer view and confirm, Lage create (`POST /lagen`, body `LageCreateRequest`) and the
-  user's own stance (`GET` and `PUT /cards/{cardId}/stance`, body `stance.schema.json`,
-  target screen only). No MCP tool reads or writes stances.
-- `proposal_list` supports polling ([ADR-0032](0032-m1-proposal-polling.md)), on MCP and HTTP and for both token kinds: the
-  request takes `changedSince` (an opaque cursor) and the page returns `nextCursor`, to pass as
-  `cursor` for the next page or as `changedSince` for the next poll.
-- Cloud transfers ([ADR-0031](0031-gate-rules-and-confirmation-binding.md)): `POST /disclosure/transfers` previews a transfer whose
-  envelope holds the target, the connector, the request parameters and the gate-cleared
-  canonical objects; `payloadHash` is the RFC 8785 SHA-256 of the envelope
+  of one registered agent connection). Mirrored operations accept both, except
+  `proposal_create`, which accepts only `agentToken`: humans act directly, proposals are the
+  agents' path (CTO decision). Operations marked `x-human-only: true` accept only
+  `sessionToken` and answer 403 to agent tokens: proposal accept and reject, Lage create
+  (`POST /lagen`, body `LageCreateRequest`) and save, decision create and save, the
+  disclosure transfer preview, view and confirm, and the user's own stance (`GET` and
+  `PUT /cards/{cardId}/stance`, body `StanceInput` = position, weight and note; the server
+  sets `updatedAt` and the history; target screen only). No MCP tool reads or writes stances.
+  Every operation with a request body answers 413 above the size limit.
+- `proposal_list` supports polling ([ADR-0032](0032-m1-proposal-polling.md)), on MCP and
+  HTTP and for both token kinds: the request takes `changedSince` (an opaque cursor) and the
+  page returns `nextCursor`, to pass as `cursor` for the next page or as `changedSince` for the
+  next poll.
+- Cloud transfers ([ADR-0031](0031-gate-rules-and-confirmation-binding.md)): `POST /disclosure/transfers` previews a transfer whose envelope
+  holds the target, the connector, the request parameters and the gate-cleared canonical
+  objects; `payloadHash` is the RFC 8785 SHA-256 of the envelope
   ([ADR-0034](0034-content-hash.md)); the record expires after 5 minutes. The confirm body
   carries the previewed `payloadHash` and the service recomputes the current one; a mismatch
-  or a second confirmation is 409, an expired transfer 410. The confirm response
-  (`DisclosureConfirmation`) issues the single-use `token` (at least 128 bits, bound to the
-  human session, valid 5 minutes, in memory only). The send call carries it: a
-  `ContextPackageRequest` names `transferId` and `confirmationToken`, and the service consumes
-  the token atomically before sending an envelope with the same hash. Gate decisions and
-  context packages hold only a `DisclosureConfirmationRef`, never the token.
-- An MCP connection registered as `cloud_model` gets card content only through such a
-  transfer; otherwise context packages and card pages list only `denied` ids and reasons.
+  or a second confirmation is 409, an expired transfer 410.
+- Who sends (refines the flow of ADR-0031, CTO decision): a transfer records `requestedBy`.
+  - `board`: the confirm response issues the single-use `token` (at least 128 bits, at most
+    128 characters, bound to the confirming human session, valid 5 minutes, in memory only).
+    The board's send carries `transferId` and `confirmationToken`.
+  - `mcp_connection`: an MCP connection registered as `cloud_model` that asks for a context
+    package gets `confirmationRequired` with a `transferId` and no content. The human confirms
+    that transfer on the board; the confirmation carries no token. The agent calls again with
+    the `transferId`, and the service releases the content to that connection only. The
+    agent never sees a token.
+  - Either way `DisclosureGate.redeem` consumes the grant once, before anything is sent,
+    checks the envelope object by object (`contentHash`), and returns exactly the confirmed
+    canonical objects (`DisclosureRelease`). `decide` never allows `cloud_model`; cloud
+    content leaves only as released objects. Expired transfers and spent grants are pruned.
+  - A cloud package without a released transfer has no items, no question and no pending
+    proposals, only `denied` ids and reasons; with one, its `transfer` is the
+    `DisclosureConfirmationRef` and every item is in its `cardIds` (cross-check
+    `transfer-items`). Gate decisions and packages never hold the token.
 - `gate-rules.schema.json` describes the user's rule file: allow and deny rules per target
   matching `visibility`, `class`, `collection`, `worlds` (by name or id), `type`, `tags`, card
-  `ids` or a synthetic store; an empty `match` matches every card; deny wins, no rule matches
-  stance data. `#/$defs/fragment` describes adapter fragments: deny rules only, and the
-  reference loader (`effectiveRules` in `packages/disclosure-gate`) rejects a fragment with an
-  allow rule. `syntheticStore` is an extension of the field list of ADR-0031 for demo
-  clearance, decided here.
+  `ids` or a synthetic store; an empty `match` matches every card; unknown keys and effects are
+  invalid; deny wins, no rule matches stance data. `#/$defs/fragment` describes adapter
+  fragments: deny rules only. The reference gate validates the rule file and every fragment
+  against the schema and fails closed: any invalid rule, or a fragment with an allow rule,
+  denies everything with a reason. `syntheticStore` is an extension of the field list of
+  ADR-0031 for demo clearance, decided here.
+- Rule conditions may also test a card's `tags` (condition kind `tag`).
 - MCP tools (`packages/mcp-server/src/tools.ts`) reference the schemas by `$id`; the MCP
-  annotation `readOnlyHint` is false only for `proposal_create`.
-- The adapter interfaces live in `packages/core/src/adapters/`; `packages/conformance`
-  provides `describeStorageAdapterConformance` and `describeDisclosureGateConformance`.
-  `deriveCardId` and `buildUri` in `packages/core` implement the identity rules of
-  [ADR-0023](0023-core-domain-model.md).
+  annotation `readOnlyHint` is false only for `proposal_create`. `context_package_get` keeps
+  `readOnlyHint: true`: it never changes the world, it only creates or consumes a disclosure
+  transfer.
+- The adapter interfaces live in `packages/core/src/adapters/` and are documented in
+  `docs/reference/adapters.md`; `packages/conformance` provides
+  `describeStorageAdapterConformance` and `describeDisclosureGateConformance`. A `CardPatch`
+  never carries `author`. `buildUri`, `parseUri` and `deriveCardId` in `packages/core`
+  implement the identity rules of [ADR-0023](0023-core-domain-model.md) and accept only the
+  canonical URI that `buildUri` produces.
+- `packages/core` exports the JSON Schemas as `SCHEMAS` (generated with the types), so the
+  gate and the conformance kit validate with the same files; the scripts import identity and
+  hashing from `packages/core` instead of keeping a copy.
 
 ### Generated types
 

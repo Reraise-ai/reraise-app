@@ -73,6 +73,7 @@ export default withMermaid({
           items: [
             { text: 'Overview', link: '/reference/' },
             { text: 'Card format v2', link: '/reference/card-format' },
+            { text: 'Adapter interfaces', link: '/reference/adapters' },
             { text: 'Glossary', link: '/glossary' },
           ],
         },
@@ -123,6 +124,7 @@ export default withMermaid({
           items: [
             { text: 'Overview', link: '/reference/' },
             { text: 'Card format v2', link: '/reference/card-format' },
+            { text: 'Adapter interfaces', link: '/reference/adapters' },
             { text: 'Glossary', link: '/glossary' },
           ],
         },
