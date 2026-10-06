@@ -80,7 +80,9 @@ describe('wb receipts verify (ADR-0040)', () => {
 
   it('exits 1 for a task record whose time cannot be represented (a leap second)', async () => {
     const log = await writeLog(logOf([k, w]));
-    const tasks = await writeTasks([taskOf('TASK-A', k, w, { completedAt: '2026-10-05T23:59:60Z' })]);
+    const tasks = await writeTasks([
+      taskOf('TASK-A', k, w, { completedAt: '2026-10-05T23:59:60Z' }),
+    ]);
     expect(await run('receipts', 'verify', tasks, '--log', log)).toBe(EXIT.failed);
     expect(out.join('')).toContain('FAIL  TASK-A agent:scout: task invalid_time');
   });
@@ -195,12 +197,35 @@ describe('wb digest (ADR-0043)', () => {
     expect(out.join('')).toContain('1 changed');
   });
 
+  it('treats pages the tightened rules no longer produce as stale and removes them on regeneration', async () => {
+    const { s, rules, atlas } = await store();
+    expect(await run('digest', '--store', s, '--out', atlas, '--gate-rules', rules)).toBe(EXIT.ok);
+    const before = (await readdir(atlas)).sort();
+    expect(before.length).toBeGreaterThan(0);
+    await writeFile(path.join(atlas, 'notes.md'), '# My own notes\n');
+    // Tighten the rule: only cards of a world that does not exist.
+    await writeFile(rules, ALLOW_LOCAL.replace('match: {}', 'match: { worlds: [Elsewhere] }'));
+    out = [];
+    expect(
+      await run('digest', '--store', s, '--out', atlas, '--gate-rules', rules, '--check'),
+    ).toBe(EXIT.failed);
+    expect(out.join('')).toMatch(/^extra +world-/m);
+    out = [];
+    expect(await run('digest', '--store', s, '--out', atlas, '--gate-rules', rules)).toBe(EXIT.ok);
+    expect(out.join('')).toMatch(/removed [1-9]\d* outdated/);
+    expect(await readdir(atlas)).toEqual(['notes.md']);
+    out = [];
+    expect(
+      await run('digest', '--store', s, '--out', atlas, '--gate-rules', rules, '--check'),
+    ).toBe(EXIT.ok);
+  });
+
   it('reports missing pages and builds nothing without gate rules (default deny)', async () => {
     const { s, rules, atlas } = await store();
     expect(
       await run('digest', '--store', s, '--out', atlas, '--gate-rules', rules, '--check'),
     ).toBe(EXIT.failed);
-    expect(out.join('')).toContain('missing world-');
+    expect(out.join('')).toMatch(/^missing world-/m);
     out = [];
     const none = path.join(dir, 'no-rules.yaml');
     expect(await run('digest', '--store', s, '--out', atlas, '--gate-rules', none)).toBe(EXIT.ok);
@@ -284,8 +309,8 @@ describe('wb metrics (ADR-0041)', () => {
   it('exits 1 with --check while a target is not met, 0 once the overrides are met', async () => {
     const args = await setup();
     expect(await run('metrics', ...args, '--check')).toBe(EXIT.failed);
-    expect(out.join('')).toContain('target agent_cards_7d: 1 >= 5: NOT MET');
-    const relaxed = ['agent_cards_7d=1', 'decisions_with_outcome=0'].flatMap((t) => [
+    expect(out.join('')).toContain('target agent_cards_7d: 0 >= 5: NOT MET');
+    const relaxed = ['agent_cards_7d=0', 'decisions_with_outcome=0'].flatMap((t) => [
       '--target',
       t,
     ]);

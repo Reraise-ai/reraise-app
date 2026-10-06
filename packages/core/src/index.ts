@@ -26,6 +26,7 @@ export {
   sha256,
 } from './ids.js';
 
+export { OPEN_OUTCOME, OPEN_OUTCOME_SCHEMA_PATTERN, isKnownOutcome } from './outcome.js';
 export {
   EXTERNAL_TYPES,
   SHARED_FIELDS,

@@ -20,7 +20,7 @@
 // Every command takes --state <dir> to use another state directory than the per-OS default.
 
 import { existsSync } from 'node:fs';
-import { mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
 import type {
@@ -35,7 +35,7 @@ import { createDisclosureGate } from '@worldbuilder/disclosure-gate';
 import { loadGateRulesFile, resolveStateDir } from '@worldbuilder/local-state';
 import { CONFIG_FILE, MarkdownFilesAdapter } from '@worldbuilder/storage-markdown-files';
 import { parse as parseYaml } from 'yaml';
-import { buildDigest, checkDigestPage, renderDigestMarkdown } from './digest.js';
+import { GENERATED_HEADER, buildDigest, compareAtlas, renderDigestMarkdown } from './digest.js';
 import { RECEIPT_LOG_FILE, checkChain, splitLogLines } from './log.js';
 import { DEFAULT_TARGETS, computeUsageMetrics, isoWeekRange } from './metrics.js';
 import type { TargetId } from './metrics.js';
@@ -57,7 +57,8 @@ const USAGE = `Usage:
   wb receipts verify <taskfile|dir>... [--log <file>] [--head <hash>] [--max-age-hours n] [--skew-seconds n] [--json]
   wb digest --store <dir> [--out <dir>] [--target screen|local_model|demo] [--gate-rules <file>] [--check]
   wb metrics [--week YYYY-Www] [--log <file>] [--tasks <dir>] [--proposals <dir>] [--store <dir>]
-             [--atlas <dir>] [--gate-rules <file>] [--target id=value]... [--now <iso>] [--json] [--check]
+             [--atlas <dir>] [--atlas-target <target>] [--gate-rules <file>] [--target id=value]...
+             [--now <iso>] [--json] [--check]
 Every command takes --state <dir>. Exit codes: see docs/reference/wb-cli.md.`;
 
 /** Run `wb` with `argv` (without the program name); resolves with the exit code. */
@@ -273,24 +274,42 @@ async function readStore(store: string, gateRules: string, io: CliIo): Promise<S
   }
 }
 
-/** Atlas pages (`*.json`) in a directory; `null` when it does not exist. */
-async function readAtlas(dir: string): Promise<{ file: string; page: DigestPage | null }[] | null> {
+/**
+ * The generated atlas files in a directory: page models (`<pageId>.json` that validate as a
+ * `DigestPage` with that page id) and rendered pages (`.md` starting with the generated
+ * header). Other files are never touched. `null` when the directory does not exist.
+ */
+async function readAtlas(
+  dir: string,
+): Promise<{ pages: DigestPage[]; files: Map<string, string[]> } | null> {
   if (!existsSync(dir)) return null;
-  const out: { file: string; page: DigestPage | null }[] = [];
-  for (const name of (await readdir(dir)).filter((n) => n.endsWith('.json')).sort()) {
+  const pages: DigestPage[] = [];
+  const files = new Map<string, string[]>();
+  const add = (pageId: string, file: string) =>
+    files.set(pageId, [...(files.get(pageId) ?? []), file]);
+  for (const name of (await readdir(dir)).sort()) {
     const file = path.join(dir, name);
-    let page: unknown;
-    try {
-      page = JSON.parse(await readFile(file, 'utf8'));
-    } catch {
-      page = null;
+    const stem = name.replace(/\.(json|md)$/, '');
+    if (name.endsWith('.json')) {
+      let page: unknown;
+      try {
+        page = JSON.parse(await readFile(file, 'utf8'));
+      } catch {
+        continue;
+      }
+      if (
+        validateContract('digest-page.schema.json', page).ok &&
+        (page as DigestPage).pageId === stem
+      ) {
+        pages.push(page as DigestPage);
+        add(stem, file);
+      }
+    } else if (name.endsWith('.md')) {
+      const head = (await readFile(file, 'utf8').catch(() => '')).slice(0, GENERATED_HEADER.length);
+      if (head === GENERATED_HEADER) add(stem, file);
     }
-    out.push({
-      file,
-      page: validateContract('digest-page.schema.json', page).ok ? (page as DigestPage) : null,
-    });
   }
-  return out;
+  return { pages, files };
 }
 
 async function digest(args: readonly string[], io: CliIo): Promise<number> {
@@ -320,34 +339,21 @@ async function digest(args: readonly string[], io: CliIo): Promise<number> {
   const now = (io.now ?? (() => new Date()))().toISOString();
   const pages = buildDigest(allowed, view.worlds, { generatedAt: now, target });
 
+  const atlas = await readAtlas(out);
+  const statuses = compareAtlas(atlas?.pages ?? [], pages, allowed, target);
   if (values.check) {
-    const existing = new Map(
-      ((await readAtlas(out)) ?? []).flatMap((e) =>
-        e.page ? [[e.page.pageId, e.page] as const] : [],
-      ),
-    );
-    let stale = 0;
-    for (const expected of pages) {
-      const page = existing.get(expected.pageId);
-      if (!page) {
-        stale++;
-        io.stdout(`missing ${expected.pageId}\n`);
-        continue;
-      }
-      const s = page.target === target ? checkDigestPage(page, allowed) : null;
-      if (s === null || !s.fresh) {
-        stale++;
-        io.stdout(
-          s === null
-            ? `stale   ${page.pageId}: built for target ${page.target}\n`
-            : `stale   ${page.pageId}: ${s.changed.length} changed, ${s.removed.length} removed, ${s.added.length} added\n`,
-        );
-      } else {
-        io.stdout(`fresh   ${page.pageId}\n`);
-      }
+    for (const s of statuses) {
+      const detail =
+        s.state === 'stale' && s.staleness
+          ? `: ${s.staleness.changed.length} changed, ${s.staleness.removed.length} removed, ${s.staleness.added.length} added`
+          : s.state === 'extra'
+            ? ': not produced by the current cards and rules'
+            : '';
+      io.stdout(`${s.state.padEnd(7)} ${s.pageId}${detail}\n`);
     }
-    io.stdout(`${pages.length - stale} of ${pages.length} atlas pages are fresh\n`);
-    return stale === 0 ? EXIT.ok : EXIT.failed;
+    const fresh = statuses.filter((s) => s.state === 'fresh').length;
+    io.stdout(`${fresh} of ${statuses.length} atlas pages are fresh\n`);
+    return fresh === statuses.length ? EXIT.ok : EXIT.failed;
   }
 
   await mkdir(out, { recursive: true });
@@ -359,8 +365,17 @@ async function digest(args: readonly string[], io: CliIo): Promise<number> {
       renderDigestMarkdown(page, (id) => uris.get(id) ?? id),
     );
   }
+  // Generated pages the current cards and rules no longer produce are removed, so the atlas
+  // never keeps showing a card the rules now deny (ADR-0043). Other files are left alone.
+  const expected = new Set(pages.map((p) => p.pageId));
+  let removed = 0;
+  for (const [pageId, files] of atlas?.files ?? []) {
+    if (expected.has(pageId)) continue;
+    for (const f of files) await rm(f, { force: true });
+    removed++;
+  }
   io.stdout(
-    `wrote ${pages.length} atlas pages from ${allowed.length} of ${view.cards.length} cards (target ${target}) to ${out}\n`,
+    `wrote ${pages.length} atlas pages from ${allowed.length} of ${view.cards.length} cards (target ${target}) to ${out}; removed ${removed} outdated\n`,
   );
   return EXIT.ok;
 }
@@ -394,6 +409,7 @@ async function metrics(args: readonly string[], io: CliIo): Promise<number> {
       proposals: { type: 'string' },
       store: { type: 'string' },
       atlas: { type: 'string' },
+      'atlas-target': { type: 'string' },
       'gate-rules': { type: 'string' },
       target: { type: 'string', multiple: true },
       now: { type: 'string' },
@@ -428,7 +444,7 @@ async function metrics(args: readonly string[], io: CliIo): Promise<number> {
   const proposals = await readProposals(values.proposals ?? path.join(state(), 'proposals'), io);
 
   let decisions: Card[] | null = null;
-  let atlas: { generatedAt: string; fresh: boolean }[] | null = null;
+  let atlas: { generatedAt: string | null; fresh: boolean }[] | null = null;
   if (values.store !== undefined) {
     const view = await readStore(
       values.store,
@@ -436,14 +452,20 @@ async function metrics(args: readonly string[], io: CliIo): Promise<number> {
       io,
     );
     decisions = view.cards.filter((c) => String(c.type).trim().toLowerCase() === 'decision');
-    const pages = await readAtlas(values.atlas ?? path.join(state(), 'atlas'));
-    if (pages !== null) {
-      atlas = pages.map(({ page }) => ({
-        generatedAt: page?.generatedAt ?? new Date(0).toISOString(),
-        fresh:
-          page !== null &&
-          ATLAS_TARGETS.includes(page.target) &&
-          checkDigestPage(page, view.allowed(page.target)).fresh,
+    const existing = await readAtlas(values.atlas ?? path.join(state(), 'atlas'));
+    if (existing !== null) {
+      const atlasTarget = (values['atlas-target'] ?? 'local_model') as PackageTarget;
+      if (!ATLAS_TARGETS.includes(atlasTarget)) {
+        throw new UsageError(`--atlas-target ${atlasTarget} is not an atlas target`);
+      }
+      const allowed = view.allowed(atlasTarget);
+      const expected = buildDigest(allowed, view.worlds, {
+        generatedAt: now.toISOString(),
+        target: atlasTarget,
+      });
+      atlas = compareAtlas(existing.pages, expected, allowed, atlasTarget).map((s) => ({
+        generatedAt: s.generatedAt,
+        fresh: s.state === 'fresh',
       }));
     }
   }

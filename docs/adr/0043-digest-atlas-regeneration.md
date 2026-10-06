@@ -72,8 +72,13 @@ same gate filter):
 - **removed**: a source whose card is gone or no longer in scope;
 - **added**: a card in scope that is not a source.
 
-A page is fresh when all three are empty, otherwise stale. The atlas lag of
-[ADR-0041](0041-usage-ledger-and-metrics.md) is computed from this.
+A page is fresh when all three are empty, otherwise stale.
+
+`compareAtlas(existing, expected, cards, target)` compares the whole atlas: the expected pages
+are those `buildDigest` produces from the current, gate-filtered cards. Every expected page is
+fresh, stale or **missing**; every other existing page is **extra** (for example a world page
+after the rules were tightened, or a page built for another target). Missing and extra pages are
+stale. The atlas lag of [ADR-0041](0041-usage-ledger-and-metrics.md) is computed from this.
 
 ### Gate
 
@@ -92,11 +97,14 @@ A page is fresh when all three are empty, otherwise stale. The atlas lag of
 [--check]`:
 
 - reads the `markdown-files` store read-only (no watcher, no lock), writes `<pageId>.json` (the
-  page model) and `<pageId>.md` per page into `--out` (default `<state>/atlas`), and removes no
-  other files;
-- `--check` writes nothing and compares the existing pages with the store;
+  page model) and `<pageId>.md` per page into `--out` (default `<state>/atlas`);
+- removes the generated pages that the current cards and rules no longer produce, so an atlas
+  never keeps showing a card the rules now deny. Generated files are recognised by content: a
+  `<pageId>.json` that is a valid page model with that page id, and a `.md` that starts with the
+  generated header. Every other file in `--out` is left alone;
+- `--check` writes nothing and reports every page as fresh, stale, missing or extra;
 - exit codes: **0** pages written (with `--check`: every page fresh); **1** with `--check`: at
-  least one page stale or missing; **2** usage error, unreadable store or refused target.
+  least one page stale, missing or extra; **2** usage error, unreadable store or refused target.
 
 A model-written variant (`generator: model:<engine>`) is a later slice: it may only reword lines
 of a deterministic page, keeps every line's card ids, and goes through a `ModelConnector` behind

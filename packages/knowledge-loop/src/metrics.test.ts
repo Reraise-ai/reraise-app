@@ -140,7 +140,7 @@ describe('computeUsageMetrics (ADR-0041)', () => {
     expect(m.agents.map((a) => a.agent)).toEqual([AGENT, OTHER_AGENT]);
     expect(m.agents[1]).toMatchObject({ tasks: 1, receiptCoverage: 0, consults: 1 });
     expect(m.agents[0]).toMatchObject({ cardsProposed: 1, tasks: 0, receiptCoverage: null });
-    expect(m.targets.find((t) => t.id === 'agent_cards_7d')!.value).toBe(3);
+    expect(m.targets.find((t) => t.id === 'agent_cards_7d')!.value).toBe(1);
     expect(validateContract('usage-metrics.schema.json', m)).toEqual({ ok: true });
   });
 
@@ -154,7 +154,7 @@ describe('computeUsageMetrics (ADR-0041)', () => {
         value: 1 / 3,
         met: false,
       },
-      { id: 'agent_cards_7d', comparison: 'at_least', threshold: 5, value: 3, met: false },
+      { id: 'agent_cards_7d', comparison: 'at_least', threshold: 5, value: 1, met: false },
       { id: 'atlas_lag_hours', comparison: 'at_most', threshold: 24, value: 36, met: false },
       { id: 'decisions_with_outcome', comparison: 'at_least', threshold: 10, value: 1, met: false },
     ]);
@@ -162,7 +162,7 @@ describe('computeUsageMetrics (ADR-0041)', () => {
       now: NOW,
       targets: {
         receipt_coverage_7d: 0.3,
-        agent_cards_7d: 3,
+        agent_cards_7d: 1,
         atlas_lag_hours: 48,
         decisions_with_outcome: 1,
       },
@@ -201,5 +201,33 @@ describe('computeUsageMetrics (ADR-0041)', () => {
     expect(hasOutcome(decision('open'))).toBe(false);
     expect(hasOutcome(decision('Done'))).toBe(true);
     expect(hasOutcome({ id: ulid(1) } as unknown as Card)).toBe(false);
+  });
+});
+
+describe('atlas lag (ADR-0041, ADR-0043)', () => {
+  const lag = (atlas: UsageLedger['atlas']) =>
+    computeUsageMetrics({ ...ledger(), atlas }, { now: NOW }).targets.find(
+      (t) => t.id === 'atlas_lag_hours',
+    )!;
+
+  it.each([
+    ['a missing page', null],
+    ['an unparsable generation time', 'yesterday'],
+    ['a generation time in the future', '2030-01-01T00:00:00Z'],
+    ['a leap second', '2026-10-05T23:59:60Z'],
+  ])('is unknown and not met with %s on a stale page', (_name, generatedAt) => {
+    expect(
+      lag([
+        { generatedAt: day(7, 0), fresh: true },
+        { generatedAt, fresh: false },
+      ]),
+    ).toMatchObject({
+      value: null,
+      met: false,
+    });
+  });
+
+  it('counts the oldest stale page, extra pages included', () => {
+    expect(lag([{ generatedAt: day(6, 12), fresh: false }]).value).toBe(24);
   });
 });

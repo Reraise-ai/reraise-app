@@ -17,6 +17,10 @@ import type {
   UsageTarget,
 } from '@worldbuilder/core';
 
+import { isKnownOutcome } from '@worldbuilder/core';
+import { parseTime } from './time.js';
+import { assertContract } from './validate.js';
+
 const DAY_MS = 86_400_000;
 const WEEK_PATTERN = /^(\d{4})-W(\d{2})$/;
 
@@ -29,7 +33,13 @@ export interface UsageLedger {
   /** Decision cards of the store; `null` when no store was read. */
   readonly decisions: readonly Card[] | null;
   /** Atlas pages with their staleness; `null` when no atlas was read. */
-  readonly atlas: readonly { readonly generatedAt: string; readonly fresh: boolean }[] | null;
+  /**
+   * Atlas pages compared with the pages the current cards produce (`compareAtlas`): every
+   * expected page and every extra page; a missing page has `generatedAt: null`. `null` when no
+   * atlas was read.
+   */
+  readonly atlas:
+    readonly { readonly generatedAt: string | null; readonly fresh: boolean }[] | null;
 }
 
 export type TargetId =
@@ -82,9 +92,8 @@ export function isoWeekRange(week: string): TimeWindow {
 }
 
 const inWindow = (iso: string | undefined, w: TimeWindow) => {
-  if (iso === undefined) return false;
-  const t = Date.parse(iso);
-  return t >= w.start && t < w.end;
+  const t = parseTime(iso);
+  return t !== undefined && t >= w.start && t < w.end;
 };
 
 const COUNT_FIELDS = [
@@ -167,10 +176,9 @@ const sum = (counters: Iterable<Counter>): Counter => {
   return total;
 };
 
-/** Is this decision card's outcome known (anything but `open`)? */
+/** Is this decision card's outcome known? The shared rule of `isKnownOutcome` (core). */
 export function hasOutcome(card: Card): boolean {
-  const outcome = (card as { sections?: { outcome?: unknown } }).sections?.outcome;
-  return typeof outcome === 'string' && outcome.trim().toLowerCase() !== 'open';
+  return isKnownOutcome((card as { sections?: { outcome?: unknown } }).sections?.outcome);
 }
 
 /** Compute the usage metrics document (ADR-0041). */
@@ -200,19 +208,20 @@ export function computeUsageMetrics(
 
   const pages = ledger.atlas ?? [];
   const stale = pages.filter((p) => !p.fresh);
+  // A stale page without a usable generation time (missing, unparsable or in the future) has
+  // no measurable lag: the lag is unknown and the target is not met (ADR-0041).
+  const staleTimes = stale.map((p) => parseTime(p.generatedAt));
   const lagHours =
-    pages.length === 0
+    pages.length === 0 || staleTimes.some((t) => t === undefined || t > now)
       ? null
       : stale.length === 0
         ? 0
-        : Math.round(
-            (Math.max(...stale.map((p) => now - Date.parse(p.generatedAt))) / 3_600_000) * 10,
-          ) / 10;
+        : Math.round((Math.max(...staleTimes.map((t) => now - t!)) / 3_600_000) * 10) / 10;
 
   const values: Record<TargetId, number | null> = {
     receipt_coverage_7d: rollingTotals.receiptCoverage,
-    agent_cards_7d: rollingTotals.cardsProposed,
-    atlas_lag_hours: lagHours === null ? null : Math.max(0, lagHours),
+    agent_cards_7d: rollingTotals.cardsAccepted,
+    atlas_lag_hours: lagHours,
     decisions_with_outcome: decisions?.withOutcome ?? null,
   };
   const targets: UsageTarget[] = (Object.keys(DEFAULT_TARGETS) as TargetId[]).map((id) => {
@@ -224,7 +233,7 @@ export function computeUsageMetrics(
     return { id, comparison, threshold, value, met };
   });
 
-  return {
+  const metrics: UsageMetrics = {
     generatedAt: options.now.toISOString(),
     window:
       options.week !== undefined
@@ -245,4 +254,6 @@ export function computeUsageMetrics(
     atlas: { pages: pages.length, stalePages: stale.length, lagHours },
     targets,
   };
+  assertContract('usage-metrics.schema.json', metrics, 'usage metrics');
+  return metrics;
 }

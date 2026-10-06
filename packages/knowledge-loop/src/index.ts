@@ -37,6 +37,7 @@ export {
   verifyAgainstChain,
   verifyReceipts,
   type ReceiptProblem,
+  type ProblemSlot,
   type ReceiptProblemCode,
   type ReceiptSlot,
   type TaskVerification,
@@ -69,12 +70,16 @@ export {
   buildDigest,
   cardsInScope,
   checkDigestPage,
+  compareAtlas,
+  GENERATED_HEADER,
   inAtlas,
   lineText,
   renderDigestMarkdown,
   worldPageId,
   type DigestOptions,
+  type AtlasPageStatus,
   type DigestStaleness,
 } from './digest.js';
+export { parseTime } from './time.js';
 export { EXIT, parseTaskRecord, runCli, type CliIo } from './cli.js';
 export { assertContract, validateContract, type ValidationResult } from './validate.js';

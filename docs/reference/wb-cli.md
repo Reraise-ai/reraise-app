@@ -68,7 +68,8 @@ wb digest --store <dir> [--out <dir>] [--target screen|local_model|demo]
 
 Rebuilds the atlas pages of a `markdown-files` store deterministically: one page per world plus
 one for cards without a world, each line linking the card ids it rests on. Cards are filtered by
-the disclosure gate for the target.
+the disclosure gate for the target. Generated pages that the current cards and rules no longer
+produce are removed; other files in the output directory are never touched.
 
 | Option | Meaning | Default |
 | --- | --- | --- |
@@ -81,14 +82,14 @@ the disclosure gate for the target.
 | Exit code | Meaning |
 | --- | --- |
 | 0 | pages written; with `--check`: every page is fresh |
-| 1 | with `--check`: at least one page is stale (a card changed, was removed or added) or missing |
+| 1 | with `--check`: at least one page is stale (a card changed, was removed or added), missing, or extra (no longer produced by the current cards and rules) |
 | 2 | usage error, an unreadable store, or a refused target |
 
 ## `wb metrics`
 
 ```sh
 wb metrics [--week YYYY-Www] [--log <file>] [--tasks <dir>] [--proposals <dir>]
-           [--store <dir>] [--atlas <dir>] [--gate-rules <file>] [--target id=value]...
+           [--store <dir>] [--atlas <dir>] [--atlas-target <target>] [--gate-rules <file>] [--target id=value]...
            [--now <iso>] [--json] [--check]
 ```
 
@@ -104,6 +105,7 @@ targets.
 | `--proposals` | directory of proposal files | `<state>/proposals` |
 | `--store` | the store, for decisions with an outcome and atlas freshness | none |
 | `--atlas` | the atlas pages | `<state>/atlas` |
+| `--atlas-target` | the gate target the atlas was built for | `local_model` |
 | `--gate-rules` | the gate rule file used for atlas freshness | `<state>/gate-rules.yaml` |
 | `--target id=value` | override a target: `receipt_coverage_7d`, `agent_cards_7d`, `atlas_lag_hours`, `decisions_with_outcome` | 0.8, 5, 24, 10 |
 | `--now` | the time to compute for (reproducible runs) | the current time |

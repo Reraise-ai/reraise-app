@@ -105,7 +105,7 @@ overridden):
 | Target | Default |
 | --- | --- |
 | `receipt_coverage_7d` | at least 0.8 |
-| `agent_cards_7d` | at least 5 |
+| `agent_cards_7d` | at least 5 accepted agent cards (proposed shown alongside) |
 | `atlas_lag_hours` | at most 24 |
 | `decisions_with_outcome` | at least 10 |
 

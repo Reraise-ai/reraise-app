@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildDigest,
   checkDigestPage,
+  compareAtlas,
   lineText,
   renderDigestMarkdown,
   worldPageId,
@@ -126,5 +127,31 @@ describe('checkDigestPage (ADR-0043)', () => {
   it('ignores metadata changes that do not change the content hash', () => {
     const tagged = cards.map((c) => (c.id === ulid(1) ? { ...c, tags: ['watch'] } : c));
     expect(checkDigestPage(page, tagged).fresh).toBe(true);
+  });
+});
+
+describe('compareAtlas (ADR-0043)', () => {
+  const expected = buildDigest(cards, worlds, options);
+
+  it('reports fresh, stale, missing and extra pages', () => {
+    const edited = cards.map((c) =>
+      c.id === ulid(1) ? card(1, { title: 'Edited', worlds: [W1] }) : c,
+    );
+    const extra = { ...expected[0]!, pageId: 'world-old' };
+    const other = { ...expected[0]!, target: 'demo' as const };
+    const status = compareAtlas(
+      [expected[0]!, expected[1]!, extra, other],
+      buildDigest(edited, worlds, options),
+      edited,
+      'local_model',
+    );
+    expect(status.map((s) => [s.pageId, s.state])).toEqual([
+      [worldPageId(W2), 'fresh'],
+      [worldPageId(W1), 'stale'],
+      ['unassigned', 'missing'],
+      ['world-old', 'extra'],
+      [worldPageId(W2), 'extra'],
+    ]);
+    expect(status[2]!.generatedAt).toBeNull();
   });
 });

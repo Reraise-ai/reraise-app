@@ -77,12 +77,19 @@ sorted by name.
 ### Global values
 
 - `decisions.total`: decision cards in the store; `decisions.withOutcome`: those whose
-  `sections.outcome`, trimmed and lower-cased, is not `open`. Not windowed: the target is a
+  `sections.outcome` is known: non-blank text other than `open` in any case
+  (`isKnownOutcome` in `packages/core`, the same rule as the schema's `outcomeText`). Not windowed: the target is a
   running count. `null` when no store was given.
-- `atlas.lagHours`: `0` when every atlas page is fresh; otherwise the largest
-  `now − generatedAt` over the stale pages, in hours (one decimal); `null` when there is no atlas
-  page. "Fresh" and "stale" are defined in [ADR-0043](0043-digest-atlas-regeneration.md). The
-  lag measures how long an out-of-date atlas has been served, not the age of a correct one.
+- `atlas.lagHours`: computed over the comparison of the existing atlas pages with the pages
+  the current, gate-filtered cards produce (`compareAtlas`, [ADR-0043](0043-digest-atlas-regeneration.md)):
+  every expected page is fresh, stale or missing, and every other existing page (including one
+  built for another target) is extra; missing and extra pages are stale. `0` when every page is
+  fresh; otherwise the largest `now − generatedAt` over the stale pages, in hours (one decimal).
+  `null` when there is no page at all, or when a stale page has no usable generation time (a
+  missing page, an unparsable time, or a time after `now`). The lag measures how long an
+  out-of-date atlas has been served, not the age of a correct one.
+- Every time is parsed strictly as RFC 3339; a record whose time cannot be represented falls
+  into no window.
 
 ### Targets
 
@@ -92,7 +99,7 @@ file of the service later):
 | `id` | Value | Comparison | Default |
 | --- | --- | --- | --- |
 | `receipt_coverage_7d` | `totals.receiptCoverage` over the rolling window | at least | 0.8 |
-| `agent_cards_7d` | `totals.cardsProposed` over the rolling window | at least | 5 |
+| `agent_cards_7d` | `totals.cardsAccepted` over the rolling window (agent cards a human accepted; `cardsProposed` is reported next to it) | at least | 5 |
 | `atlas_lag_hours` | `atlas.lagHours` | at most | 24 |
 | `decisions_with_outcome` | `decisions.withOutcome` | at least | 10 |
 
@@ -109,7 +116,8 @@ reported on its own.
   an MCP tool: the numbers describe agents and are for the human. The board panel and the
   service route are built in the service slice.
 - `wb metrics [--week YYYY-Www] [--log] [--tasks <dir>] [--proposals <dir>] [--store <dir>]
-  [--atlas <dir>] [--target id=value] [--json] [--check]`. Exit codes: **0** done (with
+  [--atlas <dir>] [--atlas-target <target>] [--target id=value] [--json] [--check]`. The
+  metrics document is validated against its schema before it is returned or printed. Exit codes: **0** done (with
   `--check`: every target met); **1** with `--check`: at least one target not met; **2** usage
   error or unreadable input; **3** the receipt log is broken.
 
