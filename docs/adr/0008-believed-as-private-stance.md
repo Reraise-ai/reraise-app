@@ -101,6 +101,9 @@ written to card files.
 
 ## More Information
 
+- Refined by [ADR-0030](0030-local-state-on-the-device.md): the stance
+  directory lives in the per-user OS state directory, not inside a store
+  or repository.
 - Supersedes concept v1: `docs/03-datenmodell.md` §5.2 (`Agreement`
   −2..+2, `confidence` 0..100, `visibility: 'shared'` for stances),
   `docs/02-ux-board.md` §2.1 stance bar, `docs/05-roadmap.md` §4 open

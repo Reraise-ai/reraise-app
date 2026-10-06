@@ -78,10 +78,11 @@ rules:
 - The rule file is validated against `schemas/gate-rules.schema.json` (JSON Schema 2020-12). The
   schema is added on the contracts branch together with valid and invalid examples.
 - Adapters may supply rule fragments for their sensitive classes (for example a store that marks
-  identity documents). The effective rule set is the union of the user's file and all adapter
-  fragments, evaluated with the same deny-wins rule, so a fragment can only add allows the user
-  could also write and can never override a deny. The board shows the effective rule set with
-  the source of every rule.
+  identity documents). Adapter fragments may contain **deny rules only**; an allow rule in a
+  fragment is rejected at load time. The effective rule set is the union of the user's file and
+  all adapter fragments, evaluated with the same deny-wins rule, so an installed adapter can only
+  narrow what leaves the device, never widen it. The board shows the effective rule set with the
+  source of every rule.
 
 ### MCP connections
 
@@ -125,7 +126,7 @@ rules:
 ### Confirmation
 
 Rule tests: no rules → deny for every target; deny beats allow; an invalid rule file → deny
-everywhere; an adapter fragment cannot override a user deny; no rule can allow stance data
+everywhere; an adapter fragment cannot override a user deny; an adapter fragment containing an allow rule is rejected; no rule can allow stance data
 beyond `screen`; the rule schema accepts its valid examples and rejects its invalid ones.
 
 Confirmation tests: the send is rejected when, after the preview, the engine differs, the

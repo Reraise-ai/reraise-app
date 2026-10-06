@@ -121,7 +121,7 @@ Privacy is structural, not a setting ([ADR-0012](../adr/0012-disclosure-gate.md)
 - **Rules.** Declarative YAML allow and deny rules per target in `gate-rules.yaml` in the state directory,
   matching canonical card fields only (`visibility`, `class`, `collection`, `worlds`, `type`,
   tags once defined, explicit ids), validated against `schemas/gate-rules.schema.json` (to be
-  added with the contracts). Adapter-supplied rule fragments join the effective rule set, which
+  added with the contracts). Adapter-supplied rule fragments (deny rules only) join the effective rule set, which
   the board shows with each rule's source. Deny rules win over allow rules; an invalid rule file
   means deny everywhere ([ADR-0031](../adr/0031-gate-rules-and-confirmation-binding.md)).
 - **Default deny.** No matching allow rule means deny. The reference configuration allows
