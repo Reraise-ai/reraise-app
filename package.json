@@ -26,7 +26,8 @@
     "check:doc-anchors": "node scripts/check-doc-anchors.mjs",
     "generate:types": "node scripts/generate-types.mjs",
     "check:generated": "node scripts/generate-types.mjs --check",
-    "lint:openapi": "node scripts/lint-openapi.mjs"
+    "lint:openapi": "node scripts/lint-openapi.mjs",
+    "check:licence-imports": "node scripts/check-licence-imports.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",

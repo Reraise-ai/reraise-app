@@ -68,6 +68,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm test:coverage
       - run: pnpm check:spdx
+      - name: Apache-2.0 packages never import AGPL packages
+        run: pnpm check:licence-imports
       - run: pnpm check:no-real-data
       - run: pnpm validate:schemas
       - run: pnpm build
