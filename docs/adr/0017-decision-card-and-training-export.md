@@ -6,6 +6,10 @@ decision-makers: "Owner (product), CTO/orchestrator (technical)"
 
 # ADR-0017: Decision card with eleven sections, outcome loop, opt-in training export
 
+> Refined by [ADR-0039](0039-knowledge-loop-receipts.md): agents propose decisions and outcomes
+> (`decision_record`, `decision_outcome`); the exporter is built in `packages/training-export`
+> and exports only decisions with an outcome other than `open`.
+
 ## Context and Problem Statement
 
 The canon's loop is experience → card → world → board → analysis →

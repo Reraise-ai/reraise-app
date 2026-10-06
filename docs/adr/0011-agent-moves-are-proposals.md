@@ -6,6 +6,10 @@ decision-makers: "Owner (product), CTO/orchestrator (technical)"
 
 # ADR-0011: Agent moves are proposals; nothing counts until a human accepts
 
+> Refined by [ADR-0039](0039-knowledge-loop-receipts.md): `knowledge_write_back`,
+> `decision_record` and `decision_outcome` also create proposals, and a new kind `record_outcome`
+> proposes the outcome of a decision card. Every agent write is still a proposal.
+
 ## Context and Problem Statement
 
 The user's own multi-agent system must be able to act on the board: place

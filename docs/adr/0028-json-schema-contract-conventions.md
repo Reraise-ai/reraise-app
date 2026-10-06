@@ -10,6 +10,10 @@ decision-makers: "Owner (product), CTO/orchestrator (technical)"
 > `level1-answer`; cross-checks `level1-move` and `level1-players` replace `level1-choice`) and
 > [ADR-0036](0036-conclusions-are-private.md) (target `share`, `PackageTarget` for context
 > packages and rule evaluations).
+>
+> Extended by [ADR-0039](0039-knowledge-loop-receipts.md) to
+> [ADR-0043](0043-digest-atlas-regeneration.md): knowledge-loop schemas and the cross-checks
+> `receipt-hash` and `digest-lines`.
 
 ## Context and Problem Statement
 

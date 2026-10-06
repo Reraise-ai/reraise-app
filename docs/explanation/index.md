@@ -10,6 +10,7 @@ need no code.
 | [Why layers never merge](./layers-never-merge.md) | Why are evidenced, said and experience kept apart, and why is "believed" a stance and not a layer? |
 | [Provenance and independence](./provenance-and-independence.md) | Why does the system count origins instead of copies, and why is there no credibility score? |
 | [Why the LLM is replaceable](./llm-is-replaceable.md) | How does the architecture keep your world independent of any model? |
+| [Why receipts, not reminders](./receipts-not-reminders.md) | Why must agents cite checked receipts for consulting and writing back the knowledge, instead of being reminded to? |
 
 ## Planned
 
