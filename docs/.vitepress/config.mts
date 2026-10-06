@@ -1,10 +1,23 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright The Worldbuilder contributors
-import { defineConfig } from 'vitepress';
+import { readdirSync, readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { withMermaid } from 'vitepress-plugin-mermaid';
 
 const repo = 'https://github.com/Reraise-ai/reraise-app';
 
-export default defineConfig({
+// The ADR sidebar is generated from docs/adr/NNNN-*.md so a new ADR needs no config change.
+const adrDir = fileURLToPath(new URL('../adr/', import.meta.url));
+const adrItems = readdirSync(adrDir)
+  .filter((f) => /^\d{4}-.*\.md$/.test(f))
+  .sort()
+  .map((f) => {
+    const heading = /^# (.+)$/m.exec(readFileSync(adrDir + f, 'utf8'));
+    const title = heading ? heading[1].replace(/^ADR-/, 'ADR-') : f;
+    return { text: title, link: `/adr/${f.replace(/\.md$/, '')}` };
+  });
+
+export default withMermaid({
   title: 'The Worldbuilder',
   description:
     'A personal layer between you and any model or agent: cards with provenance, a board for decisions, files as the truth.',
@@ -12,9 +25,8 @@ export default defineConfig({
   base: '/Worldbuilder/',
   cleanUrls: true,
   lastUpdated: false,
-  // Dead links fail the build. The one exception is the ADR log, which lands in a parallel
-  // pull request (docs/adr/). Remove this entry once that pull request is merged.
-  ignoreDeadLinks: [/\/adr\/README(\.md)?$/],
+  // Dead links fail the build.
+  ignoreDeadLinks: false,
   // Links to schemas/, examples/ and prototype/ live outside docs/ and use absolute GitHub URLs.
   head: [['meta', { name: 'theme-color', content: '#0d1722' }]],
   themeConfig: {
@@ -25,7 +37,7 @@ export default defineConfig({
       { text: 'Reference', link: '/reference/' },
       { text: 'Explanation', link: '/explanation/' },
       { text: 'Architecture', link: '/architecture/' },
-      { text: 'ADRs', link: '/adr/README' },
+      { text: 'ADRs', link: '/adr/' },
       { text: 'Roadmap', link: '/roadmap' },
     ],
     sidebar: {
@@ -67,6 +79,12 @@ export default defineConfig({
         },
       ],
       '/architecture/': [{ text: 'Architecture', items: [{ text: 'Overview', link: '/architecture/' }] }],
+      '/adr/': [
+        {
+          text: 'Architecture decisions',
+          items: [{ text: 'ADR log', link: '/adr/' }, ...adrItems],
+        },
+      ],
       '/glossary': [
         {
           text: 'Reference',
