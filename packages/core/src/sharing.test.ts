@@ -42,7 +42,7 @@ describe('isPublicSourceUri (ADR-0036)', () => {
       'file:///home/report.pdf',
       'https://localhost/a',
       'https://nas.local/a',
-      'https://10.0.0.1/a',
+      'https://192.0.2.10/a',
       'https://[::1]/a',
       'https://',
     ]) {
