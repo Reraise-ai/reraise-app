@@ -1,0 +1,12 @@
+node_modules
+dist
+coverage
+pnpm-lock.yaml
+LICENSES
+LICENSE
+**/LICENSE
+prototype
+docs
+.claude
+playwright-report
+test-results
