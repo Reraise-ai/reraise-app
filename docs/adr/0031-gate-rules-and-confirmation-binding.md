@@ -41,7 +41,7 @@ execute code, and make a confirmation worthless for any other payload.
 
 ### Rule language
 
-- Rules live in `.worldbuilder/gate-rules.yaml` ([ADR-0030](0030-local-state-on-the-device.md)).
+- Rules live in `<state>/gate-rules.yaml`, the per-user state directory ([ADR-0030](0030-local-state-on-the-device.md)).
 - Each rule has an `id`, an `effect` (`allow` or `deny`), one or more `targets` (`screen`,
   `local_model`, `cloud_model`, `demo`) and a `match` block.
 - `match` may test these canonical card fields only: `visibility`, `class`, `collection`,
@@ -73,18 +73,47 @@ rules:
     match: { class: [A] }
 ```
 
+### Rule sources and schema
+
+- The rule file is validated against `schemas/gate-rules.schema.json` (JSON Schema 2020-12). The
+  schema is added on the contracts branch together with valid and invalid examples.
+- Adapters may supply rule fragments for their sensitive classes (for example a store that marks
+  identity documents). The effective rule set is the union of the user's file and all adapter
+  fragments, evaluated with the same deny-wins rule, so a fragment can only add allows the user
+  could also write and can never override a deny. The board shows the effective rule set with
+  the source of every rule.
+
+### MCP connections
+
+- An MCP connection registered as `cloud_model` receives card content in a response only after a
+  hash-bound transfer for exactly that response was confirmed by the human, using the mechanism
+  below. Without it, the response contains the denied ids and reasons only.
+- A connection registered as `local_model` follows the gate rules without per-transfer
+  confirmation.
+
 ### Cloud confirmation binding
 
-- Before a `cloud_model` transfer the service builds the exact canonical payload (gate-cleared
-  canonical objects only), serialises it as canonical JSON (RFC 8785) and computes its SHA-256.
-- The preview shown to the user lists the cards in that payload. The human-only disclosure
-  confirm endpoint issues a single-use confirmation token bound to that hash, valid for
-  5 minutes.
-- The connector sends only if the payload it is about to send hashes to the bound value. Any
-  change to the payload (a card added, removed or edited, a different engine) invalidates the
-  token; the user must confirm again. A used or expired token is rejected.
+- **Envelope.** Before any `cloud_model` transfer the service builds a transfer envelope:
+  `target`, `connectorId` (the engine, for example Jev or a named cloud model), the request
+  parameters (question, options, output schema, where present) and the gate-cleared canonical
+  objects. It serialises the envelope as canonical JSON (RFC 8785) and computes its SHA-256.
+  The preview shows the whole envelope to the user, not only the card list.
+- **Preview creates a transfer record** held server side: `transferId`, the stored hash and an
+  expiry 5 minutes ahead.
+- **Confirm.** The human-only confirm call carries `transferId` and the hash the user previewed.
+  The service recomputes the hash of the current envelope and rejects the call if either the
+  previewed hash or the recomputed hash differs from the stored one.
+- **Token.** On success the service issues a confirmation token: at least 128 bits from a
+  cryptographically secure random source, stored server side only, bound to the human session
+  that confirmed, single-use, valid for 5 minutes. All tokens and transfer records live in
+  memory and are invalid after a service restart.
+- **Send.** The connector call consumes the token atomically before sending (a second use fails
+  even under concurrency) and sends only an envelope whose hash equals the stored hash. Any
+  change (a card added, removed or edited, another engine, a changed question, options or output
+  schema) produces a different hash and requires a new preview and confirmation.
 - Exports use the same binding under `cloud_model` semantics
-  ([ADR-0017](0017-decision-card-and-training-export.md)).
+  ([ADR-0017](0017-decision-card-and-training-export.md)), with the export parameters in the
+  envelope.
 
 ### Consequences
 
@@ -95,9 +124,16 @@ rules:
 
 ### Confirmation
 
-Unit tests: no rules → deny for every target; deny beats allow; invalid rule file → deny
-everywhere; no rule can allow stance data beyond `screen`; a token is rejected after use, after
-5 minutes, and for a payload whose hash differs by one card.
+Rule tests: no rules → deny for every target; deny beats allow; an invalid rule file → deny
+everywhere; an adapter fragment cannot override a user deny; no rule can allow stance data
+beyond `screen`; the rule schema accepts its valid examples and rejects its invalid ones.
+
+Confirmation tests: the send is rejected when, after the preview, the engine differs, the
+question or options or output schema changed, or a card was added, removed or edited; a confirm
+call whose previewed hash does not match the transfer record is rejected; a replayed token is
+rejected, also when two sends race; a token is rejected after 5 minutes, after a service
+restart, and from a different session; a `cloud_model` MCP connection receives no card content
+without a confirmed transfer.
 
 ## Pros and Cons of the Options
 
@@ -124,7 +160,7 @@ everywhere; no rule can allow stance data beyond `screen`; a token is rejected a
 ### Hash-bound single-use token
 
 - Good, because exact and short-lived.
-- Bad, because needs canonical serialisation.
+- Bad, because needs canonical serialisation and server-side transfer records.
 
 ## More Information
 

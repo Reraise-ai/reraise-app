@@ -4,7 +4,7 @@ date: 2026-10-06
 decision-makers: "Owner (product), CTO/orchestrator (technical)"
 ---
 
-# ADR-0030: Local state lives in `.worldbuilder/` files, owned by `packages/local-state`
+# ADR-0030: Local state lives in files in the per-user state directory, owned by `packages/local-state`
 
 ## Context and Problem Statement
 
@@ -26,25 +26,46 @@ in which format, and which package owns it?
 ## Considered Options
 
 - Store local state as extra fields or cards in the user's card store
-- Local files under `.worldbuilder/`, owned by a dedicated package behind a core interface (chosen)
-- An embedded database (for example SQLite) under `.worldbuilder/`
+- Local files in a per-user state directory, owned by a dedicated package behind a core interface (chosen)
+- An embedded database (for example SQLite) in the state directory
 
 ## Decision Outcome
 
-Chosen option: "Local files under `.worldbuilder/`, owned by a dedicated package behind a core
-interface", because it keeps local state out of every shared store, stays readable as plain
-files and needs no new runtime dependency.
+Chosen option: "Local files in a per-user state directory, owned by a dedicated package behind
+a core interface", because it keeps local state out of every shared store, stays readable as
+plain files and needs no new runtime dependency.
+
+### Location
+
+The state directory (written `<state>` below) is, by default, the per-user operating-system
+state directory:
+
+| Operating system | Default `<state>` |
+| --- | --- |
+| Linux and other XDG systems | `$XDG_STATE_HOME/worldbuilder` (falling back to `~/.local/state/worldbuilder`) |
+| Windows | `%LOCALAPPDATA%\Worldbuilder` |
+| macOS | `~/Library/Application Support/Worldbuilder` |
+
+- The user may configure another path explicitly.
+- The service refuses to start if `<state>` resolves (after following symbolic links) inside any
+  configured store root or inside a Git working tree, so local state cannot end up in a synced
+  store or a commit.
+- `.worldbuilder/` stays in `.gitignore` as a second line of defence
+  ([ADR-0022](0022-public-hygiene.md)). This refines the `.worldbuilder/stances/` location of
+  [ADR-0008](0008-believed-as-private-stance.md): stances live in `<state>/stances/`.
+
+### Layout
 
 | What | Path | Format |
 | --- | --- | --- |
-| Proposals | `.worldbuilder/proposals/<ulid>.json` | one JSON file per proposal, validated against the Proposal schema |
-| Stances | `.worldbuilder/stances/` | one file per card with the current stance and its previous versions ([ADR-0008](0008-believed-as-private-stance.md)) |
-| Gate decision log | `.worldbuilder/gate-log.jsonl` | append-only JSON Lines: card id, target, decision, reason, time; never card content |
-| Gate rules | `.worldbuilder/gate-rules.yaml` | the rule language of [ADR-0031](0031-gate-rules-and-confirmation-binding.md) |
+| Proposals | `<state>/proposals/<ulid>.json` | one JSON file per proposal, validated against the Proposal schema |
+| Stances | `<state>/stances/` | one file per card with the current stance and its previous versions ([ADR-0008](0008-believed-as-private-stance.md)) |
+| Gate decision log | `<state>/gate-log.jsonl` | append-only JSON Lines: card id, target, decision, reason, time; never card content |
+| Gate rules | `<state>/gate-rules.yaml` | the rule language of [ADR-0031](0031-gate-rules-and-confirmation-binding.md) |
 
-- All of it is files, local only, and excluded by `.gitignore` (`.worldbuilder/` is already
-  listed, [ADR-0022](0022-public-hygiene.md)). None of it is ever sent to a model, exported or
-  shared.
+### Ownership
+
+- All of it is files and local only. None of it is ever sent to a model, exported or shared.
 - A new Apache-2.0 package `packages/local-state` implements the access. `core` defines the
   interface it implements (for example `LocalStateStore`), so `core` keeps no I/O and the
   package can be replaced.
@@ -66,7 +87,10 @@ files and needs no new runtime dependency.
 
 ### Confirmation
 
-Tests (M1): proposals, stances and gate decisions are written only under `.worldbuilder/`; the
+Tests (M1): proposals, stances and gate decisions are written only under `<state>`; the default
+`<state>` resolves to the per-OS directory above on each CI operating system; the service refuses
+to start when `<state>` is configured inside a store root or a Git working tree (also through a
+symbolic link); the
 gate log contains no card text (fixture with a marker string that must not appear); the stance
 endpoint rejects agent tokens; no MCP tool reads or writes stances; `packages/local-state`
 imports no AGPL package.
@@ -79,9 +103,9 @@ imports no AGPL package.
 - Bad, because stances and logs would travel with shared stores, contradicting ADR-0008 and
   ADR-0012.
 
-### Files under `.worldbuilder/` behind a core interface
+### Files in a per-user state directory behind a core interface
 
-- Good, because private by location and readable.
+- Good, because private by location, outside every store and repository, and readable.
 - Bad, because file-per-object scaling limits.
 
 ### Embedded database

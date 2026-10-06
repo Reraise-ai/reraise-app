@@ -39,14 +39,22 @@ writer.
   `core`, one disclosure gate and one adapter instance per store.
 - The service binds to `127.0.0.1` by default ([ADR-0026](0026-security-defaults.md)). `/mcp`
   requires an agent bearer token; human-only endpoints require the human session token.
+- `/mcp` validates the `Origin` and `Host` headers and rejects requests whose host is not the
+  configured bind host or whose origin is not allowed, as a defence against DNS rebinding from a
+  browser.
 - MCP clients that only support stdio use a thin bridge command, `worldbuilder mcp --stdio`.
   The bridge forwards MCP messages between stdio and the running service's `/mcp` endpoint,
-  using the agent token configured for that bridge process.
+  including the `Mcp-Session-Id` header and server-initiated streams, using the agent token
+  configured for that bridge process.
+- The bridge reads its agent token from an environment variable or from a token file, never
+  from a command-line argument, so the token does not appear in process listings or shell
+  history.
 - The bridge holds no state, never opens a store, never writes files and never evaluates the
   gate. If the service is not running, the bridge fails with a clear error; it does not start a
   second writer.
 - The MCP tool implementations live in `packages/mcp-server` (AGPL-3.0-or-later) and are
-  mounted by the service; the bridge command ships with the same package.
+  mounted by the service. The `worldbuilder` command line, including `mcp --stdio`, is the
+  package binary of `services/api` (AGPL-3.0-or-later), which also starts the service.
 
 ### Consequences
 
@@ -59,8 +67,10 @@ writer.
 ### Confirmation
 
 Integration tests (M1): an MCP call through the bridge and the same call over `/mcp` return the
-same result; the bridge opens no file (checked with a read-only temporary working directory);
-`/mcp` without an agent token is rejected; the service binds `127.0.0.1` by default.
+same result; with spies on the file-system module, the bridge performs no file write and opens
+no store or state file (reading its token file is the only allowed read); the bridge relays
+`Mcp-Session-Id` and a server-initiated stream; `/mcp` without an agent token, with a foreign
+`Host` or with a disallowed `Origin` is rejected; the service binds `127.0.0.1` by default.
 
 ## Pros and Cons of the Options
 
