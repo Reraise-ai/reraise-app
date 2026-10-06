@@ -46,8 +46,10 @@ documented in `docs/reference/`:
 | `ModelConnector` | Send a gate-cleared context package or a level-1 request to a model and return the answer as a proposal or typed level-1 result | no direct writes |
 | `DisclosureGate` | `decide(card, target)` before anything leaves the screen ([ADR-0012](0012-disclosure-gate.md)) | no |
 
-- Reference-by-URI: every card has a product `id` (ULID) and may carry
-  `externalId` and `uri` pointing to its home system. Cards are referenced,
+- Reference-by-URI: every card has a canonical `id` (ULID), an
+  `externalId` (its id in the home store) and a `uri`
+  (`wb:<storeInstanceId>/<externalId>`) pointing to its home system,
+  as defined in [ADR-0023](0023-core-domain-model.md). Cards are referenced,
   never copied, between worlds and between systems.
 - `StorageAdapter.create` returns the canonical id, and updates are
   patches that leave all other store content verbatim

@@ -56,6 +56,9 @@ a news claim in the same world, and default deny fails safe.
   and, for `cloud_model`, the per-transfer confirmation.
 - Every egress path calls the gate: context packages, `ModelConnector`
   calls (including the level-1 Jev connector), MCP responses and exports.
+  Egress always serialises canonical objects after the gate decision,
+  never raw store files, so store fields outside the canonical model
+  cannot leak.
 - Exports (training export, any file export meant to leave the device) are
   decided under `cloud_model` semantics: allow rule required per card plus
   a per-export confirmation listing what is exported.

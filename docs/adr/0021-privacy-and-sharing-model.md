@@ -43,7 +43,9 @@ Privacy rules (binding now):
 - A shared card carries content and provenance only. The user's stance
   data (the conclusions of [ADR-0012](0012-disclosure-gate.md)) never
   leaves the device
-  ([ADR-0008](0008-believed-as-private-stance.md)).
+  ([ADR-0008](0008-believed-as-private-stance.md)). Reading the owner's
+  word "conclusions" as stance data is a CTO interpretation pending owner
+  confirmation.
 - Users explicitly unlock what they share and how; the disclosure gate
   enforces it ([ADR-0012](0012-disclosure-gate.md)).
 - Private exchange between users is peer-to-peer and end-to-end

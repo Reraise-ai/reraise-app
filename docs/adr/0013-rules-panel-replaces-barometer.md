@@ -45,8 +45,10 @@ right now, and why" without the system taking a position.
 - Conditions may reference the user's own stances. When `rules_evaluate`
   answers a non-screen target (an MCP client or model,
   [ADR-0012](0012-disclosure-gate.md)):
-  - rules with any stance-dependent condition are omitted entirely; the
-    result only reports their number as `withheld: n`;
+  - rules with any stance-dependent condition, or with a condition that
+    references a card not cleared by the gate for that target, are
+    omitted entirely; the result only reports their number as
+    `withheld: n`;
   - for every other rule it returns the rule id, `fired`, and the
     triggering card ids filtered by the gate for that target;
   - the rule text (`when`, `then`, `unless`) is included only if the rule
