@@ -46,7 +46,8 @@ the adapter interfaces while keeping the application open when hosted.
   `LICENSE`; the root `LICENSE` points to `LICENSING.md`, which explains
   the split.
 - Every source file starts with an SPDX header
-  (`SPDX-License-Identifier: Apache-2.0` or `AGPL-3.0-or-later`), REUSE
+  (an `SPDX-License-Identifier` tag naming `Apache-2.0` or
+  `AGPL-3.0-or-later`), REUSE
   style. Copyright line: "Copyright The Worldbuilder contributors".
 - Contributions require a Developer Certificate of Origin sign-off
   (`git commit -s`); there is no CLA.
