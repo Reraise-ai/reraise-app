@@ -37,8 +37,15 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov'],
-      include: ['packages/core/src/**/*.ts'],
-      exclude: ['**/*.test.ts', 'packages/core/src/generated/**'],
+      include: [
+        'packages/core/src/**/*.ts',
+        'packages/adapters/storage-markdown-files/src/**/*.ts',
+      ],
+      exclude: [
+        '**/*.test.ts',
+        'packages/core/src/generated/**',
+        'packages/adapters/storage-markdown-files/src/testing/**',
+      ],
       thresholds: {
         lines: 90,
         functions: 90,
