@@ -44,6 +44,31 @@ Milestone M0 is in progress. Its done criteria come from the [roadmap](./roadmap
 | M1-02 | The reference `markdown-files` adapter passes the conformance kit | `packages/conformance` (planned) | `conformance` (planned) | not started |
 | M1-03 | The first release waits until M1 passes on all three operating systems | release checklist | release workflow (planned) | not started |
 
+## Checks promised by the ADRs
+
+These are the automated checks the [ADRs](./adr/README.md) commit to. "Passing" means the check
+exists today with a test and runs in a CI job in `.github/workflows/ci.yml`. Everything else is
+not started, and the status says so.
+
+| ID | Promise | ADR | Test or script | CI job | Status |
+| --- | --- | --- | --- | --- | --- |
+| ADR-C01 | Every source file has an SPDX header matching its licence tier (Apache-2.0 or AGPL-3.0-or-later) | [0004](./adr/0004-two-tier-licensing.md) | `scripts/check-spdx.mjs`, tested by `scripts/check-spdx.test.mjs` | `checks` (`pnpm check:spdx`, plus `pnpm test:coverage` for the test) | passing locally, CI run pending first push |
+| ADR-C02 | No real data: IBAN, tax-ID, passport-like, e-mail outside the allow-list, private IP, unmarked data files | [0022](./adr/0022-public-hygiene.md) | `scripts/check-no-real-data.mjs`, tested by `scripts/check-no-real-data.test.mjs` | `checks` (`pnpm check:no-real-data`) | passing locally, CI run pending first push |
+| ADR-C03 | Secret scanning of the full git history | [0022](./adr/0022-public-hygiene.md) | no test file: a pinned gitleaks CLI in the workflow | `gitleaks` | in progress: job exists, CI run pending first push |
+| ADR-C04 | REUSE compliance (licence and copyright annotations for every file) | [0004](./adr/0004-two-tier-licensing.md) | `reuse lint` (pinned version) | `reuse` | in progress: job exists, CI run pending first push |
+| ADR-C05 | JSON Schemas validate valid and invalid synthetic examples | [0023](./adr/0023-core-domain-model.md) | `scripts/validate-schemas.mjs`, tested by `scripts/validate-schemas.test.mjs`. The schemas and examples themselves are not written yet. | `checks` (`pnpm validate:schemas`) | in progress: validator exists, schemas and examples do not |
+| ADR-C06 | Dependency audit at high severity | [0025](./adr/0025-engineering-process-and-quality-gates.md) | `pnpm audit --audit-level high` | `audit` | in progress: job exists, CI run pending first push |
+| ADR-C07 | Apache-licensed packages never import AGPL-licensed packages | [0003](./adr/0003-typescript-monorepo-stack.md), [0004](./adr/0004-two-tier-licensing.md) | not written | not defined | not started |
+| ADR-C08 | DCO sign-off on every commit and Conventional Commit titles | [0025](./adr/0025-engineering-process-and-quality-gates.md) | not written | not defined | not started |
+| ADR-C09 | No hex colours or hard-coded fonts in `apps/board` (design tokens only) | [0019](./adr/0019-design-tokens-and-board-canvas.md) | not written | not defined | not started |
+| ADR-C10 | MCP tools and HTTP Board API stay in parity | [0016](./adr/0016-mcp-first-and-openapi-contracts.md) | not written | not defined | not started |
+| ADR-C11 | Markdown lint and link check | [0025](./adr/0025-engineering-process-and-quality-gates.md) | the docs build fails on dead links (`ignoreDeadLinks: false`). A separate markdown lint is not set up. | `docs` | in progress: link check only |
+| ADR-C12 | `rules_evaluate` result has no numeric score field | [0013](./adr/0013-rules-panel-replaces-barometer.md) | not written (needs the schema) | not defined | not started |
+| ADR-C13 | Default deny for every target and stances denied except for `screen` | [0012](./adr/0012-disclosure-gate.md) | not written | not defined | not started |
+| ADR-C14 | MCP has no writing tool except `proposal_create`; accept and reject reject agent credentials | [0011](./adr/0011-agent-moves-are-proposals.md), [0026](./adr/0026-security-defaults.md) | not written | not defined | not started |
+| ADR-C15 | Default bind address is loopback | [0026](./adr/0026-security-defaults.md) | not written | not defined | not started |
+| ADR-C16 | A decision without `training: true` produces no training trace | [0017](./adr/0017-decision-card-and-training-export.md) | not written | not defined | not started |
+
 ## Acceptance criteria
 
 These come from the [roadmap](./roadmap.md#mvp-critical-acceptance-criteria). "Milestone" is
