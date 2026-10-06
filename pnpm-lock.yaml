@@ -14,6 +14,9 @@ importers:
       '@eslint/js':
         specifier: ^9.39.5
         version: 9.39.5
+      '@redocly/cli':
+        specifier: ^2.58.1
+        version: 2.58.1
       '@testing-library/react':
         specifier: ^16.3.3
         version: 16.3.3(@testing-library/dom@10.4.2)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -593,6 +596,11 @@ packages:
 
   '@pinojs/redact@0.4.0':
     resolution: {integrity: sha512-k2ENnmBugE/rzQfEcdWHcCY+/FM3VLzH9cYEsbdsoqrvzAKRhUZeRNhAZvB8OitQJ1TBed3yqWtdjzS6wJKBwg==}
+
+  '@redocly/cli@2.58.1':
+    resolution: {integrity: sha512-4il9drzgTc+sudGS8QrTy3rU5xb4dPi+m//9CzbDLerkGAahViKuYxbAwG/T52vubzAM7nEdRinQqwhSFYHySQ==}
+    engines: {node: '>=22.12.0 || >=20.19.0 <21.0.0', npm: '>=10'}
+    hasBin: true
 
   '@rolldown/binding-android-arm-eabi@1.2.12':
     resolution: {integrity: sha512-dB/a1214qKfHMXCpgqR4OZT+jS4kTyEXbQGJPqzobt5EwH5rX080pxE37alt3RzvR1bf1Yz/yGqRfrYAxuPw0A==}
@@ -3033,6 +3041,8 @@ snapshots:
   '@oxc-project/types@0.152.0': {}
 
   '@pinojs/redact@0.4.0': {}
+
+  '@redocly/cli@2.58.1': {}
 
   '@rolldown/binding-android-arm-eabi@1.2.12':
     optional: true

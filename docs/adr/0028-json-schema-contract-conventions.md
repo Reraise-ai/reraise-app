@@ -50,6 +50,7 @@ the contracts free of `$schema` and `synthetic` members that only tests need.
   Ids are identifiers, never fetched. When the project owns a domain, a new ADR moves them.
 - `v0` is the pre-release contract version. Until `v0.1.0` changes stay in `v0` and each
   needs an ADR; after it, a breaking change creates `v1` ids next to `v0`.
+- A fixture may name a definition inside a schema as `<$id>#/$defs/<name>`.
 - Every schema compiles under Ajv strict mode. `required` names that a schema declares
   through a `$ref` are listed with `true` in its own `properties`.
 
@@ -109,6 +110,30 @@ In addition to [ADR-0023](0023-core-domain-model.md) and
 | [0016](0016-mcp-first-and-openapi-contracts.md) | Request objects (`ContextPackageRequest`, `RulesEvaluateRequest`, `ProposalCreate`) take no target and no author: both come from the caller's registered connection. |
 | [0017](0017-decision-card-and-training-export.md) | A training record names no card that did not opt in, not even by id: the decision lists in `cardsUsed` only opted-in cards, and a trace whose decision would keep no used card is not exported, because `cardsUsed` is never empty. The Lage is exported only if the Lage card itself has `training: true`; its placements and edges are filtered to opted-in cards, and a brainstorm proposal touching any other card is dropped entirely. Decision and Lage cards are exported without their Markdown `body`, which repeats card ids; their structured sections carry the content. |
 | [0018](0018-multidimensional-source-profile.md) | Dimension values are in [0, 1]; a value is required when `n` ≥ 1 and forbidden when `n` = 0; `minimumN` is part of the profile. |
+
+### Board API, MCP tools and adapter interfaces
+
+- `api.schema.json` holds the tool inputs and outputs that are not domain objects (requests,
+  pages, the RFC 9457 error). `finding.schema.json` is the `SourceConnector` result
+  ([ADR-0014](0014-no-ingestion-inbox-of-findings.md)); `decision.schema.json#/$defs/draft`
+  is the body of the human-only decision create operation.
+- `schemas/openapi/board-api.yaml` (OpenAPI 3.1) references the JSON Schemas by relative
+  path. Each operation that mirrors an MCP tool has the tool name as `operationId`; a query
+  or path parameter references the property of the tool's input schema
+  (`…Request/properties/<name>`), a body references the input schema itself. A parity test
+  in `packages/mcp-server` proves this for every tool.
+- Security schemes ([ADR-0026](0026-security-defaults.md)): `sessionToken` (header
+  `X-Worldbuilder-Session`, the board's random session token) and `agentToken` (bearer token
+  of one registered agent connection). Mirrored operations accept both; operations marked
+  `x-human-only: true` accept only `sessionToken` and answer 403 to agent tokens. They are
+  proposal accept and reject, Lage save, decision create and save, and the disclosure
+  transfer view and confirm.
+- MCP tools (`packages/mcp-server/src/tools.ts`) reference the schemas by `$id`; the MCP
+  annotation `readOnlyHint` is false only for `proposal_create`.
+- The adapter interfaces live in `packages/core/src/adapters/`; `packages/conformance`
+  provides `describeStorageAdapterConformance` and `describeDisclosureGateConformance`.
+  `deriveCardId` and `buildUri` in `packages/core` implement the identity rules of
+  [ADR-0023](0023-core-domain-model.md).
 
 ### Generated types
 

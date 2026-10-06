@@ -1,0 +1,536 @@
+openapi: 3.1.0
+info:
+  title: The Worldbuilder Board API
+  version: 0.0.0
+  summary: HTTP contract of the board, mirroring the MCP tools plus human-only operations.
+  description: |
+    Contract-first HTTP API of The Worldbuilder (ADR-0016). Every operation that mirrors an
+    MCP tool has the tool's name as `operationId` and uses the same JSON Schemas for input and
+    output; a parity test enforces this. Operations marked `x-human-only: true` accept only the
+    human session token: agent tokens are rejected with 403 (ADR-0011, ADR-0026).
+
+    The server binds to loopback by default. Every response passes the disclosure gate for the
+    caller's registered target; denied cards are omitted (ADR-0012). The disclosure target and
+    the agent identity come from the credential, never from a request body.
+  license:
+    name: Apache-2.0
+    identifier: Apache-2.0
+servers:
+  - url: http://127.0.0.1:4310
+    description: Default local binding (loopback only).
+security:
+  - sessionToken: []
+  - agentToken: []
+tags:
+  - name: world
+    description: Read the active world. Mirrors MCP tools.
+  - name: proposals
+    description: Agent proposals; proposal_create is the only agent write path.
+  - name: human-only
+    description: Operations only the human session may call.
+paths:
+  /worlds:
+    get:
+      operationId: world_list
+      summary: List worlds
+      tags: [world]
+      responses:
+        '200':
+          description: The worlds of the store.
+          content:
+            application/json:
+              schema:
+                $ref: '../api.schema.json#/$defs/worldList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /lagen/{lageId}:
+    parameters:
+      - name: lageId
+        in: path
+        required: true
+        schema:
+          $ref: '../api.schema.json#/$defs/lageGetRequest/properties/lageId'
+    get:
+      operationId: lage_get
+      summary: Get a Lage (a card of type lage with its board state)
+      tags: [world]
+      responses:
+        '200':
+          description: The Lage card.
+          content:
+            application/json:
+              schema:
+                $ref: '../card.schema.json'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      operationId: lage_save
+      summary: Save a new version of a Lage's board state
+      description: >-
+        Human-only. The body's `version` must be the stored version plus one (optimistic
+        concurrency); the previous version is archived, nothing is deleted (ADR-0006).
+      tags: [human-only]
+      x-human-only: true
+      security:
+        - sessionToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../lage.schema.json'
+      responses:
+        '200':
+          description: The saved Lage card.
+          content:
+            application/json:
+              schema:
+                $ref: '../card.schema.json'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/HumanOnly'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /cards:
+    get:
+      operationId: cards_search
+      summary: Search cards
+      tags: [world]
+      parameters:
+        - name: worldId
+          in: query
+          schema:
+            $ref: '../api.schema.json#/$defs/cardsSearchRequest/properties/worldId'
+        - name: text
+          in: query
+          schema:
+            $ref: '../api.schema.json#/$defs/cardsSearchRequest/properties/text'
+        - name: type
+          in: query
+          schema:
+            $ref: '../api.schema.json#/$defs/cardsSearchRequest/properties/type'
+        - name: layer
+          in: query
+          schema:
+            $ref: '../api.schema.json#/$defs/cardsSearchRequest/properties/layer'
+        - name: limit
+          in: query
+          schema:
+            $ref: '../api.schema.json#/$defs/cardsSearchRequest/properties/limit'
+        - name: cursor
+          in: query
+          schema:
+            $ref: '../api.schema.json#/$defs/cardsSearchRequest/properties/cursor'
+      responses:
+        '200':
+          description: Gate-cleared matching cards.
+          content:
+            application/json:
+              schema:
+                $ref: '../api.schema.json#/$defs/cardPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /cards/{cardId}:
+    get:
+      operationId: card_get
+      summary: Get one card
+      tags: [world]
+      parameters:
+        - name: cardId
+          in: path
+          required: true
+          schema:
+            $ref: '../api.schema.json#/$defs/cardGetRequest/properties/cardId'
+      responses:
+        '200':
+          description: The card, if the gate allows it for the caller.
+          content:
+            application/json:
+              schema:
+                $ref: '../card.schema.json'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /context-packages:
+    post:
+      operationId: context_package_get
+      summary: Build a context package
+      description: >-
+        Builds a gate-cleared context package for the caller's target. No side effects. A
+        cloud_model package needs a confirmed transfer (see disclosure_confirm).
+      tags: [world]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../context-package.schema.json#/$defs/request'
+      responses:
+        '200':
+          description: The context package.
+          content:
+            application/json:
+              schema:
+                $ref: '../context-package.schema.json'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /rules/evaluate:
+    post:
+      operationId: rules_evaluate
+      summary: Evaluate the user's rules on a Lage
+      description: >-
+        Lists which rules fire and why; never a percentage or recommendation (ADR-0013). No side
+        effects.
+      tags: [world]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../rule-evaluation.schema.json#/$defs/request'
+      responses:
+        '200':
+          description: The rule evaluation for the caller's target.
+          content:
+            application/json:
+              schema:
+                $ref: '../rule-evaluation.schema.json'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /proposals:
+    get:
+      operationId: proposal_list
+      summary: List proposals
+      tags: [proposals]
+      parameters:
+        - name: status
+          in: query
+          schema:
+            $ref: '../api.schema.json#/$defs/proposalListRequest/properties/status'
+        - name: lageId
+          in: query
+          schema:
+            $ref: '../api.schema.json#/$defs/proposalListRequest/properties/lageId'
+        - name: limit
+          in: query
+          schema:
+            $ref: '../api.schema.json#/$defs/proposalListRequest/properties/limit'
+        - name: cursor
+          in: query
+          schema:
+            $ref: '../api.schema.json#/$defs/proposalListRequest/properties/cursor'
+      responses:
+        '200':
+          description: Proposals, newest first.
+          content:
+            application/json:
+              schema:
+                $ref: '../api.schema.json#/$defs/proposalPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      operationId: proposal_create
+      summary: Propose a move (the only agent write path)
+      description: >-
+        Creates a pending proposal. The server sets `id`, `author` (from the agent token),
+        `status` and `createdAt`. Nothing proposed counts until a human accepts it (ADR-0011).
+      tags: [proposals]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../proposal.schema.json#/$defs/create'
+      responses:
+        '201':
+          description: The pending proposal.
+          content:
+            application/json:
+              schema:
+                $ref: '../proposal.schema.json'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '413':
+          $ref: '#/components/responses/TooLarge'
+  /proposals/{proposalId}/accept:
+    parameters:
+      - $ref: '#/components/parameters/proposalId'
+    post:
+      operationId: proposal_accept
+      summary: Accept a proposal
+      description: Human-only. Writes the change through the StorageAdapter; authorship stays with the agent.
+      tags: [human-only]
+      x-human-only: true
+      security:
+        - sessionToken: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../proposal.schema.json#/$defs/decide'
+      responses:
+        '200':
+          description: The accepted proposal.
+          content:
+            application/json:
+              schema:
+                $ref: '../proposal.schema.json'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/HumanOnly'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /proposals/{proposalId}/reject:
+    parameters:
+      - $ref: '#/components/parameters/proposalId'
+    post:
+      operationId: proposal_reject
+      summary: Reject a proposal
+      description: Human-only.
+      tags: [human-only]
+      x-human-only: true
+      security:
+        - sessionToken: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../proposal.schema.json#/$defs/decide'
+      responses:
+        '200':
+          description: The rejected proposal.
+          content:
+            application/json:
+              schema:
+                $ref: '../proposal.schema.json'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/HumanOnly'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /decisions:
+    post:
+      operationId: decision_create
+      summary: Save a new decision card
+      description: Human-only. Returns the decision with the id assigned by the store.
+      tags: [human-only]
+      x-human-only: true
+      security:
+        - sessionToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../decision.schema.json#/$defs/draft'
+      responses:
+        '201':
+          description: The saved decision card.
+          content:
+            application/json:
+              schema:
+                $ref: '../decision.schema.json'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/HumanOnly'
+  /decisions/{cardId}:
+    put:
+      operationId: decision_save
+      summary: Save changes to a decision card
+      description: Human-only. Written as a patch; store fields the product does not own stay verbatim.
+      tags: [human-only]
+      x-human-only: true
+      security:
+        - sessionToken: []
+      parameters:
+        - name: cardId
+          in: path
+          required: true
+          schema:
+            $ref: '../common.schema.json#/$defs/cardId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../decision.schema.json'
+      responses:
+        '200':
+          description: The saved decision card.
+          content:
+            application/json:
+              schema:
+                $ref: '../decision.schema.json'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/HumanOnly'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /disclosure/transfers/{transferId}:
+    parameters:
+      - $ref: '#/components/parameters/transferId'
+    get:
+      operationId: disclosure_transfer_get
+      summary: Show a pending cloud transfer
+      description: Human-only. Lists exactly which cards would be sent (ADR-0012).
+      tags: [human-only]
+      x-human-only: true
+      security:
+        - sessionToken: []
+      responses:
+        '200':
+          description: The pending transfer.
+          content:
+            application/json:
+              schema:
+                $ref: '../disclosure-decision.schema.json#/$defs/transfer'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/HumanOnly'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /disclosure/transfers/{transferId}/confirm:
+    parameters:
+      - $ref: '#/components/parameters/transferId'
+    post:
+      operationId: disclosure_confirm
+      summary: Confirm one cloud transfer
+      description: >-
+        Human-only. Confirms exactly the listed cards of this transfer; there is no standing
+        consent (ADR-0012).
+      tags: [human-only]
+      x-human-only: true
+      security:
+        - sessionToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../disclosure-decision.schema.json#/$defs/confirmRequest'
+      responses:
+        '200':
+          description: The confirmation.
+          content:
+            application/json:
+              schema:
+                $ref: '../disclosure-decision.schema.json#/$defs/confirmation'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/HumanOnly'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+components:
+  securitySchemes:
+    sessionToken:
+      type: apiKey
+      in: header
+      name: X-Worldbuilder-Session
+      description: >-
+        Random session token of the local board UI, created at start (ADR-0026). The only
+        credential accepted by human-only operations.
+    agentToken:
+      type: http
+      scheme: bearer
+      description: >-
+        Bearer token of one registered agent connection. It identifies the agent
+        (`agent:<name>`) and its disclosure target class (ADR-0012, ADR-0026). Rejected with 403
+        by every operation marked `x-human-only`.
+  parameters:
+    proposalId:
+      name: proposalId
+      in: path
+      required: true
+      schema:
+        $ref: '../common.schema.json#/$defs/ulid'
+    transferId:
+      name: transferId
+      in: path
+      required: true
+      schema:
+        $ref: '../common.schema.json#/$defs/ulid'
+  responses:
+    BadRequest:
+      description: Schema-invalid input.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '../api.schema.json#/$defs/problem'
+    Unauthorized:
+      description: Missing or unknown credential.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '../api.schema.json#/$defs/problem'
+    Forbidden:
+      description: The caller's target may not receive this (for example an unconfirmed cloud transfer).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '../api.schema.json#/$defs/problem'
+    HumanOnly:
+      description: Human-only operation called with an agent token.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '../api.schema.json#/$defs/problem'
+    NotFound:
+      description: Unknown id, or not visible to the caller.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '../api.schema.json#/$defs/problem'
+    Conflict:
+      description: Version conflict or a proposal that is already decided.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '../api.schema.json#/$defs/problem'
+    TooLarge:
+      description: Input exceeds the size limit.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '../api.schema.json#/$defs/problem'

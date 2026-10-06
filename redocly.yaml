@@ -1,0 +1,12 @@
+# Redocly CLI configuration for `pnpm lint:openapi` (ADR-0016).
+extends:
+  - recommended-strict
+rules:
+  # Servers are loopback by default (ADR-0026); localhost URLs are intended.
+  no-server-example.com: error
+  operation-4xx-response: error
+  operation-operationId: error
+  operation-summary: error
+  security-defined: error
+  no-unused-components: error
+  info-license: error

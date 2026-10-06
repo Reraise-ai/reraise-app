@@ -36,7 +36,8 @@ names, not addresses, and nothing fetches them. `v0` is the pre-release contract
 ## Fixtures
 
 `fixtures/valid/` and `fixtures/invalid/` hold envelopes
-`{ "schema": "<$id>", "description", "data" }`; an invalid fixture adds
+`{ "schema": "<$id>", "description", "data" }` (the schema may name a definition as
+`<$id>#/$defs/<name>`); an invalid fixture adds
 `"expect": { "keyword", "instancePath" }`, the Ajv error it must produce. The example worlds
 in [`examples/`](../examples/README.md) are valid cases too.
 
