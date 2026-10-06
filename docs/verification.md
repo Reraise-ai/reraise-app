@@ -110,4 +110,4 @@ the milestone in which the criterion is first expected to be demonstrated.
 | AC-30 | A source pass is available on every card, seat, edge and decision. | M2+ | not yet written | not yet defined | not started |
 | AC-31 | Provenance is mandatory for players, moves, assumptions and decisions, and imported cards keep their original provenance. | M2+ | not yet written | not yet defined | not started |
 | AC-32 | The project exists as its own repository with CI. | M0 | not yet written | not yet defined | in progress |
-| AC-33 | UX and architecture are separate documents with the links between them written down. | M0 | not yet written | not yet defined | in progress |
+| AC-33 | UX and architecture are separate documents with the links between them written down. | M0 | link table in `docs/architecture/index.md`; dead links and anchors fail `pnpm docs:build` and `pnpm check:doc-anchors` | `build` in `docs.yml` | in progress (passes locally; no CI run yet) |
