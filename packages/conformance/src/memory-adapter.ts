@@ -27,6 +27,11 @@ import type {
 } from '@worldbuilder/core';
 import { buildUri, computeContentHash, deriveCardId, encodeUlid } from '@worldbuilder/core';
 import type { StorageAdapterHarness } from './storage.js';
+import { schemaValidator } from './validate.js';
+
+const validateDraft = schemaValidator(
+  'https://worldbuilder.invalid/schemas/v0/card.schema.json#/$defs/draft',
+);
 
 /** Canonical card fields the fake understands; everything else is a foreign store field. */
 const CONTENT_FIELDS = new Set([
@@ -63,7 +68,7 @@ const CONTENT_FIELDS = new Set([
   'sections',
   'rule',
 ]);
-const NOT_PATCHABLE = new Set(['format', 'contentHash']);
+const NOT_PATCHABLE = new Set(['format', 'author', 'contentHash']);
 const FORMAT_2_FIELDS = [
   'layer',
   'worlds',
@@ -100,10 +105,18 @@ export class MemoryStore {
   nextExternalId(): string {
     this.counter++;
     if (this.ids === 'derived') return `c-${this.counter}`;
-    const bytes = new Uint8Array(16);
-    crypto.getRandomValues(bytes);
-    bytes[0] = bytes[0]! & 0x7f; // keep inside the ULID range
-    return encodeUlid(bytes);
+    // 128 random bits always encode below 2^128, the ULID range.
+    return encodeUlid(crypto.getRandomValues(new Uint8Array(16)));
+  }
+
+  /** A copy of the whole store, as if its files were moved to another machine or folder. */
+  copy(): MemoryStore {
+    const other = new MemoryStore(this.storeInstanceId, this.ids);
+    for (const [k, v] of this.cards) other.cards.set(k, { lines: [...v.lines] });
+    for (const [k, v] of this.archive) other.archive.set(k, structuredClone(v));
+    other.worlds.push(...structuredClone(this.worlds));
+    other.counter = this.counter;
+    return other;
   }
 
   /** Write raw lines directly, as another tool would. Returns the canonical id. */
@@ -207,9 +220,9 @@ export class MemoryStorageAdapter implements StorageAdapter {
   }
 
   async create(draft: CardDraft, author: KnownAuthor): Promise<CardId> {
-    const forbidden = ['id', 'externalId', 'uri', 'author'].filter((k) => k in draft);
-    if (forbidden.length > 0) throw new Error(`a draft must not set ${forbidden.join(', ')}`);
-    this.assertKnown(Object.keys(draft));
+    if (!validateDraft(draft)) {
+      throw new Error(`invalid card draft: ${JSON.stringify(validateDraft.errors)}`);
+    }
     // A draft's contentHash is not stored: the hash is recomputed on every read.
     const content: Record<string, unknown> = { ...draft, author };
     delete content['contentHash'];
@@ -307,6 +320,7 @@ export function memoryHarness(ids: StorageCapabilities['ids'] = 'native'): Stora
   return {
     adapter: new MemoryStorageAdapter(store),
     reopen: async () => new MemoryStorageAdapter(store),
+    relocate: async () => new MemoryStorageAdapter(store.copy()),
     raw: async (id) => {
       const externalId = store.externalIdOf(id);
       const stored = externalId === undefined ? undefined : store.cards.get(externalId);
@@ -336,6 +350,19 @@ export function memoryHarness(ids: StorageCapabilities['ids'] = 'native'): Stora
           [LEGACY_BELIEVED]: true,
           [LEGACY_ASSESSMENT]: note,
           originSystem: 'Fake store',
+        });
+        return { id, note };
+      },
+      assessmentOnlyCard: async () => {
+        const note = 'Plausible, but the source has an interest.';
+        const id = store.seed(store.nextExternalId(), {
+          format: 2,
+          type: 'claim',
+          title: 'Assessed legacy claim',
+          layer: 'said',
+          author: 'human',
+          originSystem: 'Fake store',
+          [LEGACY_ASSESSMENT]: note,
         });
         return { id, note };
       },

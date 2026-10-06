@@ -5,17 +5,30 @@
 // Every adapter (the in-repo markdown-files adapter, the owner store's adapter, third-party
 // adapters) runs this suite in its own tests:
 //
-//   describeStorageAdapterConformance('my adapter', async () => ({ adapter, reopen, raw, seed }));
+//   describeStorageAdapterConformance('my adapter', async () => ({
+//     adapter, reopen, relocate, raw, seed,
+//   }));
 
 import type { CardDraft, CardId, StorageAdapter } from '@worldbuilder/core';
 import { computeContentHash, deriveCardId, isWbUri, parseUri } from '@worldbuilder/core';
 import { describe, expect, it } from 'vitest';
+import { schemaValidator } from './validate.js';
+
+const validateCard = schemaValidator('https://worldbuilder.invalid/schemas/v0/card.schema.json');
+
+/** Every card an adapter returns must be a valid canonical card. */
+function expectValidCard(card: unknown): void {
+  const ok = validateCard(card);
+  expect(ok, `invalid card: ${JSON.stringify(validateCard.errors)}`).toBe(true);
+}
 
 /** Direct access to the backend that the kit needs to check what was written. */
 export interface StorageAdapterHarness {
   readonly adapter: StorageAdapter;
-  /** A second adapter instance over the same store, as another process or machine sees it. */
+  /** A second adapter instance over the same store, as another process sees it. */
   reopen(): Promise<StorageAdapter>;
+  /** An adapter over a copy of the store at another location (another machine or folder). */
+  relocate(): Promise<StorageAdapter>;
   /** The stored text of a card exactly as the backend keeps it (the file for file stores). */
   raw(id: CardId): Promise<string>;
   /** Store content written behind the adapter's back, as other tools would. */
@@ -29,6 +42,11 @@ export interface StorageAdapterHarness {
      * assessment text. Adapters of stores without such fields omit it.
      */
     believedCard?(): Promise<{ id: CardId; note: string }>;
+    /**
+     * Optional: a card with only an own assessment (not believed). It maps to an undecided
+     * stance with that note (ADR-0008, ADR-0023).
+     */
+    assessmentOnlyCard?(): Promise<{ id: CardId; note: string }>;
   };
   /** How the raw text names a canonical field (default: the same name). */
   rawFieldName?(field: string): string;
@@ -125,6 +143,48 @@ export function describeStorageAdapterConformance(
       expect(await ids(other)).toEqual(await ids(adapter));
     });
 
+    it('yields the same ids and uris after the store moves to another machine or folder', async () => {
+      const { adapter, relocate, seed } = await factory();
+      await adapter.create(draft, 'human');
+      await seed.legacyCard();
+      const moved = await relocate();
+      expect(moved.storeInstanceId).toBe(adapter.storeInstanceId);
+      const pairs = async (s: StorageAdapter) =>
+        (await s.list()).items.map((c) => `${c.id} ${c.uri}`).sort();
+      expect(await pairs(moved)).toEqual(await pairs(adapter));
+    });
+
+    it('returns only valid canonical cards', async () => {
+      const { adapter, seed } = await factory();
+      await adapter.create(draft, 'human');
+      await seed.legacyCard();
+      await seed.cardWithForeignFields();
+      await seed.believedCard?.();
+      await seed.assessmentOnlyCard?.();
+      const { items } = await adapter.list();
+      for (const card of items) expectValidCard(card);
+    });
+
+    it('rejects drafts that break the provenance and identity rules', async () => {
+      const { adapter } = await factory();
+      const bad: Record<string, unknown>[] = [
+        { ...draft, source: undefined },
+        { ...draft, layer: 'evidenced', source: undefined },
+        { ...draft, id: '01M1E34QM03WVTE8T1RYS3AM18' },
+        { ...draft, author: 'human' },
+        { ...draft, collection: 'actors', interests: [{ text: 'Unsourced' }] },
+        { ...draft, interests: [{ text: 'On a claim', source: 'https://example.org/a' }] },
+      ];
+      for (const d of bad) {
+        const clean = Object.fromEntries(Object.entries(d).filter(([, v]) => v !== undefined));
+        await expect(
+          adapter.create(clean as never, 'human'),
+          JSON.stringify(clean),
+        ).rejects.toThrow();
+      }
+      expect((await adapter.list()).items).toEqual([]);
+    });
+
     it('builds every uri from the store instance id, never from a hostname or path', async () => {
       const { adapter, seed } = await factory();
       await adapter.create(draft, 'human');
@@ -183,7 +243,7 @@ export function describeStorageAdapterConformance(
       expect(await raw(id)).toBe(before);
     });
 
-    it('refuses identity and format changes', async () => {
+    it('refuses identity, format and author changes', async () => {
       const { adapter, raw, seed } = await factory();
       const id = await seed.cardWithForeignFields();
       const before = await raw(id);
@@ -191,6 +251,7 @@ export function describeStorageAdapterConformance(
         { id: '01M1E34QM03WVTE8T1RYS3AM18' },
         { uri: 'wb:x/y' },
         { format: 1 },
+        { author: 'agent:someone-else' },
       ]) {
         await expect(adapter.patch(id, patch as never)).rejects.toThrow();
       }
@@ -221,6 +282,26 @@ export function describeStorageAdapterConformance(
       expect(stance?.position).toBe('believed');
       expect(stance?.note).toBe(note);
       expect(card).not.toHaveProperty('stance');
+      expect(JSON.stringify(card), 'the own assessment never appears in the card').not.toContain(
+        note,
+      );
+      expect(await raw(id)).toBe(before);
+    });
+
+    it('maps an own assessment without belief to an undecided stance, never into the card', async (ctx) => {
+      const { adapter, raw, seed } = await factory();
+      if (!seed.assessmentOnlyCard) {
+        ctx.skip();
+        return;
+      }
+      const { id, note } = await seed.assessmentOnlyCard();
+      const before = await raw(id);
+      const card = await adapter.read(id);
+      expectValidCard(card);
+      const stance = await adapter.readLegacyStance?.(id);
+      expect(stance?.position).toBe('undecided');
+      expect(stance?.note).toBe(note);
+      expect(JSON.stringify(card)).not.toContain(note);
       expect(await raw(id)).toBe(before);
     });
 

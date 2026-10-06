@@ -45,11 +45,15 @@ export interface CardSearchQuery extends CardListQuery {
 }
 
 /**
- * The canonical fields a product change may set. Identity, format and the computed hash are
- * never patched; stance data is not a card field and can never be written (ADR-0008).
+ * The canonical fields a product change may set. Identity, format, author and the computed hash
+ * are never patched (authorship is fixed at creation, ADR-0009, ADR-0011); stance data is not a
+ * card field and can never be written (ADR-0008).
  */
 export type CardPatch = Partial<
-  Omit<CardContent, 'id' | 'externalId' | 'uri' | 'format' | 'contentHash' | 'level' | 'signature'>
+  Omit<
+    CardContent,
+    'id' | 'externalId' | 'uri' | 'format' | 'author' | 'contentHash' | 'level' | 'signature'
+  >
 >;
 
 /** Optimistic concurrency guard for a write (ADR-0006). */
@@ -85,7 +89,9 @@ export interface StorageAdapter {
 
   /**
    * Create a card and return its canonical id: minted, or derived from the store-assigned id.
-   * Callers use the returned id and never predict it. `author` comes from the caller's
+   * Callers use the returned id and never predict it. Rejects a draft that is not a valid
+   * `CardDraft` (for example an evidenced or said card without source or origin system, an
+   * unsourced player field, player fields on a non-actor, or a draft carrying id or author). `author` comes from the caller's
    * identity (a human, or the agent whose accepted proposal this is), never from the draft.
    */
   create(draft: CardDraft, author: KnownAuthor): Promise<CardId>;
