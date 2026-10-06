@@ -114,7 +114,9 @@ function readJson(file, rel, problems) {
 /** All ULIDs anywhere in `value`, except under the given keys (which hold other kinds of id). */
 function ulidsOutside(value, skipKeys, out = []) {
   if (typeof value === 'string') {
-    if (ULID_EXACT.test(value)) out.push(value);
+    // Also ids embedded in text (for example a Markdown body that lists card ids).
+    for (const m of value.matchAll(/(?<![0-9A-Z])[0-7][0-9A-HJKMNP-TV-Z]{25}(?![0-9A-Z])/g))
+      out.push(m[0]);
   } else if (Array.isArray(value)) {
     value.forEach((v) => ulidsOutside(v, skipKeys, out));
   } else if (value !== null && typeof value === 'object') {

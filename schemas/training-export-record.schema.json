@@ -15,6 +15,9 @@
         },
         {
           "$ref": "#/$defs/optedIn"
+        },
+        {
+          "$ref": "#/$defs/structuredOnly"
         }
       ]
     },
@@ -42,6 +45,9 @@
         },
         {
           "$ref": "#/$defs/lageCard"
+        },
+        {
+          "$ref": "#/$defs/structuredOnly"
         }
       ]
     },
@@ -99,6 +105,14 @@
         "lage": true
       },
       "required": ["type", "lage"]
+    },
+    "structuredOnly": {
+      "title": "TrainingStructuredCard",
+      "description": "Decision and Lage cards are exported by their structured sections only: their Markdown body repeats card ids and is left out.",
+      "type": "object",
+      "properties": {
+        "body": false
+      }
     }
   }
 }

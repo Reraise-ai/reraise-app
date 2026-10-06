@@ -778,12 +778,12 @@ export interface StoreConfig {
  */
 export interface TrainingExportRecord {
   exportedAt: DateTime;
-  decision: Decision & TrainingOptIn;
+  decision: Decision & TrainingOptIn & TrainingStructuredCard;
   usedCards: (Card & TrainingOptIn)[];
   /**
    * The Lage card, only if it has training: true, with placements and edges filtered to opted-in cards.
    */
-  lage?: Card & TrainingOptIn & TrainingLageCard;
+  lage?: Card & TrainingOptIn & TrainingLageCard & TrainingStructuredCard;
   /**
    * Accepted proposals that shaped the decision.
    */
@@ -792,6 +792,12 @@ export interface TrainingExportRecord {
 }
 export interface TrainingOptIn {
   training: true;
+}
+/**
+ * Decision and Lage cards are exported by their structured sections only: their Markdown body repeats card ids and is left out.
+ */
+export interface TrainingStructuredCard {
+  body?: never;
 }
 export interface TrainingLageCard {
   type: 'lage';
