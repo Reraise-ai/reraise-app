@@ -52,7 +52,7 @@ describe('IBAN', () => {
     ['lowercase', ibanParts.join(' ').toLowerCase()],
     ['dashes', ibanParts.join('-')],
     ['double spaces', ibanParts.join('  ')],
-    ['NBSP', ibanParts.join(' ')],
+    ['NBSP', ibanParts.join('\u00a0')],
     ['compact', ibanParts.join('')],
   ])('flags %s variants', (_name, value) => {
     expect(rules(`pay to ${value} please`)).toEqual(['iban']);

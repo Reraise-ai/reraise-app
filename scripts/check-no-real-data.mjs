@@ -24,7 +24,7 @@ const SKIP_EXT = new Set(['.png', '.jpg', '.jpeg', '.gif', '.ico', '.woff', '.wo
  */
 export const IGNORE_MARKER = 'no-real-data-ignore';
 
-const SEP = String.raw`[\s -]`;
+const SEP = String.raw`[\s\u00a0-]`;
 const EMAIL_RE = /[A-Za-z0-9._%+-]+@((?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,})\b/g;
 const IBAN_RE = new RegExp(
   String.raw`\b[A-Za-z]{2}\d{2}(?:${SEP}*[A-Za-z0-9]{4}){2,7}(?:${SEP}*[A-Za-z0-9]{1,3})?\b`,
@@ -55,12 +55,12 @@ function mod97(s) {
 
 /** Normalises case and separators (space, NBSP, dash), then applies mod-97. */
 export function isValidIban(raw) {
-  return mod97(raw.replace(/[\s -]+/g, '').toUpperCase());
+  return mod97(raw.replace(/[\s\u00a0-]+/g, '').toUpperCase());
 }
 
 /** True if the match, or any leading portion of it (over-run into following words), is an IBAN. */
 function containsIban(raw) {
-  const s = raw.replace(/[\s -]+/g, '').toUpperCase();
+  const s = raw.replace(/[\s\u00a0-]+/g, '').toUpperCase();
   for (let len = 15; len <= Math.min(34, s.length); len++) {
     if (mod97(s.slice(0, len))) return true;
   }
@@ -87,7 +87,7 @@ export function isValidTaxId(digits) {
   for (const d of first10) counts.set(d, (counts.get(d) ?? 0) + 1);
   const repeated = [...counts.values()].filter((n) => n > 1);
   if (repeated.length !== 1) return false;
-  const times = repeated[0];
+  const times = repeated[0] ?? 0;
   if (times > 3) return false;
   if (/(\d)\1\1/.test(first10)) return false;
   return taxIdCheckDigit(first10) === Number(digits[10]);
@@ -153,7 +153,7 @@ export function hasSyntheticMarker(text, ext = '.md') {
     return /^synthetic:\s*true\s*(#.*)?$/m.test(text);
   }
   const m = /^---\r?\n([\s\S]*?)\r?\n---/.exec(text);
-  return m !== null && /^synthetic:\s*true\s*$/m.test(m[1]);
+  return m !== null && /^synthetic:\s*true\s*$/m.test(m[1] ?? '');
 }
 
 function isExampleDataFile(rel) {

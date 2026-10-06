@@ -7,13 +7,13 @@
   "type": "module",
   "packageManager": "pnpm@10.28.0",
   "engines": {
-    "node": ">=22"
+    "node": ">=22 <23"
   },
   "scripts": {
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "typecheck": "pnpm -r --if-present typecheck",
+    "typecheck": "pnpm -r --if-present typecheck && tsc -p tsconfig.scripts.json",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "build": "pnpm -r --if-present build",

@@ -55,7 +55,9 @@ export function hasCopyright(content) {
 
 /** Minimal REUSE.toml reader: returns [{ paths: string[], license: string }]. */
 export function parseReuseToml(text) {
+  /** @type {{ paths: string[], license: string | null }[]} */
   const annotations = [];
+  /** @type {{ paths: string[], license: string | null } | null} */
   let current = null;
   for (const raw of text.split(/\r?\n/)) {
     const line = raw.trim();
