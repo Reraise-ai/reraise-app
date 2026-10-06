@@ -57,7 +57,7 @@ built for; a `PackageTarget`, never `share`), `generatedAt`, `generator` (`deter
   pages; Lage cards are left out (a Lage is a board, not knowledge);
 - one line per card, grouped by `type`, sorted by type, then title, then id; the line text is
   `<title> (<layer or unclassified>, <type>[, <date>])` with line breaks removed;
-- Markdown rendering: a heading per type and one bullet per line ending in a link per card id,
+- Markdown rendering: one bullet per line, in page order, ending in a link per card id,
   `[<id>](<uri or id>)`, using the card's `wb:` URI when it has one
   ([ADR-0005](0005-universal-adapter-architecture.md)); a header comment says the file is
   generated;

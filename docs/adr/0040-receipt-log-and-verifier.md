@@ -94,10 +94,10 @@ or a Markdown file whose YAML front matter holds the same keys.
 | `wrong_kind` | a knowledge slot cites a write-back receipt or the reverse |
 | `wrong_agent` | the receipt's agent is not the record's agent |
 | `wrong_task` | the receipt's `taskRef` is not the record's |
-| `unlinked` | the write-back receipt names a `consultReceiptId` other than the record's knowledge receipt |
 | `stale` | the receipt is older than the task window: before `startedAt`, or, without `startedAt`, more than `maxAgeHours` (default 24) before `completedAt` |
 | `out_of_window` | the receipt is after `completedAt`, or the write-back is before the consult |
 | `reused` | an earlier task record already cited this `receiptId` |
+| `unlinked` | the write-back receipt names a `consultReceiptId` other than the record's knowledge receipt |
 
    Times are compared with a clock-skew tolerance (default 300 seconds).
 3. A task is valid when both receipts pass. Every `result` counts: `nothing_found`,
