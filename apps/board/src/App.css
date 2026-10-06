@@ -1,0 +1,38 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* Copyright The Worldbuilder contributors */
+
+body {
+  margin: 0;
+  background: var(--wb-surface);
+  color: var(--wb-text);
+  font-family: var(--wb-font-body);
+}
+
+.wb-placeholder {
+  padding: var(--wb-space-3);
+}
+
+.wb-placeholder h1 {
+  margin: 0 0 var(--wb-space-1);
+  font-family: var(--wb-font-display);
+  color: var(--wb-accent);
+}
+
+.wb-legend {
+  display: flex;
+  gap: var(--wb-space-2);
+  padding: 0;
+  list-style: none;
+}
+
+.wb-legend [data-layer='evidenced'] {
+  color: var(--wb-color-evidenced);
+}
+
+.wb-legend [data-layer='said'] {
+  color: var(--wb-color-said);
+}
+
+.wb-legend [data-layer='experience'] {
+  color: var(--wb-text);
+}
