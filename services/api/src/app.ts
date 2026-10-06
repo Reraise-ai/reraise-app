@@ -17,7 +17,8 @@ import Fastify, {
   type FastifyReply,
   type FastifyRequest,
 } from 'fastify';
-import { safeEqual, sha256Hex, type AgentRegistry, type Principal } from './auth.js';
+import type { AgentRegistry } from './agent-registry.js';
+import { safeEqual, sha256Hex, type Principal } from './auth.js';
 import { loadOperations, validators, type Operation } from './contract.js';
 import { Disclosures } from './disclosure.js';
 import { GateService } from './gate.js';

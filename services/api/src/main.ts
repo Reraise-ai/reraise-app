@@ -9,7 +9,8 @@
 import { resolveStateDir } from '@worldbuilder/local-state';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
-import { addAgent, type AgentTarget } from './auth.js';
+import { addAgent, listAgents, removeAgent } from './agent-registry.js';
+import type { AgentTarget } from './auth.js';
 import { DEFAULT_PORT } from './app.js';
 import type { StorageAdapter } from '@worldbuilder/core';
 import { createService, type Service } from './service.js';
@@ -19,6 +20,8 @@ const USAGE = `Usage:
   worldbuilder serve --store <path> [--state <path>] [--port <n>] [--host <h>]
                      [--allow-origin <origin>]...
   worldbuilder agent add --name <name> --target local_model|cloud_model [--state <path>]
+  worldbuilder agent list [--state <path>]
+  worldbuilder agent remove --name <name> [--state <path>]
   worldbuilder mcp --stdio
 `;
 
@@ -111,22 +114,35 @@ async function serve(argv: string[], deps: MainDeps): Promise<void> {
 
 async function agent(argv: string[], deps: MainDeps): Promise<void> {
   const [sub, ...rest] = argv;
-  if (sub !== 'add') throw new UsageError('expected: agent add');
-  const { values } = parseArgs({
-    args: rest,
-    options: { name: { type: 'string' }, target: { type: 'string' }, state: { type: 'string' } },
-    strict: true,
-  });
+  const out = deps.stdout ?? process.stdout;
+  const options = {
+    name: { type: 'string' },
+    target: { type: 'string' },
+    state: { type: 'string' },
+  } as const;
+  const { values } = parseArgs({ args: rest, options, strict: true });
+  const stateDir = values.state ? absolute(values.state) : resolveStateDir();
+  if (sub === 'list') {
+    const agents = await listAgents(stateDir);
+    for (const a of agents) out.write(`agent:${a.name}\t${a.target}\n`);
+    if (agents.length === 0) out.write('No agent connections registered.\n');
+    return;
+  }
+  if (sub === 'remove') {
+    if (!values.name) throw new UsageError('--name is required');
+    await removeAgent(stateDir, values.name);
+    out.write(`Removed agent:${values.name}. Its token no longer works.\n`);
+    return;
+  }
+  if (sub !== 'add') throw new UsageError('expected: agent add|list|remove');
   if (!values.name) throw new UsageError('--name is required');
   if (values.target !== 'local_model' && values.target !== 'cloud_model') {
     throw new UsageError('--target must be local_model or cloud_model');
   }
-  const stateDir = values.state ? absolute(values.state) : resolveStateDir();
   const { token } = await addAgent(stateDir, {
     name: values.name,
     target: values.target as AgentTarget,
   });
-  const out = deps.stdout ?? process.stdout;
   out.write(`Registered agent:${values.name} as ${values.target}.\n`);
   out.write(`Token (shown once; only its hash is stored):\n${token}\n`);
 }

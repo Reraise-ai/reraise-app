@@ -10,13 +10,8 @@ import type { LocalStateStore, StorageAdapter } from '@worldbuilder/core';
 import { createLocalStateStore, type LocalStateOptions } from '@worldbuilder/local-state';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import {
-  AGENTS_FILE,
-  AgentRegistry,
-  SESSION_TOKEN_FILE,
-  newToken,
-  writePrivateFile,
-} from './auth.js';
+import { AGENTS_FILE, AgentRegistry } from './agent-registry.js';
+import { SESSION_TOKEN_FILE, newToken, writePrivateFile } from './auth.js';
 import { buildApp, DEFAULT_PORT, type BoardApp } from './app.js';
 
 export interface ServiceOptions {

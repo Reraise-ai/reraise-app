@@ -10,7 +10,7 @@ import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { AgentRegistry } from './auth.js';
+import { AgentRegistry } from './agent-registry.js';
 import { main } from './main.js';
 import { createService, DEFAULT_GATE_RULES, type Service } from './service.js';
 
@@ -85,6 +85,40 @@ describe('worldbuilder agent add', () => {
         stderr: sink(),
       }),
     ).toBe(1);
+  });
+});
+
+describe('worldbuilder agent list and remove', () => {
+  it('lists names and targets only, and removing a connection revokes its token', async () => {
+    const state = path.join(dir, 'state');
+    const out = sink();
+    await main(['agent', 'add', '--name', 'a1', '--target', 'local_model', '--state', state], {
+      stdout: out,
+    });
+    const token = out.text().trim().split('\n').pop()!;
+    await main(['agent', 'add', '--name', 'a2', '--target', 'cloud_model', '--state', state], {
+      stdout: sink(),
+    });
+    const list = sink();
+    expect(await main(['agent', 'list', '--state', state], { stdout: list })).toBe(0);
+    expect(list.text()).toBe('agent:a1\tlocal_model\nagent:a2\tcloud_model\n');
+    expect(list.text()).not.toContain(token);
+    const registry = new AgentRegistry(path.join(state, 'agents.json'));
+    await registry.loadStrict();
+    await expect(registry.lookup(token)).resolves.toMatchObject({ name: 'a1' });
+    expect(
+      await main(['agent', 'remove', '--name', 'a1', '--state', state], { stdout: sink() }),
+    ).toBe(0);
+    await expect(registry.lookup(token)).resolves.toBeUndefined();
+    const err = sink();
+    expect(await main(['agent', 'remove', '--name', 'a1', '--state', state], { stderr: err })).toBe(
+      1,
+    );
+    expect(err.text()).toContain('no agent named a1');
+    expect(await main(['agent', 'remove', '--state', state], { stderr: sink() })).toBe(2);
+    const empty = sink();
+    await main(['agent', 'list', '--state', path.join(dir, 'none')], { stdout: empty });
+    expect(empty.text()).toContain('No agent connections');
   });
 });
 

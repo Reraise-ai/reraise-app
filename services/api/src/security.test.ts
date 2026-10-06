@@ -427,7 +427,7 @@ describe('session token and start-up', () => {
 
 describe('agent registry', () => {
   it('picks up a newly registered connection while running, and denies all on a broken file', async () => {
-    const { addAgent } = await import('./auth.js');
+    const { addAgent } = await import('./agent-registry.js');
     const { token } = await addAgent(f.stateDir, { name: 'late', target: 'local_model' });
     const ok = await f.raw({
       method: 'GET',

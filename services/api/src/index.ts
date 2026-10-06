@@ -11,13 +11,12 @@ export {
 export {
   AGENTS_FILE,
   AgentRegistry,
-  SESSION_TOKEN_FILE,
   addAgent,
+  listAgents,
   parseAgents,
-  targetOf,
-  type AgentTarget,
-  type Principal,
-} from './auth.js';
+  removeAgent,
+} from './agent-registry.js';
+export { SESSION_TOKEN_FILE, targetOf, type AgentTarget, type Principal } from './auth.js';
 export { loadOperations, validators, type Operation } from './contract.js';
 export { handlers, type Handler, type OperationInput, type OperationResult } from './operations.js';
 export { DEFAULT_GATE_RULES, createService, type Service, type ServiceOptions } from './service.js';

@@ -17,9 +17,12 @@ confirmation), [ADR-0032](../../docs/adr/0032-m1-proposal-polling.md) (polling).
 worldbuilder serve --store <path-to-store> [--state <dir>] [--port 4310] [--host 127.0.0.1] \
                    [--allow-origin http://127.0.0.1:5173]
 worldbuilder agent add --name <name> --target local_model|cloud_model [--state <dir>]
+worldbuilder agent list [--state <dir>]
+worldbuilder agent remove --name <name> [--state <dir>]
 ```
 
-`serve` binds `127.0.0.1` by default, creates a fresh human session token at every start, writes
+`serve` opens the store with the markdown-files adapter (tested on a copy of the Hormuz
+example, `src/hormuz.test.ts`) and binds `127.0.0.1` by default, creates a fresh human session token at every start, writes
 it to `<state>/session-token` (owner-only) and prints it once. It refuses to start when the state
 directory lies inside the store or a Git working tree (symbolic links followed) or when
 `agents.json` is invalid or readable by others. On first start it writes a gate rule file that
@@ -30,6 +33,9 @@ Binding another host prints a warning: put your own access control in front.
 once; only the SHA-256 of the token is stored. The file is re-read when it changes. Hand-written
 entries may carry a `token` (at least 32 characters) instead of `tokenSha256`; the file must be
 mode 0600 on POSIX. Each connection has a target class: `local_model` or `cloud_model`.
+`agent list` shows names and targets only; `agent remove` revokes a token at once. The whole
+registry format lives in `src/agent-registry.ts`, so it can move to the planned
+`agents.yaml` (ADR-0037) in one place.
 
 `worldbuilder mcp --stdio` and the `/mcp` mount belong to the next slice. The seams are
 documented in `src/app.ts` (the hook that already checks Host and Origin for every path) and
@@ -88,8 +94,6 @@ fixed reason code. Denied cards are left out and listed by id and a fixed reason
 
 ## Known gaps
 
-- The markdown-files adapter is loaded by name when it is built (`src/store.ts`); the CLI cannot
-  open a store until that branch is merged.
 - No gate rule fragments from adapters are passed yet (the `StorageAdapter` interface has none).
 - Level-1 and export transfers (`purpose` other than `context_package`) can be previewed and
   confirmed but have no send path yet.
