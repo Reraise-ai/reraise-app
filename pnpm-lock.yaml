@@ -146,6 +146,30 @@ importers:
         specifier: workspace:*
         version: link:../conformance
 
+  packages/knowledge-loop:
+    dependencies:
+      '@worldbuilder/core':
+        specifier: workspace:*
+        version: link:../core
+      '@worldbuilder/disclosure-gate':
+        specifier: workspace:*
+        version: link:../disclosure-gate
+      '@worldbuilder/local-state':
+        specifier: workspace:*
+        version: link:../local-state
+      '@worldbuilder/storage-markdown-files':
+        specifier: workspace:*
+        version: link:../adapters/storage-markdown-files
+      ajv:
+        specifier: ^8.20.0
+        version: 8.20.0
+      ajv-formats:
+        specifier: ^3.0.1
+        version: 3.0.1(ajv@8.20.0)
+      yaml:
+        specifier: ^2.9.1
+        version: 2.9.1
+
   packages/local-state:
     dependencies:
       '@worldbuilder/core':
