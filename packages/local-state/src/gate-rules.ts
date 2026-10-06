@@ -16,7 +16,7 @@ import { readFile } from 'node:fs/promises';
 import { parse } from 'yaml';
 import { validatorFor } from './validate.js';
 
-const TARGETS: DisclosureTarget[] = ['screen', 'local_model', 'cloud_model', 'demo'];
+const TARGETS: DisclosureTarget[] = ['screen', 'local_model', 'cloud_model', 'demo', 'share'];
 /** Sources the loader assigns itself; an adapter must not pose as them. */
 const RESERVED_SOURCES = new Set(['user', 'fail-closed']);
 const MAX_RULE_FILE_BYTES = 1024 * 1024;

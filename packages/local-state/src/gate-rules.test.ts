@@ -5,6 +5,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { SCHEMAS } from '@worldbuilder/core';
 import { DENY_ALL_RULES, buildGateRules, loadGateRulesFile } from './gate-rules.js';
 import { tempDir } from './test-helpers.js';
 
@@ -34,9 +35,27 @@ const denyAllShape = (r: Awaited<ReturnType<typeof load>>) => {
   expect(r.ok).toBe(false);
   expect(r.reason).toBeTruthy();
   expect(r.rules).toEqual(DENY_ALL_RULES);
-  expect(r.rules.rules[0]?.targets).toEqual(['screen', 'local_model', 'cloud_model', 'demo']);
+  expect(r.rules.rules[0]?.targets).toEqual([
+    'screen',
+    'local_model',
+    'cloud_model',
+    'demo',
+    'share',
+  ]);
   expect(r.fragments).toEqual([]);
 };
+
+describe('fail-closed rule set', () => {
+  it('denies every disclosure target of the contract, including share (ADR-0036)', () => {
+    const common = SCHEMAS['https://worldbuilder.invalid/schemas/v0/common.schema.json'] as {
+      $defs: { disclosureTarget: { enum: string[] } };
+    };
+    expect([...(DENY_ALL_RULES.rules[0]?.targets ?? [])].sort()).toEqual(
+      [...common.$defs.disclosureTarget.enum].sort(),
+    );
+    expect(DENY_ALL_RULES.rules[0]).toMatchObject({ effect: 'deny', match: {} });
+  });
+});
 
 describe('gate rules loader', () => {
   it('loads a valid rule file and lists every rule with its source', async () => {

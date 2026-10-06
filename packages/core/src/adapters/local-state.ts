@@ -41,6 +41,10 @@ export const GATE_LOG_REASONS = [
   'confirmation_required',
   'confirmed_transfer',
   'connection_not_registered',
+  /** `share` or a demo of a real store: conclusions are private (ADR-0036). */
+  'conclusion_private',
+  /** `share`: the user has not released the card (ADR-0036). */
+  'not_released',
 ] as const;
 export type GateLogReason = (typeof GATE_LOG_REASONS)[number];
 
