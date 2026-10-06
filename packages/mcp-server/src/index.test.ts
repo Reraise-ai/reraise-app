@@ -4,7 +4,15 @@
 import { expect, it } from 'vitest';
 import { MCP_TOOL_NAMES } from './index.js';
 
-it('declares the eight contract tools with a single write tool', () => {
-  expect(MCP_TOOL_NAMES).toHaveLength(8);
-  expect(MCP_TOOL_NAMES.filter((n) => n.endsWith('_create'))).toEqual(['proposal_create']);
+it('declares the eight contract tools of ADR-0016', () => {
+  expect(MCP_TOOL_NAMES).toEqual([
+    'world_list',
+    'lage_get',
+    'cards_search',
+    'card_get',
+    'context_package_get',
+    'rules_evaluate',
+    'proposal_create',
+    'proposal_list',
+  ]);
 });
