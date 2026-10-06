@@ -2001,7 +2001,7 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
     $id: 'https://worldbuilder.invalid/schemas/v0/shared-card.schema.json',
     title: 'SharedCard',
     description:
-      'What leaves the device when a card is shared with other people (target share, ADR-0036): content and provenance only. No store identity (uri, externalId), no worlds, tags, class, visibility, release, training, status, rating, edges, structured state or private player field (personalityType), and no player entry without a public source. contentHash is the hash of this projection (ADR-0034). Built by shareProjection in packages/core after the gate allowed the card for share.',
+      'What leaves the device when a card is shared with other people (target share, ADR-0036): content and provenance only. No store identity (uri, externalId), no origin system, no source other than a public address, no worlds, tags, class, visibility, release, training, status, rating, edges, structured state or private player field (personalityType), and no player entry without a public source. contentHash is the hash of this projection (ADR-0034). Built by shareProjection in packages/core after the gate allowed the card for share.',
     type: 'object',
     properties: {
       id: { $ref: 'common.schema.json#/$defs/cardId' },
@@ -2012,10 +2012,13 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
       body: { type: 'string' },
       date: { $ref: 'common.schema.json#/$defs/isoDate' },
       layer: { $ref: 'common.schema.json#/$defs/layer' },
-      source: { $ref: 'common.schema.json#/$defs/text' },
+      source: {
+        description:
+          'Kept only as a public http or https address; any other source is dropped (ADR-0036).',
+        $ref: '#/$defs/publicSourceRef',
+      },
       sourceDate: { $ref: 'common.schema.json#/$defs/isoDate' },
       sourceChecksum: { type: 'string' },
-      originSystem: { $ref: 'common.schema.json#/$defs/text' },
       author: { $ref: 'common.schema.json#/$defs/humanAuthor' },
       interests: { $ref: '#/$defs/playerField' },
       capabilities: { $ref: '#/$defs/playerField' },
@@ -2029,10 +2032,9 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
     additionalProperties: false,
     allOf: [
       {
-        description:
-          "Only external-source cards and the user's released experience are shared (ADR-0036).",
+        description: 'A shared evidenced or said card names its public external source (ADR-0036).',
         if: { properties: { layer: { enum: ['evidenced', 'said'] } }, required: ['layer'] },
-        then: { properties: { source: { $ref: '#/$defs/publicSourceRef' } }, required: ['source'] },
+        then: { properties: { source: true }, required: ['source'] },
       },
     ],
     $defs: {
@@ -2054,10 +2056,11 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
       },
       publicSourceRef: {
         title: 'PublicSourceRef',
-        description: 'An absolute http or https address: a public external source (ADR-0036).',
+        description:
+          'An absolute http or https address without user information: a public external source (ADR-0036). The schema checks the form; isPublicSourceUri in packages/core also rejects IP literals, private and special-use host names.',
         type: 'string',
         format: 'uri',
-        pattern: '^[Hh][Tt][Tt][Pp][Ss]?://[^\\s/]+',
+        pattern: '^[Hh][Tt][Tt][Pp][Ss]?://[^\\s/@?#]*[A-Za-z][^\\s/@?#]*(?:[/?#]\\S*)?$',
       },
     },
   },

@@ -61,16 +61,27 @@ the field the owner's card format already has for release (`freigabe`).
 ### Origin classes
 
 `originOf(card)` in `packages/core` derives one class from canonical fields, in this order,
-first match wins:
+first match wins. Types are compared trimmed and lower-cased; only an allow-list of types can
+ever be external, so a new or unknown type is a conclusion by default.
 
 | Class | When | `share` |
 | --- | --- | --- |
-| `conclusion` | `type` is `decision`, `rule`, `rating` (own assessment), `assumption` or `lage` | never |
 | `conclusion` | `author` is `agent:<name>` (AI output on the user's board) or not `human` (unknown) | never |
-| `experience` | `layer: experience` or `type: experience`, by the human | only after release |
+| `experience` | `type: experience`, or `layer: experience` on an allow-listed type, by the human | only after release |
+| `conclusion` | `layer: experience` on any other type | never |
+| `conclusion` | `type` is not one of `evidence`, `source`, `claim`, `event`, `actor`, `person`, `organisation`, `topic` (this covers `decision`, `rule`, `rating`, `assumption`, `lage` and every unknown type) | never |
 | `conclusion` | no `layer` (unclassified) | never |
-| `conclusion` | `source` is not a public `http(s)` address (free text, a card id, a `wb:` URI, a local or IP host) | never |
-| `external` | a human card with layer `evidenced` or `said` and a public `http(s)` source | only after release |
+| `conclusion` | `source` is not a public address (see below) | never |
+| `external` | a human card of an allow-listed type, layer `evidenced` or `said`, with a public source | only after release |
+
+A **public address** (`isPublicSourceUri`) is an absolute `http` or `https` URI without user
+information whose host, after removing a trailing dot, has at least two labels, a last label
+that is not numeric, no special-use or private suffix (`localhost`, `local`, `internal`, `lan`,
+`home.arpa`, `corp`, `intranet`, `test`, `example`, `invalid`, `onion`, `arpa`), is not an IP
+literal, is not a wildcard DNS name that embeds an IP address (`nip.io`, `sslip.io`, `xip.io`,
+or any label that is a dotted or dashed IPv4 pattern). Free text, card ids and `wb:` URIs are
+never public addresses. The `PublicSourceRef` of `shared-card.schema.json` mirrors the form
+checks (scheme, no user information); the host checks live in the function.
 
 - Own classifications (`einordnung`) are stance notes already
   ([ADR-0023](0023-core-domain-model.md)) and never a card field.
@@ -104,10 +115,12 @@ cites the article it assesses.
   allowed cards and the ids and reasons of the others. It sends nothing.
 - The share projection (`shareProjection` in `packages/core`, schema
   `shared-card.schema.json`, type `SharedCard`) holds content and provenance only:
-  `id`, `format`, `collection`, `type`, `title`, `body`, `date`, `layer`, `source`,
-  `sourceDate`, `sourceChecksum`, `originSystem`, `author` (always `human`), and the player
-  entries whose source is a public `http(s)` address. It never holds the store identity
-  (`uri`, `externalId`), `worlds`, `tags`, `class`, `visibility`, `release`, `training`,
+  `id`, `format`, `collection`, `type`, `title`, `body`, `date`, `layer`, `source` (only
+  when it is a public address, whatever the layer; a released experience citing private notes
+  is shared without a source), `sourceDate`, `sourceChecksum`, `author` (always `human`), and
+  the player entries whose source is a public address. It never holds the store identity
+  (`uri`, `externalId`), `originSystem` (it names the user's own tooling), `worlds`, `tags`,
+  `class`, `visibility`, `release`, `training`,
   `status`, `rating`, `edges`, structured state, or `personalityType`
   ([ADR-0038](0038-player-fields-red-lines-goals-personality.md)). Its `contentHash` is
   recomputed over the projection ([ADR-0034](0034-content-hash.md)), so identical shared
@@ -140,20 +153,26 @@ cites the article it assesses.
 
 ### Confirmation
 
-- `packages/core/src/sharing.test.ts`: public-source detection, every origin-class row,
-  the projection keeps content and provenance only, drops private player entries and the
-  personality type, and rehashes.
+- `packages/core/src/sharing.test.ts`: public-address detection with a case for every
+  rejected form (user information, trailing dot, single label, numeric last label, IP
+  literals, every special-use suffix, IP-embedding wildcard names); every origin-class row,
+  including unknown, padded and mixed-case types; the projection keeps content and provenance
+  only, drops a non-public source on every layer, the origin system, private player entries and
+  the personality type, and rehashes.
 - Gate conformance kit (`describeDisclosureGateConformance`), run by the reference gate: with
   an allow-all rule and a release, a decision, a rule, a rating, an assumption, agent output,
   an own classification without a public source, a card citing an own card and an unclassified
-  card are all denied for `share`; own experience is shared only after release; an
+  card are all denied for `share`, as are unknown and mixed-case conclusion types and cards
+  citing a private host, a user-information address or an IP-embedding name; own experience is shared only after release; an
   external-source card only after release and an allow rule, and a deny rule still wins;
-  `prepareShare` carries content and provenance only and validates against `SharedCard`;
+  `prepareShare` carries content and provenance only, without origin system or a private
+  source (also for an experience), and validates against `SharedCard`;
   decision and rule cards are denied for `share`, need a confirmation for `cloud_model`, and
   are released by a confirmed transfer; stance data is denied for `share`.
 - Schema fixtures: valid share bundle, shared card and share decision; invalid shared cards
-  with tags, a personality type, store identity, a goal citing an own assessment, an agent
-  author or no public source; a full card in a share bundle; stance to `share`; a context
+  with tags, a personality type, store identity, an origin system, a goal citing an own
+  assessment, an agent author, no public source, a source with user information or an
+  experience with a private source; a full card in a share bundle; stance to `share`; a context
   package for `share`; an agent proposal that releases a card.
 
 ## Pros and Cons of the Options

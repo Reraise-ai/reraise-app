@@ -31,23 +31,56 @@ const card = (extra: Partial<Card>): Card => {
 const PUBLIC = 'https://example.org/statement';
 
 describe('isPublicSourceUri (ADR-0036)', () => {
-  it('accepts http and https addresses on public host names only', () => {
-    expect(isPublicSourceUri('https://example.org/a')).toBe(true);
-    expect(isPublicSourceUri('HTTP://example.org/a')).toBe(true);
+  it('accepts http and https addresses on public host names', () => {
     for (const v of [
-      undefined,
-      'Own notes',
-      '01M1E34QM03WVTE8T1RYS3AM18',
-      `wb:${STORE}/x-14`,
-      'file:///home/report.pdf',
-      'https://localhost/a',
-      'https://nas.local/a',
-      'https://192.0.2.10/a',
-      'https://[::1]/a',
-      'https://',
+      'https://example.org/a',
+      'HTTP://example.org/a',
+      'https://example.org./a',
+      'https://news.example.com/path/with@sign',
+      'https://example.org:8443/a?q=1#x',
     ]) {
-      expect(isPublicSourceUri(v), String(v)).toBe(false);
+      expect(isPublicSourceUri(v), v).toBe(true);
     }
+  });
+
+  it.each([
+    ['no value', undefined],
+    ['free text', 'Own notes'],
+    ['a card id', '01M1E34QM03WVTE8T1RYS3AM18'],
+    ['a wb: URI', `wb:${STORE}/x-14`],
+    ['a file URI', 'file:///home/report.pdf'],
+    ['an empty host', 'https://'],
+    ['a single-label host', 'https://intranet/a'],
+    ['a single-label host with a trailing dot', 'https://server./a'],
+    ['localhost', 'https://localhost/a'],
+    ['a .localhost name', 'https://app.localhost/a'],
+    ['a .local name', 'https://nas.local/a'],
+    ['a .internal name', 'https://wiki.internal/a'],
+    ['a .lan name', 'https://router.lan/a'],
+    ['a home.arpa name', 'https://nas.home.arpa/a'],
+    ['a .corp name', 'https://share.corp/a'],
+    ['an .intranet name', 'https://portal.intranet/a'],
+    ['a .test name', 'https://site.test/a'],
+    ['an .example name', 'https://site.example/a'],
+    ['an .invalid name', 'https://worldbuilder.invalid/a'],
+    ['an .onion name', 'https://abcdefghijklmnop.onion/a'],
+    ['an .arpa name', 'https://1.0.0.127.in-addr.arpa/a'],
+    ['a trailing-dot private name', 'https://nas.local./a'],
+    ['an IPv4 literal', 'https://192.0.2.10/a'],
+    ['an IPv4 literal with a trailing dot', 'https://192.0.2.10./a'],
+    ['a numeric last label', 'https://host.123/a'],
+    ['a hexadecimal IPv4 form', 'https://0x7f000001/a'],
+    ['an IPv6 literal', 'https://[::1]/a'],
+    ['nip.io', 'https://192.0.2.10.nip.io/a'],
+    ['sslip.io', 'https://192-0-2-10.sslip.io/a'],
+    ['xip.io', 'https://app.xip.io/a'],
+    ['a dotted IPv4 inside another domain', 'https://198.51.100.7.wildcard.example.com/a'],
+    ['a dashed IPv4 label', 'https://198-51-100-7.wildcard.example.com/a'],
+    ['user information', 'https://user@example.org/a'],
+    ['user and password', 'https://user:secret@example.org/a'],
+    ['an empty user', 'https://:x@example.org/a'],
+  ])('rejects %s', (_what, value) => {
+    expect(isPublicSourceUri(value)).toBe(false);
   });
 });
 
@@ -63,25 +96,36 @@ describe('originOf (ADR-0036)', () => {
     );
   });
 
+  it('accepts the allow-listed types trimmed and in any case', () => {
+    for (const type of [' Claim ', 'EVENT', 'Organisation', 'topic', 'evidence', 'source']) {
+      expect(originOf(card({ type })).originClass, type).toBe('external');
+    }
+  });
+
   it.each([
     ['a decision', { type: 'decision' }],
+    ['a decision in upper case', { type: 'Decision' }],
+    ['a padded rule', { type: ' rule ' }],
     ['a rule', { type: 'rule' }],
     ['a rating (own assessment)', { type: 'rating' }],
+    ['a rating in mixed case', { type: 'RaTiNg' }],
     ['an assumption', { type: 'assumption' }],
     ['a Lage', { type: 'lage' }],
+    ['an unknown type', { type: 'memo' }],
+    ['an analysis type', { type: 'analysis' }],
+    ['an empty type', { type: ' ' }],
+    ['an experience-layer decision', { type: 'decision', layer: 'experience' }],
     ['agent output', { author: 'agent:analyst' }],
     ['agent experience', { author: 'agent:analyst', layer: 'experience', type: 'experience' }],
     ['a legacy card of unknown author', { author: 'unknown', format: 1, layer: undefined }],
     ['an unclassified card', { layer: undefined }],
     ['a card citing free text', { source: 'Own notes' }],
     ['a card citing another card', { source: '01M1EDEAG082WZ7T7D204BHZDC' }],
+    ['a card citing a private host', { source: 'https://wiki.internal/page' }],
     ['a card with only an origin system', { source: undefined, originSystem: 'Own wiki' }],
-  ] as [string, Partial<Card>][])(
-    'classes %s as a conclusion, even with a public source',
-    (_w, extra) => {
-      expect(originOf(card(extra)).originClass).toBe('conclusion');
-    },
-  );
+  ] as [string, Partial<Card>][])('classes %s as a conclusion', (_w, extra) => {
+    expect(originOf(card(extra)).originClass).toBe('conclusion');
+  });
 });
 
 describe('shareProjection (ADR-0036)', () => {
@@ -115,6 +159,16 @@ describe('shareProjection (ADR-0036)', () => {
     }
     expect(shared.source).toBe(actor.source);
     expect(shared.author).toBe('human');
+    expect(shareProjection({ ...actor, originSystem: 'Own wiki' })).not.toHaveProperty(
+      'originSystem',
+    );
+  });
+
+  it('drops any source that is not a public address, also on own experience', () => {
+    const experience = card({ type: 'experience', layer: 'experience', source: 'Own notes' });
+    expect(shareProjection(experience)).not.toHaveProperty('source');
+    const userinfo = card({ source: 'https://user:secret@example.org/a' });
+    expect(shareProjection(userinfo)).not.toHaveProperty('source');
   });
 
   it('keeps only player entries with a public source and drops empty fields', () => {

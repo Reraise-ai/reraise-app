@@ -1,0 +1,20 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/shared-card.schema.json",
+  "description": "Even an own experience is shared only with a public source or none (ADR-0036).",
+  "expect": {
+    "keyword": "pattern",
+    "instancePath": "/source"
+  },
+  "data": {
+    "id": "01M1EMA1R0AH9ZTK3YJK33TNER",
+    "format": 2,
+    "type": "experience",
+    "title": "Last time, war-risk quotes jumped within a day",
+    "body": "Own (invented) experience: during an earlier tension phase, war-risk\ninsurance quotes for the strait rose sharply within one day of the first\nannouncement.\n",
+    "layer": "experience",
+    "author": "human",
+    "contentHash": "sha256:656f2dbcda2b610966efdf8f87196e05c14b1d604db14dd13caf0f1b2060c465",
+    "source": "Own notes"
+  }
+}

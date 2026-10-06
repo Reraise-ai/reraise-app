@@ -393,6 +393,46 @@ export function describeDisclosureGateConformance(
         );
       });
 
+      it('drops a private source and the origin system from what is shared', () => {
+        const h = setup();
+        const gate = allowAll(h);
+        const experience = variant(h.card, '01M1J0000000000000000000A5', {
+          type: 'experience',
+          layer: 'experience',
+          source: 'Own notes, page 4',
+          originSystem: 'Own wiki',
+        });
+        const external = variant(h.card, '01M1J0000000000000000000A6', {
+          originSystem: 'Own wiki',
+        });
+        const bundle = gate.prepareShare([experience, external]);
+        expect(bundle.objects.map((o) => o.id)).toEqual([experience.id, external.id]);
+        const validate = schemaValidator(SHARED);
+        for (const shared of bundle.objects) {
+          expect(validate(shared), JSON.stringify(validate.errors)).toBe(true);
+          expect(shared).not.toHaveProperty('originSystem');
+        }
+        expect(bundle.objects[0]).not.toHaveProperty('source');
+        expect(bundle.objects[1]!.source).toBe(PUBLIC);
+      });
+
+      it('treats unknown, padded and mixed-case conclusion types as conclusions', () => {
+        const h = setup();
+        const gate = allowAll(h);
+        for (const [i, type] of ['Decision', ' rule ', 'memo', 'analysis'].entries()) {
+          const card = variant(h.card, `01M1J0000000000000000000E${i}`, { type });
+          expect(gate.decide({ kind: 'card', card }, 'share').decision, type).toBe('deny');
+        }
+        for (const [i, source] of [
+          'https://wiki.internal/page',
+          'https://user@example.org/a',
+          'https://192-0-2-10.sslip.io/a',
+        ].entries()) {
+          const card = variant(h.card, `01M1J0000000000000000000F${i}`, { source });
+          expect(gate.decide({ kind: 'card', card }, 'share').decision, source).toBe('deny');
+        }
+      });
+
       it('shares an external-source card only when released and allowed by a rule', () => {
         const h = setup();
         const { external, unreleased } = cards(h.card);

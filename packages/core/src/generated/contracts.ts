@@ -212,7 +212,7 @@ export type DecisionDraft = CardDraft & {
   sections: DecisionSections;
 };
 /**
- * An absolute http or https address: a public external source (ADR-0036).
+ * An absolute http or https address without user information: a public external source (ADR-0036). The schema checks the form; isPublicSourceUri in packages/core also rejects IP literals, private and special-use host names.
  */
 export type PublicSourceRef = string;
 /**
@@ -859,7 +859,7 @@ export interface ShareBundle {
   denied: DeniedCard[];
 }
 /**
- * What leaves the device when a card is shared with other people (target share, ADR-0036): content and provenance only. No store identity (uri, externalId), no worlds, tags, class, visibility, release, training, status, rating, edges, structured state or private player field (personalityType), and no player entry without a public source. contentHash is the hash of this projection (ADR-0034). Built by shareProjection in packages/core after the gate allowed the card for share.
+ * What leaves the device when a card is shared with other people (target share, ADR-0036): content and provenance only. No store identity (uri, externalId), no origin system, no source other than a public address, no worlds, tags, class, visibility, release, training, status, rating, edges, structured state or private player field (personalityType), and no player entry without a public source. contentHash is the hash of this projection (ADR-0034). Built by shareProjection in packages/core after the gate allowed the card for share.
  */
 export interface SharedCard {
   id: CardId;
@@ -870,10 +870,9 @@ export interface SharedCard {
   body?: string;
   date?: IsoDate;
   layer: Layer;
-  source?: Text;
+  source?: PublicSourceRef;
   sourceDate?: IsoDate;
   sourceChecksum?: string;
-  originSystem?: Text;
   author: HumanAuthor;
   interests?: SharedPlayerField;
   capabilities?: SharedPlayerField;

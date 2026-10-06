@@ -27,7 +27,7 @@ export {
 } from './ids.js';
 
 export {
-  CONCLUSION_TYPES,
+  EXTERNAL_TYPES,
   SHARED_FIELDS,
   SHARED_PLAYER_FIELDS,
   isPublicSourceUri,
