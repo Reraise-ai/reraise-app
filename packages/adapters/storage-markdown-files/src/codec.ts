@@ -57,6 +57,9 @@ export const FRONT_MATTER_FIELDS = [
   'capabilities',
   'dependencies',
   'moves',
+  'redLines',
+  'assumedGoals',
+  'personalityType',
 ] as const;
 const FRONT_MATTER_SET: ReadonlySet<string> = new Set(FRONT_MATTER_FIELDS);
 
@@ -81,8 +84,18 @@ const FORMAT_2_FIELDS = [
   'capabilities',
   'dependencies',
   'moves',
+  'redLines',
+  'assumedGoals',
+  'personalityType',
 ];
-const PLAYER_FIELDS = ['interests', 'capabilities', 'dependencies', 'moves'] as const;
+const PLAYER_FIELDS = [
+  'interests',
+  'capabilities',
+  'dependencies',
+  'moves',
+  'redLines',
+  'assumedGoals',
+] as const;
 const LAGE_FRONT_MATTER = ['question', 'version', 'updatedAt'] as const;
 
 /** Decision sections: key, heading written by the reference format, accepted headings. */
@@ -259,6 +272,14 @@ export function parseCardText(text: string, ctx: CodecContext): ParsedCard {
       });
     }
   }
+  // One personality type per person, written `text|source` (ADR-0038).
+  if (data['personalityType'] !== undefined) {
+    if (typeof data['personalityType'] !== 'string') {
+      throw new MarkdownStoreError('parse', 'personalityType must be one "text|source" value');
+    }
+    const [t, source] = splitPipes(data['personalityType'], 2, 'personality type');
+    card['personalityType'] = { text: t, source };
+  }
 
   const body = text
     .slice(span.bodyStart)
@@ -307,6 +328,10 @@ function toFileValue(key: string, value: unknown, ctx: CodecContext): unknown {
     return (value as { text: string; source: string }[]).map((e) =>
       entryString([e.text, e.source], 'player-field'),
     );
+  }
+  if (key === 'personalityType') {
+    const e = value as { text: string; source: string };
+    return entryString([e.text, e.source], 'personality type');
   }
   return value;
 }
@@ -387,6 +412,9 @@ const KEY_ORDER = [
   'capabilities',
   'dependencies',
   'moves',
+  'redLines',
+  'assumedGoals',
+  'personalityType',
 ];
 
 /** The text of a new card file (LF line breaks). The draft is already validated. */
@@ -516,5 +544,7 @@ export function referencedIds(content: Json): string[] {
       if (ULID_EXACT.test(e.source)) ids.push(e.source);
     }
   }
+  const personality = content['personalityType'] as { source: string } | undefined;
+  if (personality && ULID_EXACT.test(personality.source)) ids.push(personality.source);
   return [...new Set(ids)];
 }

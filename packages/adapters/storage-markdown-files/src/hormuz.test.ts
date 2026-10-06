@@ -20,10 +20,10 @@ const RULE = '01M1EV5S00YXKKGEG772AZM7P9';
 const WORLD = '01M1DZPW00JGXPRPG4179ZPNB8';
 
 describe('the Hormuz example store', () => {
-  it('reads all twelve cards as valid canonical cards with ids, uris and hashes', async () => {
+  it('reads all fifteen cards as valid canonical cards with ids, uris and hashes', async () => {
     const adapter = await openStore(HORMUZ);
     const { items } = await adapter.list();
-    expect(items).toHaveLength(12);
+    expect(items).toHaveLength(15);
     const validate = schemaValidator('card.schema.json');
     for (const card of items) {
       expect(validate(card), JSON.stringify(validate.errors)).toBe(true);
@@ -76,7 +76,7 @@ describe('the Hormuz example store', () => {
     expect(await adapter.listWorlds()).toEqual([
       expect.objectContaining({ id: WORLD, name: 'Hormuz' }),
     ]);
-    expect((await adapter.list({ worldId: WORLD })).items).toHaveLength(11);
+    expect((await adapter.list({ worldId: WORLD })).items).toHaveLength(14);
     expect((await adapter.list({ worldId: '01M1DZPW00JGXPRPG4179ZPNB9' })).items).toEqual([]);
   });
 
@@ -105,7 +105,7 @@ describe('the Hormuz example store', () => {
     const third = await adapter.list({ limit: 5, cursor: second.nextCursor });
     expect(third.nextCursor).toBeUndefined();
     const ids = [...first.items, ...second.items, ...third.items].map((c) => c.id);
-    expect(new Set(ids).size).toBe(12);
+    expect(new Set(ids).size).toBe(15);
     await expect(adapter.list({ cursor: 'x' })).rejects.toMatchObject({ code: 'invalid_query' });
   });
 
