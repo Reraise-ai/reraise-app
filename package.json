@@ -23,7 +23,9 @@
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
     "docs:preview": "vitepress preview docs",
-    "check:doc-anchors": "node scripts/check-doc-anchors.mjs"
+    "check:doc-anchors": "node scripts/check-doc-anchors.mjs",
+    "generate:types": "node scripts/generate-types.mjs",
+    "check:generated": "node scripts/generate-types.mjs --check"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",

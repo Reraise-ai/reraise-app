@@ -45,6 +45,8 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
+      - name: Generated types match the JSON Schemas
+        run: pnpm check:generated
   checks:
     name: Tests and checks (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
