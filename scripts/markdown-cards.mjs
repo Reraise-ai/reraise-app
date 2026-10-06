@@ -18,10 +18,12 @@
 // - Type `rule`: the structured rule as a ```json block under `## Rule`.
 // - Format-2 type `decision`: the eleven sections as `##` headings (DECISION_HEADINGS);
 //   `Cards used` is a list of card ids.
-// - `contentHash` is computed as in packages/core (ADR-0034); a shared test vector keeps
-//   both implementations equal.
-import { createHash } from 'node:crypto';
+// - `contentHash` is computed by packages/core (ADR-0034).
+import { buildUri, canonicalJson, computeContentHash, encodeExternalId } from '@worldbuilder/core';
 import { parse as parseYaml } from 'yaml';
+
+// Identity and hashing come from packages/core, never a second implementation.
+export { buildUri, canonicalJson, computeContentHash, encodeExternalId };
 
 /** Front-matter keys that are derived from the file or the body and must not be stored. */
 export const DERIVED_KEYS = [
@@ -71,47 +73,6 @@ export const DECISION_HEADINGS = [
 
 const ULID_RE = /[0-7][0-9A-HJKMNP-TV-Z]{25}/;
 
-/** Fields covered by the content hash (ADR-0034); same list as packages/core. */
-export const CONTENT_HASH_FIELDS = [
-  'type',
-  'title',
-  'body',
-  'layer',
-  'source',
-  'sourceDate',
-  'sourceChecksum',
-  'date',
-  'interests',
-  'capabilities',
-  'dependencies',
-  'moves',
-  'sections',
-  'lage',
-  'rule',
-];
-
-/** RFC 8785 (JCS) serialisation. */
-export function canonicalJson(value) {
-  if (Array.isArray(value)) {
-    return `[${value.map((v) => (v === undefined ? 'null' : canonicalJson(v))).join(',')}]`;
-  }
-  if (value !== null && typeof value === 'object') {
-    const entries = Object.entries(value)
-      .filter(([, v]) => v !== undefined)
-      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
-    return `{${entries.map(([k, v]) => `${JSON.stringify(k)}:${canonicalJson(v)}`).join(',')}}`;
-  }
-  if (typeof value === 'number' && !Number.isFinite(value)) throw new Error('not finite');
-  return JSON.stringify(value);
-}
-
-/** `sha256:<hex>` over the JCS serialisation of the substantive card fields. */
-export function computeContentHash(card) {
-  const content = {};
-  for (const key of CONTENT_HASH_FIELDS) if (card[key] !== undefined) content[key] = card[key];
-  return `sha256:${createHash('sha256').update(canonicalJson(content), 'utf8').digest('hex')}`;
-}
-
 /** Split a Markdown file into parsed front matter and body. Throws on malformed input. */
 export function splitFrontMatter(text) {
   const m = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/.exec(text);
@@ -121,23 +82,6 @@ export function splitFrontMatter(text) {
     throw new Error('front matter is not a mapping');
   }
   return { data, body: (m[2] ?? '').replace(/^\r?\n/, '') };
-}
-
-/** RFC 3986 percent-encoding of an NFC-normalised external id (ADR-0023). */
-export function encodeExternalId(externalId) {
-  let out = '';
-  for (const byte of new TextEncoder().encode(externalId.normalize('NFC'))) {
-    const ch = String.fromCharCode(byte);
-    out += /[A-Za-z0-9\-._~]/.test(ch)
-      ? ch
-      : `%${byte.toString(16).toUpperCase().padStart(2, '0')}`;
-  }
-  return out;
-}
-
-/** wb:<storeInstanceId>/<externalId percent-encoded> (ADR-0023). */
-export function buildUri(storeInstanceId, externalId) {
-  return `wb:${storeInstanceId}/${encodeExternalId(externalId)}`;
 }
 
 /** Split `a|b|c` into exactly `n` parts. */

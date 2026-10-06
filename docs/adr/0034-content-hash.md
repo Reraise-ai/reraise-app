@@ -40,14 +40,20 @@ language-neutral canonical form, and the canonical card is already JSON.
   `type`, `title`, `body`, `layer`, `source`, `sourceDate`, `sourceChecksum`, `date`, the
   player fields (`interests`, `capabilities`, `dependencies`, `moves`) and the structured
   sections (`sections`, `lage`, `rule`). Absent fields are omitted.
+- A card with structured content (`sections`, `lage` or `rule`) is hashed by that structure:
+  its `body`, which only renders the structure (with headings in the store's language), is not
+  hashed. The same decision in a German-heading store and in the reference format hashes the
+  same (CTO decision).
 - Excluded: identity (`id`, `externalId`, `uri`), `contentHash`, `signature`, `level`, and all
   user or organisational metadata: `worlds`, `visibility`, `release`, `class`, `status`,
   `training`, `tags`, `rating`, `carrier`, `affiliation`, `collection`, `author`,
   `originSystem`, `edges`, `typeRaw`, `format`. Stance data is not a card field and never
   hashed.
-- Serialisation: RFC 8785. Object keys are sorted by UTF-16 code units, strings and numbers
-  use the ECMAScript JSON rules, no whitespace. Text is hashed as stored: no Unicode
-  normalisation is applied, so differently normalised text yields a different hash.
+- Serialisation: RFC 8785. Only plain JSON values are accepted: a lone surrogate, `NaN`,
+  `Infinity` or a non-plain object (`Date`, `Map`, class instances) is an error, never coerced.
+  Object keys are sorted by UTF-16 code units, strings and numbers use the ECMAScript JSON
+  rules, no whitespace. Text is hashed as stored: no Unicode normalisation is applied, so
+  differently normalised text yields a different hash.
 - Hash: SHA-256 over the UTF-8 bytes, written as `sha256:` plus 64 lower-case hex digits.
 - Every card an adapter returns carries `contentHash`, computed on read, never trusted from
   storage. Drafts may omit it; the store recomputes it.

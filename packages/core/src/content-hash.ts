@@ -30,6 +30,11 @@ export const CONTENT_HASH_FIELDS = [
   'rule',
 ] as const;
 
+const LONE_SURROGATE = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/;
+
+/** Fields that hold a card's structured content; when present, `body` is not hashed. */
+export const STRUCTURED_FIELDS = ['sections', 'lage', 'rule'] as const;
+
 /** Compare strings by UTF-16 code units, as RFC 8785 requires for object keys. */
 const byCodeUnits = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
@@ -38,9 +43,11 @@ const byCodeUnits = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
  * adopts; object keys are sorted by UTF-16 code units; `undefined` members are omitted.
  */
 export function canonicalJson(value: unknown): string {
-  if (value === null || typeof value === 'boolean' || typeof value === 'string') {
+  if (typeof value === 'string') {
+    if (LONE_SURROGATE.test(value)) throw new Error('JCS cannot serialise a lone surrogate');
     return JSON.stringify(value);
   }
+  if (value === null || typeof value === 'boolean') return JSON.stringify(value);
   if (typeof value === 'number') {
     if (!Number.isFinite(value)) throw new Error('JCS cannot serialise NaN or Infinity');
     return JSON.stringify(value);
@@ -49,10 +56,14 @@ export function canonicalJson(value: unknown): string {
     return `[${value.map((v) => (v === undefined ? 'null' : canonicalJson(v))).join(',')}]`;
   }
   if (typeof value === 'object') {
+    const proto = Object.getPrototypeOf(value) as unknown;
+    if (proto !== Object.prototype && proto !== null) {
+      throw new Error('JCS serialises plain JSON objects only (no Date, Map or class instance)');
+    }
     const entries = Object.entries(value as Record<string, unknown>)
       .filter(([, v]) => v !== undefined)
       .sort(([a], [b]) => byCodeUnits(a, b));
-    return `{${entries.map(([k, v]) => `${JSON.stringify(k)}:${canonicalJson(v)}`).join(',')}}`;
+    return `{${entries.map(([k, v]) => `${canonicalJson(k)}:${canonicalJson(v)}`).join(',')}}`;
   }
   throw new Error(`JCS cannot serialise a ${typeof value}`);
 }
@@ -63,6 +74,9 @@ export function hashedContent(card: CardContent): Record<string, unknown> {
   for (const key of CONTENT_HASH_FIELDS) {
     if (card[key] !== undefined) content[key] = card[key];
   }
+  // A card with structured content is hashed by its structure: its Markdown body only renders
+  // it (headings in any language), so the same decision in two stores hashes the same.
+  if (STRUCTURED_FIELDS.some((f) => card[f] !== undefined)) delete content['body'];
   return content;
 }
 

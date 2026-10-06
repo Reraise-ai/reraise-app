@@ -26,6 +26,9 @@ importers:
       '@vitest/coverage-v8':
         specifier: ^5.0.3
         version: 5.0.3(vitest@5.0.3)
+      '@worldbuilder/core':
+        specifier: workspace:*
+        version: link:packages/core
       ajv:
         specifier: ^8.20.0
         version: 8.20.0

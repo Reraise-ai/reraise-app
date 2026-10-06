@@ -49,6 +49,16 @@ describe('canonicalJson (RFC 8785)', () => {
     expect(() => canonicalJson(() => 1)).toThrow('function');
   });
 
+  it('rejects lone surrogates and objects that are not plain JSON', () => {
+    expect(() => canonicalJson('a\uD800b')).toThrow('lone surrogate');
+    expect(() => canonicalJson({ '\uDC00': 1 })).toThrow('lone surrogate');
+    expect(canonicalJson('\uD83D\uDE00')).toBe('"😀"');
+    expect(() => canonicalJson(new Date(0))).toThrow('plain JSON objects');
+    expect(() => canonicalJson(new Map())).toThrow('plain JSON objects');
+    expect(() => canonicalJson([new (class Thing {})()])).toThrow('plain JSON objects');
+    expect(canonicalJson(Object.create(null))).toBe('{}');
+  });
+
   it('keeps non-ASCII text unescaped, escapes control characters, omits undefined members', () => {
     expect(canonicalJson({ t: 'Grüße\u0001', u: undefined })).toBe('{"t":"Grüße\\u0001"}');
     expect(canonicalJson([undefined])).toBe('[null]');
@@ -108,6 +118,29 @@ describe('computeContentHash (ADR-0034)', () => {
     };
     expect(computeContentHash(inStoreA)).toBe(computeContentHash(inStoreB));
     expect(Object.keys(hashedContent(card)).sort()).toEqual(['layer', 'source', 'title', 'type']);
+  });
+
+  it('hashes structured cards by their structure, not by the rendered body', () => {
+    const sections = {
+      situation: 'S',
+      trigger: 'T',
+      conditions: 'C',
+      facts: 'F',
+      priorities: 'P',
+      action: 'A',
+      alternatives: 'Alt',
+      exclusions: 'E',
+      rationale: 'R',
+      cardsUsed: ['01M1E34QM03WVTE8T1RYS3AM18'],
+      outcome: 'open',
+    };
+    const decision = { type: 'decision', title: 'D', sections };
+    const english = { ...decision, body: '## Situation\n\nS\n\n## Trigger\n\nT\n' };
+    const german = { ...decision, body: '## Situation\n\nS\n\n## Ausloeser\n\nT\n' };
+    expect(computeContentHash(english)).toBe(computeContentHash(german));
+    expect(computeContentHash({ ...english, sections: { ...sections, outcome: 'done' } })).not.toBe(
+      computeContentHash(english),
+    );
   });
 
   it('changes with any content change, including Unicode normalisation of the text', () => {

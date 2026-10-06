@@ -59,7 +59,7 @@ export type Card = CardContent &
     >
   >;
 /**
- * Reference to a card in its home store: wb:<storeInstanceId>/<externalId percent-encoded per RFC 3986, upper-case hex>. storeInstanceId is a random UUID, never a hostname, path or user name (ADR-0005, ADR-0023).
+ * Reference to a card in its home store: wb:<storeInstanceId>/<externalId>, in canonical form only: the external id NFC-normalised, UTF-8, every unreserved character literal and every other byte %XX with upper-case hex (RFC 3986). A URI that differs from buildUri(storeInstanceId, externalId) is not a card URI (for example %2D for '-'). storeInstanceId is a random UUID, never a hostname, path or user name (ADR-0005, ADR-0023).
  */
 export type WbUri = string;
 /**

@@ -33,14 +33,29 @@ export function buildUri(storeInstanceId: string, externalId: string): WbUri {
 
 /** Split a `wb:` URI into its store instance id and the decoded external id. */
 export function parseUri(uri: string): { storeInstanceId: string; externalId: string } {
-  const m = URI_RE.exec(uri);
-  if (!m) throw new Error(`not a wb: card URI: ${uri}`);
-  return { storeInstanceId: m[1]!, externalId: decodeURIComponent(m[2]!) };
+  const parsed = parseLoose(uri);
+  // Only the canonical form is a card URI: one external id has exactly one URI, so it has
+  // exactly one derived id. `%2D` for `-`, `%78` for `x` or an NFD-encoded id are rejected.
+  if (!parsed || buildUri(parsed.storeInstanceId, parsed.externalId) !== uri) {
+    throw new Error(`not a canonical wb: card URI: ${uri}`);
+  }
+  return parsed;
 }
 
-/** True if `uri` is a well-formed `wb:` card URI (and therefore holds no hostname or path). */
+function parseLoose(uri: string): { storeInstanceId: string; externalId: string } | undefined {
+  const m = URI_RE.exec(uri);
+  if (!m) return undefined;
+  try {
+    return { storeInstanceId: m[1]!, externalId: decodeURIComponent(m[2]!) };
+  } catch {
+    return undefined; // invalid UTF-8 percent-encoding
+  }
+}
+
+/** True if `uri` is a canonical `wb:` card URI (and therefore holds no hostname or path). */
 export function isWbUri(uri: string): boolean {
-  return URI_RE.test(uri);
+  const parsed = parseLoose(uri);
+  return parsed !== undefined && buildUri(parsed.storeInstanceId, parsed.externalId) === uri;
 }
 
 /**
@@ -49,7 +64,7 @@ export function isWbUri(uri: string): boolean {
  * every machine and after every index rebuild. Derived ids are not time-sortable.
  */
 export function deriveCardId(uri: string): CardId {
-  if (!isWbUri(uri)) throw new Error(`not a wb: card URI: ${uri}`);
+  if (!isWbUri(uri)) throw new Error(`not a canonical wb: card URI: ${uri}`);
   return encodeUlid(sha256(new TextEncoder().encode(uri)).subarray(0, 16));
 }
 

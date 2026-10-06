@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright The Worldbuilder contributors
+import * as core from '@worldbuilder/core';
 import { describe, expect, it } from 'vitest';
 import {
   buildUri,
@@ -32,23 +33,11 @@ describe('uri', () => {
   });
 });
 
-describe('content hash (ADR-0034)', () => {
-  it('matches the vector pinned in packages/core', () => {
-    const card = {
-      format: 2,
-      type: 'claim',
-      title: 'A claim',
-      layer: 'said',
-      author: 'human',
-      source: 'https://example.org/a',
-    };
-    expect(computeContentHash({ ...card, id: ID, rating: 3 })).toBe(
-      'sha256:399ebae5060e1018f43fe6c9faa97ceea3cbc28b0abc740df50cc4c659b5cd27',
-    );
-    expect(canonicalJson({ b: 1, '\u20ac': [1e21, undefined], a: { d: 0.1 } })).toBe(
-      '{"a":{"d":0.1},"b":1,"€":[1e+21,null]}',
-    );
-    expect(() => canonicalJson(Number.NaN)).toThrow();
+describe('shared implementation', () => {
+  it('uses identity and hashing from packages/core, not a copy', () => {
+    expect(buildUri).toBe(core.buildUri);
+    expect(computeContentHash).toBe(core.computeContentHash);
+    expect(canonicalJson).toBe(core.canonicalJson);
   });
 });
 

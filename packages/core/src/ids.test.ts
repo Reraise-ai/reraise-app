@@ -57,8 +57,27 @@ describe('parseUri / isWbUri', () => {
       `wb:${STORE}/`,
     ]) {
       expect(isWbUri(uri)).toBe(false);
-      expect(() => parseUri(uri)).toThrow('not a wb: card URI');
+      expect(() => parseUri(uri)).toThrow('not a canonical wb: card URI');
     }
+  });
+});
+
+describe('canonical URIs only', () => {
+  it('rejects encoded unreserved characters, NFD forms and broken UTF-8', () => {
+    const nfd = encodeURIComponent('Mu\u0308ller')
+      .toUpperCase()
+      .replace(/%([0-9A-F]{2})/g, '%$1');
+    for (const uri of [
+      `wb:${STORE}/x%2D14`,
+      `wb:${STORE}/%78-14`,
+      `wb:${STORE}/${nfd}`,
+      `wb:${STORE}/%C3`,
+    ]) {
+      expect(isWbUri(uri), uri).toBe(false);
+      expect(() => parseUri(uri)).toThrow('not a canonical wb: card URI');
+      expect(() => deriveCardId(uri)).toThrow('not a canonical wb: card URI');
+    }
+    expect(isWbUri(buildUri(STORE, 'Mu\u0308ller'))).toBe(true);
   });
 });
 
@@ -96,7 +115,7 @@ describe('deriveCardId', () => {
   });
 
   it('refuses anything but a wb: URI', () => {
-    expect(() => deriveCardId('x-14')).toThrow('not a wb: card URI');
+    expect(() => deriveCardId('x-14')).toThrow('not a canonical wb: card URI');
   });
 });
 
