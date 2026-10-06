@@ -5,6 +5,7 @@ import type {
   Card,
   DisclosureConfirmation,
   DisclosureDecision,
+  DisclosureModelRequest,
   DisclosureTarget,
   DisclosureTransfer,
 } from '../generated/contracts.js';
@@ -13,14 +14,34 @@ import type {
 export type DisclosureItem =
   { readonly kind: 'card'; readonly card: Card } | { readonly kind: 'stance'; readonly card: Card };
 
+/** What the user wants to send to a cloud connector; the gate turns it into a preview. */
+export interface DisclosurePreviewInput {
+  readonly connectorId: string;
+  readonly purpose: DisclosureTransfer['purpose'];
+  readonly request: DisclosureModelRequest;
+  readonly cards: readonly Card[];
+}
+
 /**
- * Decides per card and per target whether content may leave (ADR-0012). Every egress path
- * calls it. Contract, proven by `describeDisclosureGateConformance`:
+ * Why a confirmation was refused: unknown transfer or payload mismatch or a second
+ * confirmation (HTTP 409), or an expired transfer (HTTP 410).
+ */
+export type TransferErrorCode = 'unknown' | 'mismatch' | 'replayed' | 'expired';
+
+/** Error thrown by `DisclosureGate.confirm`. */
+export interface TransferError extends Error {
+  readonly code: TransferErrorCode;
+}
+
+/**
+ * Decides per card and per target whether content may leave (ADR-0012, ADR-0031). Every
+ * egress path calls it. Contract, proven by `describeDisclosureGateConformance`:
  *
  * - default deny: without a matching allow rule the decision is `deny`, for every target;
+ *   a matching deny rule wins over any allow rule;
  * - stance data is allowed for `screen` only, whatever the rules say;
- * - `cloud_model` is allowed only with the user's confirmation of the transfer that lists
- *   exactly this card; there is no standing consent.
+ * - `cloud_model` is allowed only for a card in a previewed transfer that the user confirmed
+ *   with its exact payload hash, before it expired, once; there is no standing consent.
  */
 export interface DisclosureGate {
   decide(
@@ -28,11 +49,11 @@ export interface DisclosureGate {
     target: DisclosureTarget,
     confirmation?: DisclosureConfirmation,
   ): DisclosureDecision;
-  /** Open a cloud transfer that the user must confirm (shown by the human-only endpoint). */
-  requestTransfer(
-    cardIds: readonly string[],
-    purpose: DisclosureTransfer['purpose'],
-  ): DisclosureTransfer;
-  /** Record the human's confirmation of exactly the listed cards of one transfer. */
-  confirm(transferId: string, cardIds: readonly string[]): DisclosureConfirmation;
+  /**
+   * Build the preview of a cloud transfer: the envelope holds only cards the rules allow for
+   * `cloud_model`, and its JCS hash is the transfer's `payloadHash`.
+   */
+  preview(input: DisclosurePreviewInput): DisclosureTransfer;
+  /** Record the human's confirmation; throws a `TransferError` on mismatch, expiry or replay. */
+  confirm(transferId: string, payloadHash: string): DisclosureConfirmation;
 }

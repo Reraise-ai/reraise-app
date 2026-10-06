@@ -1,0 +1,12 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/disclosure-decision.schema.json#/$defs/confirmRequest",
+  "description": "A confirmation must name the exact payload (ADR-0031).",
+  "expect": {
+    "keyword": "required",
+    "instancePath": ""
+  },
+  "data": {
+    "cardIds": ["01M1E34QM03WVTE8T1RYS3AM18"]
+  }
+}

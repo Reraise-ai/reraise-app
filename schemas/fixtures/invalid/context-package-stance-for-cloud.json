@@ -154,6 +154,7 @@
     "withheld": 1,
     "transfer": {
       "transferId": "01M1HA4MC0T8585XX5H0E6NVRP",
+      "payloadHash": "sha256:abababababababababababababababababababababababababababababababab",
       "confirmedAt": "2026-09-16T10:20:00Z"
     }
   }

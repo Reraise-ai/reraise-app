@@ -221,9 +221,12 @@
         },
         "confirmedAt": {
           "$ref": "common.schema.json#/$defs/dateTime"
+        },
+        "payloadHash": {
+          "$ref": "disclosure-decision.schema.json#/$defs/payloadHash"
         }
       },
-      "required": ["transferId", "confirmedAt"],
+      "required": ["transferId", "confirmedAt", "payloadHash"],
       "additionalProperties": false
     },
     "request": {

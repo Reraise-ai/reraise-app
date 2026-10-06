@@ -3,7 +3,7 @@
 
 import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { canonicalJson, computeContentHash } from './content-hash.js';
+import { canonicalJson, computeContentHash, computePayloadHash, hashJcs } from './content-hash.js';
 
 const card = {
   format: 2 as const,
@@ -85,5 +85,19 @@ describe('computeContentHash (ADR-0034)', () => {
     expect(computeContentHash({ ...card, title: 'Müller' })).not.toBe(
       computeContentHash({ ...card, title: 'Müller' }),
     );
+  });
+});
+
+describe('computePayloadHash (ADR-0031)', () => {
+  it('hashes the whole preview envelope with JCS', () => {
+    const envelope = {
+      target: 'cloud_model' as const,
+      connectorId: 'jev-stub',
+      request: { question: 'Q?', options: ['a', 'b'] },
+      objects: [],
+    };
+    const hex = createHash('sha256').update(canonicalJson(envelope), 'utf8').digest('hex');
+    expect(computePayloadHash(envelope)).toBe(`sha256:${hex}`);
+    expect(hashJcs({ b: 1, a: 2 })).toBe(hashJcs({ a: 2, b: 1 }));
   });
 });

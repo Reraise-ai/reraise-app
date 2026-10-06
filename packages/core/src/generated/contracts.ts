@@ -185,6 +185,10 @@ export type Sha256 = string;
  */
 export type StanceWeight = number;
 /**
+ * sha256:<lower-case hex> over the RFC 8785 (JCS) serialisation of the preview envelope (ADR-0031, ADR-0034).
+ */
+export type PayloadHash = string;
+/**
  * A decision card: a format-2 card of type decision with exactly eleven non-empty sections (ADR-0017). Saving one is a human-only operation (ADR-0016).
  */
 export type Decision = Card & {
@@ -632,6 +636,7 @@ export interface ContextPendingProposal {
 export interface ContextTransferRef {
   transferId: Ulid;
   confirmedAt: DateTime;
+  payloadHash: PayloadHash;
 }
 /**
  * Input of context_package_get. The target is taken from the caller's registered connection, never from the request (ADR-0012).
@@ -669,10 +674,11 @@ export interface DisclosureSubject {
   cardId: CardId;
 }
 /**
- * The user's confirmation of one transfer. No standing consent: it covers this transfer only.
+ * The user's confirmation of one transfer. No standing consent: it covers this payload only.
  */
 export interface DisclosureConfirmation {
   transferId: Ulid;
+  payloadHash: PayloadHash;
   /**
    * @minItems 1
    */
@@ -681,22 +687,56 @@ export interface DisclosureConfirmation {
   confirmedAt: DateTime;
 }
 /**
- * A pending cloud_model transfer awaiting the user's confirmation; lists exactly which cards would be sent. Exports use cloud_model semantics (ADR-0012).
+ * A previewed cloud_model transfer awaiting the user's confirmation (ADR-0012, ADR-0031). `cardIds` lists the ids of the objects in the envelope; `payloadHash` must be echoed by the confirmation; the transfer expires at `expiresAt` and can be confirmed once.
  */
 export interface DisclosureTransfer {
   transferId: Ulid;
-  target: 'cloud_model';
   purpose: 'context_package' | 'level1' | 'export';
   /**
    * @minItems 1
    */
   cardIds: CardId[];
+  payloadHash: PayloadHash;
+  preview: DisclosurePreviewEnvelope;
   createdAt: DateTime;
+  expiresAt: DateTime;
 }
 /**
- * Body of the human-only confirm operation: the user confirms exactly the listed cards of one transfer.
+ * Exactly what would leave the device: the target, the connector, the request parameters and the canonical objects after the gate decision. The payload hash covers this envelope.
+ */
+export interface DisclosurePreviewEnvelope {
+  target: 'cloud_model';
+  connectorId: string;
+  request: DisclosureModelRequest;
+  /**
+   * @minItems 1
+   */
+  objects: Card[];
+}
+/**
+ * The request parameters that go to the model with the objects.
+ */
+export interface DisclosureModelRequest {
+  question?: Text;
+  options?: Text[];
+  /**
+   * JSON Schema the answer must follow (level 1).
+   */
+  outputSchema?: Record<string, unknown>;
+}
+/**
+ * Body of the human-only confirm operation. The server rejects a payloadHash that differs from the transfer's (409), an expired transfer (410) and a second confirmation of the same transfer (409).
  */
 export interface DisclosureConfirmRequest {
+  payloadHash: PayloadHash;
+}
+/**
+ * Body of the human-only preview operation: what the user wants to send. The server builds the envelope from gate-cleared canonical objects only.
+ */
+export interface DisclosurePreviewRequest {
+  connectorId: string;
+  purpose: 'context_package' | 'level1' | 'export';
+  request: DisclosureModelRequest;
   /**
    * @minItems 1
    */

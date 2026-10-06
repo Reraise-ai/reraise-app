@@ -155,6 +155,7 @@ describe('MCP / Board API parity', () => {
       'decision_save',
       'disclosure_confirm',
       'disclosure_transfer_get',
+      'disclosure_transfer_preview',
       'lage_create',
       'lage_save',
       'proposal_accept',

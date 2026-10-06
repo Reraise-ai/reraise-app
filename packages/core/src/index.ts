@@ -11,6 +11,8 @@ export {
   CONTENT_HASH_EXCLUDED,
   canonicalJson,
   computeContentHash,
+  computePayloadHash,
+  hashJcs,
   hashedContent,
 } from './content-hash.js';
 export {

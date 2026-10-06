@@ -4,7 +4,7 @@
 // Content hash of a card (ADR-0006, ADR-0034): `sha256:` + lower-case hex SHA-256 over the
 // RFC 8785 JSON Canonicalization Scheme (JCS) serialisation of the hashed content.
 
-import type { CardContent } from './generated/contracts.js';
+import type { CardContent, DisclosurePreviewEnvelope } from './generated/contracts.js';
 import { sha256 } from './ids.js';
 
 /**
@@ -58,8 +58,18 @@ export function hashedContent(card: CardContent): Record<string, unknown> {
   return content;
 }
 
-/** `sha256:<hex>` of the JCS serialisation of the hashed card content. */
-export function computeContentHash(card: CardContent): string {
-  const bytes = sha256(new TextEncoder().encode(canonicalJson(hashedContent(card))));
+/** `sha256:<hex>` of the JCS serialisation of any JSON value. */
+export function hashJcs(value: unknown): string {
+  const bytes = sha256(new TextEncoder().encode(canonicalJson(value)));
   return `sha256:${Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('')}`;
+}
+
+/** `sha256:<hex>` of the JCS serialisation of the hashed card content (ADR-0034). */
+export function computeContentHash(card: CardContent): string {
+  return hashJcs(hashedContent(card));
+}
+
+/** Payload hash of a disclosure preview envelope (ADR-0031): JCS hash of the envelope. */
+export function computePayloadHash(envelope: DisclosurePreviewEnvelope): string {
+  return hashJcs(envelope);
 }

@@ -500,6 +500,38 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+  /disclosure/transfers:
+    post:
+      operationId: disclosure_transfer_preview
+      summary: Preview a cloud transfer
+      description: >-
+        Human-only. Builds the preview envelope (target, connector, request parameters and the
+        gate-cleared canonical objects) and its payload hash, an RFC 8785 JCS SHA-256
+        (ADR-0031, ADR-0034). Cards the gate does not clear for cloud_model are left out. The
+        transfer expires at `expiresAt` and can be confirmed once.
+      tags: [human-only]
+      x-human-only: true
+      security:
+        - sessionToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../disclosure-decision.schema.json#/$defs/previewRequest'
+      responses:
+        '201':
+          description: The previewed transfer.
+          content:
+            application/json:
+              schema:
+                $ref: '../disclosure-decision.schema.json#/$defs/transfer'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/HumanOnly'
   /disclosure/transfers/{transferId}:
     parameters:
       - $ref: '#/components/parameters/transferId'
@@ -531,8 +563,9 @@ paths:
       operationId: disclosure_confirm
       summary: Confirm one cloud transfer
       description: >-
-        Human-only. Confirms exactly the listed cards of this transfer; there is no standing
-        consent (ADR-0012).
+        Human-only. Confirms exactly the previewed payload: the body carries its `payloadHash`.
+        A different hash or a second confirmation is rejected with 409, an expired transfer
+        with 410. There is no standing consent (ADR-0012, ADR-0031).
       tags: [human-only]
       x-human-only: true
       security:
@@ -560,6 +593,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+        '410':
+          $ref: '#/components/responses/Gone'
 components:
   securitySchemes:
     sessionToken:
@@ -621,7 +656,15 @@ components:
           schema:
             $ref: '../api.schema.json#/$defs/problem'
     Conflict:
-      description: Version conflict or a proposal that is already decided.
+      description: >-
+        Version conflict, a proposal that is already decided, or a transfer confirmation with a
+        different payload hash or for an already confirmed transfer.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '../api.schema.json#/$defs/problem'
+    Gone:
+      description: The transfer has expired; preview it again.
       content:
         application/problem+json:
           schema:
