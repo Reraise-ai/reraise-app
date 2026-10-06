@@ -49,3 +49,5 @@ MCP tool definitions, the adapter interfaces, or the product canon
 | [0022](0022-public-hygiene.md) | Public hygiene: synthetic data only, no-real-data check, secret scanning | accepted | 2026-10-06 |
 | [0023](0023-core-domain-model.md) | Core domain model compatible with the owner's card format v2 | accepted | 2026-10-06 |
 | [0024](0024-concept-v1-reconciliation.md) | Reconciliation of concept v1 with the product hand-over | accepted | 2026-10-06 |
+| [0025](0025-engineering-process-and-quality-gates.md) | Engineering process and quality gates | accepted | 2026-10-06 |
+| [0026](0026-security-defaults.md) | Security defaults for the Board API and the MCP server | accepted | 2026-10-06 |

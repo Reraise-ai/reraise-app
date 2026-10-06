@@ -107,4 +107,5 @@ gate blocks a private card for target `cloud_model`.
   configuration, §6 `privacy: "no-stances"` option, §11 "Datenschutzstufen".
 - Related: [ADR-0005](0005-universal-adapter-architecture.md),
   [ADR-0015](0015-two-thinking-levels.md),
-  [ADR-0021](0021-privacy-and-sharing-model.md).
+  [ADR-0021](0021-privacy-and-sharing-model.md),
+  [ADR-0026](0026-security-defaults.md).

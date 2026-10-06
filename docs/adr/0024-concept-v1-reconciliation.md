@@ -59,7 +59,7 @@ reference; where they disagree with an ADR, the ADR wins.
 | 21 | Source profile dimensions (03 §12; 02 §8) | changed | Owner's eight dimensions, each with `n` | [0018](0018-multidimensional-source-profile.md) |
 | 22 | Eleven relation types (03 §7) | changed | Eight edge kinds of card format v2; contradicts → refutes, derived-from → based_on, actor relations → `relation` | [0023](0023-core-domain-model.md) |
 | 23 | Symmetric relations stored once (03 §7) | dropped | Edges are directed and carry `by` | [0023](0023-core-domain-model.md) |
-| 24 | Player field `redLines` (03 §4.1) | dropped | Not in card format v2; candidate for a later ADR | [0009](0009-mandatory-provenance.md) |
+| 24 | Player field `redLines` (03 §4.1) | deferred | Not in card format v2; owner to decide; later ADR | [0009](0009-mandatory-provenance.md) |
 | 25 | Unsourced player entries as own assessment (03 §4.1) | changed | `source` required | [0009](0009-mandatory-provenance.md) |
 | 26 | World memberships with role, weight, note; premises (03 §8) | deferred | `worlds[]` references now; memberships and premises in the multi-world slice | [0023](0023-core-domain-model.md) |
 | 27 | Mandatory guiding question (02 §1) | kept | `Lage.question` required | [0023](0023-core-domain-model.md) |
@@ -73,7 +73,7 @@ reference; where they disagree with an ADR, the ADR wins.
 | 35 | MCP tool names (04 §6) | changed | New tool set; `proposal_create` only write path | [0016](0016-mcp-first-and-openapi-contracts.md) |
 | 36 | Agents can never write active content or stances (04 §6.1) | kept | Enforced via proposals and human-only endpoints | [0011](0011-agent-moves-are-proposals.md) |
 | 37 | Untrusted source text treated as data, not instructions (04 §8) | kept | Applies to connector findings and agent input | [0014](0014-no-ingestion-inbox-of-findings.md) |
-| 38 | Loopback binding, session token, MCP bearer token (04 §11) | kept | Default for local installs; other deployments add their own access control | this ADR |
+| 38 | Loopback binding, session token, MCP bearer token (04 §11) | kept | Security defaults; agent and human tokens separated | [0026](0026-security-defaults.md) |
 | 39 | React Flow instead of tldraw (04 §9) | kept | `@xyflow/react`, custom nodes | [0019](0019-design-tokens-and-board-canvas.md) |
 | 40 | Layer colours of the visual grammar (02 §2.1) | changed | Brand tokens | [0019](0019-design-tokens-and-board-canvas.md) |
 | 41 | Package split and zod as schema source (04 §3) | changed | New layout; JSON Schema canonical | [0003](0003-typescript-monorepo-stack.md), [0016](0016-mcp-first-and-openapi-contracts.md) |
@@ -122,4 +122,6 @@ section gets a note linking the ADR listed here (review checklist).
   03 = `docs/03-datenmodell.md`, 04 = `docs/04-architektur.md`,
   05 = `docs/05-roadmap.md`.
 - Related: [ADR-0001](0001-record-architecture-decisions.md),
-  [ADR-0020](0020-build-order-milestones.md).
+  [ADR-0020](0020-build-order-milestones.md),
+  [ADR-0025](0025-engineering-process-and-quality-gates.md),
+  [ADR-0026](0026-security-defaults.md).
