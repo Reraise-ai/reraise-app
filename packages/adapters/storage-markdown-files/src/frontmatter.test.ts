@@ -160,3 +160,58 @@ describe('withEol', () => {
     expect(withEol('a\nb', '\r\n')).toBe('a\r\nb');
   });
 });
+
+describe('editFrontMatter with multi-line values', () => {
+  const wrap = (field: string, rest = 'next: 1\n') => `---\nid: x\n${field}${rest}---\nBody\n`;
+  const edit = (text: string, key: string, line: string | null) =>
+    editFrontMatter(text, new Map([[key, line]]));
+
+  for (const header of ['|', '|-', '|+', '>', '>-']) {
+    it(`replaces a ${header} block scalar in the middle and keeps what follows`, () => {
+      const text = wrap(`title: ${header}\n  line one\n  line two\n# comment line\n`);
+      expect(edit(text, 'title', 'title: New')).toBe(wrap('title: New\n# comment line\n'));
+    });
+
+    it(`replaces a ${header} block scalar in the last position`, () => {
+      const text = wrap(`title: ${header}\n  line one\n  line two\n`, '');
+      expect(edit(text, 'title', 'title: New')).toBe(wrap('title: New\n', ''));
+    });
+
+    it(`removes a ${header} block scalar without eating the next field`, () => {
+      const text = wrap(`title: ${header}\n  line one\n  line two\n`);
+      expect(edit(text, 'title', null)).toBe(wrap(''));
+    });
+  }
+
+  it('replaces a block sequence in the middle, last, and before a comment', () => {
+    const seq = 'tags:\n  - a\n  - b # trailing\n';
+    expect(edit(wrap(seq), 'tags', 'tags: [c]')).toBe(
+      wrap('tags: [c] # trailing\n'.replace(' # trailing', '')),
+    );
+    expect(edit(wrap(seq, ''), 'tags', 'tags: [c]')).toBe(wrap('tags: [c]\n', ''));
+    expect(edit(wrap(`${seq}# keep\n`), 'tags', 'tags: [c]')).toBe(wrap('tags: [c]\n# keep\n'));
+    expect(edit(wrap(seq), 'tags', null)).toBe(wrap(''));
+  });
+
+  it('keeps a trailing comment of a plain value', () => {
+    expect(edit(wrap('title: Old # note\n'), 'title', 'title: New')).toBe(
+      wrap('title: New # note\n'),
+    );
+  });
+
+  it('works with CRLF line breaks', () => {
+    const text = wrap('title: |-\n  one\n  two\n# c\n').replace(/\n/g, '\r\n');
+    expect(edit(text, 'title', 'title: New')).toBe(
+      wrap('title: New\n# c\n').replace(/\n/g, '\r\n'),
+    );
+  });
+
+  it('survives repeated patches of a multi-line title', () => {
+    let text = wrap('title: first\n');
+    for (const title of ['two\nlines', 'three\nlines\nnow', 'single', 'back\nagain']) {
+      text = edit(text, 'title', serialiseField('title', title));
+      expect(parseFrontMatter(text).data).toEqual({ id: 'x', title, next: 1 });
+      expect(text.endsWith('next: 1\n---\nBody\n')).toBe(true);
+    }
+  });
+});

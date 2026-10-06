@@ -67,7 +67,11 @@ export function parseFrontMatter(text: string): ParsedFrontMatter {
       const colon = fm.indexOf(':', pair.key.range[1]);
       end = span.fmStart + (colon < 0 ? pair.key.range[1] : colon + 1);
     } else {
-      end = span.fmStart + valueEnd;
+      // A block scalar or sequence ends with its line break: stop at the last visible
+      // character so the break (and any following comment line) stays where it is.
+      let e = valueEnd;
+      while (e > pair.key.range[1] && (fm[e - 1] === '\n' || fm[e - 1] === '\r')) e--;
+      end = span.fmStart + e;
     }
     pairs.set(key, { start, end });
   }
