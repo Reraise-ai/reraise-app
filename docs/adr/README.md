@@ -61,3 +61,7 @@ MCP tool definitions, the adapter interfaces, or the product canon
 | [0032](0032-m1-proposal-polling.md) | The M1 board polls for proposals; the M2 live channel replaces polling | accepted | 2026-10-06 |
 | [0033](0033-derived-index-reference-adapter.md) | In-memory derived index for the reference adapter; SQLite only on measured need | accepted | 2026-10-06 |
 | [0034](0034-content-hash.md) | Content hash is SHA-256 over the JCS serialisation of the card content | accepted | 2026-10-06 |
+| [0035](0035-level1-engine-socket.md) | Level 1 is a generic engine socket that predicts each player's next move | accepted | 2026-10-06 |
+| [0036](0036-conclusions-are-private.md) | Conclusions are private; a `share` target enforces it in the disclosure gate | accepted | 2026-10-06 |
+| [0037](0037-hermes-agents-as-mcp-clients.md) | Hermes agents connect as individually registered MCP clients | accepted | 2026-10-06 |
+| [0038](0038-player-fields-red-lines-goals-personality.md) | Player fields for red lines, assumed goals and a private personality type | accepted | 2026-10-06 |

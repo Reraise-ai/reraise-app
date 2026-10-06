@@ -66,7 +66,15 @@ export default withMermaid({
         },
       ],
       '/tutorials/': [{ text: 'Tutorials', items: [{ text: 'Overview', link: '/tutorials/' }] }],
-      '/how-to/': [{ text: 'How-to guides', items: [{ text: 'Overview', link: '/how-to/' }] }],
+      '/how-to/': [
+        {
+          text: 'How-to guides',
+          items: [
+            { text: 'Overview', link: '/how-to/' },
+            { text: 'Connect a Hermes agent', link: '/how-to/connect-hermes-agent' },
+          ],
+        },
+      ],
       '/reference/': [
         {
           text: 'Reference',

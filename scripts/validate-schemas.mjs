@@ -183,6 +183,17 @@ export const CROSS_CHECKS = {
         .map((i) => `item ${i.card.id} is not in confirmed transfer ${pkg.transfer.transferId}`);
     },
   },
+  /** ADR-0037: every agent connection has its own name. */
+  'agent-names': {
+    schema: 'agent-connections.schema.json',
+    run(registry) {
+      const seen = new Set();
+      return registry.connections
+        .map((c) => c.name)
+        .filter((n) => (seen.has(n) ? true : (seen.add(n), false)))
+        .map((n) => `agent name ${n} is registered twice`);
+    },
+  },
   /** ADR-0035: every predicted move is one of the player's move options. */
   'level1-move': {
     schema: 'level1-prediction.schema.json',

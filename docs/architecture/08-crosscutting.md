@@ -173,7 +173,7 @@ Privacy is structural, not a setting ([ADR-0012](../adr/0012-disclosure-gate.md)
   Concurrent writers use optimistic concurrency on `version` or `contentHash`.
 - Writes are patches: only the canonical fields the product changed are written; everything
   else stays byte-identical ([runtime 6.3](./06-runtime.md#63-write-back-patch-to-an-external-store)).
-- Stances, proposals, the gate log and gate rules are local files in the per-user state
+- Stances, proposals, the gate log, gate rules and the agent registry are local files in the per-user state
   directory, never in shared or remote stores, and never inside a store root or Git working
   tree (the service refuses to start otherwise). `packages/local-state` owns them behind a core interface and
   `services/api` is the only writer. Stances are written only through the human-only
@@ -184,6 +184,11 @@ Privacy is structural, not a setting ([ADR-0012](../adr/0012-disclosure-gate.md)
 ## 8.6 Agents and proposals
 
 - Agents act only through `proposal_create`. The server sets `author` from the connection.
+- Every agent connection, for example each agent of a multi-agent system such as Hermes, is
+  registered on its own by the human (`worldbuilder agent add <name> --target ...`) with a name,
+  a target class and a token whose hash is kept in `agents.yaml` in the state directory. The
+  class follows where the agent's models run, not where the agent runs
+  ([ADR-0037](../adr/0037-hermes-agents-as-mcp-clients.md)).
 - In M1 the board polls `proposal_list` with `changedSince=<cursor>` every 2 seconds (the same
   parameter exists for agents over MCP); the M2 live channel
   replaces polling ([ADR-0032](../adr/0032-m1-proposal-polling.md)).

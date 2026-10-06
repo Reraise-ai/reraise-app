@@ -217,6 +217,13 @@ describe('collectUlids', () => {
 });
 
 describe('cross-checks', () => {
+  it('flag an agent name registered twice (ADR-0037)', () => {
+    const c = { name: 'planner', target: 'local_model' };
+    const name = 'agent-connections.schema.json';
+    expect(crossCheck(name, { connections: [c, { ...c, name: 'scout' }] })).toEqual([]);
+    expect(crossCheck(name, { connections: [c, c] }).map((f) => f.check)).toEqual(['agent-names']);
+  });
+
   it('flag a predicted move outside the move options (ADR-0035)', () => {
     const player = { playerCardId: '01M1E34QM03WVTE8T1RYS3AM18', moveOptions: ['a', 'b'] };
     const prediction = { players: [{ ...player, predictedMove: 'c' }] };

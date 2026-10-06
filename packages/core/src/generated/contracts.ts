@@ -5,6 +5,7 @@
 // Regenerate with `pnpm generate:types`; a test fails if this file is out of date.
 // The types describe shapes only; validate data against the JSON Schemas for the rules.
 
+export type DateTime = string;
 export type EmptyRequest = Record<string, never>;
 /**
  * Canonical world id (ULID).
@@ -152,7 +153,6 @@ export type CardDraft = CardContent &
  */
 export type AgentAuthor = string;
 export type ProposalKind = 'place_card' | 'move_card' | 'add_edge' | 'create_card' | 'comment';
-export type DateTime = string;
 /**
  * The local human user. Human-only operations record this value.
  */
@@ -251,6 +251,28 @@ export type ProposalCreate = ProposalKindPayload & {
   rationale?: string;
 };
 
+/**
+ * The registry of agent connections in the per-user state directory, <state>/agents.yaml (ADR-0030, ADR-0037). Each MCP client connection (for example one agent of a multi-agent system) is registered on its own with a name, which becomes its author agent:<name>, and the disclosure target class it represents. The token itself is never stored, only its SHA-256. Names are unique (cross-check `agent-names`). Local state: never sent, exported or shared.
+ */
+export interface AgentConnections {
+  connections: AgentConnection[];
+}
+export interface AgentConnection {
+  /**
+   * The agent name; the connection acts as agent:<name>.
+   */
+  name: string;
+  /**
+   * What the agent's answers may reach: local_model only if every model the agent uses runs under the user's control; otherwise cloud_model (ADR-0012, ADR-0037).
+   */
+  target: 'local_model' | 'cloud_model';
+  /**
+   * sha256:<hex> of the bearer token; the token is shown once at registration and never stored.
+   */
+  tokenHash: string;
+  createdAt: DateTime;
+  revokedAt?: DateTime;
+}
 export interface WorldList {
   worlds: World[];
 }

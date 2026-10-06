@@ -47,7 +47,7 @@ reaches it over HTTPS or the store's own interface, as in the
 | Neighbour | What crosses the boundary | Direction | Status |
 | --- | --- | --- | --- |
 | User | Lagen, cards placed and edges drawn, accept or reject of proposals, stances, decisions, transfer confirmations | in and out (screen) | planned (M1) for the walking-skeleton steps; M2+ for decisions |
-| User's agents (MAS) | MCP tool calls: `world_list`, `lage_get`, `cards_search`, `card_get`, `context_package_get`, `rules_evaluate`, `proposal_create`, `proposal_list`. Responses are gate-filtered for the connection's target class. | in (proposals), out (gate-cleared data) | tool names exist (M0 skeleton); contracts in progress (M0); server planned (M1) |
+| User's agents (MAS) | MCP tool calls: `world_list`, `lage_get`, `cards_search`, `card_get`, `context_package_get`, `rules_evaluate`, `proposal_create`, `proposal_list`. Responses are gate-filtered for the connection's target class. Each agent is registered on its own ([ADR-0037](../adr/0037-hermes-agents-as-mcp-clients.md)). | in (proposals), out (gate-cleared data) | tool names exist (M0 skeleton); contracts in progress (M0); server planned (M1) |
 | User's knowledge stores | Card files read, created and patched through the store's own write path; archived versions | both | reference adapter planned (M1); owner store adapter built outside this repository |
 | Connected sources | New findings with provenance (`uri`, connector, `originSystem`, retrieval time); nothing is ingested | in | planned (M2+) |
 | Local model | Gate-cleared context packages or Level 1 requests; answers come back as proposals or per-player Level 1 predictions | both | planned (M2+); the default local level-1 engine right after M1 |
