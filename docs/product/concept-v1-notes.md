@@ -27,6 +27,8 @@ The prototype `prototype/board.html` is kept as a frozen design study.
 ## What was superseded
 
 The binding record of each decision is the ADR log: see the [ADR index](../adr/README.md).
+[ADR-0024](../adr/0024-concept-v1-reconciliation.md) reconciles every concept v1 item
+(kept, changed, dropped or deferred) and is the authoritative list; the ADRs win over this page.
 In short:
 
 | Concept v1 said | Now | Why |

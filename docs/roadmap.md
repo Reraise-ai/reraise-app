@@ -1,6 +1,6 @@
 # Roadmap
 
-The build order is **contract-first, then a walking skeleton, then vertical slices**. Neither
+The build order ([ADR-0020](./adr/0020-build-order-milestones.md)) is **contract-first, then a walking skeleton, then vertical slices**. Neither
 "UX first" nor "architecture first": the UX concept exists as design material, so the next
 step is to fix the contracts, then prove the thinnest real path end to end, then add one
 slice per pull request.
@@ -72,13 +72,13 @@ done criterion is what counts.
 | --- | --- |
 | Decision card, protocol and outcome | A decision stores all 11 sections, reloads intact, rejects a `cardsUsed` id that does not exist, and entering the outcome creates a linked experience card. |
 | Rules panel replacing the barometer | Rules come from rule cards, never from code. Evaluation lists each rule as fired or not fired with the ids of triggering cards and shows no percentage. A proposed (unaccepted) card never fires a rule. |
-| Source profile and hit statistics from outcomes | Entering an outcome changes the stored hit count of the affected source, the earlier state stays retrievable, each dimension shows its sample size and "too little data" below five. |
+| Source profile and hit statistics from outcomes | Entering an outcome changes the stored hit count of the affected source, the earlier state stays retrievable, each dimension shows its sample size and "insufficient data" below a minimum `n`. |
 | Player fields with provenance | A seat entry without a source is rejected. Source pass is available on seats, moves, edges and decisions. |
 | Time slider on real timestamps | The board can be shown as of an earlier date from archived versions. |
 | What-if (non-persisting scenario layer) | A scenario layer changes no stored card and can be attached to a decision. |
 | Live channel (SSE) | Two open boards show a move within seconds, including agent proposals. |
 | Model connectors | Ollama, a cloud model and an external decision-service stub answer through one `ModelConnector` shape. The answer arrives as a proposal. A cloud call needs gate clearance and per-transfer confirmation. |
-| Source connectors | An Obsidian vault, a generic HTTP/JSON source and a document-system connector report new findings. They are referenced then pinned, with provenance, never ingested. |
+| Source connectors | An Obsidian vault, a generic HTTP/JSON source, a document-management connector and later paid news services report new findings. They are referenced then pinned, with provenance, never ingested. |
 | Training export | A JSONL file of decision traces contains only cards with `training: true`. |
 | World collision on two local worlds | Two worlds overlaid on one question show shared, diverging and non-fitting cards without forcing consensus. |
 | Level 1 thinking | A typed answer from a local rules engine is shown as "engine estimates X for Y", with inputs, never as a verdict, and can be escalated to a board. |

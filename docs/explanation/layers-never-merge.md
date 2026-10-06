@@ -17,7 +17,7 @@ sentence in the reader's head:
 
 In a normal note app all three look the same. After a few weeks "an analyst claims Y"
 becomes "Y is true", and the origin of your confidence is gone. The Worldbuilder exists to
-stop that slide.
+stop that slide ([ADR-0007](../adr/0007-epistemic-layer-field.md)).
 
 ## The three layers
 
@@ -40,7 +40,8 @@ on* a statement. The same statement can be "said by X" and at once "believed by 
 layer forces a choice that is not real.
 
 So belief is a **stance**: an overlay stored per user per card, with `position` (`believed`,
-`rejected`, `undecided`), a `weight`, a `note` and an update time, with history kept. Three
+`rejected`, `undecided`), a `weight`, a `note` and an update time, with history kept
+([ADR-0008](../adr/0008-believed-as-private-stance.md)). Three
 consequences follow.
 
 1. A card keeps its true layer. Believing a said card does not turn it into evidence.
@@ -56,11 +57,11 @@ authored by the user plus a believed stance. The conformance kit tests that mapp
 
 - **No combined number.** No counter, meter or summary adds the layers together without a
   breakdown. Every figure can be unfolded into its layers by one click.
-- **No verdict.** This is why the probability barometer was removed. A meter such as "hold
+- **No verdict.** This is why the probability barometer was removed ([ADR-0013](../adr/0013-rules-panel-replaces-barometer.md)). A meter such as "hold
   69 : 31" weighted the layers with fixed factors into one figure. That is a merge, however
   honestly it is labelled, and it reads as the system's own judgement. The Rules panel shows
   which of *your* rules fired and which cards triggered them, and nothing else.
-- **Proposals do not count.** What an agent proposed has no layer in the world until a human
+- **Proposals do not count** ([ADR-0011](../adr/0011-agent-moves-are-proposals.md)). What an agent proposed has no layer in the world until a human
   accepts it, and it never counts in rules or statistics before that.
 - **Contradiction stays visible.** A world may contain contradictory cards. Nothing resolves
   them for you.

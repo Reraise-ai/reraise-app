@@ -20,13 +20,15 @@ useful question is: how independent is this information from each other?
 ## What the model records
 
 - Each card has a `source`, a `sourceDate` and an `originSystem` where relevant. An
-  evidenced or said card without a source or origin system is rejected.
+  evidenced or said card without a source or origin system is rejected
+  ([ADR-0009](../adr/0009-mandatory-provenance.md)).
 - Edges of kind `cites` and `based_on` record the chain between cards. Edges also record who
   drew them (`by`: `human` or `agent:<name>`).
 - A card that comes from another system is referenced by URI and keeps its original
   provenance. Pinning a finding from a connected source does not rewrite its origin.
-- A `contentHash` (sha256 of the canonical content) lets two identical contents be
-  recognised as the same.
+- A `contentHash` (SHA-256 of the canonical card content) and a `sourceChecksum` (SHA-256 of the
+  original source document) let identical contents or sources be recognised as the same.
+  The same `contentHash` or the same source URI means the same origin root.
 
 ## Origin roots and the counter
 
@@ -40,8 +42,8 @@ Rules that follow from this:
 - Counters show origins, never raw card counts.
 - A stack counts once wherever the board counts evidence.
 - Missing chain information is shown as unknown, not assumed independent.
-- A chain that cannot be followed (hearsay with no recoverable origin) counts as one origin
-  of unverifiable quality, and is shown that way.
+- A chain that cannot be followed (hearsay with no recoverable origin) counts as its own
+  origin root and is flagged as such. One speaker quoted by many media is one root.
 - The count is derived from the edges at read time. It is never typed in.
 
 ::: warning Status
@@ -58,8 +60,8 @@ hit accuracy, reliability, topic competence per topic, agreement with your stanc
 from them, source quality, historical performance and counter-perspective value, each with a
 sample size. The profile is multi-dimensional on purpose, because one score would hide that a
 source can be accurate but ideologically distant, or often wrong yet valuable as a
-counter-perspective. Sample sizes keep small numbers honest: fewer than five samples shows
-"too little data".
+counter-perspective. Sample sizes keep small numbers honest: a dimension below a minimum
+sample size shows "insufficient data" ([ADR-0018](../adr/0018-multidimensional-source-profile.md)).
 
 ## Independence across people
 

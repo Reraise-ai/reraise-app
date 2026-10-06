@@ -14,13 +14,13 @@ card format, the table gives the field of our model that it maps to.
 | Welt | world | a modelled slice of reality from one perspective. A card appears in several worlds by reference, never by copy. |
 | Lage | Lage (situation), `lage` card | a concrete decision situation on the board around one guiding question. Stored as a card with a JSON position block. We keep the German word in the UI and use "situation" in prose. |
 | Leitfrage | guiding question | the question every board must have |
-| Brett | board section (legacy) | In the owner store `brett` is a storage classification of a card (`akteure`, `belege`, `entscheidungen`). In our docs "board" means the work surface. Do not confuse the two. |
+| Brett | collection (legacy) | In the owner store `brett` is the collection a card belongs to (`akteure` = `actors`, `belege` = `evidence`, `entscheidungen` = `decisions`), our field `collection`. In our docs "board" means the work surface. Do not confuse the two. |
 | Board | board | the central UX where cards become a situation |
 | Sitz, Sitze | seat, seats | a participant at the board: `{name, kind: human or agent}` |
 | Spieler | player | an actor card shown as a seat with interests, capabilities, dependencies and moves |
 | Zug, Züge | move, moves | an action taken by a player (a player field), or, in the proposal system, a proposed change to the board |
 | Strategem | stratagem | one of the 36 Stratagems (Rieck), a thinking tool offered as a proposal, never as a verdict |
-| Tür | the door | the owner store's validator. Our equivalent is the schema and conformance checks. |
+| Tür | the door | the owner store's validator. Our equivalent is the JSON Schemas plus the conformance kit. |
 | Schreibkanal | write channel | the single sanctioned way of writing cards into the owner store |
 | Prämisse | premise | a standing assumption of a world, shown permanently and open to attack |
 | Annahme | assumption | an assumption card, such as a premise or a what-if scenario assumption |
@@ -29,31 +29,31 @@ card format, the table gives the field of our model that it maps to.
 | Kontextpaket | context package | the selection of cards, relations, decisions and provenance handed to a model or agent |
 | Entscheidungskarte | decision card | card with the 11 sections |
 | Entscheidungsregel | decision rule (Rule) | a rule card evaluated by the Rules panel |
-| Neigungsmesser, Barometer | barometer (removed) | the superseded probability meter. Replaced by the Rules panel. |
-| Freigabe | release | `release`: private, community or commercial. Whether a card may be shared at all. |
+| Neigungsmesser, Barometer | barometer (removed) | the superseded probability meter. Replaced by the Rules panel ([ADR-0013](./adr/0013-rules-panel-replaces-barometer.md)). |
+| Freigabe | release | `release`: `private`, `community` or `commercial`. Whether a card may be shared at all. |
 | Sichtbarkeit | visibility | `visibility`: who may see a card. See the values below. |
-| Klasse | class | `class` A, B or C: the sensitivity class of a card |
-| Träger | carrier | legacy field naming the medium or holder of an item. Kept as an adapter-level property. |
-| Zugehörigkeit | affiliation | legacy field for belonging to an organisation or area. Kept as an adapter-level property. |
-| Prüfsumme | checksum | `contentHash` (sha256 of the canonical content) |
+| Klasse | class | `class` A, B or C: the sensitivity class of a card, an input to disclosure-gate rules |
+| Träger | carrier | `carrier`, carried as stored |
+| Zugehörigkeit | affiliation | `affiliation`, carried as stored |
+| Prüfsumme | source checksum | `sourceChecksum`: SHA-256 of the original source document. Not `contentHash`, which we compute over the canonical card content. |
 | Quelle | source | where a statement comes from. As a card type: a source card. |
 | Urheber | author | who created the card or edge: `human` or `agent:<name>` |
 | Herkunftssystem | origin system | `originSystem`: which system the content came from |
 | Fundstelle | location in source | exact place in a source (page, timestamp) |
 | Ursprung | origin | the root of a provenance chain. Counters count origins, not cards. |
 | Quellen-Pass | source pass | the provenance view and the counter "N findings · M origins" |
-| Haltung | stance | the user's private position on a card |
+| Haltung | stance | the user's private position on a card: `position` (`believed`, `rejected`, `undecided`), `weight`, `note`, history ([ADR-0008](./adr/0008-believed-as-private-stance.md)) |
 | Trefferquote | hit accuracy | share of resolved forecasts that came true |
 | Quellenprofil | source profile | a multi-dimensional profile of a source. Never a single score. |
 | Prognose | forecast | a checkable expectation with a probability and a resolution criterion |
 | Ergebnis | outcome | the result of a decision. `open` until known. |
 | Nachhalten | follow up (review) | the step that turns a decision and its outcome into experience |
-| Geisterkarte | ghost card (superseded) | replaced by the proposal concept |
+| Geisterkarte | ghost card (superseded) | replaced by the proposal concept ([ADR-0011](./adr/0011-agent-moves-are-proposals.md)) |
 | Zeitreise | time travel (time slider) | showing the board as of an earlier date |
 | Welt-Kollision | world collision | overlaying two worlds on one question |
 | Was-wäre-wenn | what-if | a non-persisting scenario layer |
 | Gatekeeper | gatekeeper | an instance controlling what is visible or relevant |
-| Schranke | disclosure gate | decides per card and per target whether a card may leave. Default deny. |
+| Schranke | disclosure gate | decides per card and per target whether a card may leave. Default deny. See [ADR-0012](./adr/0012-disclosure-gate.md). |
 
 ## Epistemic kinds: layers and stance
 
@@ -81,16 +81,18 @@ A legacy `verknuepfungen` list reads as edges of kind `unspecified`.
 
 ## Card and format fields
 
-The English enumeration values in this section for `status`, `visibility` and `classification` are the documented mapping. The normative values are defined by the JSON Schemas in [`schemas/`](https://github.com/Reraise-ai/reraise-app/tree/main/schemas), which win if they differ.
+The mapping below follows [ADR-0023](./adr/0023-core-domain-model.md), which is normative. The machine-readable values are defined by the JSON Schemas in [`schemas/`](https://github.com/Reraise-ai/reraise-app/tree/main/schemas), which win if they differ.
 
 | German field | English field |
 | --- | --- |
-| `id` | `id` |
-| `typ` | `type` |
+| `id` | `externalId`, plus `uri` and the derived canonical `id` |
+| `brett` | `collection` |
+| `traeger`, `zugehoerigkeit` | `carrier`, `affiliation` |
+| `typ` | `type` (original kept in `typeRaw`) |
 | `titel` | `title` |
 | `datum` | `date` |
 | `quelle`, `quelle_datum` | `source`, `sourceDate` |
-| `pruefsumme` | `contentHash` |
+| `pruefsumme` | `sourceChecksum` |
 | `status` (`entwurf`, `geprueft`, `freigegeben`) | `status` (`draft`, `checked`, `released`) |
 | `bewertung` | `rating` |
 | `freigabe` (`privat`, `community`, `kommerziell`) | `release` (`private`, `community`, `commercial`) |
@@ -99,7 +101,7 @@ The English enumeration values in this section for `status`, `visibility` and `c
 | `format` | `format` |
 | `ebene` | `layer` |
 | `welten` | `worlds` |
-| `einordnung` | `classification` (the owner's own assessment of a foreign statement, as a note) |
+| `einordnung` | stance `note` (private, not a card field) |
 | `urheber` | `author` |
 | `herkunft_system` | `originSystem` |
 | `training` (`ja`, `nein`) | `training` (boolean, default false) |
@@ -108,10 +110,11 @@ The English enumeration values in this section for `status`, `visibility` and `c
 | `level` (reserved) | `level`: reserved for future card tiers. Not an epistemic field. |
 | `signature` (reserved) | `signature`: reserved for author signatures |
 
-Visibility values: `privat` = `private`, `gesellschaftsintern` = `organisation`,
-`partneruebergreifend` = `partners`, `kundensichtbar` = `customers`, `oeffentlich` =
-`public`. Board classification values (`brett`): `akteure` = actors, `belege` = evidence,
-`entscheidungen` = decisions. Author values: `mensch` = `human`.
+Visibility values: `privat` = `private`, `gesellschaftsintern` = `company_internal`,
+`partneruebergreifend` = `cross_partner`, `kundensichtbar` = `customer_visible`, `oeffentlich` =
+`public`. Collection values (`brett`): `akteure` = `actors`, `belege` = `evidence`,
+`entscheidungen` = `decisions`. Author values: `mensch` = `human`; an absent author on a legacy
+card is `unknown`.
 
 ## Lage fields
 
@@ -140,6 +143,8 @@ Visibility values: `privat` = `private`, `gesellschaftsintern` = `organisation`,
 | Begründung | `rationale` |
 | Verwendete Karten | `cardsUsed` |
 | Ergebnis (`offen`) | `outcome` (`open`) |
+
+Store headings are matched with and without umlaut transliteration (`ae`, `oe`, `ue`).
 
 ## Source profile dimensions
 

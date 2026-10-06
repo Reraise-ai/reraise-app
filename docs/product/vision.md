@@ -249,7 +249,7 @@ should then align.
 
 This repository builds the first, local-first slice of that vision, plus the open interfaces
 that let it sit on top of any person's existing knowledge system. The decisions below are
-binding and each is (or will be) recorded as an [ADR](../adr/README.md).
+binding and each is recorded as an [ADR](../adr/README.md), and the ADRs are normative.
 
 ### What we build
 
@@ -263,16 +263,16 @@ binding and each is (or will be) recorded as an [ADR](../adr/README.md).
   evidence, a rules panel and a decision card. See [Board UX](./board-ux.md).
 - **Humans and agents share the board.** An agent's move is a proposal with an author. A
   human accepts or rejects it. Nothing an agent proposed counts anywhere until a human has
-  accepted it.
+  accepted it ([ADR-0011](../adr/0011-agent-moves-are-proposals.md)).
 
 ### What we deliberately do not build
 
 - **No card intake.** Cards are created in the user's own AI, wiki or pipeline. We read and
-  reference them through adapters. There is no ingestion of podcasts or articles. The inbox
-  only shows "new findings from connected sources", referenced with provenance and pinned on
+  reference them through adapters ([ADR-0005](../adr/0005-universal-adapter-architecture.md)). There is no ingestion of podcasts or articles. The inbox
+  only shows "new findings from connected sources" ([ADR-0014](../adr/0014-no-ingestion-inbox-of-findings.md)), referenced with provenance and pinned on
   demand.
 - **No probability barometer and no verdict.** A meter such as "hold 69 : 31" reads as the
-  system's judgement. In its place the Rules panel lists which of the user's own rules apply
+  system's judgement. In its place the Rules panel ([ADR-0013](../adr/0013-rules-panel-replaces-barometer.md)) lists which of the user's own rules apply
   right now (fired or not fired, with the cards that triggered them), with no percentage.
 - **No economy layer.** Monetisation, card exchange economics, gamification and crypto are
   out of scope. The data model keeps globally unique card IDs, a content hash, a reserved
@@ -284,13 +284,13 @@ binding and each is (or will be) recorded as an [ADR](../adr/README.md).
 
 | Principle | In practice |
 | --- | --- |
-| Layers never merge | `layer` is `evidenced`, `said` or `experience`. "Believed" is not a layer but a private **stance** overlay per user per card. See [why layers never merge](../explanation/layers-never-merge.md). |
-| Provenance is mandatory | Evidenced and said cards need a source or origin system; experience needs an author. Counting origins, not copies. See [provenance and independence](../explanation/provenance-and-independence.md). |
-| Files are the truth | Markdown with YAML front matter is the storage canon. Any database or index is derived and rebuildable. History is archived versions, not an event log. |
-| Privacy by default | A disclosure gate decides per card and per target (screen, local model, cloud model, demo). Default is deny. A cloud transfer needs per-transfer confirmation. Stances never leave the device. |
-| Two thinking levels | Level 1 is a fast, typed answer ("`<engine>` estimates 0.82 for X"), never a verdict, escalatable to Level 2, the board. |
-| Multi-dimensional source profile | Hit accuracy, reliability, topic competence per topic, agreement, deviation, source quality, historical performance and counter-perspective value, each with a sample size. Never one score. |
-| Training is opt-in | A JSONL export of decision traces, only for cards with `training: true`. Facts stay retrievable cards; what may be trained is the decision style. |
+| Layers never merge | `layer` is `evidenced`, `said` or `experience` ([ADR-0007](../adr/0007-epistemic-layer-field.md)). "Believed" is not a layer but a private **stance** overlay per user per card ([ADR-0008](../adr/0008-believed-as-private-stance.md)). See [why layers never merge](../explanation/layers-never-merge.md). |
+| Provenance is mandatory | Evidenced and said cards need a source or origin system; experience needs an author ([ADR-0009](../adr/0009-mandatory-provenance.md)). Counting origins, not copies. See [provenance and independence](../explanation/provenance-and-independence.md). |
+| Files are the truth | Markdown with YAML front matter is the storage canon. Any database or index is derived and rebuildable. History is archived versions, not an event log ([ADR-0006](../adr/0006-files-are-the-truth.md)). |
+| Privacy by default | A disclosure gate decides per card and per target (screen, local model, cloud model, demo). Default is deny. A cloud transfer needs per-transfer confirmation. Stances never leave the device ([ADR-0012](../adr/0012-disclosure-gate.md), [ADR-0021](../adr/0021-privacy-and-sharing-model.md)). |
+| Two thinking levels | Level 1 is a fast, typed answer ("`<engine>` estimates 0.82 for X"), never a verdict, escalatable to Level 2, the board ([ADR-0015](../adr/0015-two-thinking-levels.md)). |
+| Multi-dimensional source profile ([ADR-0018](../adr/0018-multidimensional-source-profile.md)) | Hit accuracy, reliability, topic competence per topic, agreement, deviation, source quality, historical performance and counter-perspective value, each with a sample size. Never one score. |
+| Training is opt-in | A JSONL export of decision traces, only for cards with `training: true`, gated like a cloud transfer ([ADR-0017](../adr/0017-decision-card-and-training-export.md)). Facts stay retrievable cards; what may be trained is the decision style. |
 | The model is replaceable | See [why the LLM is replaceable](../explanation/llm-is-replaceable.md). |
 
 ### The loop

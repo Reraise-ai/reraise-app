@@ -11,6 +11,11 @@ accidental. Example worlds in the repository carry `synthetic: true` in their fr
 and a CI check refuses data files that do not.
 :::
 
+The ADRs in the [ADR log](../adr/README.md) are normative. Where a step below shows something the
+contracts do not cover yet (a forecast and review date on a decision, the foreign-body tray, series counters such as "3 of 4"), it illustrates the intended slice and needs an ADR first
+([ADR-0017](../adr/0017-decision-card-and-training-export.md),
+[ADR-0024](../adr/0024-concept-v1-reconciliation.md)).
+
 Status: the scenarios describe the intended experience across milestones. Milestone M1 covers
 the Hormuz path from "open a Lage" to "context package and blocked private card" (see the
 [roadmap](../roadmap.md)). Steps marked planned (M2+) are not built yet.
@@ -50,7 +55,7 @@ actors (a regional power, two great powers, two neighbouring states), an experie
 of an escalation headline").
 
 The **inbox** shows two *new findings from connected sources*: a note in the user's own
-vault summarising an invented podcast episode, and a news-service item. Neither is ingested.
+vault summarising an invented podcast episode, and a news-service item. Neither is ingested ([ADR-0014](../adr/0014-no-ingestion-inbox-of-findings.md)).
 Each is shown by reference with provenance and its source pass: **"4 findings · 1 origin"**
 for the news item, because four reports trace back to one invented wire-service text. The
 user pins the vault note, which places a reference to it in the Lage, and dismisses one
@@ -58,7 +63,8 @@ duplicate.
 
 An agent seated at the board (`agent:scout`) **proposes** two cards and one `supports` edge.
 They appear dashed with the agent's name. The user accepts one card and rejects the other
-proposal. Only the accepted card exists in the world.
+proposal ([ADR-0011](../adr/0011-agent-moves-are-proposals.md)). Only the accepted card exists in
+the world, and the accepted card keeps `author: agent:scout`.
 
 ### 3. Read (playing field)
 
@@ -76,7 +82,7 @@ written:
 Edges are drawn: an alliance, a conflict, and two `depends_on` edges.
 
 **Statement versus action.** On the timeline, the regional power's spokesperson said on
-12 September "no interest in closing the strait" (layer: said). On 20 September a naval
+12 September "no interest in closing the strait" (layer: said, original text kept). On 20 September a naval
 exercise with mine-laying practice took place, evidenced by an invented institute's
 satellite analysis (layer: evidenced, page 3). The user draws a `refutes` edge between them,
 marked with a lightning symbol. They set a stance on the statement: rejected, weight 0.6,
@@ -85,7 +91,7 @@ private.
 
 ### 4. Check (Rules panel)
 
-Instead of a gauge, the **Rules panel** lists the user's own rules for this Lage:
+Instead of a gauge, the **Rules panel** ([ADR-0013](../adr/0013-rules-panel-replaces-barometer.md)) lists the user's own rules for this Lage:
 
 - `fired` R7 "do not act on the first day of an escalation headline", triggered by the
   headline card.
@@ -97,12 +103,12 @@ card) and weakening cards (one said card by an analyst) with raw counts per laye
 stacks. There is no overall score. An agent-proposed hypothesis that was not accepted
 appears dashed and counts nowhere.
 
-A card that does not fit, an invented "port strike" item, sits in the foreign-body tray and
-stays visible.
+A card that does not fit, an invented "port strike" item, would sit in the foreign-body tray and
+stay visible (a planned UX element, pending an ADR).
 
 ### 5. Decide
 
-Level 1: the user asks the local rules engine. It answers **"local rules engine estimates
+Level 1 ([ADR-0015](../adr/0015-two-thinking-levels.md)): the user asks the local rules engine. It answers **"local rules engine estimates
 0.7 for option B"**, with its input cards listed, and the board marks it as an estimate, not
 a verdict. The user escalates and works the decision on the board.
 
@@ -122,13 +128,13 @@ The decision card, with all eleven sections:
 | cardsUsed | ids of the cards above (all must exist) |
 | outcome | `open` |
 
-The user records their own forecast with the verbal probability "unlikely" (mapped band
-20–45 %) that escalation occurs by 5 January 2027, and a review date. A snapshot of the board
+The user records their own forecast with the verbal probability "unlikely" (original phrase kept, mapped band
+20–45 %, [ADR-0010](../adr/0010-estimative-probability-scale.md)) that escalation occurs by 5 January 2027, and a review date. A snapshot of the board
 as of the decision is archived.
 
-Before a context package of this Lage goes to a cloud model, the **disclosure gate** denies
-the private stance cards and the portfolio card, and the board lists exactly which cards
-would leave the device. The user declines the transfer and uses a local model instead.
+Before a context package of this Lage goes to a cloud model, the **disclosure gate**
+([ADR-0012](../adr/0012-disclosure-gate.md)) denies the portfolio card, and the board lists exactly which cards
+would leave the device. The user's stances are never in the package at all. The user declines the transfer and uses a local model instead.
 
 ### 6. Follow up (5 January 2027, invented outcome)
 

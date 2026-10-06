@@ -5,7 +5,11 @@ the truth: a card is one Markdown file with YAML front matter, and any database 
 derived and rebuildable.
 
 ::: info Status
-This page is the human-readable specification. The machine-readable contract is the set of
+This page is the human-readable specification of the canonical model decided in
+[ADR-0023](../adr/0023-core-domain-model.md) (which is normative here), together with
+[ADR-0006](../adr/0006-files-are-the-truth.md), [ADR-0007](../adr/0007-epistemic-layer-field.md),
+[ADR-0008](../adr/0008-believed-as-private-stance.md) and
+[ADR-0009](../adr/0009-mandatory-provenance.md). The machine-readable contract is the set of
 JSON Schemas in [`schemas/`](https://github.com/Reraise-ai/reraise-app/tree/main/schemas),
 which are being written in milestone M0. If this page and a published schema differ, the
 schema wins and this page is a bug. The reference `markdown-files` storage adapter (planned
@@ -28,8 +32,12 @@ in both directions without loss.
 - **Provenance is mandatory.** See [section 5](#5-provenance-rules).
 - **Nothing is deleted.** A rewrite archives the previous version
   ([section 10](#10-archive-on-rewrite)).
-- **Stances are not in the card.** A user's stance on a card is private and stored apart.
-  See [section 11](#11-what-is-not-in-the-card).
+- **Stances are not in the card.** A user's stance on a card is private and stored apart
+  ([ADR-0008](../adr/0008-believed-as-private-stance.md)). See
+  [section 11](#11-what-is-not-in-the-card).
+- **Updates are patches.** An adapter changes only the canonical fields the product changed.
+  Everything else in the file stays verbatim: unknown fields, store fields the product does not
+  own, formatting and order.
 
 ## 2. File layout
 
@@ -67,22 +75,72 @@ contain a comma or square brackets.
 
 | Field | Type | Required | Meaning |
 | --- | --- | --- | --- |
-| `id` | string (ULID) | yes | globally unique card id. Foreign ids are allowed through `externalId` or `uri`. |
-| `contentHash` | string | no | sha256 of the canonical content. For evidenced cards it is the checksum of the source. |
-| `type` | string | yes | card type, for example `actor`, `event`, `claim`, `source`, `experience`, `relation`, `assumption`, `rating`, `decision`, `rule`, `topic`, `lage`. |
+| `id` | string (ULID) | yes | canonical, globally unique card id, see [Identity](#identity) |
+| `externalId` | string | for foreign stores | the store-local id (for example `x-14`) |
+| `uri` | string | for foreign stores | `wb:<storeInstanceId>/<externalId percent-encoded>` |
+| `format` | `1` or `2` | yes (canonical) | see [Format versions](#format-versions) |
+| `collection` | enum | no | `actors`, `evidence`, `decisions` |
+| `type` | string | yes | open vocabulary, see [Types](#types) |
+| `typeRaw` | string | for foreign stores | the store's original type value, never rewritten by a patch |
 | `title` | string | yes | short title |
 | `body` | Markdown | no | the Markdown after the front matter |
-| `date` | date | no | date of the card |
-| `source` | string | see rules | where the content comes from (a card id or an address) |
-| `sourceDate` | date | no | date of the source |
+| `date` | ISO date | no | date of the card |
+| `source` | string | see rules | text, URI or card id |
+| `sourceDate` | ISO date | no | date of the source |
+| `sourceChecksum` | string | no | SHA-256 of the **original source document**. Must be SHA-256 on `collection: evidence`. On other cards any string is accepted with a warning only. |
+| `contentHash` | string | no | SHA-256 of the canonical card content, computed by the product. Not the same as `sourceChecksum`. |
 | `status` | enum | no | `draft`, `checked`, `released` |
-| `rating` | string | no | the owner's rating of the card |
-| `release` | enum | no | `private`, `community`, `commercial`: whether sharing is allowed at all |
-| `visibility` | enum | no | who may see the card, see [Mapping](#mapping-from-the-legacy-german-field-names) |
-| `class` | enum | no | sensitivity class `A`, `B`, `C` |
-| `externalId`, `uri` | string | no | the id or address in a foreign system, for reference-by-URI |
-| `level` | reserved | no | reserved for future card tiers. **Not** an epistemic field. |
-| `signature` | reserved | no | reserved for author signatures |
+| `rating` | string | no | carried as stored |
+| `release` | enum | no | `private`, `community`, `commercial` |
+| `visibility` | enum | no | `private`, `company_internal`, `cross_partner`, `customer_visible`, `public` |
+| `carrier` | string | no | carried as stored |
+| `affiliation` | string | no | carried as stored |
+| `class` | enum | no | `A`, `B`, `C`. An input to disclosure-gate rules. |
+| `level` | reserved | no | reserved for future card tiers. Unused. **Not** an epistemic field. |
+| `signature` | reserved | no | reserved for author signatures. Unused. |
+
+#### Identity
+
+The reference `markdown-files` adapter stores the canonical ULID natively in `id`. A foreign
+store keeps its own id in `externalId`, and the adapter derives the canonical `id`
+deterministically from the card's `uri`: the 128 bits of the ULID are the first 128 bits of
+SHA-256 of the `uri`, written as a 26-character Crockford base32 string. The same store card
+therefore yields the same `id` on every read and every machine, with no sidecar state. Derived
+ids are not time-sortable, so ordering uses dates. `storeInstanceId` is a random UUID created
+once and persisted in the store's configuration. It is never a hostname, path or user name.
+`externalId` is NFC-normalised, encoded as UTF-8, case preserved and percent-encoded per
+RFC 3986. Every store-id reference (edge target, Lage card ids, `cardsUsed`, a player-field
+`source` that is a card id) is resolved the same way. Callers must use the id returned by
+`create` and never predict it. Details: [ADR-0023](../adr/0023-core-domain-model.md).
+
+#### Format versions
+
+`format` is `1` or `2`. A store card is format 2 if it has `format: 2` or uses any v2 field,
+otherwise format 1. The format-2 rules (layer, author, provenance, edges, player fields, Lage,
+decision sections) apply only to format-2 cards. A format-1 card without a layer has no
+`layer` and is shown as "unclassified". Without an author it has `author: unknown`, which is
+valid only on format-1 cards. Cards written by the product are always format 2.
+
+#### Types
+
+`type` is an open vocabulary. A foreign store's value is mapped and the original is kept in
+`typeRaw`:
+
+| Store `typ` | `type` |
+| --- | --- |
+| `akteur`, `person`, `organisation` | `actor`, `person`, `organisation` |
+| `beleg` | `evidence` |
+| `quelle` | `source` |
+| `behauptung` | `claim` |
+| `ereignis` | `event` |
+| `erfahrung` | `experience` |
+| `annahme` | `assumption` |
+| `bewertung` | `rating` |
+| `entscheidung` | `decision` |
+| `regel` | `rule` |
+| `thema` | `topic` |
+| `lage` | `lage` |
+| any other value | copied verbatim |
 
 ### 3.2 Fields added by v2
 
@@ -91,12 +149,15 @@ contain a comma or square brackets.
 | `format` | `2` | marks the card as a v2 card |
 | `layer` | `evidenced`, `said`, `experience` | what kind of statement the card is |
 | `worlds` | list of names | the worlds the card appears in, by reference. Never a copy. |
-| `classification` | one line | the owner's own assessment of a foreign statement |
-| `author` | `human` or `agent:<name>` | who created the card |
+| `author` | `human` or `agent:<name>` (`unknown` on legacy format-1 cards only) | who created the card |
 | `originSystem` | free text | which system the content came from |
 | `training` | boolean | whether the card may be used for training. Default `false` (opt-in). |
 | `edges` | list of `target\|kind\|by` | typed connections, see [section 4](#4-edges) |
-| `interests`, `capabilities`, `dependencies`, `moves` | list of `text\|source` | player fields, only on actors, see [section 6](#6-player-fields) |
+| `interests`, `capabilities`, `dependencies`, `moves` | list of `text\|source` | player fields, only on `collection: actors`, see [section 6](#6-player-fields) |
+
+A store's own-assessment field (legacy `einordnung`) is a conclusion, so it is **not** a card
+field here. It is read as the note of the user's private stance on that card
+([ADR-0023](../adr/0023-core-domain-model.md)) and stays verbatim in the store file.
 
 `layer` has only three values. "Believed" is not a layer. It is a private stance and is
 stored apart ([section 11](#11-what-is-not-in-the-card)). A legacy card whose epistemic kind
@@ -114,7 +175,8 @@ target|kind|by
   the edge.
 - `kind` is one of: `supports`, `refutes`, `represents`, `cites`, `based_on`, `depends_on`,
   `relation`, `unspecified`.
-- `by` says who drew the edge: `human` or `agent:<name>`.
+- `by` says who drew the edge: `human` or `agent:<name>`. `unknown` is valid for edges read
+  from a legacy link list.
 
 Example:
 
@@ -123,7 +185,7 @@ edges: [01J9ZQ7K3M5V8W2X4Y6Z0A1B2D|supports|human, 01J9ZQ7K3M5V8W2X4Y6Z0A1B2E|re
 ```
 
 A legacy list of plain links (the old `verknuepfungen` list) remains valid and is read as
-edges of kind `unspecified`. Its targets are not checked strictly: a dangling entry yields a
+edges of kind `unspecified` with `by: unknown`. Its targets are not checked strictly: a dangling entry yields a
 hint, not an error.
 
 ## 5. Provenance rules
@@ -131,16 +193,19 @@ hint, not an error.
 | Condition | Rule |
 | --- | --- |
 | `layer: evidenced` or `layer: said` | `source` **or** `originSystem` must be set |
-| `layer: experience` | `author` must be set |
+| `layer: experience` | `author` must be set explicitly (not `unknown`) |
 | any card with `format: 2` | `author` must be set |
-| evidenced cards and actors with `format: 2` | `layer` must also be set |
+| `format: 2` and `collection` is `evidence` or `actors` | `layer` must also be set |
 
-The reason is in [provenance and independence](../explanation/provenance-and-independence.md).
+The reason is in [provenance and independence](../explanation/provenance-and-independence.md)
+and [ADR-0009](../adr/0009-mandatory-provenance.md). An own assessment cannot stand in as a
+source: it must first be a card of its own (`layer: said`, `author: human`) that the entry can
+cite.
 
 ## 6. Player fields
 
 `interests`, `capabilities`, `dependencies` and `moves` describe what an actor wants, can do,
-needs and does. They appear only on actors.
+needs and does. They appear only on cards with `collection: actors`.
 
 Each entry has the form `text|source`. The source is a card id or an address. **An entry
 without a source is rejected.** Leave a field empty rather than asserting something without
@@ -155,8 +220,8 @@ moves: [Naval exercise on 20 September|01J9ZQ7K3M5V8W2X4Y6Z0A1B2G]
 
 A Lage is a saved position on the board. It is a card with `type: lage`.
 
-Front matter: `type: lage`, `format: 2`, `question`, `version` (number of this version) and
-`updatedAt` (date of the last change).
+Front matter: `type: lage`, `format: 2`, `question` (required), `version` (number of this
+version) and `updatedAt` (date of the last change).
 
 The body contains a `## Position` section with one JSON block:
 
@@ -183,30 +248,37 @@ The body contains a `## Position` section with one JSON block:
 | `seats` | `{name, kind}`: participants at the board. `kind` is `human` or `agent`. |
 | `edges` | `{from, to, kind, by}`: edges drawn on this board |
 
-All cards named must exist. The JSON must be readable. Positions are layout only and change
+All cards named must exist, and ids are resolved as described under [Identity](#identity). The
+JSON must be readable. Positions are layout only and change
 no card content.
 
 ## 8. The decision card
 
 A card with `type: decision` and `format: 2` has exactly eleven sections in its body. Each is
-introduced by a `##` heading and none may be empty:
+introduced by a `##` heading and none may be empty. The canonical keys, and the headings of the
+owner store that map to them ([ADR-0017](../adr/0017-decision-card-and-training-export.md),
+[ADR-0023](../adr/0023-core-domain-model.md)):
 
-1. Situation
-2. Trigger
-3. Conditions
-4. Facts
-5. Priorities
-6. Action
-7. Alternatives
-8. Exclusions
-9. Rationale
-10. Cards used
-11. Outcome
+| # | Key | Store heading |
+| --- | --- | --- |
+| 1 | `situation` | Situation |
+| 2 | `trigger` | Ausloeser |
+| 3 | `conditions` | Bedingungen |
+| 4 | `facts` | Fakten |
+| 5 | `priorities` | Prioritaeten |
+| 6 | `action` | Handlung |
+| 7 | `alternatives` | Alternativen |
+| 8 | `exclusions` | Ausschluss |
+| 9 | `rationale` | Begruendung |
+| 10 | `cardsUsed` | Verwendete Karten |
+| 11 | `outcome` | Ergebnis |
 
-While no outcome is known, the Outcome section contains the word `open`. Ids named in "Cards
-used" must exist. Older decision cards without `format: 2` are not affected. In the model
-these sections are the fields `situation`, `trigger`, `conditions`, `facts`, `priorities`,
-`action`, `alternatives`, `exclusions`, `rationale`, `cardsUsed` and `outcome`.
+Store headings are matched with and without umlaut transliteration (`ae`, `oe`, `ue`). The
+heading text the reference adapter writes for new cards is fixed by the schema and the
+conformance kit.
+
+While no outcome is known, the outcome section holds `open` (the store's word `offen` maps to
+it). Ids named in `cardsUsed` must exist. Decision cards without `format: 2` are not affected.
 
 ## 9. What the validator checks
 
@@ -220,61 +292,68 @@ For every v2 card:
 6. The [provenance rules](#5-provenance-rules) hold.
 
 Hints only, no error and no failing exit code: dangling targets in the legacy link list, and
-a `contentHash` on a non-evidenced card that is not a sha256 value.
+a `sourceChecksum` on a card outside `collection: evidence` that is not a SHA-256 value.
 
 ## 10. Archive on rewrite
 
-A `lage` card, and any card a store rewrites rather than appends to, is **archived** on
-rewrite. The previous version moves to an archive folder next to the card, named
+A `lage` card, and any other versioned card, is **archived** on rewrite
+([ADR-0006](../adr/0006-files-are-the-truth.md)). The previous version moves to an archive folder next to the card, named
 `_archive/<file>.v<n>.md`, where `n` is the version number. Nothing is deleted. The
 validator does not look inside the archive. History is therefore a set of archived
 versions, not an event log.
 
 ## 11. What is not in the card
 
-- **Stances.** A user's position on a card (`believed`, `rejected`, `undecided`, with
-  `weight`, `note`, `updatedAt` and history) is private and never leaves the device. It is
-  stored apart from the card.
-- **Derived data.** A search index, an origin count or a rule evaluation can always be
-  rebuilt from the files and is never the truth.
+- **Stances.** A user's position on a card (`believed`, `rejected`, `undecided`, with `weight`,
+  `note`, `updatedAt` and history) is private and never leaves the device. It lives in local
+  files under `.worldbuilder/stances/`, never in card files and never through a
+  `StorageAdapter` of a shared or remote store. Stance-like fields that already exist in a store
+  file (`ebene: geglaubt`, `einordnung`) are read and mapped, and left verbatim in the file.
+  See [ADR-0008](../adr/0008-believed-as-private-stance.md) and
+  [ADR-0012](../adr/0012-disclosure-gate.md).
+- **Proposals.** A pending or rejected agent proposal is not a card
+  ([ADR-0011](../adr/0011-agent-moves-are-proposals.md)).
+- **Derived data.** A search index, an origin count or a rule evaluation can always be rebuilt
+  from the files and is never the truth.
 
 ## Mapping from the legacy German field names
 
-A store that uses the German header names maps one to one:
+A store that uses the German header names maps one to one. The authoritative table is in
+[ADR-0023](../adr/0023-core-domain-model.md); the conformance kit tests each row.
 
 | Legacy field | Field here | Values |
 | --- | --- | --- |
-| `id` | `id` | |
-| `typ` | `type` | |
+| `id` | `externalId` (plus `uri` and the derived `id`) | see [Identity](#identity) |
+| `format` | `format` | `1`, `2` |
+| `brett` | `collection` | `akteure`, `belege`, `entscheidungen` map to `actors`, `evidence`, `decisions` |
+| `typ` | `type` and `typeRaw` | see [Types](#types) |
 | `titel` | `title` | |
 | `datum` | `date` | |
 | `quelle`, `quelle_datum` | `source`, `sourceDate` | |
-| `pruefsumme` | `contentHash` | sha256 |
+| `pruefsumme` | `sourceChecksum` | SHA-256 of the original source. Not `contentHash`. |
 | `status` | `status` | `entwurf`, `geprueft`, `freigegeben` map to `draft`, `checked`, `released` |
-| `bewertung` | `rating` | |
+| `bewertung` | `rating` | carried as stored |
 | `freigabe` | `release` | `privat`, `community`, `kommerziell` map to `private`, `community`, `commercial` |
-| `sichtbarkeit` | `visibility` | `privat`, `gesellschaftsintern`, `partneruebergreifend`, `kundensichtbar`, `oeffentlich` map to `private`, `organisation`, `partners`, `customers`, `public` |
+| `traeger` | `carrier` | carried as stored |
+| `zugehoerigkeit` | `affiliation` | carried as stored |
+| `sichtbarkeit` | `visibility` | `privat`, `gesellschaftsintern`, `partneruebergreifend`, `kundensichtbar`, `oeffentlich` map to `private`, `company_internal`, `cross_partner`, `customer_visible`, `public` |
 | `klasse` | `class` | `A`, `B`, `C` |
-| `format` | `format` | `2` |
-| `ebene` | `layer` | `belegt`, `gesagt`, `erfahrung` map to `evidenced`, `said`, `experience`. `geglaubt` maps to `said` with a believed stance. |
-| `welten` | `worlds` | |
-| `einordnung` | `classification` | |
-| `urheber` | `author` | `mensch` maps to `human`, `agent:<name>` is unchanged |
+| `ebene` | `layer` | `belegt`, `gesagt`, `erfahrung` map to `evidenced`, `said`, `experience`. `geglaubt` maps to `said` with `author: human` plus a believed stance. |
+| `welten` | `worlds` | names resolved to World references. A World is created on demand. |
+| `einordnung` | stance `note` | private, not on the card. Becomes the note of the believed stance, or of an `undecided` stance if the card is not `geglaubt`. |
+| `urheber` | `author` | `mensch` maps to `human`, `agent:<name>` is unchanged, absent on format 1 maps to `unknown` |
 | `herkunft_system` | `originSystem` | |
-| `training` | `training` | `ja` maps to `true`, `nein` to `false` |
+| `training` | `training` | `ja` maps to `true`, `nein` to `false`, absent to `false` |
 | `kanten` (`ziel\|art\|von`) | `edges` (`target\|kind\|by`) | `stuetzt`, `widerlegt`, `vertritt`, `zitiert`, `beruht_auf`, `abhaengig_von`, `beziehung`, `unbestimmt` map to `supports`, `refutes`, `represents`, `cites`, `based_on`, `depends_on`, `relation`, `unspecified` |
-| `interessen`, `faehigkeiten`, `abhaengigkeiten`, `zuege` | `interests`, `capabilities`, `dependencies`, `moves` | each `text\|source` |
-| `lage` card: `frage`, `optionen`, `karten`, `sitze`, `kanten` | `question`, `options`, `cards`, `seats`, `edges` | seat `art` becomes `kind`, edge `ziel` becomes `to`, `art` becomes `kind`, `wer` becomes `by` |
-| `entscheidung` sections | `situation` to `outcome` | `offen` maps to `open` |
-| `brett` | store classification | `akteure`, `belege`, `entscheidungen`. An adapter-level property. |
-| `traeger`, `zugehoerigkeit` | adapter-level properties | |
-
-The English enumerations for `status`, `visibility` and `classification` are the documented
-mapping; the schemas are normative.
+| `verknuepfungen` | `edges` of kind `unspecified`, `by: unknown` | dangling targets are a warning |
+| `interessen`, `faehigkeiten`, `abhaengigkeiten`, `zuege` | `interests`, `capabilities`, `dependencies`, `moves` | each `text\|source`, on `collection: actors` only |
+| `lage`: `frage`, `optionen`, `karten`, `sitze`, `kanten` | `question`, `options`, `cards`, `seats`, `edges` | seat `art` (`mensch`, `agent`) becomes `kind` (`human`, `agent`). Edge `von`, `ziel`, `art`, `wer` become `from`, `to`, `kind`, `by`. `stand` becomes `updatedAt`. |
+| decision sections | `situation` to `outcome` | `offen` maps to `open` |
 
 ## See also
 
 [Glossary](../glossary.md) ·
 [Why layers never merge](../explanation/layers-never-merge.md) ·
 [Provenance and independence](../explanation/provenance-and-independence.md) ·
+[ADR log](../adr/README.md) ·
 [Schemas](https://github.com/Reraise-ai/reraise-app/tree/main/schemas)
