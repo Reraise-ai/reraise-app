@@ -1795,10 +1795,11 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
         type: 'string',
         enum: [
           'secret',
+          'personal_data',
           'short',
           'ops_hint',
-          'public_source',
           'local_reference',
+          'public_source',
           'durable_statement',
           'transient',
           'knowledge_hint',
@@ -1812,6 +1813,7 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
           type: 'string',
           enum: [
             'secret_like',
+            'personal_data',
             'public_source',
             'local_reference',
             'transient',
@@ -1823,7 +1825,7 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
       },
       classifier: {
         description:
-          'rules:v1 for the deterministic rules; model:<engine> only for a later model-assisted slice.',
+          'rules:v2 for the deterministic rules of ADR-0042; model:<engine> only for a later model-assisted slice.',
         type: 'string',
         pattern: '^(rules:v[0-9]+|model:[A-Za-z0-9][A-Za-z0-9._-]{0,63})$',
       },

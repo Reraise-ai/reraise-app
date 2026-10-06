@@ -5,10 +5,10 @@
 // a card proposal or an ephemeral operational fact. Pure; the item is never stored. The result
 // names signal ids, never the matched words.
 
-import { isPublicSourceUri } from '@worldbuilder/core';
+import { isPublicSourceUri, personalDataKinds } from '@worldbuilder/core';
 import type { MemoryRouteRequest, MemoryRouteResult } from '@worldbuilder/core';
 
-export const CLASSIFIER = 'rules:v1';
+export const CLASSIFIER = 'rules:v2';
 
 export type Signal = MemoryRouteResult['signals'][number];
 
@@ -71,10 +71,41 @@ export interface RouteOptions {
   };
 }
 
-const CREDENTIAL =
-  /\b(?:password|passwd|secret|token|api[ _-]?key|apikey|bearer)\b\s*(?:[:=]|is\b)\s*\S+/i;
+/** Credential words (rules:v2). */
+export const CREDENTIAL_WORDS: readonly string[] = [
+  'password',
+  'passwords',
+  'passwd',
+  'passphrase',
+  'passphrases',
+  'secret',
+  'secrets',
+  'secret key',
+  'token',
+  'tokens',
+  'api key',
+  'api keys',
+  'apikey',
+  'bearer',
+  'credential',
+  'credentials',
+  'private key',
+  'ssh key',
+  'pin',
+  'otp',
+];
+const KW = `\\b(?:${CREDENTIAL_WORDS.map((w) => w.replace(/ /g, '[ _-]?')).join('|')})\\b`;
+/** A credential word, then up to 40 characters of the same clause, then `:`, `=`, is/are/was. */
+const CREDENTIAL_ASSIGNED = new RegExp(
+  `${KW}[^\\n.;!?]{0,40}?(?:\\s*[:=]|\\s+(?:is|are|was)\\b)\\s*\\S`,
+  'i',
+);
+/** A credential word followed in the same clause by a quoted value. */
+const CREDENTIAL_QUOTED = new RegExp(`${KW}[^\\n.;!?]{0,40}?[\\s:=]["'\u201c\u2018\u00ab]`, 'i');
 const PRIVATE_KEY = /-----BEGIN [A-Z ]*PRIVATE KEY-----/;
-const TOKEN_RUN = /[A-Za-z0-9+=_]{32,}/g;
+/** Token-like runs: base64/base64url characters with upper, lower and digits, or long hex. */
+const TOKEN_RUN = /[A-Za-z0-9+/=_-]{32,}/g;
+const HEX_RUN = /(?<![0-9a-f])[0-9a-f]{32,}(?![0-9a-f])/i;
 const URL = /\bhttps?:\/\/[^\s<>"')\]]+/gi;
 const LOCAL_REFERENCE = [
   /(?:^|[\s"'(=])(?:~\/|\/(?:[\w.-]+\/)+[\w.-]*|[a-z]:\\)/i, // absolute or home-relative path
@@ -92,8 +123,9 @@ const wordsRe = (words: readonly string[]) =>
 const normalise = (text: string) => text.toLowerCase().replace(/\s+/g, ' ').trim();
 
 function hasTokenRun(text: string): boolean {
+  if (HEX_RUN.test(text)) return true;
   for (const m of text.matchAll(TOKEN_RUN)) {
-    if (/[A-Za-z]/.test(m[0]) && /\d/.test(m[0])) return true;
+    if (/[A-Z]/.test(m[0]) && /[a-z]/.test(m[0]) && /\d/.test(m[0])) return true;
   }
   return false;
 }
@@ -103,8 +135,14 @@ export function memorySignals(request: MemoryRouteRequest, options: RouteOptions
   const raw = request.text;
   const text = normalise(raw);
   const signals: Signal[] = [];
-  if (CREDENTIAL.test(raw) || PRIVATE_KEY.test(raw) || hasTokenRun(raw))
+  if (
+    CREDENTIAL_ASSIGNED.test(raw) ||
+    CREDENTIAL_QUOTED.test(raw) ||
+    PRIVATE_KEY.test(raw) ||
+    hasTokenRun(raw)
+  )
     signals.push('secret_like');
+  if (personalDataKinds(raw).length > 0) signals.push('personal_data');
   const urls = [...raw.matchAll(URL)].map((m) => m[0].replace(/[.,;:!?]+$/, ''));
   if (request.source !== undefined) urls.push(request.source);
   if (urls.some((u) => isPublicSourceUri(u))) signals.push('public_source');
@@ -118,7 +156,7 @@ export function memorySignals(request: MemoryRouteRequest, options: RouteOptions
   return signals;
 }
 
-/** Classify one memory item (ADR-0042, rules `rules:v1`, first match wins). */
+/** Classify one memory item (ADR-0042, rules `rules:v2`, first match wins). */
 export function routeMemory(
   request: MemoryRouteRequest,
   options: RouteOptions = {},
@@ -132,10 +170,11 @@ export function routeMemory(
   ): MemoryRouteResult => ({ route, ruleId, signals, classifier: CLASSIFIER });
 
   if (has('secret_like')) return decide('ephemeral_ops_fact', 'secret');
+  if (has('personal_data')) return decide('ephemeral_ops_fact', 'personal_data');
   if (has('short')) return decide('ephemeral_ops_fact', 'short');
   if (hint === 'ops') return decide('ephemeral_ops_fact', 'ops_hint');
-  if (has('public_source')) return decide('card_proposal', 'public_source');
   if (has('local_reference')) return decide('ephemeral_ops_fact', 'local_reference');
+  if (has('public_source')) return decide('card_proposal', 'public_source');
   if (has('durable') && !has('transient')) return decide('card_proposal', 'durable_statement');
   if (has('transient')) return decide('ephemeral_ops_fact', 'transient');
   if (hint === 'learning' || hint === 'preference' || hint === 'decision') {

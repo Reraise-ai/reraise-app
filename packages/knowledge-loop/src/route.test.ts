@@ -9,6 +9,10 @@ import { validateContract } from './validate.js';
 // Built at run time so that no secret-like literal sits in the repository.
 const TOKEN_LIKE = 'ab12'.repeat(8);
 const KEY_BLOCK = `-----BEGIN ${'PRIVATE'} KEY-----`;
+// Split so that the repository scanners see no real-looking value in the source (ADR-0022).
+const IBAN = ['DE89', '3704', '0044', '0532', '0130', '00'].join('');
+const PRIVATE_IP = ['10', '0', '0', '5'].join('.');
+const AWS_LIKE = ['wJalrXUtnFEMI', 'K7MDENG', 'bPxRfiCYEXAMPLEKEY'].join('/');
 
 /** Synthetic corpus: [text, kindHint, expected route, expected rule]. At least one per rule. */
 const CORPUS: [string, MemoryRouteRequest['kindHint'] | undefined, string, string][] = [
@@ -99,6 +103,74 @@ const CORPUS: [string, MemoryRouteRequest['kindHint'] | undefined, string, strin
     'knowledge_hint',
   ],
   ['Checked the queue and moved on to the next item', undefined, 'ephemeral_ops_fact', 'default'],
+  // Review cases (rules:v2).
+  [
+    'Lesson learned: the admin password for the staging box is Summer2026!',
+    'learning',
+    'ephemeral_ops_fact',
+    'secret',
+  ],
+  [
+    `We always use the AWS secret key ${AWS_LIKE} for uploads`,
+    undefined,
+    'ephemeral_ops_fact',
+    'secret',
+  ],
+  [
+    'Insight: the user prefers to be called at +49 151 23456789 in the evening',
+    undefined,
+    'ephemeral_ops_fact',
+    'personal_data',
+  ],
+  [
+    'The analyst jane.doe@example.org consistently prefers short briefs',
+    undefined,
+    'ephemeral_ops_fact',
+    'personal_data',
+  ],
+  [
+    `Lesson: see https://example.com/report; the service on ${PRIVATE_IP}:8080 needs the flag`,
+    undefined,
+    'ephemeral_ops_fact',
+    'local_reference',
+  ],
+  [
+    'Note from https://example.com: credentials are in /etc/app/creds.env',
+    undefined,
+    'ephemeral_ops_fact',
+    'secret',
+  ],
+  [
+    'Note from https://example.com: the archive lives in /srv/archive/2026 always',
+    undefined,
+    'ephemeral_ops_fact',
+    'local_reference',
+  ],
+  [
+    'ssh key passphrase "correct horse battery staple" always works',
+    undefined,
+    'ephemeral_ops_fact',
+    'secret',
+  ],
+  [
+    'The API token for the board: abc123def456 always expires on Friday',
+    undefined,
+    'ephemeral_ops_fact',
+    'secret',
+  ],
+  [
+    'Card proposals should always cite a public source because provenance matters',
+    undefined,
+    'card_proposal',
+    'durable_statement',
+  ],
+  [
+    `IBAN ${IBAN} is the account we always pay into`,
+    undefined,
+    'ephemeral_ops_fact',
+    'personal_data',
+  ],
+  ['The one-time pin is 4711 for the vault', 'learning', 'ephemeral_ops_fact', 'secret'],
   ['Read the three new findings in the inbox', 'unknown', 'ephemeral_ops_fact', 'default'],
   [
     'Meeting moved from 10:30 to the afternoon slot',
@@ -119,15 +191,16 @@ describe('routeMemory (ADR-0042)', () => {
     };
     const result = routeMemory(request);
     expect([result.route, result.ruleId]).toEqual([route, ruleId]);
-    expect(result.classifier).toBe('rules:v1');
+    expect(result.classifier).toBe('rules:v2');
     expect(validateContract('memory-route.schema.json', result)).toEqual({ ok: true });
   });
 
-  it('covers every rule of rules:v1 in the corpus', () => {
+  it('covers every rule of rules:v2 in the corpus', () => {
     const rules = new Set(CORPUS.map((c) => c[3]));
     expect([...rules].sort()).toEqual(
       [
         'secret',
+        'personal_data',
         'short',
         'ops_hint',
         'public_source',

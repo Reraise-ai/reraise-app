@@ -41,7 +41,7 @@ id, and testable with a corpus.
   optional `kindHint` (`learning`, `observation`, `preference`, `decision`, `ops`, `unknown`),
   optional `source` (card id or URI).
 - Result (`MemoryRouteResult`): `route` (`card_proposal` or `ephemeral_ops_fact`), `ruleId`,
-  `signals` (signal ids, never the matched words) and `classifier` (`rules:v1`).
+  `signals` (signal ids, never the matched words) and `classifier` (`rules:v2`).
 - `memory_route` stores nothing and creates nothing. For `card_proposal` the caller writes the
   card itself through `knowledge_write_back`; for `ephemeral_ops_fact` it keeps the item where
   it is and, inside a task, may answer the write-back with reason `ephemeral_ops_fact`.
@@ -52,7 +52,8 @@ The text is lower-cased and whitespace is collapsed before matching (word bounda
 
 | Signal | Detected by |
 | --- | --- |
-| `secret_like` | an assignment to a credential word (`password`, `passwd`, `secret`, `token`, `api key`, `apikey`, `bearer`), a private key block, or an unbroken run of 32 or more letters, digits, `+`, `=` or `_` that contains both a letter and a digit (token-like; hyphenated slugs do not match) |
+| `secret_like` | a credential word (`password(s)`, `passwd`, `passphrase(s)`, `secret(s)`, `secret key`, `token(s)`, `api key(s)`, `apikey`, `bearer`, `credential(s)`, `private key`, `ssh key`, `pin`, `otp`) followed in the same clause (up to 40 characters, no `.`, `;`, `!`, `?`) by `:`, `=`, `is`, `are`, `was` or a quoted value; a private key block; a token-like run of 32 or more base64 or base64url characters (`A-Z a-z 0-9 + / = _ -`) that holds upper-case and lower-case letters and digits; or a run of 32 or more hex digits |
+| `personal_data` | an e-mail address (any domain), an IBAN (country length and mod-97) or a phone number (`+` and 8 to 15 digits, or 7 to 15 digits after a phone keyword). The patterns live in `packages/core` (`personalDataKinds`) and are shared with the repository's "no real data" check ([ADR-0022](0022-public-hygiene.md)) |
 | `public_source` | an `http(s)` address in the text or in `source` that is a public address (`isPublicSourceUri`, [ADR-0036](0036-conclusions-are-private.md)) |
 | `local_reference` | an absolute or home-relative file path, `localhost`, an IP literal, a `host:port` or `:port` pattern, or `pid <n>` |
 | `transient` | words bound to a moment or an operation: `today`, `tonight`, `yesterday`, `this morning`, `right now`, `currently`, `for now`, `this session`, `temporarily`, `until restart`, `last run`, `retry`, `retried`, `restart`, `restarted`, `reboot`, `rebooted`, `timeout`, `timed out`, `out of memory`, `disk full`, `cron`, `deployed`, `rollback`, `build failed`, `exit code`, `stack trace`, `error code` |
@@ -64,33 +65,40 @@ The text is lower-cased and whitespace is collapsed before matching (word bounda
 | Order | `ruleId` | When | Route |
 | --- | --- | --- | --- |
 | 1 | `secret` | `secret_like` | `ephemeral_ops_fact` |
-| 2 | `short` | `short` | `ephemeral_ops_fact` |
-| 3 | `ops_hint` | `kindHint = ops` | `ephemeral_ops_fact` |
-| 4 | `public_source` | `public_source` | `card_proposal` |
+| 2 | `personal_data` | `personal_data` | `ephemeral_ops_fact` |
+| 3 | `short` | `short` | `ephemeral_ops_fact` |
+| 4 | `ops_hint` | `kindHint = ops` | `ephemeral_ops_fact` |
 | 5 | `local_reference` | `local_reference` | `ephemeral_ops_fact` |
-| 6 | `durable_statement` | `durable` and not `transient` | `card_proposal` |
-| 7 | `transient` | `transient` | `ephemeral_ops_fact` |
-| 8 | `knowledge_hint` | `kindHint ∈ {learning, preference, decision}` | `card_proposal` |
-| 9 | `default` | otherwise | `ephemeral_ops_fact` |
+| 6 | `public_source` | `public_source` | `card_proposal` |
+| 7 | `durable_statement` | `durable` and not `transient` | `card_proposal` |
+| 8 | `transient` | `transient` | `ephemeral_ops_fact` |
+| 9 | `knowledge_hint` | `kindHint ∈ {learning, preference, decision}` | `card_proposal` |
+| 10 | `default` | otherwise | `ephemeral_ops_fact` |
 
+- Secrets and personal data are checked before any rule that can lead to a card, and a machine
+  detail (`local_reference`) wins over a public source in the same item: an item that mixes a
+  public link with a private address is an operational fact.
 - The default is `ephemeral_ops_fact`: an unclear item stays in the agent's memory rather than in
   the human's queue (an owner default, see [owner questions](../owner-questions.md)).
 - The keyword lists are English. An installation may add words per signal (for example in
   another language) through the classifier options; the rule order cannot change.
-- Version: the rules above are `rules:v1`. Any change to signals, words or order is a new
-  version with an ADR, so a corpus result is reproducible.
+- Version: the rules above are `rules:v2`. `rules:v1` (the first version) had no `personal_data`
+  signal, matched a credential only right before its separator, and checked `public_source`
+    before `local_reference`; review found items that leaked through. Any change to signals, words
+  or order is a new version with an ADR (this one records v2), so a corpus result is reproducible.
 
 ### Model help (later)
 
-A later slice may ask a `local_model` `ModelConnector` for items that end at rule 9; its result
+A later slice may ask a `local_model` `ModelConnector` for items that end at rule 10; its result
 then carries `classifier: model:<engine>`. A cloud model needs the per-transfer confirmation of
 [ADR-0031](0031-gate-rules-and-confirmation-binding.md) like any other egress. The rules stay
-first, so rules 1 to 3 can never be overruled.
+first, so rules 1 to 5 can never be overruled.
 
 ### Consequences
 
 - Good, because the memory job gets a stable, explainable answer per item.
-- Good, because secrets and machine details are kept out of cards by the first rules.
+- Good, because secrets, personal data and machine details are kept out of cards by the first
+  rules.
 - Bad, because keyword rules misclassify some items; the human still reviews every proposal, and
   the corpus grows with each found case.
 - Bad, because English-only defaults need per-installation additions for other languages.
@@ -98,8 +106,11 @@ first, so rules 1 to 3 can never be overruled.
 ### Confirmation
 
 `packages/knowledge-loop` tests: a synthetic corpus with at least one item per rule and the
-expected route and rule id; secrets never route to `card_proposal`, also with a durable word or a
-`learning` hint; the result validates against the schema and never contains the input words;
+expected route and rule id, including every case found in review (credentials with words before
+the value, quoted passphrases, base64 keys with `/`, e-mail addresses, phone numbers, IBANs, a
+private address next to a public link); secrets never route to `card_proposal`, also with a
+durable word or a `learning` hint; `packages/core/src/personal-data.test.ts` for the shared
+patterns; the result validates against the schema and never contains the input words;
 added words change the signal only for their signal. Schema fixtures: a valid request and
 result; invalid ones with an empty text, an unknown hint and an unknown route.
 

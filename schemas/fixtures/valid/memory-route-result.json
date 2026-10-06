@@ -6,6 +6,6 @@
     "route": "ephemeral_ops_fact",
     "ruleId": "default",
     "signals": [],
-    "classifier": "rules:v1"
+    "classifier": "rules:v2"
   }
 }

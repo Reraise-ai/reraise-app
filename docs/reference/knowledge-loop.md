@@ -89,9 +89,9 @@ first entry is `sha256:` followed by 64 zeros; `hash` is the JCS hash of the ent
 
 ## Memory routing
 
-`memory_route` returns `{route, ruleId, signals, classifier: "rules:v1"}`. Rules, first match
-wins: `secret`, `short`, `ops_hint` → ephemeral; `public_source` → card; `local_reference` →
-ephemeral; `durable_statement` → card; `transient` → ephemeral; `knowledge_hint` → card;
+`memory_route` returns `{route, ruleId, signals, classifier: "rules:v2"}`. Rules, first match
+wins: `secret`, `personal_data`, `short`, `ops_hint`, `local_reference` → ephemeral;
+`public_source` → card; `durable_statement` → card; `transient` → ephemeral; `knowledge_hint` → card;
 `default` → ephemeral. Signals and words:
 [ADR-0042](../adr/0042-memory-route-classification.md).
 

@@ -1213,20 +1213,27 @@ export interface MemoryRouteResult {
   route: 'card_proposal' | 'ephemeral_ops_fact';
   ruleId:
     | 'secret'
+    | 'personal_data'
     | 'short'
     | 'ops_hint'
-    | 'public_source'
     | 'local_reference'
+    | 'public_source'
     | 'durable_statement'
     | 'transient'
     | 'knowledge_hint'
     | 'default'
     | 'model';
   signals: (
-    'secret_like' | 'public_source' | 'local_reference' | 'transient' | 'durable' | 'short'
+    | 'secret_like'
+    | 'personal_data'
+    | 'public_source'
+    | 'local_reference'
+    | 'transient'
+    | 'durable'
+    | 'short'
   )[];
   /**
-   * rules:v1 for the deterministic rules; model:<engine> only for a later model-assisted slice.
+   * rules:v2 for the deterministic rules of ADR-0042; model:<engine> only for a later model-assisted slice.
    */
   classifier: string;
 }
