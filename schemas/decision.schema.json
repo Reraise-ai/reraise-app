@@ -6,9 +6,35 @@
   "type": "object",
   "$ref": "card.schema.json",
   "properties": {
-    "type": { "type": "string", "const": "decision" },
-    "format": { "type": "integer", "const": 2 },
-    "sections": { "$ref": "card.schema.json#/$defs/decisionSections" }
+    "type": {
+      "type": "string",
+      "const": "decision"
+    },
+    "format": {
+      "type": "integer",
+      "const": 2
+    },
+    "sections": {
+      "$ref": "card.schema.json#/$defs/decisionSections"
+    }
   },
-  "required": ["sections"]
+  "required": ["sections"],
+  "$defs": {
+    "draft": {
+      "title": "DecisionDraft",
+      "description": "Body of the human-only decision create operation: a decision card without identity or author (the store assigns the id; the author is the human).",
+      "type": "object",
+      "$ref": "card.schema.json#/$defs/draft",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "decision"
+        },
+        "sections": {
+          "$ref": "card.schema.json#/$defs/decisionSections"
+        }
+      },
+      "required": ["type", "sections"]
+    }
+  }
 }

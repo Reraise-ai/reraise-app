@@ -5,15 +5,38 @@
 // Regenerate with `pnpm generate:types`; a test fails if this file is out of date.
 // The types describe shapes only; validate data against the JSON Schemas for the rules.
 
+export type EmptyRequest = Record<string, never>;
+/**
+ * Canonical world id (ULID).
+ */
+export type WorldId = Ulid;
+/**
+ * Non-empty text that is not only whitespace.
+ */
+export type Text = string;
+export type Visibility =
+  'private' | 'company_internal' | 'cross_partner' | 'customer_visible' | 'public';
+/**
+ * Release tier, recorded without behaviour (ADR-0021).
+ */
+export type Release = 'private' | 'community' | 'commercial';
+/**
+ * Canonical card id (ULID). Canonical objects always hold this id, never a store-local id.
+ */
+export type CardId = Ulid;
+/**
+ * Epistemic kind of a card (ADR-0007). believed is never a layer; it is a private stance (ADR-0008).
+ */
+export type Layer = 'evidenced' | 'said' | 'experience';
+/**
+ * Opaque pagination cursor.
+ */
+export type Cursor = string;
 /**
  * Canonical card (ADR-0023). Every store maps to this model; card format v2 rules (layer, author, provenance, player fields, Lage, decision sections) apply to format-2 cards (ADR-0007, ADR-0009). Stance data is never part of a card (ADR-0008).
  */
 export type Card = CardContent &
   Required<Pick<CardContent, 'id' | 'externalId' | 'uri' | 'format' | 'type' | 'title' | 'author'>>;
-/**
- * Canonical card id (ULID). Canonical objects always hold this id, never a store-local id.
- */
-export type CardId = Ulid;
 /**
  * Reference to a card in its home store: wb:<storeInstanceId>/<externalId percent-encoded per RFC 3986, upper-case hex>. storeInstanceId is a random UUID, never a hostname, path or user name (ADR-0005, ADR-0023).
  */
@@ -22,10 +45,6 @@ export type WbUri = string;
  * Store collection a card lives in (ADR-0023).
  */
 export type Collection = 'actors' | 'evidence' | 'decisions';
-/**
- * Non-empty text that is not only whitespace.
- */
-export type Text = string;
 export type IsoDate = string;
 /**
  * Lower-case hex SHA-256 digest.
@@ -33,23 +52,9 @@ export type IsoDate = string;
 export type Sha256 = string;
 export type CardStatus = 'draft' | 'checked' | 'released';
 /**
- * Release tier, recorded without behaviour (ADR-0021).
- */
-export type Release = 'private' | 'community' | 'commercial';
-export type Visibility =
-  'private' | 'company_internal' | 'cross_partner' | 'customer_visible' | 'public';
-/**
  * Sensitivity class; input to disclosure-gate rules (ADR-0023).
  */
 export type CardClass = 'A' | 'B' | 'C';
-/**
- * Epistemic kind of a card (ADR-0007). believed is never a layer; it is a private stance (ADR-0008).
- */
-export type Layer = 'evidenced' | 'said' | 'experience';
-/**
- * Canonical world id (ULID).
- */
-export type WorldId = Ulid;
 /**
  * human, agent:<name>, or unknown. unknown is valid only on legacy format-1 cards and on edges read from legacy links (ADR-0009, ADR-0023).
  */
@@ -85,59 +90,6 @@ export type KnownAuthor = string;
 export type RuleCondition =
   CardOnLageCondition | CardFieldCondition | EdgeCondition | StanceCondition;
 export type StancePosition = 'believed' | 'rejected' | 'undecided';
-/**
- * A card proposed for creation (proposal kind create_card). Identity is assigned by the store on accept; the author is set by the server from the agent connection, never taken from the payload (ADR-0011).
- */
-export type CardDraft = CardContent &
-  Required<Pick<CardContent, 'type' | 'title'>> & {
-    format: 2;
-    id?: never;
-    externalId?: never;
-    uri?: never;
-    author?: never;
-    contentHash?: never;
-  };
-/**
- * A lower-case RFC 9562 UUID.
- */
-export type Uuid = string;
-/**
- * An agent identity: agent:<name>.
- */
-export type AgentAuthor = string;
-/**
- * The local human user. Human-only operations record this value.
- */
-export type HumanAuthor = 'human';
-/**
- * Where content may go (ADR-0012).
- */
-export type DisclosureTarget = 'screen' | 'local_model' | 'cloud_model' | 'demo';
-/**
- * ICD 203 band keys (ADR-0010).
- */
-export type ProbabilityBand =
-  | 'almost_no_chance'
-  | 'very_unlikely'
-  | 'unlikely'
-  | 'roughly_even'
-  | 'likely'
-  | 'very_likely'
-  | 'almost_certain';
-export type ProposalKind = 'place_card' | 'move_card' | 'add_edge' | 'create_card' | 'comment';
-export type DateTime = string;
-/**
- * Strength with which the position is held: 1 = weak, 2 = moderate, 3 = strong. Deliberately coarse; no percentages (ADR-0008).
- */
-export type StanceWeight = number;
-/**
- * A decision card: a format-2 card of type decision with exactly eleven non-empty sections (ADR-0017). Saving one is a human-only operation (ADR-0016).
- */
-export type Decision = Card & {
-  type?: 'decision';
-  format?: 2;
-  sections: DecisionSections;
-};
 /**
  * An agent move (ADR-0011). `proposal_create` is the only write path for agents; the server sets `id`, `author` (from the connection's agent identity), `status` and `createdAt`. Accept and reject are human-only. Pending or rejected proposals never count anywhere.
  */
@@ -180,6 +132,77 @@ export type ProposalKindPayload =
       payload: CommentPayload;
     };
 /**
+ * A card proposed for creation (proposal kind create_card). Identity is assigned by the store on accept; the author is set by the server from the agent connection, never taken from the payload (ADR-0011).
+ */
+export type CardDraft = CardContent &
+  Required<Pick<CardContent, 'type' | 'title'>> & {
+    format: 2;
+    id?: never;
+    externalId?: never;
+    uri?: never;
+    author?: never;
+    contentHash?: never;
+  };
+/**
+ * An agent identity: agent:<name>.
+ */
+export type AgentAuthor = string;
+export type ProposalKind = 'place_card' | 'move_card' | 'add_edge' | 'create_card' | 'comment';
+export type DateTime = string;
+/**
+ * The local human user. Human-only operations record this value.
+ */
+export type HumanAuthor = 'human';
+/**
+ * A lower-case RFC 9562 UUID.
+ */
+export type Uuid = string;
+/**
+ * Where content may go (ADR-0012).
+ */
+export type DisclosureTarget = 'screen' | 'local_model' | 'cloud_model' | 'demo';
+/**
+ * ICD 203 band keys (ADR-0010).
+ */
+export type ProbabilityBand =
+  | 'almost_no_chance'
+  | 'very_unlikely'
+  | 'unlikely'
+  | 'roughly_even'
+  | 'likely'
+  | 'very_likely'
+  | 'almost_certain';
+/**
+ * Strength with which the position is held: 1 = weak, 2 = moderate, 3 = strong. Deliberately coarse; no percentages (ADR-0008).
+ */
+export type StanceWeight = number;
+/**
+ * A decision card: a format-2 card of type decision with exactly eleven non-empty sections (ADR-0017). Saving one is a human-only operation (ADR-0016).
+ */
+export type Decision = Card & {
+  type?: 'decision';
+  format?: 2;
+  sections: DecisionSections;
+};
+/**
+ * Body of the human-only decision create operation: a decision card without identity or author (the store assigns the id; the author is the human).
+ */
+export type DecisionDraft = CardDraft & {
+  type: 'decision';
+  sections: DecisionSections;
+};
+/**
+ * A new finding reported by a SourceConnector (ADR-0014). It is a reference with provenance, not content we ingest; nothing in the inbox is part of a world until a human pins it (reference-then-pin).
+ */
+export type Finding = Finding1 & Finding2;
+export type Finding1 =
+  | {
+      source: unknown;
+    }
+  | {
+      originSystem: unknown;
+    };
+/**
  * Input of proposal_create. Contains no author, id or status; the server sets them.
  */
 export type ProposalCreate = ProposalKindPayload & {
@@ -188,6 +211,40 @@ export type ProposalCreate = ProposalKindPayload & {
   rationale?: string;
 };
 
+export interface WorldList {
+  worlds: World[];
+}
+/**
+ * A modelled slice of reality from a perspective. Cards appear in worlds by reference (`Card.worlds`), never as copies. Private by default (ADR-0021).
+ */
+export interface World {
+  id: WorldId;
+  name: Text;
+  description?: string;
+  visibility?: Visibility;
+  release?: Release;
+}
+export interface LageGetRequest {
+  lageId: CardId;
+}
+export interface CardGetRequest {
+  cardId: CardId;
+}
+export interface CardsSearchRequest {
+  worldId?: WorldId;
+  text?: string;
+  type?: string;
+  layer?: Layer;
+  limit?: number;
+  cursor?: Cursor;
+}
+/**
+ * Gate-cleared cards for the caller's target; denied cards are omitted.
+ */
+export interface CardPage {
+  cards: Card[];
+  nextCursor?: Cursor;
+}
 /**
  * All card fields with the format v2 rules. Shared by Card (identity required) and CardDraft (identity forbidden).
  */
@@ -338,7 +395,7 @@ export interface DecisionSections {
   /**
    * @minItems 1
    */
-  cardsUsed: [CardId, ...CardId[]];
+  cardsUsed: CardId[];
   outcome: Text;
 }
 /**
@@ -350,7 +407,7 @@ export interface Rule {
    *
    * @minItems 1
    */
-  when: [RuleCondition, ...RuleCondition[]];
+  when: RuleCondition[];
   then: Text;
   /**
    * If any of these conditions holds, the rule does not fire.
@@ -398,6 +455,66 @@ export interface StanceCondition {
   kind: 'stance';
   card: CardId;
   position: StancePosition;
+}
+export interface ProposalListRequest {
+  status?: 'pending' | 'accepted' | 'rejected';
+  lageId?: CardId;
+  limit?: number;
+  cursor?: Cursor;
+}
+export interface ProposalPage {
+  proposals: Proposal[];
+  nextCursor?: Cursor;
+}
+/**
+ * Place an existing card on a Lage.
+ */
+export interface PlaceCardPayload {
+  lageId: CardId;
+  cardId: CardId;
+  x: number;
+  y: number;
+}
+/**
+ * Move a card that is already on a Lage.
+ */
+export interface MoveCardPayload {
+  lageId: CardId;
+  cardId: CardId;
+  x: number;
+  y: number;
+}
+/**
+ * Draw an edge: on a Lage if `lageId` is given, otherwise as a card edge on `from`. `by` becomes the proposal author on accept.
+ */
+export interface AddEdgePayload {
+  lageId?: CardId;
+  from: CardId;
+  to: CardId;
+  kind: EdgeKind;
+}
+/**
+ * Create a new card (for example a reference card for a finding, ADR-0014), optionally placed on a Lage.
+ */
+export interface CreateCardPayload {
+  card: CardDraft;
+  lageId?: CardId;
+  x?: number;
+  y?: number;
+}
+export interface CommentPayload {
+  text: Text;
+  cardId?: CardId;
+  lageId?: CardId;
+}
+/**
+ * Error response (RFC 9457). Never contains card content (ADR-0026).
+ */
+export interface Problem {
+  type?: string;
+  title: string;
+  status: number;
+  detail?: string;
 }
 /**
  * What a model or agent receives about the active world (ADR-0016, ADR-0024 item 34). Built after the disclosure gate: every item is gate-cleared for `target`; denied cards are omitted and only counted in `withheld`. Layers are never merged into a score. Only accepted content appears as items; pending proposals are listed separately. Stance data appears only for target screen; a cloud_model package needs the user's per-transfer confirmation.
@@ -538,7 +655,7 @@ export interface DisclosureConfirmation {
   /**
    * @minItems 1
    */
-  cardIds: [CardId, ...CardId[]];
+  cardIds: CardId[];
   confirmedBy: HumanAuthor;
   confirmedAt: DateTime;
 }
@@ -552,7 +669,7 @@ export interface DisclosureTransfer {
   /**
    * @minItems 1
    */
-  cardIds: [CardId, ...CardId[]];
+  cardIds: CardId[];
   createdAt: DateTime;
 }
 /**
@@ -562,7 +679,26 @@ export interface DisclosureConfirmRequest {
   /**
    * @minItems 1
    */
-  cardIds: [CardId, ...CardId[]];
+  cardIds: CardId[];
+}
+export interface Finding2 {
+  /**
+   * Where the finding lives in its home system.
+   */
+  uri: string;
+  /**
+   * Id of the reporting SourceConnector.
+   */
+  connector: string;
+  title: Text;
+  /**
+   * Minimal display text; never the full third-party content.
+   */
+  snippet?: string;
+  source?: Text;
+  sourceDate?: IsoDate;
+  originSystem?: Text;
+  retrievedAt: DateTime;
 }
 /**
  * A fast, typed level-1 answer (ADR-0015). It is an attributed engine estimate ('<engine> estimates 0.82 for X'), never a verdict: it does not count as a decision, does not trigger rules and does not enter statistics. `choice` is one of `options`. World changes it implies arrive as proposals by agent:<engine>.
@@ -579,7 +715,7 @@ export interface Level1Answer {
    *
    * @minItems 2
    */
-  options: [Text, Text, ...Text[]];
+  options: Text[];
   choice: Text;
   /**
    * The engine's own confidence for `choice`, shown attributed to the engine. Not an ICD 203 estimate.
@@ -603,7 +739,7 @@ export interface Level1Request {
   /**
    * @minItems 2
    */
-  options: [Text, Text, ...Text[]];
+  options: Text[];
   inputs: Level1Input[];
 }
 /**
@@ -638,47 +774,6 @@ export interface PredictionResolution {
   resolvedAt: DateTime;
   decisionId?: CardId;
   resolvedBy: HumanAuthor;
-}
-/**
- * Place an existing card on a Lage.
- */
-export interface PlaceCardPayload {
-  lageId: CardId;
-  cardId: CardId;
-  x: number;
-  y: number;
-}
-/**
- * Move a card that is already on a Lage.
- */
-export interface MoveCardPayload {
-  lageId: CardId;
-  cardId: CardId;
-  x: number;
-  y: number;
-}
-/**
- * Draw an edge: on a Lage if `lageId` is given, otherwise as a card edge on `from`. `by` becomes the proposal author on accept.
- */
-export interface AddEdgePayload {
-  lageId?: CardId;
-  from: CardId;
-  to: CardId;
-  kind: EdgeKind;
-}
-/**
- * Create a new card (for example a reference card for a finding, ADR-0014), optionally placed on a Lage.
- */
-export interface CreateCardPayload {
-  card: CardDraft;
-  lageId?: CardId;
-  x?: number;
-  y?: number;
-}
-export interface CommentPayload {
-  text: Text;
-  cardId?: CardId;
-  lageId?: CardId;
 }
 /**
  * Body of the human-only accept or reject operation.
@@ -805,14 +900,4 @@ export interface TrainingLageCard {
 }
 export interface AcceptedProposal {
   status: 'accepted';
-}
-/**
- * A modelled slice of reality from a perspective. Cards appear in worlds by reference (`Card.worlds`), never as copies. Private by default (ADR-0021).
- */
-export interface World {
-  id: WorldId;
-  name: Text;
-  description?: string;
-  visibility?: Visibility;
-  release?: Release;
 }

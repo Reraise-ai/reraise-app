@@ -1,0 +1,16 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/api.schema.json#/$defs/worldList",
+  "description": "world_list output.",
+  "data": {
+    "worlds": [
+      {
+        "id": "01M1DZPW00JGXPRPG4179ZPNB8",
+        "name": "Hormuz",
+        "description": "Invented tanker-routing scenario around transit restrictions in the strait.",
+        "visibility": "private",
+        "release": "private"
+      }
+    ]
+  }
+}

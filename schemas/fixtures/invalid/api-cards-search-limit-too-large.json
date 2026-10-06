@@ -1,0 +1,12 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/api.schema.json#/$defs/cardsSearchRequest",
+  "description": "Search results are size-limited (ADR-0026).",
+  "expect": {
+    "keyword": "maximum",
+    "instancePath": "/limit"
+  },
+  "data": {
+    "limit": 10000
+  }
+}

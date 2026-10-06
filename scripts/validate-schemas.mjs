@@ -80,11 +80,12 @@ export function loadSchemas(repoRoot) {
   return { ajv, names, problems };
 }
 
-/** Count a passing valid case or a correctly failing invalid case for a schema. */
+/** Count a passing valid case or a correctly failing invalid case for a schema file. */
 function bump(coverage, name, kind) {
-  const c = coverage.get(name) ?? { valid: 0, invalid: 0 };
+  const file = name.split('#')[0];
+  const c = coverage.get(file) ?? { valid: 0, invalid: 0 };
   c[kind]++;
-  coverage.set(name, c);
+  coverage.set(file, c);
 }
 
 const formatErrors = (errors) =>
@@ -172,8 +173,11 @@ function checkEnvelope(doc, rel, names, problems, { requireSynthetic, requireExp
     return null;
   }
   if (requireSynthetic && doc.synthetic !== true) problems.push(`${rel}: needs "synthetic": true`);
+  // `<$id>` or `<$id>#/$defs/<name>` for a definition inside a schema.
   const name = typeof doc.schema === 'string' ? doc.schema.replace(SCHEMA_BASE, '') : '';
-  if (!doc.schema?.startsWith?.(SCHEMA_BASE) || !names.includes(name)) {
+  const [file, fragment] = name.split('#');
+  const fragmentOk = fragment === undefined || /^\/\$defs\/[A-Za-z0-9]+$/.test(fragment);
+  if (!doc.schema?.startsWith?.(SCHEMA_BASE) || !names.includes(file ?? '') || !fragmentOk) {
     problems.push(`${rel}: "schema" must be the $id of a schema in schemas/ (got ${doc.schema})`);
     return null;
   }

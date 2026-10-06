@@ -122,7 +122,12 @@ function transform(node, file, names) {
     const opaqueObject =
       out.type === 'object' &&
       !['properties', 'additionalProperties', 'allOf', 'anyOf', 'oneOf'].some((k) => k in out);
-    return opaqueObject ? { ...out, tsType: 'Record<string, unknown>' } : out;
+    if (opaqueObject) return { ...out, tsType: 'Record<string, unknown>' };
+    const closedEmpty =
+      out.type === 'object' &&
+      Object.keys(out.properties ?? { x: 1 }).length === 0 &&
+      out.additionalProperties === false;
+    return closedEmpty ? { ...out, tsType: 'Record<string, never>' } : out;
   }
   // A bare $ref: drop annotations so json-schema-to-typescript reuses the named type.
   if (!Object.keys(out).some((k) => SHAPE_KEYS.has(k))) return { $ref: out.$ref };
@@ -248,6 +253,7 @@ export async function generateTypes(repoRoot) {
     additionalProperties: false,
     unreachableDefinitions: true,
     strictIndexSignatures: true,
+    ignoreMinAndMaxItems: true,
     format: false,
     cwd: path.join(repoRoot, 'schemas'),
   });

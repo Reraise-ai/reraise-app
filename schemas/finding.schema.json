@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldbuilder.invalid/schemas/v0/finding.schema.json",
+  "title": "Finding",
+  "description": "A new finding reported by a SourceConnector (ADR-0014). It is a reference with provenance, not content we ingest; nothing in the inbox is part of a world until a human pins it (reference-then-pin).",
+  "type": "object",
+  "properties": {
+    "uri": {
+      "description": "Where the finding lives in its home system.",
+      "type": "string",
+      "format": "uri"
+    },
+    "connector": {
+      "description": "Id of the reporting SourceConnector.",
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"
+    },
+    "title": { "$ref": "common.schema.json#/$defs/text" },
+    "snippet": {
+      "description": "Minimal display text; never the full third-party content.",
+      "type": "string",
+      "maxLength": 1000
+    },
+    "source": { "$ref": "common.schema.json#/$defs/text" },
+    "sourceDate": { "$ref": "common.schema.json#/$defs/isoDate" },
+    "originSystem": { "$ref": "common.schema.json#/$defs/text" },
+    "retrievedAt": { "$ref": "common.schema.json#/$defs/dateTime" }
+  },
+  "required": ["uri", "connector", "title", "retrievedAt"],
+  "additionalProperties": false,
+  "anyOf": [
+    { "properties": { "source": true }, "required": ["source"] },
+    { "properties": { "originSystem": true }, "required": ["originSystem"] }
+  ]
+}

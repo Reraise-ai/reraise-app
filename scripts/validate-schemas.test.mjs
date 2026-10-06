@@ -105,6 +105,36 @@ describe('fixtures', () => {
     expect(validateSchemas(root).problems).toEqual([]);
   });
 
+  it('accepts fixtures for a definition inside a schema, but no other fragment', () => {
+    const withDefs = JSON.stringify({
+      ...JSON.parse(good('thing.schema.json')),
+      $defs: { part: { type: 'object', properties: { n: { type: 'integer' } } } },
+    });
+    const root = makeTree({
+      'schemas/thing.schema.json': withDefs,
+      'schemas/fixtures/valid/part.json': JSON.stringify({
+        schema: `${schemaId('thing.schema.json')}#/$defs/part`,
+        description: 'x',
+        data: { n: 1 },
+      }),
+      'schemas/fixtures/invalid/part.json': JSON.stringify({
+        schema: `${schemaId('thing.schema.json')}#/$defs/part`,
+        description: 'x',
+        expect: { keyword: 'type', instancePath: '/n' },
+        data: { n: 'one' },
+      }),
+      'schemas/fixtures/valid/pointer.json': JSON.stringify({
+        schema: `${schemaId('thing.schema.json')}#/properties/at`,
+        description: 'x',
+        data: 'x',
+      }),
+    });
+    const { problems } = validateSchemas(root);
+    expect(problems).toEqual([
+      `schemas/fixtures/valid/pointer.json: "schema" must be the $id of a schema in schemas/ (got ${schemaId('thing.schema.json')}#/properties/at)`,
+    ]);
+  });
+
   it('reports invalid fixtures that pass or fail for another reason', () => {
     const root = makeTree({
       ...schemas,

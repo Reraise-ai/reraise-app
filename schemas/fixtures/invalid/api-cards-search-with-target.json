@@ -1,0 +1,13 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/api.schema.json#/$defs/cardsSearchRequest",
+  "description": "The disclosure target comes from the connection, never from the request (ADR-0012).",
+  "expect": {
+    "keyword": "additionalProperties",
+    "instancePath": ""
+  },
+  "data": {
+    "text": "transit",
+    "target": "screen"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/api.schema.json#/$defs/problem",
+  "description": "Problems are 4xx or 5xx.",
+  "expect": {
+    "keyword": "minimum",
+    "instancePath": "/status"
+  },
+  "data": {
+    "title": "OK",
+    "status": 200
+  }
+}
