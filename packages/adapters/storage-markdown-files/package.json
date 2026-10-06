@@ -2,7 +2,7 @@
   "name": "@worldbuilder/storage-markdown-files",
   "version": "0.0.0",
   "private": true,
-  "description": "Reference storage adapter: Markdown files with YAML front matter (skeleton)",
+  "description": "Reference storage adapter: a directory of Markdown cards with YAML front matter",
   "license": "Apache-2.0",
   "type": "module",
   "main": "./dist/index.js",
@@ -19,5 +19,14 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@worldbuilder/core": "workspace:*",
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1",
+    "yaml": "^2.9.1"
+  },
+  "devDependencies": {
+    "@worldbuilder/conformance": "workspace:*"
   }
 }

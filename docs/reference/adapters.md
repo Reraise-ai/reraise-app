@@ -30,6 +30,37 @@ Conformance: every adapter runs `describeStorageAdapterConformance` from
 The kit checks ids across instances and locations, canonical URIs, valid cards, content
 hashes, byte-identical patches, legacy defaults and the stance mappings.
 
+### The reference adapter: `markdown-files`
+
+`MarkdownFilesAdapter.open(folder, options)` in `packages/adapters/storage-markdown-files`
+(Apache-2.0) implements `StorageAdapter` over a folder in the [card format](./card-format.md):
+
+```
+worldbuilder-store.yaml       store configuration with the random storeInstanceId
+world.json, worlds/*.json     worlds (cards may also name worlds that have no file)
+cards/**/*.md                 one card per file; the canonical ULID is the `id` field
+cards/**/_archive/<file>.v<n>.md   archived versions, next to the card; never current cards
+.worldbuilder/write.lock      the single-writer lock, held only while a write runs
+```
+
+- **Patches are byte-preserving.** Only the text range of a changed top-level field is
+  rewritten. Foreign fields, comments, order, quoting and the file's line breaks stay. New
+  files use LF. A patch that the card format cannot hold (for example a comma in a player-field
+  entry) or that would produce an invalid card is rejected before anything is written.
+- **One writer per store.** Every write takes an in-process queue and the lock file, re-reads
+  the files, checks the guard and writes through a temporary file and a rename. A lock older
+  than 60 s, or held by a process that no longer exists on this host, is broken.
+- **Derived index.** The index is built in memory at start and refreshed by a file watcher.
+  Watcher events are hints: a changed file is re-read and a miss triggers a rescan
+  ([ADR-0033](../adr/0033-derived-index-reference-adapter.md)). `rebuildIndex()` throws the
+  index away and rebuilds it. Files that cannot be used are listed by `diagnostics()` and
+  stay out of every result.
+- **Search** matches all words case- and accent-insensitively in title, body and tags, and
+  filters by `type`, `layer`, `worldId` and `tags`; a title match ranks first.
+- **Lage save.** A patch with a `lage` needs the next version number; the previous version is
+  archived as `_archive/<file>.v<n>.md`, and a stale `lageVersion` guard is a conflict.
+- **No stance data.** The adapter has no stance writer and refuses stance fields in a patch.
+
 ## SourceConnector
 
 Reports new findings from a connected source with their provenance; read only

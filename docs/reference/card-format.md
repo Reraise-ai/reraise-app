@@ -12,8 +12,9 @@ This page is the human-readable specification of the canonical model decided in
 [ADR-0009](../adr/0009-mandatory-provenance.md). The machine-readable contract is the set of
 JSON Schemas in [`schemas/`](https://github.com/Reraise-ai/reraise-app/tree/main/schemas),
 which are in progress in milestone M0. If this page and a published schema differ, the
-schema wins and this page is a bug. The reference `markdown-files` storage adapter (planned
-M1) will implement this format, and the conformance kit will test it.
+schema wins and this page is a bug. The reference `markdown-files` storage adapter
+(`packages/adapters/storage-markdown-files`) implements this format, and the conformance kit
+tests it.
 :::
 
 The format is **store-neutral**. It is a generic specification that any store can implement.
@@ -26,8 +27,8 @@ in both directions without loss.
 
 - **v2 only adds.** No existing card needs rewriting. A card without a v2 field is validated
   as before. The v2 rules apply once a card uses a v2 field or declares `format: 2`.
-- **Files are the truth.** Reference-adapter behaviour (planned M1): the `markdown-files` adapter will write
-  through one write path per store that validates every v2 card with the schema rules and takes
+- **Files are the truth.** Reference-adapter behaviour: the `markdown-files` adapter writes
+  through one write path per store that validates every card with the schema rules and takes
   a lock before writing. A card that fails is not written. Other stores have their own write
   channel; the conformance kit tests the contract, not the mechanism.
 - **Provenance is mandatory.** See [section 5](#5-provenance-rules).
@@ -317,7 +318,9 @@ a `sourceChecksum` on a card outside `collection: evidence` that is not a SHA-25
 
 A `lage` card, and any other versioned card, is **archived** on rewrite
 ([ADR-0006](../adr/0006-files-are-the-truth.md)). The previous version moves to an archive folder next to the card, named
-`_archive/<file>.v<n>.md`, where `n` is the version number. Nothing is deleted. The
+`_archive/<file>.v<n>.md`, where `n` is the version number. Nothing is deleted. In the reference
+format `<file>` is the card's file name without `.md` (`01-x.md` is archived as
+`_archive/01-x.v1.md`). The
 validator does not look inside the archive. History is therefore a set of archived
 versions, not an event log.
 
