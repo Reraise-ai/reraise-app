@@ -5,7 +5,7 @@ import { defineConfig } from 'vitest/config';
 
 /** Workspace packages resolve to their sources in tests, so no build is needed first. */
 const alias = Object.fromEntries(
-  ['core', 'conformance', 'disclosure-gate'].map((name) => [
+  ['core', 'conformance', 'disclosure-gate', 'local-state'].map((name) => [
     `@worldbuilder/${name}`,
     fileURLToPath(new URL(`./packages/${name}/src/index.ts`, import.meta.url)),
   ]),

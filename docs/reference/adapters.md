@@ -71,3 +71,46 @@ Decides per card and per target what may leave the screen
 Rules are data (`gate-rules.schema.json`); adapter fragments may only deny. Conformance:
 `describeDisclosureGateConformance` from `@worldbuilder/conformance`; the reference gate in
 `packages/disclosure-gate` passes it.
+
+## LocalStateStore
+
+Device-only state: proposals, stances, the gate decision log and the gate rules, as files in
+the per-user state directory ([ADR-0030](../adr/0030-local-state-on-the-device.md)). The
+service process is the only writer. The reference implementation is `packages/local-state`.
+
+| Member | Contract |
+| --- | --- |
+| `createProposal(input, author)` | validates against `proposal.schema.json#/$defs/create`; stores a pending proposal with a new ULID id and `createdAt` |
+| `getProposal(id)` / `listProposals(request)` | see cursor semantics below |
+| `decideProposal(id, status)` | human only; `accepted` or `rejected`, records `decidedBy: human` and `decidedAt`; a decided proposal gives `conflict`, an unknown id `not_found` |
+| `getStance(cardId)` / `listStances()` / `saveStance(cardId, input)` | one file per card; every change appends the previous version to `history` |
+| `damagedFiles()` | names of proposal and stance files that are not JSON, fail their schema or whose inner id differs from the file name; they count nowhere and are skipped by listings |
+| `appendGateLog(entry)` | one JSON line: `at` (ISO 8601 UTC), `cardId`, `item`, `target`, `decision`, a fixed `reason` code and an optional `ruleId`; never content. Rotates at 10 MB keeping 5 files (configurable) |
+| `loadGateRules(fragments?)` | reads `gate-rules.yaml`, validates it and the adapter fragments; see below |
+
+Cursor semantics ([ADR-0032](../adr/0032-m1-proposal-polling.md)): `cursor` and
+`changedSince` both mean "changed after this cursor" (the later wins if both are given). A
+proposal changes when it is created and again when it is decided. Results are ordered by
+change, `nextCursor` is always returned (also for an empty page) and moves over changes that a
+`status` or `lageId` filter hid, so polling with the returned cursor never skips or repeats a
+change. Change stamps are strictly increasing; if the wall clock steps back they continue one
+millisecond after the previous stamp.
+
+Fail-closed loading ([ADR-0031](../adr/0031-gate-rules-and-confirmation-binding.md)): a rule
+file or fragment that is unreadable, larger than 1 MiB, not valid YAML (aliases, duplicate
+keys and several documents are refused), schema-invalid, has duplicate rule ids, or a
+fragment that contains an allow rule, uses a reserved source (`user`, `fail-closed`) or
+repeats a source, yields `ok: false`, the `reason`, and a deny-everything rule set. A missing
+file is valid and means no rules, so default deny applies.
+
+Gate log obligation: the caller maps every decision to a reason code (`default_deny`,
+`rule_allow`, `rule_deny`, `stance_screen_only`, `invalid_rules`, `confirmation_required`,
+`confirmed_transfer`, `connection_not_registered`) and passes the deciding rule's id as
+`ruleId`. Free text is not accepted.
+
+Error codes (`LocalStateError.code`): `invalid` (input or stored file fails its schema, bad
+id, bad cursor), `not_found`, `conflict`, `unsafe_state_dir` (the directory is inside a store
+root or Git working tree, or one of the state files is a symbolic link).
+
+State directory helpers: `resolveStateDir` (per-OS default or an explicit absolute path; UNC
+paths are refused on Windows) and `assertStateDirSafe`, both exported by the package.
