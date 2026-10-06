@@ -23,14 +23,14 @@
       "kind": "knowledge",
       "agent": "agent:research-helper",
       "taskRef": "TASK-2026-0045",
-      "queryHash": "sha256:ba2df4903a2c14e86dc3bcca58911b44ac1d2514b7227bf6eb08cfb978f55a1b",
+      "queryHash": "hmac-sha256:4a2d40eb265b42c9b96460688b55f8dcfb3534c2dcfbe4f9b9a9bb330fe40c1c",
       "worldId": "01M1DZPW00JGXPRPG4179ZPNB8",
       "target": "local_model",
       "packageId": "01M1KM00000000000000000011",
       "result": "nothing_found",
       "cardIds": [],
       "at": "2026-10-05T09:00:00Z",
-      "hash": "sha256:83a53ef57c94b708bd4281c85272924331c7d4debba2a80de34d60e82ba96365"
+      "hash": "sha256:7bce495e365629b47f831efa7f2c2787009a1054ddaa507bac34f4b0fc976369"
     }
   }
 }

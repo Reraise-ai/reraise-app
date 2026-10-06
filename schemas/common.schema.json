@@ -185,9 +185,9 @@
     },
     "taskRef": {
       "title": "TaskRef",
-      "description": "An opaque task reference chosen by the agent system (for example its task id), 1 to 128 characters without spaces, so it cannot carry prose (ADR-0039).",
+      "description": "An opaque task reference chosen by the agent system (for example its task id): 1 to 128 characters of letters, digits and . _ : / # -, starting with a letter or digit, without spaces and without '//', so it can carry neither prose nor a URL (ADR-0039).",
       "type": "string",
-      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/#-]{0,127}$"
+      "pattern": "^(?!.*//)[A-Za-z0-9][A-Za-z0-9._:/#-]{0,127}$"
     },
     "jcsHash": {
       "title": "JcsHash",

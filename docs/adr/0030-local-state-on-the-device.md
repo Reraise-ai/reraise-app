@@ -8,7 +8,8 @@ decision-makers: "Owner (product), CTO/orchestrator (technical)"
 
 > Extended by [ADR-0040](0040-receipt-log-and-verifier.md): the receipt log
 > `<state>/receipt-log.jsonl` (append-only, hash-chained, never rotated) and the atlas pages of
-> [ADR-0043](0043-digest-atlas-regeneration.md) (`<state>/atlas/` by default).
+> [ADR-0043](0043-digest-atlas-regeneration.md) (`<state>/atlas/` by default), and the device
+> receipt key `<state>/receipt-key` of [ADR-0039](0039-knowledge-loop-receipts.md).
 
 ## Context and Problem Statement
 

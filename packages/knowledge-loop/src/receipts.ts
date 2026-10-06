@@ -6,7 +6,7 @@
 // Every receipt this module returns is validated against its contract schema, so a field that
 // could carry content cannot slip in.
 
-import { computeContentHash, hashJcs } from '@worldbuilder/core';
+import { canonicalJson, computeContentHash, hashJcs, sha256 } from '@worldbuilder/core';
 import type {
   AgentAuthor,
   CardDraft,
@@ -26,9 +26,37 @@ export function selfHash(value: object): string {
   return hashJcs(rest);
 }
 
-/** `sha256:` hash of the task text; the text itself is never stored (ADR-0039). */
-export function queryHash(task: string): string {
-  return hashJcs(task);
+/** Minimum length of the device receipt key in bytes (ADR-0039). */
+export const RECEIPT_KEY_BYTES = 32;
+
+const hex = (bytes: Uint8Array) =>
+  Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+
+/** HMAC-SHA256 (RFC 2104) over the core SHA-256. */
+export function hmacSha256(key: Uint8Array, data: Uint8Array): Uint8Array {
+  const block = new Uint8Array(64);
+  block.set(key.length > 64 ? sha256(key) : key);
+  const inner = new Uint8Array(64 + data.length);
+  const outer = new Uint8Array(64 + 32);
+  for (let i = 0; i < 64; i++) {
+    inner[i] = block[i]! ^ 0x36;
+    outer[i] = block[i]! ^ 0x5c;
+  }
+  inner.set(data, 64);
+  outer.set(sha256(inner), 64);
+  return sha256(outer);
+}
+
+/**
+ * Keyed hash of the task text: `hmac-sha256:` + HMAC-SHA256 with the device receipt key over
+ * the UTF-8 JCS serialisation of the text. An unkeyed hash would let anyone holding a receipt
+ * confirm a guessed task text; the key never leaves the device (ADR-0039).
+ */
+export function queryHash(task: string, key: Uint8Array): string {
+  if (key.length < RECEIPT_KEY_BYTES) {
+    throw new Error(`the receipt key must have at least ${RECEIPT_KEY_BYTES} bytes`);
+  }
+  return `hmac-sha256:${hex(hmacSha256(key, new TextEncoder().encode(canonicalJson(task))))}`;
 }
 
 /** Add the self hash to an unsealed receipt. */
@@ -49,6 +77,8 @@ export interface KnowledgeReceiptInput {
   readonly taskRef: string;
   /** Hashed into `queryHash`; never stored. */
   readonly task: string;
+  /** The device receipt key (`<state>/receipt-key`); never stored in a receipt. */
+  readonly queryKey: Uint8Array;
   readonly worldId: string;
   readonly lageId?: string;
   /** The gate-cleared package the consult returned. */
@@ -75,7 +105,7 @@ export function createKnowledgeReceipt(input: KnowledgeReceiptInput): KnowledgeR
     kind: 'knowledge',
     agent: input.agent,
     taskRef: input.taskRef,
-    queryHash: queryHash(input.task),
+    queryHash: queryHash(input.task, input.queryKey),
     worldId: input.worldId,
     ...(input.lageId !== undefined ? { lageId: input.lageId } : {}),
     target: input.target,

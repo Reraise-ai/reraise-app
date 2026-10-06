@@ -70,9 +70,18 @@ task?" into a yes or no that a program can check against a log the agent cannot 
     hold it), `ephemeral_ops_fact` (see [ADR-0042](0042-memory-route-classification.md)) or
     `task_abandoned`. There is no free-text reason.
 - `taskRef` is an opaque reference chosen by the agent system (for example its task id):
-  1 to 128 characters of `A-Z a-z 0-9 . _ : / # -`, no spaces, so it cannot carry prose.
-- `queryHash` is `hashJcs(task)` ([ADR-0034](0034-content-hash.md)), the `sha256:` hash of the
-  JCS serialisation of the task text. The task text itself is never stored.
+  1 to 128 characters of `A-Z a-z 0-9 . _ : / # -`, starting with a letter or digit, no spaces
+  and no `//`, so it can carry neither prose nor a URL. Agent systems must use an opaque id, not a
+  title, a path or a link.
+- `queryHash` is `hmac-sha256:` + HMAC-SHA256 (RFC 2104) with the **device receipt key** over
+  the UTF-8 JCS serialisation of the task text. The task text itself is never stored. An unkeyed
+  hash would let anyone who holds a receipt confirm a guessed task text ("was the task about X?")
+  by hashing guesses; the keyed hash cannot be checked without the key.
+- The device receipt key is 32 random bytes in `<state>/receipt-key`, created owner-only on
+  first use with an exclusive create (extends the layout of
+  [ADR-0030](0030-local-state-on-the-device.md)). It never leaves the device and never appears in
+  a receipt, a log or an export. Losing it only means that old query hashes can no longer be
+  matched against new ones; nothing checks them across devices.
 - `hash` of a receipt is `hashJcs` of the receipt without its `hash` member.
 
 ### Receipts never contain content
@@ -135,6 +144,9 @@ The owner's names `knowledge.consult`, `knowledge.write_back`, `decision.record`
 - `knowledge_write_back` and `decision_record` cards are `CardDraft`s with `release` absent or
   `private`, like `create_card` ([ADR-0036](0036-conclusions-are-private.md)); accepted agent
   cards are conclusions and are never shared.
+- An agent cannot opt a card in to the training export: in these drafts and in `create_card`
+  proposals `training` is absent or `false` (schema `const: false`); only the human sets it
+  ([ADR-0017](0017-decision-card-and-training-export.md)).
 - `task` and memory item texts reach the service as inbound data. They are hashed (consult) or
   classified (memory route) and never logged, stored or sent anywhere.
 
@@ -146,7 +158,11 @@ home package `packages/training-export` as a pure builder; no contract changes:
 - a trace is built only for a decision card with `training: true` and an outcome other than
   `open` (a trace without an outcome teaches no decision style);
 - used cards, Lage placements and edges, edges and player entries of used cards, and accepted
-  brainstorm proposals keep only opted-in cards; a used card whose `source` or text names a card
+  brainstorm proposals keep only opted-in cards;
+- agent free text is never exported: brainstorm proposals lose their `rationale`; `comment` and
+  `record_outcome` proposals are left out; a `create_card` proposal only if its card opted in
+  (which an agent draft cannot, see above), so in practice the brainstorm holds the accepted
+  moves (`place_card`, `move_card`, `add_edge`); a used card whose `source` or text names a card
   that did not opt in is left out; a trace whose decision text names such a card, or whose
   `cardsUsed` would be empty, is not exported ([ADR-0028](0028-json-schema-contract-conventions.md));
 - every record validates against `training-export-record.schema.json` and passes the

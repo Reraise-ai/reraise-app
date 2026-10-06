@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright The Worldbuilder contributors
 
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { fileReceiptLogPort } from './fs-port.js';
+import { fileReceiptLogPort, loadOrCreateReceiptKey } from './fs-port.js';
 import { GENESIS, ReceiptLog, buildEntry, checkChain, formatEntry, splitLogLines } from './log.js';
 import { selfHash } from './receipts.js';
 import { consult, logOf, memoryPort, writeBack } from './test-helpers.js';
@@ -157,6 +157,26 @@ describe('file port (ADR-0040)', () => {
       expect(checkChain(await port.readLines())).toMatchObject({ ok: true });
       await expect(port.appendLine('a\nb')).rejects.toThrow(/line break/);
       await expect(fileReceiptLogPort(dir).readLines()).rejects.toThrow();
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('device receipt key (ADR-0039)', () => {
+  it('is created once, owner-only, and read back unchanged', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'wb-key-'));
+    try {
+      const state = path.join(dir, 'state');
+      const [a, b] = await Promise.all([
+        loadOrCreateReceiptKey(state),
+        loadOrCreateReceiptKey(state),
+      ]);
+      expect(a).toHaveLength(32);
+      expect(b).toEqual(a);
+      expect(await loadOrCreateReceiptKey(state)).toEqual(a);
+      await writeFile(path.join(state, 'receipt-key'), 'short');
+      await expect(loadOrCreateReceiptKey(state)).rejects.toThrow(/shorter/);
     } finally {
       await rm(dir, { recursive: true, force: true });
     }

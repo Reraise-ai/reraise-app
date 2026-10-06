@@ -19,8 +19,9 @@
       "$ref": "common.schema.json#/$defs/taskRef"
     },
     "queryHash": {
-      "description": "JCS hash of the task text; the text itself is never stored.",
-      "$ref": "common.schema.json#/$defs/jcsHash"
+      "description": "Keyed hash of the task text: HMAC-SHA256 with the device receipt key over the UTF-8 JCS serialisation of the text, as hmac-sha256:<hex>. The text is never stored; without the key the hash cannot be checked against guessed texts (ADR-0039).",
+      "type": "string",
+      "pattern": "^hmac-sha256:[0-9a-f]{64}$"
     },
     "worldId": {
       "$ref": "common.schema.json#/$defs/worldId"

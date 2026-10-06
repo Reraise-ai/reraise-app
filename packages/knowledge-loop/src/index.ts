@@ -8,7 +8,9 @@
 export {
   createKnowledgeReceipt,
   createWriteBackReceipt,
+  hmacSha256,
   queryHash,
+  RECEIPT_KEY_BYTES,
   receiptHashMatches,
   selfHash,
   type ConsultedPackage,
@@ -30,7 +32,7 @@ export {
   type ChainProblemCode,
   type ReceiptLogPort,
 } from './log.js';
-export { fileReceiptLogPort } from './fs-port.js';
+export { RECEIPT_KEY_FILE, fileReceiptLogPort, loadOrCreateReceiptKey } from './fs-port.js';
 export {
   DEFAULT_MAX_AGE_HOURS,
   DEFAULT_SKEW_SECONDS,

@@ -170,6 +170,10 @@
           "properties": {
             "release": {
               "const": "private"
+            },
+            "training": {
+              "description": "An agent cannot opt a card in to the training export; only the human sets training (ADR-0017, ADR-0039).",
+              "const": false
             }
           }
         },

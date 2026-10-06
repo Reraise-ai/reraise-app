@@ -170,3 +170,46 @@ describe('buildTrainingRecord (ADR-0017, ADR-0039)', () => {
     expect(JSON.parse(jsonl.split('\n')[0]!)).toEqual(JSON.parse(JSON.stringify(record)));
   });
 });
+
+describe('brainstorm without agent free text (ADR-0039)', () => {
+  const at = { status: 'accepted', decidedBy: 'human', decidedAt: '2026-09-16T11:00:00Z' };
+  const card = { format: 2, type: 'claim', title: 'MARKER private estimate', release: 'private' };
+  const leak = {
+    ...accepted,
+    id: '01M1HDJG00152WRCXVJBW0VRRA',
+    kind: 'create_card',
+    payload: { card: { ...card, training: false } },
+    rationale: 'MARKER my private reasoning',
+    ...at,
+  };
+  const comment = {
+    ...accepted,
+    id: '01M1HDJG00152WRCXVJBW0VRRB',
+    kind: 'comment',
+    payload: { text: 'MARKER the user privately believes the consortium will fold' },
+    ...at,
+  };
+  const outcome = {
+    ...accepted,
+    id: '01M1HDJG00152WRCXVJBW0VRRC',
+    kind: 'record_outcome',
+    payload: {
+      decisionId: decision.id,
+      outcome: 'MARKER outcome text',
+      expectedContentHash: decision.contentHash,
+    },
+    ...at,
+  };
+  const withReason = { ...accepted, rationale: 'MARKER why I placed it' };
+
+  it('drops comments, proposed outcomes and cards that did not opt in, and strips rationales', () => {
+    const { record } = buildTrainingRecord({
+      ...input,
+      brainstorm: [withReason, leak, comment, outcome] as Proposal[],
+    });
+    expect(record!.brainstorm.map((p) => p.id)).toEqual([accepted.id]);
+    expect(record!.brainstorm[0]).not.toHaveProperty('rationale');
+    expect(JSON.stringify(record)).not.toContain('MARKER');
+    expect(crossCheck('training-export-record.schema.json', record)).toEqual([]);
+  });
+});

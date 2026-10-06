@@ -190,7 +190,14 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
           decision: {
             type: 'object',
             $ref: 'decision.schema.json#/$defs/draft',
-            properties: { release: { const: 'private' } },
+            properties: {
+              release: { const: 'private' },
+              training: {
+                description:
+                  'An agent cannot opt a card in to the training export; only the human sets training (ADR-0017, ADR-0039).',
+                const: false,
+              },
+            },
           },
           lageId: { $ref: 'common.schema.json#/$defs/cardId' },
           x: { type: 'number' },
@@ -715,9 +722,9 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
       taskRef: {
         title: 'TaskRef',
         description:
-          'An opaque task reference chosen by the agent system (for example its task id), 1 to 128 characters without spaces, so it cannot carry prose (ADR-0039).',
+          "An opaque task reference chosen by the agent system (for example its task id): 1 to 128 characters of letters, digits and . _ : / # -, starting with a letter or digit, without spaces and without '//', so it can carry neither prose nor a URL (ADR-0039).",
         type: 'string',
-        pattern: '^[A-Za-z0-9][A-Za-z0-9._:/#-]{0,127}$',
+        pattern: '^(?!.*//)[A-Za-z0-9][A-Za-z0-9._:/#-]{0,127}$',
       },
       jcsHash: {
         title: 'JcsHash',
@@ -1462,8 +1469,10 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
       agent: { $ref: 'common.schema.json#/$defs/agentAuthor' },
       taskRef: { $ref: 'common.schema.json#/$defs/taskRef' },
       queryHash: {
-        description: 'JCS hash of the task text; the text itself is never stored.',
-        $ref: 'common.schema.json#/$defs/jcsHash',
+        description:
+          'Keyed hash of the task text: HMAC-SHA256 with the device receipt key over the UTF-8 JCS serialisation of the text, as hmac-sha256:<hex>. The text is never stored; without the key the hash cannot be checked against guessed texts (ADR-0039).',
+        type: 'string',
+        pattern: '^hmac-sha256:[0-9a-f]{64}$',
       },
       worldId: { $ref: 'common.schema.json#/$defs/worldId' },
       lageId: { $ref: 'common.schema.json#/$defs/cardId' },
@@ -2054,7 +2063,14 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
               'The card to create. An agent cannot release it for sharing: `release` is private or absent, and only the human changes it (ADR-0036).',
             type: 'object',
             $ref: 'card.schema.json#/$defs/draft',
-            properties: { release: { const: 'private' } },
+            properties: {
+              release: { const: 'private' },
+              training: {
+                description:
+                  'An agent cannot opt a card in to the training export; only the human sets training (ADR-0017, ADR-0039).',
+                const: false,
+              },
+            },
           },
           lageId: { $ref: 'common.schema.json#/$defs/cardId' },
           x: { type: 'number' },
@@ -2950,7 +2966,14 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
           card: {
             type: 'object',
             $ref: 'card.schema.json#/$defs/draft',
-            properties: { release: { const: 'private' } },
+            properties: {
+              release: { const: 'private' },
+              training: {
+                description:
+                  'An agent cannot opt a card in to the training export; only the human sets training (ADR-0017, ADR-0039).',
+                const: false,
+              },
+            },
           },
           lageId: { $ref: 'common.schema.json#/$defs/cardId' },
           x: { type: 'number' },

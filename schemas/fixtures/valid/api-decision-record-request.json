@@ -9,7 +9,7 @@
       "type": "decision",
       "title": "Q4 routing decision",
       "worlds": ["01M1DZPW00JGXPRPG4179ZPNB8"],
-      "training": true,
+      "training": false,
       "sections": {
         "situation": "Night transit restrictions are announced from 1 October; Q4 cargoes are booked.",
         "trigger": "The wire report of 14 September.",

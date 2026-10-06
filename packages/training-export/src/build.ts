@@ -6,7 +6,7 @@
 // by id. Pure: the service decides the export through the disclosure gate under cloud_model
 // semantics with a per-export confirmation before anything leaves the device.
 
-import { SCHEMAS, computeContentHash } from '@worldbuilder/core';
+import { SCHEMAS, computeContentHash, isKnownOutcome } from '@worldbuilder/core';
 import type { Card, Proposal, TrainingExportRecord } from '@worldbuilder/core';
 import { Ajv2020 } from 'ajv/dist/2020.js';
 import addFormatsModule from 'ajv-formats';
@@ -19,7 +19,11 @@ export interface TrainingTraceInput {
   readonly cards: readonly Card[];
   /** The Lage the decision was taken on, if any. */
   readonly lage?: Card;
-  /** Proposals that shaped the decision; only accepted ones are considered. */
+  /**
+   * Proposals that shaped the decision. Only accepted moves are exported (`place_card`,
+   * `move_card`, `add_edge`, and `create_card` whose card opted in), without `rationale`:
+   * agent free text is never exported (comments and proposed outcomes are left out).
+   */
   readonly brainstorm?: readonly Proposal[];
   readonly exportedAt: string;
 }
@@ -90,6 +94,25 @@ function withoutBody(card: Card): Card {
   return c as unknown as Card;
 }
 
+const MOVE_KINDS = new Set(['place_card', 'move_card', 'add_edge']);
+
+/** An accepted move without agent free text; a created card only if it opted in itself. */
+function exportableMove(p: Proposal): boolean {
+  if (p.status !== 'accepted') return false;
+  if (MOVE_KINDS.has(p.kind)) return true;
+  if (p.kind === 'create_card') {
+    return (p.payload as { card?: { training?: unknown } }).card?.training === true;
+  }
+  return false; // comment and record_outcome carry agent free text
+}
+
+/** The proposal without its `rationale` (agent free text, ADR-0039). */
+function withoutAgentText(p: Proposal): Proposal {
+  const copy = { ...p } as Record<string, unknown>;
+  delete copy['rationale'];
+  return copy as unknown as Proposal;
+}
+
 let validate: ((data: unknown) => boolean) | undefined;
 
 /** Validate a record against `training-export-record.schema.json`. */
@@ -114,12 +137,12 @@ export function buildTrainingRecord(input: TrainingTraceInput): TrainingTrace {
   if (!isTrainingEligible(decision)) return { skipped: 'not_opted_in' };
   const sections = (decision as { sections?: { cardsUsed?: string[]; outcome?: string } }).sections;
   const outcome = sections?.outcome;
-  if (typeof outcome !== 'string' || outcome.trim().toLowerCase() === 'open') {
+  if (typeof outcome !== 'string' || !isKnownOutcome(outcome)) {
     return { skipped: 'outcome_open' };
   }
   const byId = new Map(input.cards.map((c) => [c.id, c]));
   const lage = input.lage !== undefined && isTrainingEligible(input.lage) ? input.lage : undefined;
-  const accepted = (input.brainstorm ?? []).filter((p) => p.status === 'accepted');
+  const accepted = (input.brainstorm ?? []).filter(exportableMove).map(withoutAgentText);
 
   // Shrink the set of used cards until every exported card names only exported cards.
   let used = (sections?.cardsUsed ?? []).filter((id) => {

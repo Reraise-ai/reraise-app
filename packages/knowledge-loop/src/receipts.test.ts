@@ -7,11 +7,12 @@ import { describe, expect, it } from 'vitest';
 import {
   createKnowledgeReceipt,
   createWriteBackReceipt,
+  hmacSha256,
   queryHash,
   receiptHashMatches,
   selfHash,
 } from './receipts.js';
-import { AGENT, WORLD, ulid } from './test-helpers.js';
+import { AGENT, KEY, WORLD, ulid } from './test-helpers.js';
 import { validateContract } from './validate.js';
 
 const MARKER = 'MARKER-private-task-text-7f3a';
@@ -21,6 +22,7 @@ const base = {
   target: 'local_model' as const,
   taskRef: 'TASK-1',
   task: `Plan the reroute ${MARKER}`,
+  queryKey: KEY,
   worldId: WORLD,
   at: '2026-10-05T09:00:00.000Z',
 };
@@ -36,8 +38,10 @@ describe('Knowledge Receipt (ADR-0039)', () => {
     });
     expect(r.result).toBe('cards');
     expect(r.cardIds).toEqual([ulid(3), ulid(4)]);
-    expect(r.queryHash).toBe(hashJcs(base.task));
-    expect(r.queryHash).toBe(queryHash(base.task));
+    expect(r.queryHash).toBe(queryHash(base.task, KEY));
+    expect(r.queryHash).toMatch(/^hmac-sha256:[0-9a-f]{64}$/);
+    expect(r.queryHash.slice(12)).not.toBe(hashJcs(base.task).slice(7));
+    expect(queryHash(base.task, new Uint8Array(32).fill(8))).not.toBe(r.queryHash);
     expect(JSON.stringify(r)).not.toContain(MARKER);
     expect(r.hash).toBe(selfHash(r));
     expect(receiptHashMatches(r)).toBe(true);
@@ -156,5 +160,28 @@ describe('Write-back Receipt (ADR-0039)', () => {
         at: base.at,
       }),
     ).toThrow(/write-back/);
+  });
+});
+
+describe('keyed query hash (ADR-0039)', () => {
+  it('is HMAC-SHA256 (RFC 4231 test case 2 and a long key)', () => {
+    const hex = (b: Uint8Array) => Array.from(b, (x) => x.toString(16).padStart(2, '0')).join('');
+    const enc = (s: string) => new TextEncoder().encode(s);
+    expect(hex(hmacSha256(enc('Jefe'), enc('what do ya want for nothing?')))).toBe(
+      '5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843',
+    );
+    // RFC 4231 test case 6: a 131-byte key is hashed first.
+    expect(
+      hex(
+        hmacSha256(
+          new Uint8Array(131).fill(0xaa),
+          enc('Test Using Larger Than Block-Size Key - Hash Key First'),
+        ),
+      ),
+    ).toBe('60e431591ee0b67f0d8a26aacbf5b77f8e0bc6213728c5140546040f0ee37f54');
+  });
+
+  it('refuses a short key', () => {
+    expect(() => queryHash('x', new Uint8Array(16))).toThrow(/at least 32/);
   });
 });

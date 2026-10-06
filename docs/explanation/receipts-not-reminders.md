@@ -55,7 +55,7 @@ free-text reason. That is deliberate:
 
 - receipts are pasted into hand-offs, kept by reviewer agents and checked in CI, places that the
   disclosure gate does not guard;
-- a hash of the question still proves which question was asked, without revealing it;
+- a keyed hash of the question still proves which question was asked, without revealing it, and cannot be checked against guesses without the device key;
 - card ids are already visible to the same agent in its context package.
 
 The receipt log is chained: each line holds the hash of the previous one. Editing, deleting,

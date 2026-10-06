@@ -33,6 +33,8 @@ and measured. The schemas in `schemas/` are normative; this page summarises them
   are, with `proposal_create`, the only tools with `readOnlyHint: false`. A human accepts or
   rejects every proposal.
 - `knowledge_consult` runs exactly the `context_package_get` path through the disclosure gate.
+- Agent drafts (`knowledge_write_back`, `decision_record`, `create_card`) cannot set `release`
+  other than `private` or `training` other than `false`.
 
 ## Knowledge Receipt
 
@@ -43,8 +45,8 @@ and measured. The schemas in `schemas/` are normative; this page summarises them
 | `receiptId` | ULID |
 | `kind` | `knowledge` |
 | `agent` | `agent:<name>` of the connection |
-| `taskRef` | the agent system's task reference: 1 to 128 of `A-Z a-z 0-9 . _ : / # -` |
-| `queryHash` | `sha256:` JCS hash of the task text; the text is never stored |
+| `taskRef` | the agent system's opaque task reference: 1 to 128 of `A-Z a-z 0-9 . _ : / # -`, no spaces, no `//` (an id, never a title, path or URL) |
+| `queryHash` | `hmac-sha256:` keyed hash of the task text with the device key `<state>/receipt-key`; the text is never stored |
 | `worldId`, `lageId` | what was consulted |
 | `target` | `local_model` or `cloud_model` (the connection's class) |
 | `packageId` | id of the returned context package |

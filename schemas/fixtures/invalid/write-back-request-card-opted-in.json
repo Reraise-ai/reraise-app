@@ -1,0 +1,24 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/write-back-receipt.schema.json#/$defs/request",
+  "description": "An agent cannot opt a card in to the training export (ADR-0039).",
+  "expect": {
+    "keyword": "const",
+    "instancePath": "/card/training"
+  },
+  "data": {
+    "taskRef": "TASK-1",
+    "card": {
+      "format": 2,
+      "collection": "evidence",
+      "type": "claim",
+      "title": "Insurer bulletin: war-risk premiums doubled",
+      "layer": "said",
+      "source": "https://example.org/insurer-bulletin/2026-09-16",
+      "sourceDate": "2026-09-16",
+      "worlds": ["01M1DZPW00JGXPRPG4179ZPNB8"],
+      "release": "private",
+      "training": true
+    }
+  }
+}

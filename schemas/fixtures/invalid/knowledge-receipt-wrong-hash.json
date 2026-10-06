@@ -10,7 +10,7 @@
     "kind": "knowledge",
     "agent": "agent:research-helper",
     "taskRef": "TASK-2026-0099",
-    "queryHash": "sha256:9884532900f37c181c5de36259fb28575f49a3f3ac8eb488c46fec48035e86d6",
+    "queryHash": "hmac-sha256:9402a908294bcb124fddc1a9868eccebdb2ff8eabb77f33f56545d0594ad55d3",
     "worldId": "01M1DZPW00JGXPRPG4179ZPNB8",
     "lageId": "01M1F21G80R816A1T0V2P6RACH",
     "target": "local_model",
@@ -18,6 +18,6 @@
     "result": "cards",
     "cardIds": ["01M1E34QM03WVTE8T1RYS3AM18"],
     "at": "2026-10-05T09:00:05Z",
-    "hash": "sha256:42c0f0e1f46efe042c296b81a65543eb57b977a2606d6e1359dd7c502ffe5cf1"
+    "hash": "sha256:eb445bd8333247b874fbd443556bc675b2125138e4b1d9d40a930032d3ac47da"
   }
 }

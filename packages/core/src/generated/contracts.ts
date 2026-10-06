@@ -205,7 +205,7 @@ export type ProbabilityBand =
  */
 export type Sha256 = string;
 /**
- * An opaque task reference chosen by the agent system (for example its task id), 1 to 128 characters without spaces, so it cannot carry prose (ADR-0039).
+ * An opaque task reference chosen by the agent system (for example its task id): 1 to 128 characters of letters, digits and . _ : / # -, starting with a letter or digit, without spaces and without '//', so it can carry neither prose nor a URL (ADR-0039).
  */
 export type TaskRef = string;
 /**
@@ -640,6 +640,10 @@ export interface CreateCardPayload {
    */
   card: CardDraft & {
     release?: 'private';
+    /**
+     * An agent cannot opt a card in to the training export; only the human sets training (ADR-0017, ADR-0039).
+     */
+    training?: false;
   };
   lageId?: CardId;
   x?: number;
@@ -673,6 +677,10 @@ export interface Problem {
 export interface DecisionRecordRequest {
   decision: DecisionDraft & {
     release?: 'private';
+    /**
+     * An agent cannot opt a card in to the training export; only the human sets training (ADR-0017, ADR-0039).
+     */
+    training?: false;
   };
   lageId?: CardId;
   x?: number;
@@ -1086,7 +1094,10 @@ export interface KnowledgeReceipt {
   kind: 'knowledge';
   agent: AgentAuthor;
   taskRef: TaskRef;
-  queryHash: JcsHash;
+  /**
+   * Keyed hash of the task text: HMAC-SHA256 with the device receipt key over the UTF-8 JCS serialisation of the text, as hmac-sha256:<hex>. The text is never stored; without the key the hash cannot be checked against guessed texts (ADR-0039).
+   */
+  queryHash: string;
   worldId: WorldId;
   lageId?: CardId;
   /**
@@ -1532,6 +1543,10 @@ export interface WriteBackRequest2 {
   consultReceiptId?: Ulid;
   card?: CardDraft & {
     release?: 'private';
+    /**
+     * An agent cannot opt a card in to the training export; only the human sets training (ADR-0017, ADR-0039).
+     */
+    training?: false;
   };
   lageId?: CardId;
   x?: number;

@@ -12,6 +12,8 @@ import { createKnowledgeReceipt, createWriteBackReceipt } from './receipts.js';
 export const ulid = (n: number, prefix = '01JA') => `${prefix}${String(n).padStart(22, '0')}`;
 
 export const WORLD = ulid(900, '01JW');
+/** Synthetic device receipt key for tests. */
+export const KEY = new Uint8Array(32).fill(7);
 export const AGENT = 'agent:scout';
 export const OTHER_AGENT = 'agent:scribe';
 
@@ -42,6 +44,7 @@ export function consult(
     target: 'local_model',
     taskRef: opts.taskRef ?? `TASK-${n}`,
     task: `Synthetic task ${n}: check the transit restrictions`,
+    queryKey: KEY,
     worldId: WORLD,
     package: { id: ulid(500 + n), items: cards.map((id) => ({ card: { id } }) as never) },
     at: opts.at ?? iso(n),

@@ -13,7 +13,7 @@ decision-makers: "Owner (product), CTO/orchestrator (technical)"
 >
 > Extended by [ADR-0039](0039-knowledge-loop-receipts.md) to
 > [ADR-0043](0043-digest-atlas-regeneration.md): knowledge-loop schemas and the cross-checks
-> `receipt-hash` and `digest-lines`.
+> `receipt-hash` and `digest-lines`; agent drafts carry `training` only as `false`.
 
 ## Context and Problem Statement
 
