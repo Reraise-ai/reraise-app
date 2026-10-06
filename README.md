@@ -1,23 +1,65 @@
-# Weltenbauer
+# The Worldbuilder
 
-> Das LLM ist austauschbar. Die persönliche Welt nicht. Das Board ist der Ort, an dem aus der Welt eine Lage wird – und aus der Lage eine Entscheidung, deren Ergebnis die Welt erfahrener macht.
+[![CI](https://img.shields.io/badge/CI-placeholder-lightgrey)](#status)
+[![Licence](https://img.shields.io/badge/licence-Apache--2.0%20%2F%20AGPL--3.0--or--later-blue)](LICENSING.md)
 
-Weltenbauer ist ein local-first Werkzeug, mit dem ein Mensch sein Wissen, seine Erfahrungen und seine Haltungen als strukturierten Graph aus typisierten Karten aufbaut. Jede Information bleibt als BELEGT, GESAGT, GEGLAUBT oder ERFAHRUNG erkennbar und wird nie mit einer anderen Ebene vermischt. Auf einem Board mit Leitfrage wird daraus eine konkrete Lage: Akteure, Züge, Belege und Widersprüche werden gelesen und geprüft. Daraus entsteht eine Entscheidung mit eigener Prognose und Review-Termin. Das Ergebnis fließt als Erfahrung zurück, und die Welt wird dadurch erfahrener. KI-Systeme arbeiten als Sparringspartner über eine MCP-Schnittstelle. Sie schlagen nur Geisterkarten vor und setzen nie eine Haltung. Das LLM lässt sich jederzeit austauschen, weil die Welt beim Nutzer liegt.
+> The model is replaceable. Your personal world is not.
 
-**Status: Konzeptphase.** Es gibt noch keinen Produktivcode. Die Designentscheidungen stehen, der Klick-Prototyp validiert die Board-UX.
+## 30-second pitch
 
-## Wegweiser
+The Worldbuilder is a local-first tool for building a personal knowledge graph of typed
+cards, and for turning it into decisions. Every card shows where it comes from: evidenced,
+said, or experience. Your own stance (believed, rejected, undecided) is a private overlay
+that never leaves your device. On a board with a guiding question, cards, players and
+evidence become a situation; from the situation comes a decision card whose outcome flows
+back as experience. AI agents take part as sparring partners through MCP, but they only
+propose. A human decides.
 
-| Dokument | Inhalt |
-|---|---|
-| [docs/01-vision.md](docs/01-vision.md) | Problem, Kernidee, Abgrenzung, Denkkreislauf, vier Schichten |
-| [docs/02-ux-board.md](docs/02-ux-board.md) | Board-UX: Prinzipien, visuelle Grammatik, Phasen, Linsen, Inbox, KI-Aktionen, zwei durchgespielte Szenarien |
-| [docs/03-datenmodell.md](docs/03-datenmodell.md) | Entitäten als TypeScript-Interfaces, Provenienz-Algorithmus, Event-Log, JSON-Beispiel |
-| [docs/04-architektur.md](docs/04-architektur.md) | Systembild, Monorepo, Speicher, MCP-Server, Kontextpaket, Ingest, Plattform-Ausblick |
-| [docs/05-roadmap.md](docs/05-roadmap.md) | Phasen 0–4, Fertig-Kriterien, offene Owner-Entscheidungen |
+## Status
 
-Empfohlene Lesereihenfolge: 01, dann 02 (Herzstück), danach 03 bis 05 nach Bedarf.
+**M0 in progress.** This repository currently contains the foundations: licensing,
+community files, tooling and package skeletons. There is no usable product yet, and no
+feature is claimed here that is not backed by an automated test.
 
-## Prototyp
+## What and why
 
-Der Klick-Prototyp zur Validierung der Board-UX liegt unter [`prototype/board.html`](prototype/board.html) (Datei herunterladen, im Browser öffnen). Screenshots: [`prototype/screenshots/`](prototype/screenshots/). Er arbeitet mit erfundenen Beispieldaten aus den Szenarien in [docs/02-ux-board.md](docs/02-ux-board.md).
+- **Files are the truth.** Worlds are Markdown with YAML front matter; any database is derived.
+- **Provenance is explicit.** Evidence, hearsay and experience are never mixed.
+- **Privacy by design.** A disclosure gate denies by default; cloud models need per-transfer confirmation.
+- **Agents propose, humans decide.** Agent moves are proposals until accepted.
+- **Open formats.** Card format, schemas and adapters are Apache-2.0; the app is AGPL-3.0-or-later.
+
+## Architecture at a glance
+
+```mermaid
+flowchart LR
+  Files[(Markdown files)] --> Adapter[Storage adapter]
+  Adapter --> Core[core]
+  Core --> Gate[Disclosure gate]
+  Gate --> API[API service]
+  API --> Board[Board app]
+  Gate --> MCP[MCP server]
+  MCP --> Agents[Agents: propose only]
+```
+
+Monorepo layout: `apps/board`, `services/api`, `packages/*`, `schemas/`, `examples/`, `docs/`.
+See [LICENSING.md](LICENSING.md) for which licence applies where.
+
+## Quickstart
+
+Available from M1. Until then, to work on the foundations:
+
+```sh
+corepack enable
+pnpm install
+pnpm test
+```
+
+## Repository settings
+
+GitHub secret scanning and push protection must be enabled in the repository settings.
+
+## Links
+
+[Contributing](CONTRIBUTING.md) · [Code of Conduct](CODE_OF_CONDUCT.md) · [Security](SECURITY.md) ·
+[Governance](GOVERNANCE.md) · [Support](SUPPORT.md) · [Changelog](CHANGELOG.md) · [Licensing](LICENSING.md)
