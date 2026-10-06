@@ -1,0 +1,19 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/agent-connections.schema.json",
+  "description": "The token hash is written sha256:<hex> (ADR-0037).",
+  "expect": {
+    "keyword": "pattern",
+    "instancePath": "/connections/0/tokenHash"
+  },
+  "data": {
+    "connections": [
+      {
+        "name": "planner",
+        "target": "local_model",
+        "tokenHash": "3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f",
+        "createdAt": "2026-10-06T09:00:00Z"
+      }
+    ]
+  }
+}

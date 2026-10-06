@@ -120,7 +120,13 @@
     },
     "disclosureTarget": {
       "title": "DisclosureTarget",
-      "description": "Where content may go (ADR-0012).",
+      "description": "Where content may go (ADR-0012). `share` is other people: another user, a peer-to-peer exchange or a platform export. Conclusions (user-originated cards, stance data, AI analysis) are never allowed for `share`; own experience only after the user released the card; external-source cards only after release, as content and provenance (ADR-0036).",
+      "type": "string",
+      "enum": ["screen", "local_model", "cloud_model", "demo", "share"]
+    },
+    "packageTarget": {
+      "title": "PackageTarget",
+      "description": "The targets a context package or a rule evaluation can be built for: the screen, models and demos. Never `share` (ADR-0036).",
       "type": "string",
       "enum": ["screen", "local_model", "cloud_model", "demo"]
     },

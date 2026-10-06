@@ -116,8 +116,16 @@ classDiagram
 Privacy is structural, not a setting ([ADR-0012](../adr/0012-disclosure-gate.md),
 [ADR-0021](../adr/0021-privacy-and-sharing-model.md)).
 
-- **Targets.** `screen`, `local_model`, `cloud_model`, `demo`. Each MCP connection is
+- **Targets.** `screen`, `local_model`, `cloud_model`, `demo`, `share`. Each MCP connection is
   registered with the target class it represents; an unregistered connection is denied.
+- **Conclusions are private.** For `share` (other people) the gate derives an origin class
+  from canonical fields and never allows a conclusion: decisions, rules, ratings, assumptions,
+  Lagen, agent output and any card without a public external source. Own experience and
+  external-source cards are shared only after the user released the card (`release`) and a
+  rule allows it, and only as the share projection: content and provenance
+  ([ADR-0036](../adr/0036-conclusions-are-private.md)). Until the owner rules (OD-8), the same
+  ceiling holds for `demo`: no conclusion and no personality type unless the store is
+  synthetic.
 - **Rules.** Declarative YAML allow and deny rules per target in `gate-rules.yaml` in the state directory,
   matching canonical card fields only (`visibility`, `class`, `collection`, `worlds`, `type`,
   tags once defined, explicit ids), validated against `schemas/gate-rules.schema.json` (to be
@@ -134,7 +142,7 @@ Privacy is structural, not a setting ([ADR-0012](../adr/0012-disclosure-gate.md)
   after a confirmed, hash-bound transfer; a `local_model` connection follows the gate rules without
   per-transfer confirmation ([ADR-0031](../adr/0031-gate-rules-and-confirmation-binding.md)).
 - **Every egress path calls the gate:** context packages, MCP responses, `ModelConnector`
-  calls (including Jev), `rules_evaluate` for non-screen targets, and exports (decided under
+  and `Level1Engine` calls (including Jev), `rules_evaluate` for non-screen targets, and exports (decided under
   `cloud_model` semantics with a per-export confirmation).
 - **Canonical egress only.** Egress serialises canonical objects after the decision, never
   raw store files, so store fields outside the model cannot leak.
@@ -167,7 +175,7 @@ Privacy is structural, not a setting ([ADR-0012](../adr/0012-disclosure-gate.md)
   Concurrent writers use optimistic concurrency on `version` or `contentHash`.
 - Writes are patches: only the canonical fields the product changed are written; everything
   else stays byte-identical ([runtime 6.3](./06-runtime.md#63-write-back-patch-to-an-external-store)).
-- Stances, proposals, the gate log and gate rules are local files in the per-user state
+- Stances, proposals, the gate log, gate rules and the agent registry are local files in the per-user state
   directory, never in shared or remote stores, and never inside a store root or Git working
   tree (the service refuses to start otherwise). `packages/local-state` owns them behind a core interface and
   `services/api` is the only writer. Stances are written only through the human-only
@@ -178,6 +186,11 @@ Privacy is structural, not a setting ([ADR-0012](../adr/0012-disclosure-gate.md)
 ## 8.6 Agents and proposals
 
 - Agents act only through `proposal_create`. The server sets `author` from the connection.
+- Every agent connection, for example each agent of a multi-agent system such as Hermes, is
+  registered on its own by the human (`worldbuilder agent add <name> --target ...`) with a name,
+  a target class and a token whose hash is kept in `agents.yaml` in the state directory. The
+  class follows where the agent's models run, not where the agent runs
+  ([ADR-0037](../adr/0037-hermes-agents-as-mcp-clients.md)).
 - In M1 the board polls `proposal_list` with `changedSince=<cursor>` every 2 seconds (the same
   parameter exists for agents over MCP); the M2 live channel
   replaces polling ([ADR-0032](../adr/0032-m1-proposal-polling.md)).
@@ -186,7 +199,7 @@ Privacy is structural, not a setting ([ADR-0012](../adr/0012-disclosure-gate.md)
 - **Non-counting rule:** pending or rejected proposals count nowhere: not in rules
   evaluation, statistics, source profiles, decision cards, training export, nor as accepted
   fact in context packages ([ADR-0011](../adr/0011-agent-moves-are-proposals.md)).
-- Model answers and Level 1 results that imply world changes arrive as proposals with
+- Model answers and Level 1 predictions that imply world changes arrive as proposals with
   `author: agent:<engine-name>`.
 
 ## 8.7 Security
@@ -225,8 +238,9 @@ The system never states a conclusion as its own.
 
 - No meter, no percentage, no aggregate, no "recommended option" field in any contract
   ([ADR-0013](../adr/0013-rules-panel-replaces-barometer.md)).
-- Level 1 answers are attributed: "`<engine>` estimates 0.82 for X", with inputs
-  ([ADR-0015](../adr/0015-two-thinking-levels.md)).
+- Level 1 predictions are attributed: "`<engine>` estimates 0.71: X" next to each player, with
+  the cards used ([ADR-0015](../adr/0015-two-thinking-levels.md),
+  [ADR-0035](../adr/0035-level1-engine-socket.md)).
 - Verbal probabilities are stored as phrase plus ICD 203 band; the UI shows words
   ([ADR-0010](../adr/0010-estimative-probability-scale.md)).
 - Source profiles have no overall score; below a minimum sample size the UI shows

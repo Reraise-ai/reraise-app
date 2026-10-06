@@ -10,6 +10,9 @@ originSystem: Example analyst wiki
 class: C
 worlds: [Hormuz]
 interests: [Keep delivery schedules for Q4 contracts|https://example.org/consortium/2026-q4-outlook]
+redLines:
+  [No sailings without war-risk cover|https://example.org/consortium/2026-09-15-member-circular]
+assumedGoals: [Protect Q4 margins|https://example.org/consortium/2026-q4-outlook]
 synthetic: true
 ---
 

@@ -13,7 +13,7 @@
       "minimum": 1
     },
     "target": {
-      "$ref": "common.schema.json#/$defs/disclosureTarget"
+      "$ref": "common.schema.json#/$defs/packageTarget"
     },
     "evaluatedAt": {
       "$ref": "common.schema.json#/$defs/dateTime"

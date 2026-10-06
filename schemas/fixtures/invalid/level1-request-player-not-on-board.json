@@ -1,0 +1,161 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/level1-prediction.schema.json#/$defs/request",
+  "description": "Every player is a card of the request: an engine predicts only players on the board (ADR-0035).",
+  "expect": {
+    "check": "level1-players"
+  },
+  "data": {
+    "lageId": "01M1F21G80R816A1T0V2P6RACH",
+    "question": "Reroute laden tankers around the Cape for Q4?",
+    "trigger": {
+      "kind": "lage_opened"
+    },
+    "players": [
+      {
+        "playerCardId": "01M1EDEAG082WZ7T7D204BHZDC",
+        "moveOptions": [
+          "Keep night transit restrictions",
+          "Lift the restrictions",
+          "Stop tankers at night"
+        ]
+      },
+      {
+        "playerCardId": "01M1EGW640BMD0RDT5NGRMFD70",
+        "moveOptions": [
+          "Reroute via the Cape of Good Hope",
+          "Hold course and buy war-risk cover",
+          "Delay sailings by two weeks"
+        ]
+      }
+    ],
+    "cards": [
+      {
+        "id": "01M1E34QM03WVTE8T1RYS3AM18",
+        "format": 2,
+        "collection": "evidence",
+        "type": "event",
+        "title": "Wire report announces transit restrictions in the strait",
+        "layer": "evidenced",
+        "author": "human",
+        "source": "https://example.org/wire/2026-09-14-transit-restrictions",
+        "sourceDate": "2026-09-14",
+        "sourceChecksum": "846e5971241fdefb2d193751027b4d9a1f79b8e4fc1de533d5335d0cb04f6b9f",
+        "status": "checked",
+        "class": "C",
+        "worlds": ["01M1DZPW00JGXPRPG4179ZPNB8"],
+        "tags": ["shipping", "transit"],
+        "training": true,
+        "externalId": "01M1E34QM03WVTE8T1RYS3AM18",
+        "uri": "wb:45aaff12-777f-40e3-a97c-8a592e1ea4f6/01M1E34QM03WVTE8T1RYS3AM18",
+        "body": "A (fictional) wire agency reports that the coastal state will restrict night\ntransits of laden tankers through the strait from 1 October.\n\nThis card is the origin of the provenance chain in this example: the two\nmedia cards below only repeat it.\n",
+        "contentHash": "sha256:0da4ef9bbdf630dd457e6f843ffd3c6090fce56b1d2eee23e8cfa19710cb51ac"
+      },
+      {
+        "id": "01M1EDEAG082WZ7T7D204BHZDC",
+        "format": 2,
+        "collection": "actors",
+        "type": "organisation",
+        "title": "Coastal navy (fictional actor profile)",
+        "layer": "said",
+        "author": "human",
+        "originSystem": "Example analyst wiki",
+        "class": "C",
+        "worlds": ["01M1DZPW00JGXPRPG4179ZPNB8"],
+        "interests": [
+          {
+            "text": "Show control over the shipping lane",
+            "source": "01M1E34QM03WVTE8T1RYS3AM18"
+          }
+        ],
+        "capabilities": [
+          {
+            "text": "Fast patrol boats able to escort or stop tankers at night",
+            "source": "https://example.org/naval-review/2026-coastal-patrol-fleet"
+          }
+        ],
+        "dependencies": [
+          {
+            "text": "Oil export revenue that also uses the strait",
+            "source": "https://example.org/energy-almanac/2026-export-routes"
+          }
+        ],
+        "moves": [
+          {
+            "text": "Announced night transit restrictions",
+            "source": "01M1E34QM03WVTE8T1RYS3AM18"
+          }
+        ],
+        "redLines": [
+          {
+            "text": "No foreign warships inside territorial waters",
+            "source": "https://example.org/naval-review/2026-09-10-territorial-waters-statement"
+          }
+        ],
+        "assumedGoals": [
+          {
+            "text": "Use the restrictions as leverage in fee talks",
+            "source": "01M2MYHHT07BBT348TS317FFBD"
+          }
+        ],
+        "training": false,
+        "externalId": "01M1EDEAG082WZ7T7D204BHZDC",
+        "uri": "wb:45aaff12-777f-40e3-a97c-8a592e1ea4f6/01M1EDEAG082WZ7T7D204BHZDC",
+        "body": "A fictional actor profile. Every player-field entry names its source. The red line cites a\npublic statement; the assumed goal cites the user's own assessment card and is therefore\nprivate (ADR-0036, ADR-0038).\n",
+        "contentHash": "sha256:3fef82e373d84a7b8cfa1717c6e53daadeba9ab8f363b374c3292b3394344f66"
+      },
+      {
+        "id": "01M1EMA1R0AH9ZTK3YJK33TNER",
+        "format": 2,
+        "type": "experience",
+        "title": "Last time, war-risk quotes jumped within a day",
+        "layer": "experience",
+        "author": "human",
+        "class": "C",
+        "worlds": ["01M1DZPW00JGXPRPG4179ZPNB8"],
+        "training": true,
+        "externalId": "01M1EMA1R0AH9ZTK3YJK33TNER",
+        "uri": "wb:45aaff12-777f-40e3-a97c-8a592e1ea4f6/01M1EMA1R0AH9ZTK3YJK33TNER",
+        "body": "Own (invented) experience: during an earlier tension phase, war-risk\ninsurance quotes for the strait rose sharply within one day of the first\nannouncement.\n",
+        "contentHash": "sha256:656f2dbcda2b610966efdf8f87196e05c14b1d604db14dd13caf0f1b2060c465"
+      },
+      {
+        "id": "01M1EV5S00YXKKGEG772AZM7P9",
+        "format": 2,
+        "collection": "decisions",
+        "type": "rule",
+        "title": "Reroute when restrictions are evidenced",
+        "author": "human",
+        "class": "C",
+        "worlds": ["01M1DZPW00JGXPRPG4179ZPNB8"],
+        "training": false,
+        "externalId": "01M1EV5S00YXKKGEG772AZM7P9",
+        "uri": "wb:45aaff12-777f-40e3-a97c-8a592e1ea4f6/01M1EV5S00YXKKGEG772AZM7P9",
+        "body": "My rule: if the restriction is evidenced and nothing on the board refutes\nit, I reroute.\n\n## Rule\n\n```json\n{\n  \"when\": [\n    { \"kind\": \"card_on_lage\", \"card\": \"01M1E34QM03WVTE8T1RYS3AM18\" },\n    {\n      \"kind\": \"card_field\",\n      \"card\": \"01M1E34QM03WVTE8T1RYS3AM18\",\n      \"field\": \"layer\",\n      \"equals\": \"evidenced\"\n    }\n  ],\n  \"then\": \"Reroute laden tankers via the Cape of Good Hope\",\n  \"unless\": [{ \"kind\": \"edge\", \"edgeKind\": \"refutes\", \"to\": \"01M1E34QM03WVTE8T1RYS3AM18\" }]\n}\n```\n",
+        "rule": {
+          "when": [
+            {
+              "kind": "card_on_lage",
+              "card": "01M1E34QM03WVTE8T1RYS3AM18"
+            },
+            {
+              "kind": "card_field",
+              "card": "01M1E34QM03WVTE8T1RYS3AM18",
+              "field": "layer",
+              "equals": "evidenced"
+            }
+          ],
+          "then": "Reroute laden tankers via the Cape of Good Hope",
+          "unless": [
+            {
+              "kind": "edge",
+              "edgeKind": "refutes",
+              "to": "01M1E34QM03WVTE8T1RYS3AM18"
+            }
+          ]
+        },
+        "contentHash": "sha256:3f0af42ed17f8b380ecb89e663e332fea19831a0109a493f21d428ee189c2049"
+      }
+    ]
+  }
+}

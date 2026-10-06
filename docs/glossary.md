@@ -18,6 +18,9 @@ card format, the table gives the field of our model that it maps to.
 | Board | board | the central UX where cards become a situation |
 | Sitz, Sitze | seat, seats | a participant at the board: `{name, kind: human or agent}` |
 | Spieler | player | an actor card shown as a seat with interests, capabilities, dependencies and moves |
+| Rote Linien, `rote_linien` | red lines, `redLines` | what an actor has shown or declared it will not accept; a sourced player field ([ADR-0038](./adr/0038-player-fields-red-lines-goals-personality.md)) |
+| Angenommene Ziele, `angenommene_ziele` | assumed goals, `assumedGoals` | goals the user assumes an actor (person or organisation) pursues; a sourced player field, private when it cites the user's own assessment |
+| Persönlichkeitstyp, `persoenlichkeitstyp` | personality type, `personalityType` | for example an MBTI type of a natural person; one sourced value, always private |
 | Zug, Züge | move, moves | an action taken by a player (a player field), or, in the proposal system, a proposed change to the board |
 | Strategem | stratagem | one of the 36 Stratagems (Rieck), a thinking tool offered as a proposal, never as a verdict |
 | Tür | the door | the owner store's validator. Our equivalent is the JSON Schemas plus the conformance kit. |
@@ -30,7 +33,8 @@ card format, the table gives the field of our model that it maps to.
 | Entscheidungskarte | decision card | card with the 11 sections |
 | Entscheidungsregel | decision rule (Rule) | a rule card evaluated by the Rules panel |
 | Neigungsmesser, Barometer | barometer (removed) | the superseded probability meter. Replaced by the Rules panel ([ADR-0013](./adr/0013-rules-panel-replaces-barometer.md)). |
-| Freigabe | release | `release`: `private`, `community` or `commercial`. Whether a card may be shared at all. |
+| Freigabe | release | `release`: `private`, `community` or `commercial`. The user's per-card release for sharing; conclusions stay private whatever it says ([ADR-0036](./adr/0036-conclusions-are-private.md)). |
+| Schlussfolgerungen | conclusions | everything that originates from the user without a public external source: stances, ratings, own classifications, decisions, rules, AI analysis on the board. Never shared with other people ([ADR-0036](./adr/0036-conclusions-are-private.md)). |
 | Sichtbarkeit | visibility | `visibility`: who may see a card. See the values below. |
 | Klasse | class | `class` A, B or C: the sensitivity class of a card, an input to disclosure-gate rules |
 | Träger | carrier | `carrier`, carried as stored |
@@ -164,6 +168,6 @@ Store headings are matched with and without umlaut transliteration (`ae`, `oe`, 
 - **Disclosure targets:** `screen`, `local_model`, `cloud_model`, `demo`.
 - **Thinking levels:** Level 1 (fast, "System 1") and Level 2 (deliberate, "System 2", the board).
 - **Proposal kinds:** `place_card`, `move_card`, `add_edge`, `create_card`, `comment`.
-- **Adapters:** `StorageAdapter`, `SourceConnector`, `ModelConnector`, `DisclosureGate`.
+- **Adapters:** `StorageAdapter`, `SourceConnector`, `ModelConnector`, `Level1Engine`, `DisclosureGate`.
 - **ICD 203:** the intelligence-community standard of verbal probability bands used for
   stored probability phrases.

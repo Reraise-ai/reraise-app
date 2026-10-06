@@ -81,7 +81,7 @@ done criterion is what counts.
 | Source connectors | An Obsidian vault, a generic HTTP/JSON source, a document-management connector and later paid news services report new findings. They are referenced then pinned, with provenance, never ingested. |
 | Training export | A JSONL file of decision traces contains only cards with `training: true`. |
 | World collision on two local worlds | Two worlds overlaid on one question show shared, diverging and non-fitting cards without forcing consensus. |
-| Level 1 thinking | A typed answer from a local rules engine is shown as "engine estimates X for Y", with inputs, never as a verdict, and can be escalated to a board. |
+| Level 1 thinking | Right after M1: a deterministic local `Level1Engine` predicts each player's next move when an assumption changes, shown as "engine estimates X" with the cards used, never as a verdict, escalatable to a board ([ADR-0035](./adr/0035-level1-engine-socket.md)). |
 
 Later and out of scope here: a sharing platform, card-exchange economics, gamification and
 crypto, and fine-tuning itself. The data model keeps ids, content hash, `level` and

@@ -217,12 +217,48 @@ describe('collectUlids', () => {
 });
 
 describe('cross-checks', () => {
-  it('flag a level-1 choice outside the options', () => {
-    const answer = { options: ['a', 'b'], choice: 'c' };
-    expect(crossCheck('level1-answer.schema.json', answer).map((f) => f.check)).toEqual([
-      'level1-choice',
+  it('flag an agent name registered twice (ADR-0037)', () => {
+    const c = { name: 'planner', target: 'local_model' };
+    const name = 'agent-connections.schema.json';
+    expect(crossCheck(name, { connections: [c, { ...c, name: 'scout' }] })).toEqual([]);
+    expect(crossCheck(name, { connections: [c, c] }).map((f) => f.check)).toEqual(['agent-names']);
+  });
+
+  it('flag a predicted move outside the move options (ADR-0035)', () => {
+    const player = { playerCardId: '01M1E34QM03WVTE8T1RYS3AM18', moveOptions: ['a', 'b'] };
+    const prediction = { players: [{ ...player, predictedMove: 'c' }] };
+    expect(crossCheck('level1-prediction.schema.json', prediction).map((f) => f.check)).toEqual([
+      'level1-move',
     ]);
-    expect(crossCheck('level1-answer.schema.json', { ...answer, choice: 'a' })).toEqual([]);
+    expect(
+      crossCheck('level1-prediction.schema.json', { players: [{ ...player, predictedMove: 'a' }] }),
+    ).toEqual([]);
+  });
+
+  it('flag a level-1 player that is not on the board or named twice (ADR-0035)', () => {
+    const id = '01M1E34QM03WVTE8T1RYS3AM18';
+    const name = 'level1-prediction.schema.json#/$defs/request';
+    const player = { playerCardId: id, moveOptions: ['a', 'b'] };
+    expect(crossCheck(name, { players: [player], cards: [{ id }] })).toEqual([]);
+    expect(crossCheck(name, { players: [player], cards: [] }).map((f) => f.check)).toEqual([
+      'level1-players',
+    ]);
+    expect(
+      crossCheck(name, { players: [player, player], cards: [{ id }] }).map((f) => f.message),
+    ).toEqual([`player ${id} is named twice`]);
+    const a = '01M1F8X7G0TTV1CC1FNKTNN0TJ';
+    const whatIf = (cards) => ({
+      trigger: { kind: 'assumption_changed', cardIds: [a] },
+      players: [player],
+      cards: [{ id }, ...cards],
+    });
+    expect(crossCheck(name, whatIf([{ id: a, type: 'assumption' }]))).toEqual([]);
+    expect(crossCheck(name, whatIf([])).map((f) => f.message)).toEqual([
+      `trigger card ${a} is not a card of the request`,
+    ]);
+    expect(crossCheck(name, whatIf([{ id: a, type: 'claim' }])).map((f) => f.message)).toEqual([
+      `trigger card ${a} is not an assumption card`,
+    ]);
   });
 
   it('flag any card id in a training record that did not opt in, but not world or proposal ids', () => {

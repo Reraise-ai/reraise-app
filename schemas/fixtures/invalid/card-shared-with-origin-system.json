@@ -1,0 +1,24 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/shared-card.schema.json",
+  "description": "A share carries no origin system: it names the user's own tooling (ADR-0036).",
+  "expect": {
+    "keyword": "additionalProperties",
+    "instancePath": ""
+  },
+  "data": {
+    "id": "01M1E34QM03WVTE8T1RYS3AM18",
+    "format": 2,
+    "collection": "evidence",
+    "type": "event",
+    "title": "Wire report announces transit restrictions in the strait",
+    "body": "A (fictional) wire agency reports that the coastal state will restrict night\ntransits of laden tankers through the strait from 1 October.\n\nThis card is the origin of the provenance chain in this example: the two\nmedia cards below only repeat it.\n",
+    "layer": "evidenced",
+    "source": "https://example.org/wire/2026-09-14-transit-restrictions",
+    "sourceDate": "2026-09-14",
+    "sourceChecksum": "846e5971241fdefb2d193751027b4d9a1f79b8e4fc1de533d5335d0cb04f6b9f",
+    "author": "human",
+    "contentHash": "sha256:0da4ef9bbdf630dd457e6f843ffd3c6090fce56b1d2eee23e8cfa19710cb51ac",
+    "originSystem": "Own wiki"
+  }
+}

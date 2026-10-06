@@ -183,13 +183,51 @@ export const CROSS_CHECKS = {
         .map((i) => `item ${i.card.id} is not in confirmed transfer ${pkg.transfer.transferId}`);
     },
   },
-  /** ADR-0015: the choice of a level-1 answer is one of its options. */
-  'level1-choice': {
-    schema: 'level1-answer.schema.json',
-    run(answer) {
-      return answer.options.includes(answer.choice)
-        ? []
-        : [`choice "${answer.choice}" is not one of the options`];
+  /** ADR-0037: every agent connection has its own name. */
+  'agent-names': {
+    schema: 'agent-connections.schema.json',
+    run(registry) {
+      const seen = new Set();
+      return registry.connections
+        .map((c) => c.name)
+        .filter((n) => (seen.has(n) ? true : (seen.add(n), false)))
+        .map((n) => `agent name ${n} is registered twice`);
+    },
+  },
+  /** ADR-0035: every predicted move is one of the player's move options. */
+  'level1-move': {
+    schema: 'level1-prediction.schema.json',
+    run(prediction) {
+      return prediction.players
+        .filter((p) => !p.moveOptions.includes(p.predictedMove))
+        .map(
+          (p) => `player ${p.playerCardId}: "${p.predictedMove}" is not one of its move options`,
+        );
+    },
+  },
+  /**
+   * ADR-0035: every player of a level-1 request is a card on the board, named once, and every
+   * assumption named by a what-if trigger is an assumption card of the request.
+   */
+  'level1-players': {
+    schema: 'level1-prediction.schema.json#/$defs/request',
+    run(request) {
+      const onBoard = new Set(request.cards.map((c) => c.id));
+      const seen = new Set();
+      const out = [];
+      const byId = new Map(request.cards.map((c) => [c.id, c]));
+      for (const id of request.trigger?.cardIds ?? []) {
+        const card = byId.get(id);
+        if (!card) out.push(`trigger card ${id} is not a card of the request`);
+        else if (String(card.type).trim().toLowerCase() !== 'assumption')
+          out.push(`trigger card ${id} is not an assumption card`);
+      }
+      for (const { playerCardId: id } of request.players) {
+        if (!onBoard.has(id)) out.push(`player ${id} is not a card of the request`);
+        if (seen.has(id)) out.push(`player ${id} is named twice`);
+        seen.add(id);
+      }
+      return out;
     },
   },
 };

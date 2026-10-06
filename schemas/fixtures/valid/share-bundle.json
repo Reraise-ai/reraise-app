@@ -1,0 +1,59 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/disclosure-decision.schema.json#/$defs/shareBundle",
+  "description": "prepareShare: the projection of the released external-source card; the decision card is denied with its reason (ADR-0036).",
+  "data": {
+    "objects": [
+      {
+        "id": "01M1E34QM03WVTE8T1RYS3AM18",
+        "format": 2,
+        "collection": "evidence",
+        "type": "event",
+        "title": "Wire report announces transit restrictions in the strait",
+        "body": "A (fictional) wire agency reports that the coastal state will restrict night\ntransits of laden tankers through the strait from 1 October.\n\nThis card is the origin of the provenance chain in this example: the two\nmedia cards below only repeat it.\n",
+        "layer": "evidenced",
+        "source": "https://example.org/wire/2026-09-14-transit-restrictions",
+        "sourceDate": "2026-09-14",
+        "sourceChecksum": "846e5971241fdefb2d193751027b4d9a1f79b8e4fc1de533d5335d0cb04f6b9f",
+        "author": "human",
+        "contentHash": "sha256:0da4ef9bbdf630dd457e6f843ffd3c6090fce56b1d2eee23e8cfa19710cb51ac"
+      },
+      {
+        "id": "01M1EGW640BMD0RDT5NGRMFD70",
+        "format": 2,
+        "collection": "actors",
+        "type": "organisation",
+        "title": "Tanker operators consortium (fictional)",
+        "body": "A fictional association of tanker operators.\n",
+        "layer": "said",
+        "source": "https://example.org/consortium/2026-q4-outlook",
+        "author": "human",
+        "interests": [
+          {
+            "text": "Keep delivery schedules for Q4 contracts",
+            "source": "https://example.org/consortium/2026-q4-outlook"
+          }
+        ],
+        "redLines": [
+          {
+            "text": "No sailings without war-risk cover",
+            "source": "https://example.org/consortium/2026-09-15-member-circular"
+          }
+        ],
+        "assumedGoals": [
+          {
+            "text": "Protect Q4 margins",
+            "source": "https://example.org/consortium/2026-q4-outlook"
+          }
+        ],
+        "contentHash": "sha256:3f607254ba94e51674a8e1d80dd6cc6b8cc328ac0a101777db9531b370f1f94d"
+      }
+    ],
+    "denied": [
+      {
+        "cardId": "01M1F5FBW0DPQND9KSXC12WHJW",
+        "reason": "conclusions are never shared: type decision is the user's own conclusion"
+      }
+    ]
+  }
+}

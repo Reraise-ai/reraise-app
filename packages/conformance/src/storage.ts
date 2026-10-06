@@ -182,6 +182,13 @@ export function describeStorageAdapterConformance(
         { ...draft, author: 'human' },
         { ...draft, collection: 'actors', interests: [{ text: 'Unsourced' }] },
         { ...draft, interests: [{ text: 'On a claim', source: 'https://example.org/a' }] },
+        { ...draft, collection: 'actors', redLines: [{ text: 'Unsourced red line' }] },
+        {
+          ...draft,
+          collection: 'actors',
+          type: 'organisation',
+          personalityType: { text: 'ENTJ', source: 'https://example.org/a' },
+        },
       ];
       for (const d of bad) {
         const clean = Object.fromEntries(Object.entries(d).filter(([, v]) => v !== undefined));
@@ -192,6 +199,22 @@ export function describeStorageAdapterConformance(
       }
       // Nothing was written: the store holds exactly what it held before (it need not be empty).
       expect((await adapter.list({ limit: Number.MAX_SAFE_INTEGER })).items).toEqual(before);
+    });
+
+    it('round-trips red lines, assumed goals and a personality type (ADR-0038)', async () => {
+      const { adapter } = await factory();
+      const fields = {
+        redLines: [{ text: 'No night convoys', source: 'https://example.org/statement' }],
+        assumedGoals: [{ text: 'Keep the port open', source: 'https://example.org/bulletin' }],
+        personalityType: { text: 'ISTJ', source: 'https://example.org/profile' },
+      };
+      const id = await adapter.create(
+        { ...draft, collection: 'actors', type: 'person', ...fields },
+        'human',
+      );
+      const card = await adapter.read(id);
+      expectValidCard(card);
+      expect(card).toMatchObject(fields);
     });
 
     it('builds every uri from the store instance id, never from a hostname or path', async () => {

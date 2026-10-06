@@ -11,4 +11,12 @@ export type {
   DisclosureGateFactory,
   DisclosureGateHarness,
 } from './disclosure-gate.js';
+export {
+  describeLevel1EngineConformance,
+  level1PredictionProblems,
+  releaseOf,
+} from './level1-engine.js';
+export type { Level1EngineFactory, Level1EngineHarness } from './level1-engine.js';
+export { createFixedLevel1Engine, releaseCoversRequest } from './level1-fake.js';
+export type { FixedLevel1EngineOptions } from './level1-fake.js';
 export { MemoryStorageAdapter, MemoryStore, memoryHarness } from './memory-adapter.js';

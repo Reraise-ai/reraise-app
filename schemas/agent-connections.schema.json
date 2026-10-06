@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldbuilder.invalid/schemas/v0/agent-connections.schema.json",
+  "title": "AgentConnections",
+  "description": "The registry of agent connections in the per-user state directory, <state>/agents.yaml (ADR-0030, ADR-0037). Each MCP client connection (for example one agent of a multi-agent system) is registered on its own with a name, which becomes its author agent:<name>, and the disclosure target class it represents. The token itself is never stored, only its SHA-256. Names are unique (cross-check `agent-names`). Local state: never sent, exported or shared.",
+  "type": "object",
+  "properties": {
+    "connections": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/connection"
+      }
+    }
+  },
+  "required": ["connections"],
+  "additionalProperties": false,
+  "$defs": {
+    "connection": {
+      "title": "AgentConnection",
+      "type": "object",
+      "properties": {
+        "name": {
+          "description": "The agent name; the connection acts as agent:<name>.",
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+        },
+        "target": {
+          "description": "What the agent's answers may reach: local_model only if every model the agent uses runs under the user's control; otherwise cloud_model (ADR-0012, ADR-0037).",
+          "type": "string",
+          "enum": ["local_model", "cloud_model"]
+        },
+        "tokenHash": {
+          "description": "sha256:<hex> of the bearer token; the token is shown once at registration and never stored.",
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "createdAt": {
+          "$ref": "common.schema.json#/$defs/dateTime"
+        },
+        "revokedAt": {
+          "description": "Set when the connection was removed; a revoked token is rejected.",
+          "$ref": "common.schema.json#/$defs/dateTime"
+        }
+      },
+      "required": ["name", "target", "tokenHash", "createdAt"],
+      "additionalProperties": false
+    }
+  }
+}

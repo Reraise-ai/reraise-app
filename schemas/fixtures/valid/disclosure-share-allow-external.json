@@ -1,0 +1,16 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/disclosure-decision.schema.json",
+  "description": "A released external-source card allowed for share by a rule (ADR-0036).",
+  "data": {
+    "subject": {
+      "kind": "card",
+      "cardId": "01M1E34QM03WVTE8T1RYS3AM18"
+    },
+    "target": "share",
+    "decision": "allow",
+    "reason": "allow rule share-released-news",
+    "ruleId": "share-released-news",
+    "decidedAt": "2026-09-16T10:00:00Z"
+  }
+}

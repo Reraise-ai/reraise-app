@@ -111,6 +111,20 @@ describe('gate log', () => {
     });
   });
 
+  it('logs share decisions with the conclusion and release reason codes (ADR-0036)', async () => {
+    const dir = await tempDir();
+    const file = path.join(dir, 'gate-log.jsonl');
+    const log = new GateLog(file);
+    await log.append({ ...entry(1), target: 'share', reason: 'conclusion_private' });
+    await log.append({ ...entry(2), target: 'share', reason: 'not_released' });
+    await log.append({ ...entry(3), target: 'demo', reason: 'conclusion_private' });
+    expect((await lines(file)).map((l) => [l['target'], l['reason']])).toEqual([
+      ['share', 'conclusion_private'],
+      ['share', 'not_released'],
+      ['demo', 'conclusion_private'],
+    ]);
+  });
+
   it('rejects malformed entries instead of logging them', () => {
     const bad = (patch: object) => () =>
       formatGateLogLine({ ...entry(1), ...patch } as never, 'now');

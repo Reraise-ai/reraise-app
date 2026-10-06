@@ -122,6 +122,24 @@ describe('toCanonicalCard', () => {
     );
   });
 
+  it('reads red lines, assumed goals and the single personality type (ADR-0038)', () => {
+    const card = toCanonicalCard(
+      `---\nid: ${ID}\nformat: 2\ncollection: actors\ntype: person\ntitle: T\nauthor: human\n` +
+        `redLines: [No night convoys|https://example.org/a]\n` +
+        `assumedGoals: [Keep the port open|${WORLD}]\npersonalityType: ISTJ|${WORLD}\n---\n`,
+      store,
+    );
+    expect(card.redLines).toEqual([{ text: 'No night convoys', source: 'https://example.org/a' }]);
+    expect(card.assumedGoals).toEqual([{ text: 'Keep the port open', source: WORLD }]);
+    expect(card.personalityType).toEqual({ text: 'ISTJ', source: WORLD });
+    expect(() =>
+      toCanonicalCard(`---\nid: ${ID}\ntitle: T\npersonalityType: ISTJ\n---\n`, store),
+    ).toThrow('must have 2 non-empty parts');
+    expect(() =>
+      toCanonicalCard(`---\nid: ${ID}\ntitle: T\npersonalityType: [ISTJ|${WORLD}]\n---\n`, store),
+    ).toThrow('one "text|source" value');
+  });
+
   it('refuses derived fields in front matter', () => {
     expect(() => toCanonicalCard(`---\nid: ${ID}\nuri: wb:x/y\n---\n`, store)).toThrow(
       'derived field "uri"',

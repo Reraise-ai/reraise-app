@@ -1,0 +1,118 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldbuilder.invalid/schemas/v0/shared-card.schema.json",
+  "title": "SharedCard",
+  "description": "What leaves the device when a card is shared with other people (target share, ADR-0036): content and provenance only. No store identity (uri, externalId), no origin system, no source other than a public address, no worlds, tags, class, visibility, release, training, status, rating, edges, structured state or private player field (personalityType), and no player entry without a public source. contentHash is the hash of this projection (ADR-0034). Built by shareProjection in packages/core after the gate allowed the card for share.",
+  "type": "object",
+  "properties": {
+    "id": {
+      "$ref": "common.schema.json#/$defs/cardId"
+    },
+    "format": {
+      "type": "integer",
+      "const": 2
+    },
+    "collection": {
+      "$ref": "common.schema.json#/$defs/collection"
+    },
+    "type": {
+      "$ref": "common.schema.json#/$defs/text"
+    },
+    "title": {
+      "$ref": "common.schema.json#/$defs/text"
+    },
+    "body": {
+      "type": "string"
+    },
+    "date": {
+      "$ref": "common.schema.json#/$defs/isoDate"
+    },
+    "layer": {
+      "$ref": "common.schema.json#/$defs/layer"
+    },
+    "source": {
+      "description": "Kept only as a public http or https address; any other source is dropped (ADR-0036).",
+      "$ref": "#/$defs/publicSourceRef"
+    },
+    "sourceDate": {
+      "$ref": "common.schema.json#/$defs/isoDate"
+    },
+    "sourceChecksum": {
+      "type": "string"
+    },
+    "author": {
+      "$ref": "common.schema.json#/$defs/humanAuthor"
+    },
+    "interests": {
+      "$ref": "#/$defs/playerField"
+    },
+    "capabilities": {
+      "$ref": "#/$defs/playerField"
+    },
+    "dependencies": {
+      "$ref": "#/$defs/playerField"
+    },
+    "moves": {
+      "$ref": "#/$defs/playerField"
+    },
+    "redLines": {
+      "$ref": "#/$defs/playerField"
+    },
+    "assumedGoals": {
+      "$ref": "#/$defs/playerField"
+    },
+    "contentHash": {
+      "$ref": "common.schema.json#/$defs/contentHash"
+    }
+  },
+  "required": ["id", "format", "type", "title", "layer", "author", "contentHash"],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "description": "A shared evidenced or said card names its public external source (ADR-0036).",
+      "if": {
+        "properties": {
+          "layer": {
+            "enum": ["evidenced", "said"]
+          }
+        },
+        "required": ["layer"]
+      },
+      "then": {
+        "properties": {
+          "source": true
+        },
+        "required": ["source"]
+      }
+    }
+  ],
+  "$defs": {
+    "playerField": {
+      "title": "SharedPlayerField",
+      "description": "Player-field entries that cite a public source only.",
+      "type": "array",
+      "items": {
+        "title": "SharedPlayerEntry",
+        "type": "object",
+        "properties": {
+          "text": {
+            "$ref": "common.schema.json#/$defs/text"
+          },
+          "source": {
+            "$ref": "#/$defs/publicSourceRef"
+          }
+        },
+        "required": ["text", "source"],
+        "additionalProperties": false
+      },
+      "minItems": 1
+    },
+    "publicSourceRef": {
+      "title": "PublicSourceRef",
+      "description": "An absolute http or https address without user information: a public external source (ADR-0036). The schema checks the form; isPublicSourceUri in packages/core also rejects IP literals, private and special-use host names.",
+      "type": "string",
+      "format": "uri",
+      "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://[^\\s/@?#]*[A-Za-z][^\\s/@?#]*(?:[/?#]\\S*)?$"
+    }
+  }
+}

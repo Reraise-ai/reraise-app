@@ -1,0 +1,35 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/card.schema.json",
+  "description": "A personality type needs a source, for example the own assessment card it comes from (ADR-0009, ADR-0038).",
+  "expect": {
+    "keyword": "required",
+    "instancePath": "/personalityType"
+  },
+  "data": {
+    "id": "01M2MXZ7W0HHSM0X7XJ5HEMYX3",
+    "format": 2,
+    "collection": "actors",
+    "type": "person",
+    "title": "Harbour master of the fictional port (fictional person)",
+    "layer": "said",
+    "author": "human",
+    "originSystem": "Example analyst wiki",
+    "class": "C",
+    "worlds": ["01M1DZPW00JGXPRPG4179ZPNB8"],
+    "interests": [
+      {
+        "text": "Keep the port open for night traffic",
+        "source": "https://example.org/port-bulletin/2026-09-12-night-traffic"
+      }
+    ],
+    "personalityType": {
+      "text": "ISTJ"
+    },
+    "training": false,
+    "externalId": "01M2MXZ7W0HHSM0X7XJ5HEMYX3",
+    "uri": "wb:45aaff12-777f-40e3-a97c-8a592e1ea4f6/01M2MXZ7W0HHSM0X7XJ5HEMYX3",
+    "body": "A fictional natural person. The personality type is the user's own assessment (an own\nassessment card) and is private by origin: it is never shared (ADR-0036, ADR-0038).\n",
+    "contentHash": "sha256:355f12338596425cb4c1b75fec7e7a24a92df35b78c9b392159f87d775dfa250"
+  }
+}

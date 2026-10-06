@@ -1,0 +1,19 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/agent-connections.schema.json",
+  "description": "An agent connection is a model target, never share (ADR-0036, ADR-0037).",
+  "expect": {
+    "keyword": "enum",
+    "instancePath": "/connections/0/target"
+  },
+  "data": {
+    "connections": [
+      {
+        "name": "planner",
+        "target": "share",
+        "tokenHash": "sha256:3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f",
+        "createdAt": "2026-10-06T09:00:00Z"
+      }
+    ]
+  }
+}

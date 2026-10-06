@@ -25,6 +25,8 @@ export const CONTENT_HASH_FIELDS = [
   'capabilities',
   'dependencies',
   'moves',
+  'redLines',
+  'assumedGoals',
   'sections',
   'lage',
   'rule',

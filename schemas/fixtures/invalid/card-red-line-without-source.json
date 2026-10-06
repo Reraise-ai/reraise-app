@@ -1,0 +1,61 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/card.schema.json",
+  "description": "A detected red line needs a source (ADR-0009, ADR-0038).",
+  "expect": {
+    "keyword": "required",
+    "instancePath": "/redLines/0"
+  },
+  "data": {
+    "id": "01M1EDEAG082WZ7T7D204BHZDC",
+    "format": 2,
+    "collection": "actors",
+    "type": "organisation",
+    "title": "Coastal navy (fictional actor profile)",
+    "layer": "said",
+    "author": "human",
+    "originSystem": "Example analyst wiki",
+    "class": "C",
+    "worlds": ["01M1DZPW00JGXPRPG4179ZPNB8"],
+    "interests": [
+      {
+        "text": "Show control over the shipping lane",
+        "source": "01M1E34QM03WVTE8T1RYS3AM18"
+      }
+    ],
+    "capabilities": [
+      {
+        "text": "Fast patrol boats able to escort or stop tankers at night",
+        "source": "https://example.org/naval-review/2026-coastal-patrol-fleet"
+      }
+    ],
+    "dependencies": [
+      {
+        "text": "Oil export revenue that also uses the strait",
+        "source": "https://example.org/energy-almanac/2026-export-routes"
+      }
+    ],
+    "moves": [
+      {
+        "text": "Announced night transit restrictions",
+        "source": "01M1E34QM03WVTE8T1RYS3AM18"
+      }
+    ],
+    "redLines": [
+      {
+        "text": "No foreign warships inside territorial waters"
+      }
+    ],
+    "assumedGoals": [
+      {
+        "text": "Use the restrictions as leverage in fee talks",
+        "source": "01M2MYHHT07BBT348TS317FFBD"
+      }
+    ],
+    "training": false,
+    "externalId": "01M1EDEAG082WZ7T7D204BHZDC",
+    "uri": "wb:45aaff12-777f-40e3-a97c-8a592e1ea4f6/01M1EDEAG082WZ7T7D204BHZDC",
+    "body": "A fictional actor profile. Every player-field entry names its source. The red line cites a\npublic statement; the assumed goal cites the user's own assessment card and is therefore\nprivate (ADR-0036, ADR-0038).\n",
+    "contentHash": "sha256:52ee42d702f956dcb1d646663421db6280912bf613011e812d39c0ea5083d667"
+  }
+}

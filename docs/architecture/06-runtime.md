@@ -98,12 +98,14 @@ Points the end-to-end test asserts:
 - The private card is denied for `cloud_model` and shown as denied, not silently dropped
   ([ADR-0012](../adr/0012-disclosure-gate.md)).
 
-## 6.2 Level 1 decision through Jev
+## 6.2 Level 1 prediction through a cloud engine
 
-Status: planned (M2+). The Jev connector is a stub implementing the documented request and
-response shape until the owner fixes the interface
-([ADR-0015](../adr/0015-two-thinking-levels.md)). Jev is cloud-only, so every call is
-`cloud_model` egress with per-transfer confirmation.
+Status: planned (level-1 slice right after M1). Level 1 is the `Level1Engine` socket
+([ADR-0035](../adr/0035-level1-engine-socket.md)): per player on the Lage, the engine predicts
+the next move out of a closed set of move options, from the cards on the board and the user's
+rule cards. The default engine is local (`local_model`, no confirmation, automatic what-if
+re-runs). The flow below is the cloud case, for example the Jev adapter, whose wire format
+stays inside the adapter: every run is `cloud_model` egress with per-transfer confirmation.
 
 ```mermaid
 sequenceDiagram
@@ -113,65 +115,56 @@ sequenceDiagram
   participant API as Board API
   participant C as core
   participant G as Disclosure gate
-  participant JC as Jev connector
-  participant J as Jev
-  participant P as local-state
+  participant E as Level1Engine (cloud adapter)
+  participant X as External engine
 
-  H->>UI: Quick question with options, engine Jev
-  UI->>API: Level 1 request (question, options, engine)
-  API->>C: build request: options as enum, candidate inputs from active rules and cards
-  loop each candidate input card
+  H->>UI: Changes an assumption on the Lage, engine is a cloud engine
+  UI->>API: level-1 run (Lage, trigger assumption_changed)
+  API->>C: build request: players with move options, cards on the board plus rule cards
+  loop each request card
     C->>G: decide(card, cloud_model)
     G-->>C: allow or deny with reason
   end
-  Note over C,G: Stance data and stance-dependent rules are never candidates
-  C-->>API: cleared cards, denied cards with reasons
-  API->>API: envelope = target, connectorId, question, options, output schema, cleared objects
-  API->>API: transfer record: transferId, SHA-256 of the RFC 8785 envelope, expiry in 5 min
-  API-->>UI: preview of the whole envelope, transferId and hash
+  Note over C,G: Stance data is never a candidate
+  C-->>API: request of cleared cards, denied cards with reasons
+  API->>G: preview(purpose level1, connector = engine, cleared cards)
+  G-->>API: transfer: envelope, payloadHash, expiry in 5 min
+  API-->>UI: prediction marked stale, preview of the whole envelope
   alt the human declines
-    H->>UI: Cancel
-    UI->>API: cancel transfer
-    Note over API,G: Nothing is sent. The gate log keeps card ids and decisions, never content.
+    Note over API,G: Nothing is sent. The gate log keeps ids and decisions, never content.
   else the human confirms
     H->>UI: Confirm this transfer
-    UI->>API: disclosure confirm with transferId and previewed hash (human-only)
-    API->>API: recompute current envelope hash, compare with record and previewed hash
-    API-->>UI: single-use token, 128-bit random, bound to this session, valid 5 minutes
-    UI->>API: send with token
-    API->>API: consume token atomically, envelope hash still equals the record
-    API->>JC: decide(output schema, cleared canonical objects)
-    JC->>J: POST /v1/decide over HTTPS, credential from environment or keychain
-    J-->>JC: typed answer with calibrated confidence
-    JC->>C: validate against the Level 1 result schema
-    alt the answer does not validate
-      C-->>API: error, nothing stored
-      API-->>UI: show the error
+    UI->>API: confirm with transferId and previewed hash (human-only)
+    API-->>UI: single-use token bound to this session, valid 5 minutes
+    UI->>API: run with token
+    API->>G: redeem(token, envelope)
+    G-->>API: release: exactly the confirmed objects
+    API->>E: predict(request, release)
+    E->>E: refuse unless the release holds exactly the request cards
+    E->>X: provider request over HTTPS, credential from environment or keychain
+    X-->>E: typed answer
+    E-->>API: Level1Prediction
+    API->>C: validate: schema, move in options, cards from the request, request hash
+    alt invalid
+      API-->>UI: show the error, keep the prediction stale
     else valid
-      C-->>API: engine, options, choice, confidence, inputs
-      API-->>UI: result
-      UI-->>H: "Jev estimates 0.82 for X", with its inputs, never a verdict
-      opt the answer implies world changes
-        JC-->>C: implied world changes
-        C->>C: build proposals with author agent:jev, status pending
-        C-->>API: proposals
-        API->>P: store pending proposals through packages/local-state
-      end
-      opt escalate to Level 2
+      API-->>UI: prediction per player
+      UI-->>H: "<engine> estimates 0.71: Keep restrictions" next to each player, with the cards used
+      opt escalate a player prediction to level 2
         H->>UI: Escalate
-        UI->>API: Lage save: new Lage with question, options and input cards placed
+        UI->>API: Lage create: question about that player's next move, options, cards used placed
       end
     end
   end
 ```
 
-If anything in the envelope changes after the preview (a card, the engine, the question, the
-options or the output schema), its hash changes and the confirmation fails; the user must
-preview and confirm again. Tokens and transfer records are held in memory only and are void
-after a restart ([ADR-0031](../adr/0031-gate-rules-and-confirmation-binding.md)).
-A Level 1 answer is not a decision, triggers no rule and enters no statistics. The same flow
-with a local rules engine or a local model uses target `local_model` and needs no per-transfer
-confirmation, but still a gate decision per card.
+Any change after the preview (a card, the engine, the players, the move options) changes the
+envelope hash and the request hash; the confirmation fails and the prediction stays stale until
+the user confirms a new transfer ([ADR-0031](../adr/0031-gate-rules-and-confirmation-binding.md)).
+A prediction is not a card, not a decision, triggers no rule, enters no statistics and is never
+shared ([ADR-0036](../adr/0036-conclusions-are-private.md)). With a local engine the same flow
+has no preview, confirmation or release; it runs on every trigger and shows the latest
+prediction whose request hash is current.
 
 ## 6.3 Write-back patch to an external store
 
@@ -244,4 +237,4 @@ Why this matters:
 | Schema-invalid or oversized input | Rejected and logged without card content | [ADR-0026](../adr/0026-security-defaults.md) |
 | Concurrent writes to the same card or Lage | Optimistic concurrency on `version` or `contentHash`; the loser gets a conflict and nothing is written | [ADR-0006](../adr/0006-files-are-the-truth.md) |
 | Derived index missing or corrupt | Deleted and rebuilt from the files | [ADR-0006](../adr/0006-files-are-the-truth.md) |
-| Model or Jev unavailable | The request fails visibly; no proposal, no fallback to another target without a new gate decision | [ADR-0012](../adr/0012-disclosure-gate.md), [ADR-0015](../adr/0015-two-thinking-levels.md) |
+| Model or level-1 engine unavailable | The request fails visibly; no proposal, no fallback to another target without a new gate decision | [ADR-0012](../adr/0012-disclosure-gate.md), [ADR-0035](../adr/0035-level1-engine-socket.md) |

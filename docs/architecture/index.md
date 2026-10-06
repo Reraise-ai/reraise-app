@@ -33,7 +33,7 @@ The [verification table](../verification.md) is the record of what an automated 
 | 3 | [Context and scope](./03-context-scope.md) | C4 system context: user, agents, models, Jev, knowledge stores, sources |
 | 4 | [Solution strategy](./04-solution-strategy.md) | The few ideas that shape everything else |
 | 5 | [Building blocks](./05-building-blocks.md) | C4 container view, package responsibilities and dependency rules |
-| 6 | [Runtime view](./06-runtime.md) | Sequence diagrams: M1 walking skeleton, Level 1 via Jev, write-back patch |
+| 6 | [Runtime view](./06-runtime.md) | Sequence diagrams: M1 walking skeleton, Level 1 through a cloud engine, write-back patch |
 | 7 | [Deployment view](./07-deployment.md) | Local single-user installation, self-hosting, Windows, macOS and Linux |
 | 8 | [Crosscutting concepts](./08-crosscutting.md) | Domain model, provenance, privacy, identity, persistence, security, testing |
 | 9 | [Architecture decisions](./09-decisions.md) | Pointer into the ADR log, grouped by concern, plus open decisions |
@@ -85,7 +85,7 @@ contract. The links between the two are:
 | Rules panel | [Rules panel](../product/board-ux.md#6-rules-panel) | [Building blocks: core](./05-building-blocks.md#53-responsibilities) |
 | Inbox of findings | [Inbox](../product/board-ux.md#7-inbox-new-findings-from-connected-sources) | [Context: sources](./03-context-scope.md#32-technical-context) |
 | Seats and agent proposals | [Seats and agent proposals](../product/board-ux.md#8-seats-and-agent-proposals) | [Runtime: walking skeleton](./06-runtime.md#61-m1-walking-skeleton) |
-| Thinking levels | [Thinking levels](../product/board-ux.md#9-thinking-levels) | [Runtime: Level 1 via Jev](./06-runtime.md#62-level-1-decision-through-jev) |
+| Thinking levels | [Thinking levels](../product/board-ux.md#9-thinking-levels) | [Runtime: Level 1 through a cloud engine](./06-runtime.md#62-level-1-prediction-through-a-cloud-engine) |
 | Disclosure gate and cloud warning | [Disclosure gate](../product/board-ux.md#10-disclosure-gate-and-cloud-warning) | [Privacy](./08-crosscutting.md#83-privacy-and-the-disclosure-gate) |
 | Decision card | [Decision card](../product/board-ux.md#11-decision-card) | [Domain model](./08-crosscutting.md#81-domain-model) |
 | Source profile | [Source profile](../product/board-ux.md#12-source-profile) | [Building blocks: core](./05-building-blocks.md#53-responsibilities) |

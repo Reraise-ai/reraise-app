@@ -1,0 +1,20 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/agent-connections.schema.json",
+  "description": "The token is never stored, only its hash (ADR-0026, ADR-0037).",
+  "expect": {
+    "keyword": "additionalProperties",
+    "instancePath": "/connections/0"
+  },
+  "data": {
+    "connections": [
+      {
+        "name": "planner",
+        "target": "local_model",
+        "tokenHash": "sha256:3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f",
+        "createdAt": "2026-10-06T09:00:00Z",
+        "token": "kJ8m2Qp4Vx7Zr1Tn5Wb9Yc3Hd6Lf0Gs2"
+      }
+    ]
+  }
+}

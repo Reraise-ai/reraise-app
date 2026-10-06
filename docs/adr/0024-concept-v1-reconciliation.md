@@ -59,7 +59,7 @@ reference; where they disagree with an ADR, the ADR wins.
 | 21 | Source profile dimensions (03 §12; 02 §8) | changed | Owner's eight dimensions, each with `n` | [0018](0018-multidimensional-source-profile.md) |
 | 22 | Eleven relation types (03 §7) | changed | Eight edge kinds of card format v2; contradicts → refutes, derived-from → based_on, actor relations → `relation` | [0023](0023-core-domain-model.md) |
 | 23 | Symmetric relations stored once (03 §7) | dropped | Edges are directed and carry `by` | [0023](0023-core-domain-model.md) |
-| 24 | Player field `redLines` (03 §4.1) | deferred | Not in card format v2; owner to decide; later ADR | [0009](0009-mandatory-provenance.md) |
+| 24 | Player field `redLines` (03 §4.1) | kept (was deferred) | Owner decided 2026-10-06: sourced `redLines`, plus `assumedGoals` and a private `personalityType` | [0009](0009-mandatory-provenance.md), [0038](0038-player-fields-red-lines-goals-personality.md) |
 | 25 | Unsourced player entries as own assessment (03 §4.1) | changed | `source` required | [0009](0009-mandatory-provenance.md) |
 | 26 | World memberships with role, weight, note; premises (03 §8) | deferred | `worlds[]` references now; memberships and premises in the multi-world slice | [0023](0023-core-domain-model.md) |
 | 27 | Mandatory guiding question (02 §1) | kept | `Lage.question` required | [0023](0023-core-domain-model.md) |

@@ -428,7 +428,7 @@ describe('structured cards', () => {
       'invalid_card',
     );
     await rejects(adapter.patch(DECISION, { sections }), 'invalid_card');
-    expect((await adapter.list({ limit: 100 })).items).toHaveLength(12);
+    expect((await adapter.list({ limit: 100 })).items).toHaveLength(15);
   });
 
   it('stores exactly what a create draft says, including a plain body', async () => {
@@ -526,7 +526,7 @@ describe('the derived index', () => {
       `---\nid: ${newId()}\nformat: 2\ntype: claim\ntitle: T\nlayer: said\nauthor: human\n---\n`,
     );
     await writeCardFile(dir, 'dup.md', await readFile(await fileOf(dir, WIRE), 'utf8'));
-    expect((await adapter.list()).items).toHaveLength(11); // the duplicated id is left out
+    expect((await adapter.list()).items).toHaveLength(14); // the duplicated id is left out
     const problems = adapter
       .diagnostics()
       .map((d) => d.path)
@@ -610,7 +610,7 @@ describe('the derived index', () => {
     await symlink(outside, path.join(dir, 'cards', 'link')).catch(() => undefined);
     const adapter = await openStore(dir);
     const titles = (await adapter.list({ limit: 100 })).items.map((c) => c.title);
-    expect(titles).toHaveLength(12);
+    expect(titles).toHaveLength(15);
     expect(titles).not.toContain('Outside');
     expect(adapter.diagnostics()).toEqual([]);
   });

@@ -156,7 +156,8 @@ valid only on format-1 cards. Cards written by the product are always format 2.
 | `originSystem` | free text | which system the content came from |
 | `training` | boolean | whether the card may be used for training. Default `false` (opt-in). |
 | `edges` | list of `target\|kind\|by` | typed connections, see [section 4](#4-edges) |
-| `interests`, `capabilities`, `dependencies`, `moves` | list of `text\|source` | player fields, only on `collection: actors`, see [section 6](#6-player-fields) |
+| `interests`, `capabilities`, `dependencies`, `moves`, `redLines`, `assumedGoals` | list of `text\|source` | player fields, only on `collection: actors`, see [section 6](#6-player-fields) |
+| `personalityType` | one `text\|source` | private player field of natural persons (`type: person`), see [section 6](#6-player-fields) |
 
 A store's own-assessment field (legacy `einordnung`) is a conclusion, so it is **not** a card
 field here. It is read as the note of the user's private stance on that card
@@ -208,7 +209,10 @@ cite.
 ## 6. Player fields
 
 `interests`, `capabilities`, `dependencies` and `moves` describe what an actor wants, can do,
-needs and does. They appear only on cards with `collection: actors`.
+needs and does. `redLines` are the red lines the actor has shown or declared, and
+`assumedGoals` the goals the user assumes it pursues (persons and organisations). They appear
+only on cards with `collection: actors`
+([ADR-0038](../adr/0038-player-fields-red-lines-goals-personality.md)).
 
 Each entry has the form `text|source`. The source is a card id or an address. **An entry
 without a source is rejected.** Leave a field empty rather than asserting something without
@@ -217,7 +221,21 @@ evidence. Inside `text`, commas and square brackets are not allowed.
 ```yaml
 interests: [Keep market share|01J9ZQ7K3M5V8W2X4Y6Z0A1B2F]
 moves: [Naval exercise on 20 September|01J9ZQ7K3M5V8W2X4Y6Z0A1B2G]
+redLines: [No foreign warships in territorial waters|https://example.org/statement]
+assumedGoals: [Raise transit fees|01J9ZQ7K3M5V8W2X4Y6Z0A1B2H]
 ```
+
+A natural person (`type: person`) may carry one `personalityType`, for example an MBTI type,
+also as `text|source`:
+
+```yaml
+personalityType: ISTJ|01J9ZQ7K3M5V8W2X4Y6Z0A1B2J
+```
+
+Privacy ([ADR-0036](../adr/0036-conclusions-are-private.md)): the personality type is always
+private and never shared, whatever its source. A red line or an assumed goal that cites one of
+the user's own assessment cards is user-originated; when a card is shared, only player entries
+that cite a public `http(s)` address go with it.
 
 ## 7. The `lage` card
 
@@ -306,7 +324,8 @@ For every v2 card:
 
 1. `layer`, `training`, `author` and `format` have allowed values.
 2. Every edge has an existing target, an allowed kind and a valid `by`.
-3. Player fields appear only on actors and every entry has a source.
+3. Player fields appear only on actors and every entry has a source; a personality type only
+   on a person.
 4. A `lage` card has readable JSON and names only existing cards.
 5. A v2 decision card has all eleven sections.
 6. The [provenance rules](#5-provenance-rules) hold.
@@ -369,6 +388,8 @@ A store that uses the German header names maps one to one. The authoritative tab
 | `kanten` (`ziel\|art\|von`) | `edges` (`target\|kind\|by`) | `stuetzt`, `widerlegt`, `vertritt`, `zitiert`, `beruht_auf`, `abhaengig_von`, `beziehung`, `unbestimmt` map to `supports`, `refutes`, `represents`, `cites`, `based_on`, `depends_on`, `relation`, `unspecified` |
 | `verknuepfungen` | `edges` of kind `unspecified`, `by: unknown` | dangling targets are a warning |
 | `interessen`, `faehigkeiten`, `abhaengigkeiten`, `zuege` | `interests`, `capabilities`, `dependencies`, `moves` | each `text\|source`, on `collection: actors` only |
+| `rote_linien`, `angenommene_ziele` | `redLines`, `assumedGoals` | each `text\|source`, on `collection: actors` only ([ADR-0038](../adr/0038-player-fields-red-lines-goals-personality.md)). The owner store must add these keys. |
+| `persoenlichkeitstyp` | `personalityType` | one `text\|source`, only on `typ: person`; always private ([ADR-0038](../adr/0038-player-fields-red-lines-goals-personality.md)). The owner store must add this key. |
 | `lage`: `frage`, `optionen`, `karten`, `sitze`, `kanten` | `question`, `options`, `cards`, `seats`, `edges` | seat `art` (`mensch`, `agent`) becomes `kind` (`human`, `agent`). Edge `von`, `ziel`, `art`, `wer` become `from`, `to`, `kind`, `by`. `stand` becomes `updatedAt`. |
 | decision sections | `situation` to `outcome` | `offen` maps to `open` |
 | Lage body heading `## Stellung` | `## Position` | [ADR-0027](../adr/0027-card-format-mapping-addenda.md) |

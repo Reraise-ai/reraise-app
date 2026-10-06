@@ -16,7 +16,7 @@ export const DEFAULT_GATE_LOG_KEEP = 5;
 const REASONS = new Set<string>(GATE_LOG_REASONS);
 const RULE_ID = /^[a-z0-9][a-z0-9._-]{0,63}$/;
 const ISO_UTC = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z$/;
-const TARGETS = new Set(['screen', 'local_model', 'cloud_model', 'demo']);
+const TARGETS = new Set(['screen', 'local_model', 'cloud_model', 'demo', 'share']);
 
 export interface GateLogOptions {
   readonly maxBytes?: number;

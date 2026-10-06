@@ -64,6 +64,9 @@ const CONTENT_FIELDS = new Set([
   'capabilities',
   'dependencies',
   'moves',
+  'redLines',
+  'assumedGoals',
+  'personalityType',
   'lage',
   'sections',
   'rule',
@@ -80,6 +83,9 @@ const FORMAT_2_FIELDS = [
   'capabilities',
   'dependencies',
   'moves',
+  'redLines',
+  'assumedGoals',
+  'personalityType',
 ];
 /** Legacy store fields of the fake that carry stance data (like a believed layer). */
 const LEGACY_BELIEVED = 'believed';

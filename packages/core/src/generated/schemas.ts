@@ -7,6 +7,49 @@
 
 /** Every JSON Schema of the contract, keyed by its `$id`. */
 export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>> = {
+  'https://worldbuilder.invalid/schemas/v0/agent-connections.schema.json': {
+    $schema: 'https://json-schema.org/draft/2020-12/schema',
+    $id: 'https://worldbuilder.invalid/schemas/v0/agent-connections.schema.json',
+    title: 'AgentConnections',
+    description:
+      'The registry of agent connections in the per-user state directory, <state>/agents.yaml (ADR-0030, ADR-0037). Each MCP client connection (for example one agent of a multi-agent system) is registered on its own with a name, which becomes its author agent:<name>, and the disclosure target class it represents. The token itself is never stored, only its SHA-256. Names are unique (cross-check `agent-names`). Local state: never sent, exported or shared.',
+    type: 'object',
+    properties: { connections: { type: 'array', items: { $ref: '#/$defs/connection' } } },
+    required: ['connections'],
+    additionalProperties: false,
+    $defs: {
+      connection: {
+        title: 'AgentConnection',
+        type: 'object',
+        properties: {
+          name: {
+            description: 'The agent name; the connection acts as agent:<name>.',
+            type: 'string',
+            pattern: '^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$',
+          },
+          target: {
+            description:
+              "What the agent's answers may reach: local_model only if every model the agent uses runs under the user's control; otherwise cloud_model (ADR-0012, ADR-0037).",
+            type: 'string',
+            enum: ['local_model', 'cloud_model'],
+          },
+          tokenHash: {
+            description:
+              'sha256:<hex> of the bearer token; the token is shown once at registration and never stored.',
+            type: 'string',
+            pattern: '^sha256:[0-9a-f]{64}$',
+          },
+          createdAt: { $ref: 'common.schema.json#/$defs/dateTime' },
+          revokedAt: {
+            description: 'Set when the connection was removed; a revoked token is rejected.',
+            $ref: 'common.schema.json#/$defs/dateTime',
+          },
+        },
+        required: ['name', 'target', 'tokenHash', 'createdAt'],
+        additionalProperties: false,
+      },
+    },
+  },
   'https://worldbuilder.invalid/schemas/v0/api.schema.json': {
     $schema: 'https://json-schema.org/draft/2020-12/schema',
     $id: 'https://worldbuilder.invalid/schemas/v0/api.schema.json',
@@ -253,6 +296,21 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
           capabilities: { $ref: '#/$defs/playerField' },
           dependencies: { $ref: '#/$defs/playerField' },
           moves: { $ref: '#/$defs/playerField' },
+          redLines: {
+            description:
+              'Red lines the actor has shown or declared: what it will not accept. Each entry needs a source (ADR-0038).',
+            $ref: '#/$defs/playerField',
+          },
+          assumedGoals: {
+            description:
+              "Goals the user assumes the actor pursues (actors, including organisations). Each entry needs a source; an entry whose source is the user's own assessment card is user-originated and private (ADR-0036, ADR-0038).",
+            $ref: '#/$defs/playerField',
+          },
+          personalityType: {
+            description:
+              'Personality type of a natural person (for example an MBTI type), with its source. Only on cards of type person. Always private: it is never shared, whatever its source (ADR-0036, ADR-0038).',
+            $ref: '#/$defs/playerEntry',
+          },
           lage: {
             description: 'Board state; required on cards of type lage.',
             $ref: 'lage.schema.json',
@@ -315,9 +373,17 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
                 { properties: { capabilities: true }, required: ['capabilities'] },
                 { properties: { dependencies: true }, required: ['dependencies'] },
                 { properties: { moves: true }, required: ['moves'] },
+                { properties: { redLines: true }, required: ['redLines'] },
+                { properties: { assumedGoals: true }, required: ['assumedGoals'] },
+                { properties: { personalityType: true }, required: ['personalityType'] },
               ],
             },
             then: { properties: { collection: { const: 'actors' } }, required: ['collection'] },
+          },
+          {
+            description: 'A personality type exists only on natural persons (ADR-0038).',
+            if: { properties: { personalityType: true }, required: ['personalityType'] },
+            then: { properties: { type: { const: 'person' } }, required: ['type'] },
           },
           {
             description: 'Evidence cards carry a SHA-256 source checksum if any (ADR-0023).',
@@ -546,7 +612,15 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
       },
       disclosureTarget: {
         title: 'DisclosureTarget',
-        description: 'Where content may go (ADR-0012).',
+        description:
+          'Where content may go (ADR-0012). `share` is other people: another user, a peer-to-peer exchange or a platform export. Conclusions (user-originated cards, stance data, AI analysis) are never allowed for `share`; own experience only after the user released the card; external-source cards only after release, as content and provenance (ADR-0036).',
+        type: 'string',
+        enum: ['screen', 'local_model', 'cloud_model', 'demo', 'share'],
+      },
+      packageTarget: {
+        title: 'PackageTarget',
+        description:
+          'The targets a context package or a rule evaluation can be built for: the screen, models and demos. Never `share` (ADR-0036).',
         type: 'string',
         enum: ['screen', 'local_model', 'cloud_model', 'demo'],
       },
@@ -607,7 +681,7 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
     type: 'object',
     properties: {
       id: { $ref: 'common.schema.json#/$defs/ulid' },
-      target: { $ref: 'common.schema.json#/$defs/disclosureTarget' },
+      target: { $ref: 'common.schema.json#/$defs/packageTarget' },
       worldId: { $ref: 'common.schema.json#/$defs/worldId' },
       lageId: { $ref: 'common.schema.json#/$defs/cardId' },
       question: { $ref: 'common.schema.json#/$defs/text' },
@@ -1068,6 +1142,18 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
         required: ['confirmation', 'objects'],
         additionalProperties: false,
       },
+      shareBundle: {
+        title: 'ShareBundle',
+        description:
+          'Result of DisclosureGate.prepareShare (ADR-0036): the share projections of the cards allowed for target share, and the ids and reasons of the others. Never stance data, never a conclusion. A later sharing slice adds a hash-bound confirmation before anything is sent.',
+        type: 'object',
+        properties: {
+          objects: { type: 'array', items: { $ref: 'shared-card.schema.json' } },
+          denied: { type: 'array', items: { $ref: '#/$defs/denied' } },
+        },
+        required: ['objects', 'denied'],
+        additionalProperties: false,
+      },
     },
   },
   'https://worldbuilder.invalid/schemas/v0/edge.schema.json': {
@@ -1318,72 +1404,127 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
       },
     },
   },
-  'https://worldbuilder.invalid/schemas/v0/level1-answer.schema.json': {
+  'https://worldbuilder.invalid/schemas/v0/level1-prediction.schema.json': {
     $schema: 'https://json-schema.org/draft/2020-12/schema',
-    $id: 'https://worldbuilder.invalid/schemas/v0/level1-answer.schema.json',
-    title: 'Level1Answer',
+    $id: 'https://worldbuilder.invalid/schemas/v0/level1-prediction.schema.json',
+    title: 'Level1Prediction',
     description:
-      "A fast, typed level-1 answer (ADR-0015). It is an attributed engine estimate ('<engine> estimates 0.82 for X'), never a verdict: it does not count as a decision, does not trigger rules and does not enter statistics. `choice` is one of `options`. World changes it implies arrive as proposals by agent:<engine>.",
+      "Result of a Level1Engine (ADR-0035): for each player on a Lage, the engine's predicted next move out of a closed set of move options, with the engine's own confidence and the ids of the on-board cards it used. An attributed estimate ('<engine> estimates ...'), never a verdict: it is not a card, does not count as a decision, does not trigger rules, does not enter statistics and is never shared (ADR-0036). `predictedMove` is one of `moveOptions` and every id in `cardIds` names a card of the request (checked by the conformance kit and the cross-check `level1-move`).",
     type: 'object',
     properties: {
-      id: { $ref: 'common.schema.json#/$defs/ulid' },
-      engine: {
-        description: 'Engine name, e.g. local-rules, a local model, or the Jev connector.',
+      engine: { $ref: '#/$defs/engineId' },
+      lageId: {
+        description: 'The Lage whose board the prediction is about.',
+        $ref: 'common.schema.json#/$defs/cardId',
+      },
+      trigger: { $ref: '#/$defs/trigger' },
+      requestHash: {
+        description:
+          'sha256:<hex> over the RFC 8785 serialisation of the request (ADR-0034). The board shows a prediction only while its request hash equals the hash of the current request; otherwise it is stale.',
+        type: 'string',
+        pattern: '^sha256:[0-9a-f]{64}$',
+      },
+      players: { type: 'array', items: { $ref: '#/$defs/playerPrediction' }, minItems: 1 },
+      predictedAt: { $ref: 'common.schema.json#/$defs/dateTime' },
+    },
+    required: ['engine', 'lageId', 'trigger', 'requestHash', 'players', 'predictedAt'],
+    additionalProperties: false,
+    $defs: {
+      engineId: {
+        title: 'Level1EngineId',
+        description:
+          "Engine id, e.g. local-rules, a local model, or an external decision service. Shown as '<engine> estimates ...' and used as the proposal author agent:<engine>.",
         type: 'string',
         pattern: '^[a-z0-9][a-z0-9._-]{0,63}$',
       },
-      question: { $ref: 'common.schema.json#/$defs/text' },
-      options: {
-        description: 'The closed set of options (the enum of the output schema).',
+      moveOptions: {
+        title: 'Level1MoveOptions',
+        description:
+          "The closed set of moves a player can make next: the enum of the engine's output schema for that player.",
         type: 'array',
         items: { $ref: 'common.schema.json#/$defs/text' },
         minItems: 2,
         uniqueItems: true,
       },
-      choice: { description: 'One of `options`.', $ref: 'common.schema.json#/$defs/text' },
-      confidence: {
+      trigger: {
+        title: 'Level1Trigger',
         description:
-          "The engine's own confidence for `choice`, shown attributed to the engine. Not an ICD 203 estimate.",
-        type: 'number',
-        minimum: 0,
-        maximum: 1,
-      },
-      inputs: {
-        description: 'Cards and rules the engine received (after the disclosure gate).',
-        type: 'array',
-        items: { $ref: '#/$defs/input' },
-      },
-      answeredAt: { $ref: 'common.schema.json#/$defs/dateTime' },
-    },
-    required: ['engine', 'question', 'options', 'choice', 'confidence', 'inputs', 'answeredAt'],
-    additionalProperties: false,
-    $defs: {
-      input: {
-        title: 'Level1Input',
+          'Why the engine ran. `assumption_changed`: the user placed, removed or edited an assumption card on the Lage (the what-if re-run; `cardIds` names the changed assumption cards). `lage_opened`: the Lage was opened. `manual`: the user asked.',
         type: 'object',
         properties: {
-          kind: { type: 'string', enum: ['card', 'rule'] },
-          id: { $ref: 'common.schema.json#/$defs/cardId' },
+          kind: { type: 'string', enum: ['lage_opened', 'assumption_changed', 'manual'] },
+          cardIds: {
+            type: 'array',
+            items: { $ref: 'common.schema.json#/$defs/cardId' },
+            minItems: 1,
+            uniqueItems: true,
+          },
         },
-        required: ['kind', 'id'],
+        required: ['kind'],
+        additionalProperties: false,
+        allOf: [
+          {
+            description: 'An assumption change names the changed assumption cards.',
+            if: { properties: { kind: { const: 'assumption_changed' } }, required: ['kind'] },
+            then: { properties: { cardIds: true }, required: ['cardIds'] },
+            else: { properties: { cardIds: false } },
+          },
+        ],
+      },
+      playerRequest: {
+        title: 'Level1PlayerRequest',
+        description: 'One player to predict: an actor card on the Lage and its move options.',
+        type: 'object',
+        properties: {
+          playerCardId: { $ref: 'common.schema.json#/$defs/cardId' },
+          moveOptions: { $ref: '#/$defs/moveOptions' },
+        },
+        required: ['playerCardId', 'moveOptions'],
         additionalProperties: false,
       },
       request: {
-        title: 'Level1Request',
+        title: 'Level1PredictionRequest',
         description:
-          'What a ModelConnector receives for a level-1 decision: the question, the closed options, and gate-cleared inputs.',
+          "What a Level1Engine receives: the Lage, its question, the trigger, the players with their move options, and the gate-cleared canonical cards on the board (including the user's rule cards), nothing else. Never stance data. For a cloud_model engine `cards` are exactly the objects of one confirmed transfer (ADR-0031). Every playerCardId names a card in `cards` (cross-check `level1-players`).",
         type: 'object',
         properties: {
+          lageId: { $ref: 'common.schema.json#/$defs/cardId' },
           question: { $ref: 'common.schema.json#/$defs/text' },
-          options: {
+          trigger: { $ref: '#/$defs/trigger' },
+          players: { type: 'array', items: { $ref: '#/$defs/playerRequest' }, minItems: 1 },
+          cards: { type: 'array', items: { $ref: 'card.schema.json' }, minItems: 1 },
+        },
+        required: ['lageId', 'question', 'trigger', 'players', 'cards'],
+        additionalProperties: false,
+      },
+      playerPrediction: {
+        title: 'Level1PlayerPrediction',
+        description:
+          "The engine's estimate for one player: the predicted move (one of moveOptions), the engine's calibrated confidence for it, and the ids of the on-board cards it used (at least the player card).",
+        type: 'object',
+        properties: {
+          playerCardId: { $ref: 'common.schema.json#/$defs/cardId' },
+          moveOptions: { $ref: '#/$defs/moveOptions' },
+          predictedMove: {
+            description: 'One of `moveOptions`.',
+            $ref: 'common.schema.json#/$defs/text',
+          },
+          confidence: {
+            description:
+              "The engine's own calibrated confidence for predictedMove, shown attributed to the engine. Not an ICD 203 estimate by a source (ADR-0010).",
+            type: 'number',
+            minimum: 0,
+            maximum: 1,
+          },
+          cardIds: {
+            description: 'Ids of the request cards the engine used.',
             type: 'array',
-            items: { $ref: 'common.schema.json#/$defs/text' },
-            minItems: 2,
+            items: { $ref: 'common.schema.json#/$defs/cardId' },
+            minItems: 1,
             uniqueItems: true,
           },
-          inputs: { type: 'array', items: { $ref: '#/$defs/input' } },
         },
-        required: ['question', 'options', 'inputs'],
+        required: ['playerCardId', 'moveOptions', 'predictedMove', 'confidence', 'cardIds'],
         additionalProperties: false,
       },
     },
@@ -1588,7 +1729,13 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
           'Create a new card (for example a reference card for a finding, ADR-0014), optionally placed on a Lage.',
         type: 'object',
         properties: {
-          card: { $ref: 'card.schema.json#/$defs/draft' },
+          card: {
+            description:
+              'The card to create. An agent cannot release it for sharing: `release` is private or absent, and only the human changes it (ADR-0036).',
+            type: 'object',
+            $ref: 'card.schema.json#/$defs/draft',
+            properties: { release: { const: 'private' } },
+          },
           lageId: { $ref: 'common.schema.json#/$defs/cardId' },
           x: { type: 'number' },
           y: { type: 'number' },
@@ -1620,7 +1767,7 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
     properties: {
       lageId: { $ref: 'common.schema.json#/$defs/cardId' },
       lageVersion: { type: 'integer', minimum: 1 },
-      target: { $ref: 'common.schema.json#/$defs/disclosureTarget' },
+      target: { $ref: 'common.schema.json#/$defs/packageTarget' },
       evaluatedAt: { $ref: 'common.schema.json#/$defs/dateTime' },
       results: { type: 'array', items: { $ref: '#/$defs/result' } },
       withheld: {
@@ -1846,6 +1993,74 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
         },
         required: ['kind', 'tag'],
         additionalProperties: false,
+      },
+    },
+  },
+  'https://worldbuilder.invalid/schemas/v0/shared-card.schema.json': {
+    $schema: 'https://json-schema.org/draft/2020-12/schema',
+    $id: 'https://worldbuilder.invalid/schemas/v0/shared-card.schema.json',
+    title: 'SharedCard',
+    description:
+      'What leaves the device when a card is shared with other people (target share, ADR-0036): content and provenance only. No store identity (uri, externalId), no origin system, no source other than a public address, no worlds, tags, class, visibility, release, training, status, rating, edges, structured state or private player field (personalityType), and no player entry without a public source. contentHash is the hash of this projection (ADR-0034). Built by shareProjection in packages/core after the gate allowed the card for share.',
+    type: 'object',
+    properties: {
+      id: { $ref: 'common.schema.json#/$defs/cardId' },
+      format: { type: 'integer', const: 2 },
+      collection: { $ref: 'common.schema.json#/$defs/collection' },
+      type: { $ref: 'common.schema.json#/$defs/text' },
+      title: { $ref: 'common.schema.json#/$defs/text' },
+      body: { type: 'string' },
+      date: { $ref: 'common.schema.json#/$defs/isoDate' },
+      layer: { $ref: 'common.schema.json#/$defs/layer' },
+      source: {
+        description:
+          'Kept only as a public http or https address; any other source is dropped (ADR-0036).',
+        $ref: '#/$defs/publicSourceRef',
+      },
+      sourceDate: { $ref: 'common.schema.json#/$defs/isoDate' },
+      sourceChecksum: { type: 'string' },
+      author: { $ref: 'common.schema.json#/$defs/humanAuthor' },
+      interests: { $ref: '#/$defs/playerField' },
+      capabilities: { $ref: '#/$defs/playerField' },
+      dependencies: { $ref: '#/$defs/playerField' },
+      moves: { $ref: '#/$defs/playerField' },
+      redLines: { $ref: '#/$defs/playerField' },
+      assumedGoals: { $ref: '#/$defs/playerField' },
+      contentHash: { $ref: 'common.schema.json#/$defs/contentHash' },
+    },
+    required: ['id', 'format', 'type', 'title', 'layer', 'author', 'contentHash'],
+    additionalProperties: false,
+    allOf: [
+      {
+        description: 'A shared evidenced or said card names its public external source (ADR-0036).',
+        if: { properties: { layer: { enum: ['evidenced', 'said'] } }, required: ['layer'] },
+        then: { properties: { source: true }, required: ['source'] },
+      },
+    ],
+    $defs: {
+      playerField: {
+        title: 'SharedPlayerField',
+        description: 'Player-field entries that cite a public source only.',
+        type: 'array',
+        items: {
+          title: 'SharedPlayerEntry',
+          type: 'object',
+          properties: {
+            text: { $ref: 'common.schema.json#/$defs/text' },
+            source: { $ref: '#/$defs/publicSourceRef' },
+          },
+          required: ['text', 'source'],
+          additionalProperties: false,
+        },
+        minItems: 1,
+      },
+      publicSourceRef: {
+        title: 'PublicSourceRef',
+        description:
+          'An absolute http or https address without user information: a public external source (ADR-0036). The schema checks the form; isPublicSourceUri in packages/core also rejects IP literals, private and special-use host names.',
+        type: 'string',
+        format: 'uri',
+        pattern: '^[Hh][Tt][Tt][Pp][Ss]?://[^\\s/@?#]*[A-Za-z][^\\s/@?#]*(?:[/?#]\\S*)?$',
       },
     },
   },

@@ -8,7 +8,8 @@
 //
 // - YAML front matter with the canonical English field names. `externalId`, `uri` and `body`
 //   are derived, never stored. `synthetic` is the repository hygiene marker, not a card field.
-// - `edges` entries are `target|kind|by`; player-field entries are `text|source`.
+// - `edges` entries are `target|kind|by`; player-field entries are `text|source`;
+//   `personalityType` is one `text|source` value.
 // - `worlds` lists world names, resolved to world ids within the store.
 // - Format detection and legacy defaults: a card is format 2 if it says `format: 2` or uses
 //   any format-2 field; a format-1 card without `author` reads as `author: unknown`;
@@ -48,9 +49,20 @@ export const FORMAT_2_FIELDS = [
   'capabilities',
   'dependencies',
   'moves',
+  'redLines',
+  'assumedGoals',
+  'personalityType',
 ];
 
-export const PLAYER_FIELDS = ['interests', 'capabilities', 'dependencies', 'moves'];
+/** List player fields, each entry `text|source` (ADR-0023, ADR-0038). */
+export const PLAYER_FIELDS = [
+  'interests',
+  'capabilities',
+  'dependencies',
+  'moves',
+  'redLines',
+  'assumedGoals',
+];
 
 /** Front-matter keys of a Lage card that belong to its board state. */
 const LAGE_FRONT_MATTER = ['question', 'version', 'updatedAt'];
@@ -190,6 +202,12 @@ export function toCanonicalCard(text, { storeInstanceId, worlds }) {
   if (Array.isArray(data.edges)) card.edges = parseEdges(data.edges);
   for (const field of PLAYER_FIELDS) {
     if (Array.isArray(data[field])) card[field] = parsePlayerField(data[field]);
+  }
+  if (data.personalityType !== undefined) {
+    if (typeof data.personalityType !== 'string') {
+      throw new Error('personalityType must be one "text|source" value, not a list or mapping');
+    }
+    card.personalityType = parsePlayerField([data.personalityType])[0];
   }
   card.body = body;
 

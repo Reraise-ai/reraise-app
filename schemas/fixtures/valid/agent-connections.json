@@ -1,0 +1,21 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/agent-connections.schema.json",
+  "description": "Two agents of one multi-agent system, each registered on its own: one with local models only, one that uses a cloud model (ADR-0037).",
+  "data": {
+    "connections": [
+      {
+        "name": "planner",
+        "target": "local_model",
+        "tokenHash": "sha256:3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f",
+        "createdAt": "2026-10-06T09:00:00Z"
+      },
+      {
+        "name": "scout",
+        "target": "cloud_model",
+        "tokenHash": "sha256:a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "createdAt": "2026-10-06T09:05:00Z"
+      }
+    ]
+  }
+}

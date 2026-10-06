@@ -82,6 +82,21 @@ describe('parseCardText', () => {
     expect(() => parseCardText(card('interests: [text only]'), ctx)).toThrow(/2 non-empty/);
   });
 
+  it('reads red lines, assumed goals and one personality type (ADR-0038)', () => {
+    const { card: c } = parseCardText(
+      card(
+        `redLines: [No night convoys|https://example.org/a]\nassumedGoals: [Keep the port open|${OTHER}]\npersonalityType: ISTJ|${OTHER}`,
+      ),
+      ctx,
+    );
+    expect(c.redLines).toEqual([{ text: 'No night convoys', source: 'https://example.org/a' }]);
+    expect(c.assumedGoals).toEqual([{ text: 'Keep the port open', source: OTHER }]);
+    expect(c.personalityType).toEqual({ text: 'ISTJ', source: OTHER });
+    expect(() => parseCardText(card(`personalityType: [ISTJ|${OTHER}]`), ctx)).toThrow(
+      /one "text\|source" value/,
+    );
+  });
+
   it('reads a Lage from front matter and the Position block', () => {
     const state = { question: 'Q?', options: ['a'], cards: [], seats: [], edges: [] };
     const text = card(
