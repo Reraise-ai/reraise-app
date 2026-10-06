@@ -55,8 +55,44 @@ describe('IBAN', () => {
     ['NBSP', ibanParts.join('\u00a0')],
     ['compact', ibanParts.join('')],
   ])('flags %s variants', (_name, value) => {
-    expect(rules(`pay to ${value} please`)).toEqual(['iban']);
+    expect(rules(`IBAN: ${value} please`)).toEqual(['iban']);
     expect(isValidIban(value)).toBe(true);
+  });
+
+  it('flags lowercase and dash forms only next to the IBAN keyword', () => {
+    expect(rules(`pay to ${ibanParts.join('-')} please`)).toEqual([]);
+    expect(rules(`pay to ${iban.toLowerCase()} please`)).toEqual([]);
+  });
+
+  it('requires a known country code and that country exact length', () => {
+    expect(isValidIban(`${iban}0`)).toBe(false);
+    expect(rules(`IBAN ${iban}0`)).toEqual([]);
+    expect(isValidIban('ZZ89 3704 0044 0532 0130 00')).toBe(false);
+    expect(rules(`${iban}12345`)).toEqual([]);
+  });
+
+  it('does not flag random UUIDs or ULIDs (seeded)', () => {
+    let state = 123456789;
+    const rnd = () => {
+      state = (state + 0x6d2b79f5) | 0;
+      let t = Math.imul(state ^ (state >>> 15), 1 | state);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+    const pick = (alphabet, n) =>
+      Array.from({ length: n }, () => alphabet[Math.floor(rnd() * alphabet.length)]).join('');
+    const hex = '0123456789abcdef';
+    const crockford = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+    const uuid = () =>
+      [pick(hex, 8), pick(hex, 4), pick(hex, 4), pick(hex, 4), pick(hex, 12)].join('-');
+    const ids = [];
+    for (let i = 0; i < 1000; i++) {
+      const u = uuid();
+      ids.push(i % 2 === 0 ? u : u.toUpperCase(), pick(crockford, 26));
+    }
+    const hits = ids.flatMap((id) => scanText(`id: ${id} / IBAN-free line ${id}`));
+    expect(ids).toHaveLength(2000);
+    expect(hits).toEqual([]);
   });
 
   it('flags an IBAN followed directly by a four-letter word', () => {

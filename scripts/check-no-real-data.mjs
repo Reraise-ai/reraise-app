@@ -24,12 +24,7 @@ const SKIP_EXT = new Set(['.png', '.jpg', '.jpeg', '.gif', '.ico', '.woff', '.wo
  */
 export const IGNORE_MARKER = 'no-real-data-ignore';
 
-const SEP = String.raw`[\s\u00a0-]`;
 const EMAIL_RE = /[A-Za-z0-9._%+-]+@((?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,})\b/g;
-const IBAN_RE = new RegExp(
-  String.raw`\b[A-Za-z]{2}\d{2}(?:${SEP}*[A-Za-z0-9]{4}){2,7}(?:${SEP}*[A-Za-z0-9]{1,3})?\b`,
-  'g',
-);
 const TAX_ID_KEYWORD_RE =
   /(?:steuer-?id|steueridentifikationsnummer|idnr|tax[ -]?id)\W{0,12}(\d{2}\s?\d{3}\s?\d{3}\s?\d{3})\b/gi; // no-real-data-ignore
 const TAX_ID_BARE_RE = /(?<![\d/])\d{11}(?![\d/])/g;
@@ -53,18 +48,126 @@ function mod97(s) {
   return rem === 1;
 }
 
-/** Normalises case and separators (space, NBSP, dash), then applies mod-97. */
+/** ISO 13616 IBAN lengths for SEPA and other major countries (country code -> total length). */
+export const IBAN_LENGTHS = {
+  AD: 24,
+  AE: 23,
+  AL: 28,
+  AT: 20,
+  AZ: 28,
+  BA: 20,
+  BE: 16,
+  BG: 22,
+  BH: 22,
+  BR: 29,
+  BY: 28,
+  CH: 21,
+  CR: 22,
+  CY: 28,
+  CZ: 24,
+  DE: 22,
+  DK: 18,
+  DO: 28,
+  EE: 20,
+  EG: 29,
+  ES: 24,
+  FI: 18,
+  FO: 18,
+  FR: 27,
+  GB: 22,
+  GE: 22,
+  GI: 23,
+  GL: 18,
+  GR: 27,
+  GT: 28,
+  HR: 21,
+  HU: 28,
+  IE: 22,
+  IL: 23,
+  IQ: 23,
+  IS: 26,
+  IT: 27,
+  JO: 30,
+  KW: 30,
+  KZ: 20,
+  LB: 28,
+  LC: 32,
+  LI: 21,
+  LT: 20,
+  LU: 20,
+  LV: 21,
+  MC: 27,
+  MD: 24,
+  ME: 22,
+  MK: 19,
+  MR: 27,
+  MT: 31,
+  MU: 30,
+  NL: 18,
+  NO: 15,
+  PK: 24,
+  PL: 28,
+  PS: 29,
+  PT: 25,
+  QA: 29,
+  RO: 24,
+  RS: 22,
+  SA: 24,
+  SE: 24,
+  SI: 19,
+  SK: 24,
+  SM: 27,
+  TN: 24,
+  TR: 26,
+  UA: 29,
+  VA: 22,
+  VG: 24,
+  XK: 20,
+};
+
+const SEPARATOR_RE = /[\s\u00a0-]/;
+
+/**
+ * Normalises case and separators (space, NBSP, dash), then requires a known country code,
+ * that country's exact IBAN length and a valid mod-97 checksum.
+ */
 export function isValidIban(raw) {
-  return mod97(raw.replace(/[\s\u00a0-]+/g, '').toUpperCase());
+  const s = raw.replace(/[\s\u00a0-]+/g, '').toUpperCase();
+  const length = IBAN_LENGTHS[s.slice(0, 2)];
+  return (
+    length !== undefined && s.length === length && /^[A-Z]{2}\d{2}[A-Z0-9]+$/.test(s) && mod97(s)
+  );
 }
 
-/** True if the match, or any leading portion of it (over-run into following words), is an IBAN. */
-function containsIban(raw) {
-  const s = raw.replace(/[\s\u00a0-]+/g, '').toUpperCase();
-  for (let len = 15; len <= Math.min(34, s.length); len++) {
-    if (mod97(s.slice(0, len))) return true;
+/**
+ * Find IBANs in one line. Matches exactly the country's length (no prefix guessing).
+ * Upper-case compact or space/NBSP separated forms are flagged on their own; lower-case or
+ * dash-separated forms only when the word "IBAN" appears on the same line.
+ */
+export function findIbans(line) {
+  const found = [];
+  const hasKeyword = /iban/i.test(line);
+  for (const m of line.matchAll(/\b([A-Za-z]{2})\d{2}/g)) {
+    const length = IBAN_LENGTHS[m[1].toUpperCase()];
+    if (length === undefined) continue;
+    let i = m.index;
+    let chars = '';
+    let relaxed = false;
+    while (i < line.length && chars.length < length) {
+      const c = line[i];
+      if (/[A-Za-z0-9]/.test(c)) {
+        chars += c;
+        if (/[a-z]/.test(c)) relaxed = true;
+      } else if (SEPARATOR_RE.test(c)) {
+        if (c === '-') relaxed = true;
+      } else break;
+      i++;
+    }
+    if (chars.length !== length || /[A-Za-z0-9]/.test(line[i] ?? '')) continue;
+    if (relaxed && !hasKeyword) continue;
+    if (mod97(chars.toUpperCase())) found.push(line.slice(m.index, i));
   }
-  return false;
+  return found;
 }
 
 /** ISO 7064 MOD 11,10 check digit for the first 10 digits of a German tax ID. */
@@ -119,9 +222,7 @@ export function scanTextDetailed(text, { allowIgnore = false } = {}) {
     for (const m of lineText.matchAll(EMAIL_RE)) {
       if (!isAllowedEmailDomain(m[1])) add('email', m[0]);
     }
-    for (const m of lineText.matchAll(IBAN_RE)) {
-      if (containsIban(m[0])) add('iban', m[0]);
-    }
+    for (const match of findIbans(lineText)) add('iban', match);
     for (const m of lineText.matchAll(TAX_ID_KEYWORD_RE)) add('tax-id', m[0]);
     for (const m of lineText.matchAll(TAX_ID_BARE_RE)) {
       if (isValidTaxId(m[0])) add('tax-id', m[0]);

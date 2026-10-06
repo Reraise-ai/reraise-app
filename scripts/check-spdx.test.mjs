@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright The Worldbuilder contributors
+// REUSE-IgnoreStart
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
@@ -131,3 +132,4 @@ describe('checkSpdx', () => {
     expect(out).toContain('apps/board/LICENSE: missing');
   });
 });
+// REUSE-IgnoreEnd

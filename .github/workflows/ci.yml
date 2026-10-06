@@ -84,6 +84,14 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm audit --audit-level high
 
+  reuse:
+    name: REUSE compliance
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - run: pipx run reuse==6.2.0 lint
+
   gitleaks:
     name: Secret scan (gitleaks, full history)
     runs-on: ubuntu-latest
