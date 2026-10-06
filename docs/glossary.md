@@ -1,0 +1,164 @@
+# Glossary
+
+The repository, code and documentation are in English. The product grew out of German
+concept work, and German terms still appear in the owner's card store and in the original
+definition. This page maps them. Where a German term is a legacy field name in the owner
+card format, the table gives the field of our model that it maps to.
+
+## Domain terms
+
+| German | English (this repository) | Meaning |
+| --- | --- | --- |
+| Weltenbauer | The Worldbuilder | the product |
+| Karte | card | the basic unit of knowledge: a structured, typed element of a world |
+| Welt | world | a modelled slice of reality from one perspective. A card appears in several worlds by reference, never by copy. |
+| Lage | Lage (situation), `lage` card | a concrete decision situation on the board around one guiding question. Stored as a card with a JSON position block. We keep the German word in the UI and use "situation" in prose. |
+| Leitfrage | guiding question | the question every board must have |
+| Brett | board section (legacy) | In the owner store `brett` is a storage classification of a card (`akteure`, `belege`, `entscheidungen`). In our docs "board" means the work surface. Do not confuse the two. |
+| Board | board | the central UX where cards become a situation |
+| Sitz, Sitze | seat, seats | a participant at the board: `{name, kind: human or agent}` |
+| Spieler | player | an actor card shown as a seat with interests, capabilities, dependencies and moves |
+| Zug, Züge | move, moves | an action taken by a player (a player field), or, in the proposal system, a proposed change to the board |
+| Strategem | stratagem | one of the 36 Stratagems (Rieck), a thinking tool offered as a proposal, never as a verdict |
+| Tür | the door | the owner store's validator. Our equivalent is the schema and conformance checks. |
+| Schreibkanal | write channel | the single sanctioned way of writing cards into the owner store |
+| Prämisse | premise | a standing assumption of a world, shown permanently and open to attack |
+| Annahme | assumption | an assumption card, such as a premise or a what-if scenario assumption |
+| Fremdkörper | foreign body | information that does not fit the model. It stays visible in the tray and is never discarded. |
+| Kreislauf | loop | experience, card, world, board, analysis, decision, action, outcome, new experience |
+| Kontextpaket | context package | the selection of cards, relations, decisions and provenance handed to a model or agent |
+| Entscheidungskarte | decision card | card with the 11 sections |
+| Entscheidungsregel | decision rule (Rule) | a rule card evaluated by the Rules panel |
+| Neigungsmesser, Barometer | barometer (removed) | the superseded probability meter. Replaced by the Rules panel. |
+| Freigabe | release | `release`: private, community or commercial. Whether a card may be shared at all. |
+| Sichtbarkeit | visibility | `visibility`: who may see a card. See the values below. |
+| Klasse | class | `class` A, B or C: the sensitivity class of a card |
+| Träger | carrier | legacy field naming the medium or holder of an item. Kept as an adapter-level property. |
+| Zugehörigkeit | affiliation | legacy field for belonging to an organisation or area. Kept as an adapter-level property. |
+| Prüfsumme | checksum | `contentHash` (sha256 of the canonical content) |
+| Quelle | source | where a statement comes from. As a card type: a source card. |
+| Urheber | author | who created the card or edge: `human` or `agent:<name>` |
+| Herkunftssystem | origin system | `originSystem`: which system the content came from |
+| Fundstelle | location in source | exact place in a source (page, timestamp) |
+| Ursprung | origin | the root of a provenance chain. Counters count origins, not cards. |
+| Quellen-Pass | source pass | the provenance view and the counter "N findings · M origins" |
+| Haltung | stance | the user's private position on a card |
+| Trefferquote | hit accuracy | share of resolved forecasts that came true |
+| Quellenprofil | source profile | a multi-dimensional profile of a source. Never a single score. |
+| Prognose | forecast | a checkable expectation with a probability and a resolution criterion |
+| Ergebnis | outcome | the result of a decision. `open` until known. |
+| Nachhalten | follow up (review) | the step that turns a decision and its outcome into experience |
+| Geisterkarte | ghost card (superseded) | replaced by the proposal concept |
+| Zeitreise | time travel (time slider) | showing the board as of an earlier date |
+| Welt-Kollision | world collision | overlaying two worlds on one question |
+| Was-wäre-wenn | what-if | a non-persisting scenario layer |
+| Gatekeeper | gatekeeper | an instance controlling what is visible or relevant |
+| Schranke | disclosure gate | decides per card and per target whether a card may leave. Default deny. |
+
+## Epistemic kinds: layers and stance
+
+| German (legacy `ebene`) | English | Notes |
+| --- | --- | --- |
+| BELEGT, `belegt` | `layer: evidenced` | traceable to a source or an original. Needs `source` or `originSystem`. |
+| GESAGT, `gesagt` | `layer: said` | someone claimed it. Needs `source` or `originSystem`. |
+| ERFAHRUNG, `erfahrung` | `layer: experience` | own experience, evidence of its own kind. Needs an `author`. |
+| GEGLAUBT, `geglaubt` | `stance.position: believed` | **not a layer.** A private overlay per user per card (`believed`, `rejected`, `undecided`). A legacy `ebene: geglaubt` card maps to `layer: said` with the user as author, plus a believed stance. |
+
+## Edge kinds
+
+| German `art` | English `kind` |
+| --- | --- |
+| `stuetzt` | `supports` |
+| `widerlegt` | `refutes` |
+| `vertritt` | `represents` |
+| `zitiert` | `cites` |
+| `beruht_auf` | `based_on` |
+| `abhaengig_von` | `depends_on` |
+| `beziehung` | `relation` |
+| `unbestimmt` | `unspecified` |
+
+A legacy `verknuepfungen` list reads as edges of kind `unspecified`.
+
+## Card and format fields
+
+The English enumeration values in this section for `status`, `visibility` and `classification` are the documented mapping. The normative values are defined by the JSON Schemas in [`schemas/`](https://github.com/Reraise-ai/reraise-app/tree/main/schemas), which win if they differ.
+
+| German field | English field |
+| --- | --- |
+| `id` | `id` |
+| `typ` | `type` |
+| `titel` | `title` |
+| `datum` | `date` |
+| `quelle`, `quelle_datum` | `source`, `sourceDate` |
+| `pruefsumme` | `contentHash` |
+| `status` (`entwurf`, `geprueft`, `freigegeben`) | `status` (`draft`, `checked`, `released`) |
+| `bewertung` | `rating` |
+| `freigabe` (`privat`, `community`, `kommerziell`) | `release` (`private`, `community`, `commercial`) |
+| `sichtbarkeit` | `visibility` |
+| `klasse` | `class` |
+| `format` | `format` |
+| `ebene` | `layer` |
+| `welten` | `worlds` |
+| `einordnung` | `classification` (the owner's own assessment of a foreign statement, as a note) |
+| `urheber` | `author` |
+| `herkunft_system` | `originSystem` |
+| `training` (`ja`, `nein`) | `training` (boolean, default false) |
+| `kanten` (`ziel\|art\|von`) | `edges` (`{target, kind, by}`) |
+| `interessen`, `faehigkeiten`, `abhaengigkeiten`, `zuege` | `interests`, `capabilities`, `dependencies`, `moves` (`{text, source}`) |
+| `level` (reserved) | `level`: reserved for future card tiers. Not an epistemic field. |
+| `signature` (reserved) | `signature`: reserved for author signatures |
+
+Visibility values: `privat` = `private`, `gesellschaftsintern` = `organisation`,
+`partneruebergreifend` = `partners`, `kundensichtbar` = `customers`, `oeffentlich` =
+`public`. Board classification values (`brett`): `akteure` = actors, `belege` = evidence,
+`entscheidungen` = decisions. Author values: `mensch` = `human`.
+
+## Lage fields
+
+| German | English |
+| --- | --- |
+| `frage` | `question` |
+| `optionen` | `options` |
+| `karten` | `cards` (`{id, x, y}`) |
+| `sitze` (`name`, `art`) | `seats` (`name`, `kind`: `human` or `agent`) |
+| `kanten` (`von`, `ziel`, `art`, `wer`) | `edges` (`from`, `to`, `kind`, `by`) |
+| `version`, `stand` | `version`, `updatedAt` |
+| `Stellung` | position (the JSON block section) |
+
+## Decision card fields
+
+| German section | English field |
+| --- | --- |
+| Situation | `situation` |
+| Auslöser | `trigger` |
+| Bedingungen | `conditions` |
+| Fakten | `facts` |
+| Prioritäten | `priorities` |
+| Handlung | `action` |
+| Alternativen | `alternatives` |
+| Ausschluss | `exclusions` |
+| Begründung | `rationale` |
+| Verwendete Karten | `cardsUsed` |
+| Ergebnis (`offen`) | `outcome` (`open`) |
+
+## Source profile dimensions
+
+| German | English |
+| --- | --- |
+| Treffergenauigkeit | `hitAccuracy` |
+| Zuverlässigkeit | `reliability` |
+| Themenkompetenz | `topicCompetence` |
+| Übereinstimmung mit der eigenen Welt | `agreement` |
+| Abweichung von der eigenen Welt | `deviation` |
+| Qualität der verwendeten Quellen | `sourceQuality` |
+| historische Performance | `historicalPerformance` |
+| Wert als Gegenperspektive | `counterPerspectiveValue` |
+
+## Other terms
+
+- **Disclosure targets:** `screen`, `local_model`, `cloud_model`, `demo`.
+- **Thinking levels:** Level 1 (fast, "System 1") and Level 2 (deliberate, "System 2", the board).
+- **Proposal kinds:** `place_card`, `move_card`, `add_edge`, `create_card`, `comment`.
+- **Adapters:** `StorageAdapter`, `SourceConnector`, `ModelConnector`, `DisclosureGate`.
+- **ICD 203:** the intelligence-community standard of verbal probability bands used for
+  stored probability phrases.
