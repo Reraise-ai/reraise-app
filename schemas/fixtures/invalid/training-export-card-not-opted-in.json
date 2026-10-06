@@ -33,7 +33,7 @@
         "cardsUsed": ["01M1E34QM03WVTE8T1RYS3AM18", "01M1EMA1R0AH9ZTK3YJK33TNER"],
         "outcome": "open"
       },
-      "contentHash": "sha256:fbf55681b500bd134733e2e8722d9cfc0fe7ccab8c313204804ab4e5a6769a4e"
+      "contentHash": "sha256:c42a7597503258bbdecd5347f317e92c4587d047f1c8dc0b102c0412ed79b947"
     },
     "usedCards": [
       {
@@ -55,7 +55,7 @@
         "externalId": "01M1E34QM03WVTE8T1RYS3AM18",
         "uri": "wb:45aaff12-777f-40e3-a97c-8a592e1ea4f6/01M1E34QM03WVTE8T1RYS3AM18",
         "body": "A (fictional) wire agency reports that the coastal state will restrict night\ntransits of laden tankers through the strait from 1 October.\n\nThis card is the origin of the provenance chain in this example: the two\nmedia cards below only repeat it.\n",
-        "contentHash": "sha256:45c6a963ad864b7999896972573a537f8e7707ea9b09ffd5f1dbf428cdf84399"
+        "contentHash": "sha256:0da4ef9bbdf630dd457e6f843ffd3c6090fce56b1d2eee23e8cfa19710cb51ac"
       },
       {
         "id": "01M1EMA1R0AH9ZTK3YJK33TNER",
@@ -70,7 +70,7 @@
         "externalId": "01M1EMA1R0AH9ZTK3YJK33TNER",
         "uri": "wb:45aaff12-777f-40e3-a97c-8a592e1ea4f6/01M1EMA1R0AH9ZTK3YJK33TNER",
         "body": "Own (invented) experience: during an earlier tension phase, war-risk\ninsurance quotes for the strait rose sharply within one day of the first\nannouncement.\n",
-        "contentHash": "sha256:623e86756d42bad52573b6f5fb51c12a6d6a55474321e30aa14458ef9991db0c"
+        "contentHash": "sha256:656f2dbcda2b610966efdf8f87196e05c14b1d604db14dd13caf0f1b2060c465"
       }
     ],
     "lage": {

@@ -18,7 +18,9 @@ is the content hash computed?
 ## Decision Drivers
 
 - The same content yields the same hash in every adapter, language and runtime.
-- Store identity, reserved fields and store-carried fields must not change the hash.
+- The same information in two stores must hash identically, so that copies count as one origin
+  ([ADR-0009](0009-mandatory-provenance.md), [ADR-0021](0021-privacy-and-sharing-model.md)).
+- Store identity, reserved fields and user or organisational metadata must not change the hash.
 - Stance data never enters a card and never enters the hash
   ([ADR-0008](0008-believed-as-private-stance.md)).
 - A published canonicalisation instead of an invented one.
@@ -34,11 +36,15 @@ is the content hash computed?
 Chosen option: "RFC 8785 (JCS) of the card content", because it is a published,
 language-neutral canonical form, and the canonical card is already JSON.
 
-- Input: the canonical card content (`card.schema.json#/$defs/content`) without `id`,
-  `externalId`, `uri`, `contentHash`, `signature`, `level` and the store-carried fields
-  `typeRaw`, `rating`, `carrier` and `affiliation` ([ADR-0023](0023-core-domain-model.md)).
-  Stance data is not part of the card and therefore never hashed. Members whose value is
-  absent are omitted; every other field, including `body`, is hashed.
+- Input (CTO decision): only the substantive fields that identify the information itself:
+  `type`, `title`, `body`, `layer`, `source`, `sourceDate`, `sourceChecksum`, `date`, the
+  player fields (`interests`, `capabilities`, `dependencies`, `moves`) and the structured
+  sections (`sections`, `lage`, `rule`). Absent fields are omitted.
+- Excluded: identity (`id`, `externalId`, `uri`), `contentHash`, `signature`, `level`, and all
+  user or organisational metadata: `worlds`, `visibility`, `release`, `class`, `status`,
+  `training`, `tags`, `rating`, `carrier`, `affiliation`, `collection`, `author`,
+  `originSystem`, `edges`, `typeRaw`, `format`. Stance data is not a card field and never
+  hashed.
 - Serialisation: RFC 8785. Object keys are sorted by UTF-16 code units, strings and numbers
   use the ECMAScript JSON rules, no whitespace. Text is hashed as stored: no Unicode
   normalisation is applied, so differently normalised text yields a different hash.
@@ -51,18 +57,21 @@ language-neutral canonical form, and the canonical card is already JSON.
 ### Consequences
 
 - Good, because every adapter computes the same hash, testable with published vectors.
-- Good, because changes to store-only fields or identity do not look like content changes.
-- Bad, because the hash covers user metadata such as `worlds`, `visibility`, `class` and
-  `training`, so the same text in two stores may hash differently; cross-user origin matching
-  needs its own key when the platform work starts.
-- Bad, because adding a canonical field changes the hash of cards that use it.
+- Good, because the same information in two stores, with different worlds, classes, authors or
+  edges, hashes identically and counts as one origin.
+- Good, because changes to metadata or identity do not look like content changes.
+- Bad, because the hash cannot serve as the optimistic-concurrency guard for metadata changes
+  (for example a changed `class`); adapters guard such writes by their own version or file
+  state ([ADR-0006](0006-files-are-the-truth.md)).
+- Bad, because adding a field to the hashed list changes the hash of cards that use it; that
+  needs an ADR.
 
 ### Confirmation
 
 Unit tests in `packages/core` with the RFC 8785 example, key order, Unicode and number
 formatting vectors and a pinned card vector; the fixture reader repeats the pinned vector;
-the conformance kit checks that every card read carries the hash of its content and that a
-patch changes it.
+the conformance kit checks that every card read carries the hash of its content, that a patch
+of the title changes it, and that metadata does not.
 
 ## Pros and Cons of the Options
 

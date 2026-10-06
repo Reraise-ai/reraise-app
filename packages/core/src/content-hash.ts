@@ -8,20 +8,26 @@ import type { CardContent, DisclosurePreviewEnvelope } from './generated/contrac
 import { sha256 } from './ids.js';
 
 /**
- * Fields never hashed: identity, the hash itself, reserved fields, and fields a store carries
- * without product semantics (ADR-0023). Stance data is not a card field and never hashed.
+ * The substantive card fields that identify the information itself (ADR-0034). Everything
+ * else is identity, the hash itself, reserved, or user and organisational metadata, which
+ * differs between stores holding the same information; stance data is never a card field.
  */
-export const CONTENT_HASH_EXCLUDED = [
-  'id',
-  'externalId',
-  'uri',
-  'contentHash',
-  'signature',
-  'level',
-  'typeRaw',
-  'rating',
-  'carrier',
-  'affiliation',
+export const CONTENT_HASH_FIELDS = [
+  'type',
+  'title',
+  'body',
+  'layer',
+  'source',
+  'sourceDate',
+  'sourceChecksum',
+  'date',
+  'interests',
+  'capabilities',
+  'dependencies',
+  'moves',
+  'sections',
+  'lage',
+  'rule',
 ] as const;
 
 /** Compare strings by UTF-16 code units, as RFC 8785 requires for object keys. */
@@ -53,8 +59,10 @@ export function canonicalJson(value: unknown): string {
 
 /** The part of a card that the content hash covers. */
 export function hashedContent(card: CardContent): Record<string, unknown> {
-  const content: Record<string, unknown> = { ...card };
-  for (const key of CONTENT_HASH_EXCLUDED) delete content[key];
+  const content: Record<string, unknown> = {};
+  for (const key of CONTENT_HASH_FIELDS) {
+    if (card[key] !== undefined) content[key] = card[key];
+  }
   return content;
 }
 

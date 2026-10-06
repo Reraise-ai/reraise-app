@@ -148,6 +148,10 @@ export function describeStorageAdapterConformance(
       const card = await adapter.read(id);
       expect(card?.contentHash).toBe(computeContentHash(card!));
       expect((await (await reopen()).read(id))?.contentHash).toBe(card?.contentHash);
+      await adapter.patch(id, { class: 'A', tags: ['metadata'] });
+      expect((await adapter.read(id))?.contentHash, 'metadata is not content').toBe(
+        card?.contentHash,
+      );
       await adapter.patch(id, { title: 'Hash changes' });
       const patched = await adapter.read(id);
       expect(patched?.contentHash).toBe(computeContentHash(patched!));

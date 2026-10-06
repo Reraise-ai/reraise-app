@@ -43,7 +43,7 @@ describe('content hash (ADR-0034)', () => {
       source: 'https://example.org/a',
     };
     expect(computeContentHash({ ...card, id: ID, rating: 3 })).toBe(
-      'sha256:5f059177300e2c462fbc2597881b0dc6793d009f0a6e6f92625e4f98093cbcec',
+      'sha256:399ebae5060e1018f43fe6c9faa97ceea3cbc28b0abc740df50cc4c659b5cd27',
     );
     expect(canonicalJson({ b: 1, '\u20ac': [1e21, undefined], a: { d: 0.1 } })).toBe(
       '{"a":{"d":0.1},"b":1,"€":[1e+21,null]}',

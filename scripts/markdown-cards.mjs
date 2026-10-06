@@ -71,18 +71,23 @@ export const DECISION_HEADINGS = [
 
 const ULID_RE = /[0-7][0-9A-HJKMNP-TV-Z]{25}/;
 
-/** Fields excluded from the content hash (ADR-0034); same list as packages/core. */
-export const CONTENT_HASH_EXCLUDED = [
-  'id',
-  'externalId',
-  'uri',
-  'contentHash',
-  'signature',
-  'level',
-  'typeRaw',
-  'rating',
-  'carrier',
-  'affiliation',
+/** Fields covered by the content hash (ADR-0034); same list as packages/core. */
+export const CONTENT_HASH_FIELDS = [
+  'type',
+  'title',
+  'body',
+  'layer',
+  'source',
+  'sourceDate',
+  'sourceChecksum',
+  'date',
+  'interests',
+  'capabilities',
+  'dependencies',
+  'moves',
+  'sections',
+  'lage',
+  'rule',
 ];
 
 /** RFC 8785 (JCS) serialisation. */
@@ -100,10 +105,10 @@ export function canonicalJson(value) {
   return JSON.stringify(value);
 }
 
-/** `sha256:<hex>` over the JCS serialisation of the card without the excluded fields. */
+/** `sha256:<hex>` over the JCS serialisation of the substantive card fields. */
 export function computeContentHash(card) {
-  const content = { ...card };
-  for (const key of CONTENT_HASH_EXCLUDED) delete content[key];
+  const content = {};
+  for (const key of CONTENT_HASH_FIELDS) if (card[key] !== undefined) content[key] = card[key];
   return `sha256:${createHash('sha256').update(canonicalJson(content), 'utf8').digest('hex')}`;
 }
 

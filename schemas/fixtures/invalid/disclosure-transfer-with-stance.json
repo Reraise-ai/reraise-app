@@ -10,7 +10,7 @@
     "transferId": "01M1HA4MC0T8585XX5H0E6NVRP",
     "purpose": "level1",
     "cardIds": ["01M1E34QM03WVTE8T1RYS3AM18"],
-    "payloadHash": "sha256:3bc5c3c20528fa770ea9cdcf25b820407a994c8797161fca3aad166b1563ef4a",
+    "payloadHash": "sha256:db4bc27a862c21237ea43dec0c237eb75ce72127bb653b45a16d03f9d493c373",
     "preview": {
       "target": "cloud_model",
       "connectorId": "jev-stub",
@@ -46,7 +46,7 @@
           "externalId": "01M1E34QM03WVTE8T1RYS3AM18",
           "uri": "wb:45aaff12-777f-40e3-a97c-8a592e1ea4f6/01M1E34QM03WVTE8T1RYS3AM18",
           "body": "A (fictional) wire agency reports that the coastal state will restrict night\ntransits of laden tankers through the strait from 1 October.\n\nThis card is the origin of the provenance chain in this example: the two\nmedia cards below only repeat it.\n",
-          "contentHash": "sha256:45c6a963ad864b7999896972573a537f8e7707ea9b09ffd5f1dbf428cdf84399",
+          "contentHash": "sha256:0da4ef9bbdf630dd457e6f843ffd3c6090fce56b1d2eee23e8cfa19710cb51ac",
           "stance": {
             "position": "believed"
           }

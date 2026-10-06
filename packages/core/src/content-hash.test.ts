@@ -3,7 +3,13 @@
 
 import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { canonicalJson, computeContentHash, computePayloadHash, hashJcs } from './content-hash.js';
+import {
+  canonicalJson,
+  computeContentHash,
+  computePayloadHash,
+  hashJcs,
+  hashedContent,
+} from './content-hash.js';
 
 const card = {
   format: 2 as const,
@@ -51,7 +57,7 @@ describe('canonicalJson (RFC 8785)', () => {
 
 describe('computeContentHash (ADR-0034)', () => {
   it('is sha256: plus the hex digest of the JCS serialisation', () => {
-    const jcs = canonicalJson(card);
+    const jcs = canonicalJson(hashedContent(card));
     const hex = createHash('sha256').update(jcs, 'utf8').digest('hex');
     expect(computeContentHash(card)).toBe(`sha256:${hex}`);
     expect(computeContentHash(card)).toMatch(/^sha256:[0-9a-f]{64}$/);
@@ -59,11 +65,11 @@ describe('computeContentHash (ADR-0034)', () => {
 
   it('pins one vector so the definition never changes silently', () => {
     expect(computeContentHash(card)).toMatchInlineSnapshot(
-      `"sha256:5f059177300e2c462fbc2597881b0dc6793d009f0a6e6f92625e4f98093cbcec"`,
+      `"sha256:399ebae5060e1018f43fe6c9faa97ceea3cbc28b0abc740df50cc4c659b5cd27"`,
     );
   });
 
-  it('ignores key order, identity, reserved and store-carried fields', () => {
+  it('ignores key order, identity, reserved fields and all user or store metadata', () => {
     const reordered = Object.fromEntries(Object.entries(card).reverse()) as typeof card;
     const withIdentity = {
       ...card,
@@ -75,13 +81,39 @@ describe('computeContentHash (ADR-0034)', () => {
       rating: 3,
       carrier: 'c',
       affiliation: 'a',
+      format: 2 as const,
+      author: 'agent:other',
+      originSystem: 'Another store',
+      collection: 'evidence' as const,
+      worlds: ['01M1DZPW00JGXPRPG4179ZPNB8'],
+      visibility: 'public' as const,
+      release: 'community' as const,
+      class: 'A' as const,
+      status: 'checked' as const,
+      training: true,
+      tags: ['x'],
+      edges: [{ target: '01M1E34QM03WVTE8T1RYS3AM18', kind: 'cites' as const, by: 'human' }],
     };
     expect(computeContentHash(reordered)).toBe(computeContentHash(card));
     expect(computeContentHash(withIdentity)).toBe(computeContentHash(card));
   });
 
+  it('hashes the same information in two stores identically (ADR-0009, ADR-0021)', () => {
+    const inStoreA = { ...card, worlds: ['01M1DZPW00JGXPRPG4179ZPNB8'], class: 'C' as const };
+    const inStoreB = {
+      ...card,
+      author: 'unknown',
+      format: 1 as const,
+      visibility: 'public' as const,
+    };
+    expect(computeContentHash(inStoreA)).toBe(computeContentHash(inStoreB));
+    expect(Object.keys(hashedContent(card)).sort()).toEqual(['layer', 'source', 'title', 'type']);
+  });
+
   it('changes with any content change, including Unicode normalisation of the text', () => {
     expect(computeContentHash({ ...card, title: 'A claim!' })).not.toBe(computeContentHash(card));
+    expect(computeContentHash({ ...card, body: 'More.' })).not.toBe(computeContentHash(card));
+    expect(computeContentHash({ ...card, layer: 'evidenced' })).not.toBe(computeContentHash(card));
     expect(computeContentHash({ ...card, title: 'Müller' })).not.toBe(
       computeContentHash({ ...card, title: 'Müller' }),
     );
