@@ -1,0 +1,4 @@
+// markdownlint settings for ADRs: prose and tables are not hard-wrapped.
+{
+  "MD013": false
+}
