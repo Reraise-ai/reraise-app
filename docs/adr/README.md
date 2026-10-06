@@ -6,7 +6,9 @@ considered options, the chosen option with its justification, and the
 consequences. Where a decision overrides the earlier German concept
 (concept v1), the ADR says so in a "Supersedes concept v1" line;
 [ADR-0024](0024-concept-v1-reconciliation.md) lists every concept item and
-its fate.
+its fate. References in ADRs to `docs/01-vision.md` through `docs/05-roadmap.md` (the German
+concept documents) point to the version at commit `c2b39de`, because those files were removed
+from the working tree. See the [concept v1 notes](../product/concept-v1-notes.md).
 
 ## How to add an ADR
 
@@ -51,3 +53,4 @@ MCP tool definitions, the adapter interfaces, or the product canon
 | [0024](0024-concept-v1-reconciliation.md) | Reconciliation of concept v1 with the product hand-over | accepted | 2026-10-06 |
 | [0025](0025-engineering-process-and-quality-gates.md) | Engineering process and quality gates | accepted | 2026-10-06 |
 | [0026](0026-security-defaults.md) | Security defaults for the Board API and the MCP server | accepted | 2026-10-06 |
+| [0027](0027-card-format-mapping-addenda.md) | Card format mapping addenda: Lage heading and archive folder | accepted | 2026-10-06 |
