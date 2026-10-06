@@ -1,5 +1,10 @@
 {
   "extends": "../../tsconfig.base.json",
-  "compilerOptions": { "rootDir": "src", "noEmit": true },
+  "compilerOptions": {
+    "noEmit": true,
+    "paths": {
+      "@worldbuilder/core": ["../core/src/index.ts"]
+    }
+  },
   "include": ["src"]
 }
