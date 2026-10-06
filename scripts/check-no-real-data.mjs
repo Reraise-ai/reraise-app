@@ -24,7 +24,6 @@ const SKIP_EXT = new Set(['.png', '.jpg', '.jpeg', '.gif', '.ico', '.woff', '.wo
  */
 export const IGNORE_MARKER = 'no-real-data-ignore';
 
-const SEP = String.raw`[\s\u00a0-]`;
 const EMAIL_RE = /[A-Za-z0-9._%+-]+@((?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,})\b/g;
 const TAX_ID_KEYWORD_RE =
   /(?:steuer-?id|steueridentifikationsnummer|idnr|tax[ -]?id)\W{0,12}(\d{2}\s?\d{3}\s?\d{3}\s?\d{3})\b/gi; // no-real-data-ignore
