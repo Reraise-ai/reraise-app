@@ -259,8 +259,11 @@ paths:
       operationId: context_package_get
       summary: Build a context package
       description: >-
-        Builds a gate-cleared context package for the caller's target. No side effects. A
-        cloud_model package needs a confirmed transfer (see disclosure_confirm).
+        Builds a gate-cleared context package for the caller's target. For a cloud_model
+        caller (including an MCP connection registered as cloud_model) the package carries card
+        content only when the request names a confirmed transfer and its single-use
+        confirmation token, which the service consumes atomically before sending; otherwise it
+        lists only the denied card ids and reasons (ADR-0031). No other side effects.
       tags: [world]
       requestBody:
         required: true
@@ -563,9 +566,12 @@ paths:
       operationId: disclosure_confirm
       summary: Confirm one cloud transfer
       description: >-
-        Human-only. Confirms exactly the previewed payload: the body carries its `payloadHash`.
-        A different hash or a second confirmation is rejected with 409, an expired transfer
-        with 410. There is no standing consent (ADR-0012, ADR-0031).
+        Human-only. Confirms exactly the previewed payload: the body carries its `payloadHash`,
+        and the service also recomputes the hash of the current envelope. A different hash or a
+        second confirmation is rejected with 409, an expired transfer with 410. The response
+        issues a single-use confirmation token (at least 128 bits, bound to this human session,
+        valid 5 minutes, held in memory only) that the send call carries. There is no standing
+        consent (ADR-0012, ADR-0031).
       tags: [human-only]
       x-human-only: true
       security:
@@ -578,7 +584,7 @@ paths:
               $ref: '../disclosure-decision.schema.json#/$defs/confirmRequest'
       responses:
         '200':
-          description: The confirmation.
+          description: The confirmation with its single-use token.
           content:
             application/json:
               schema:
@@ -664,7 +670,7 @@ components:
           schema:
             $ref: '../api.schema.json#/$defs/problem'
     Gone:
-      description: The transfer has expired; preview it again.
+      description: The transfer or its token has expired; preview it again.
       content:
         application/problem+json:
           schema:

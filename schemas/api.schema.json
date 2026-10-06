@@ -113,6 +113,13 @@
         },
         "nextCursor": {
           "$ref": "#/$defs/cursor"
+        },
+        "denied": {
+          "description": "Cards the gate withheld for the caller's target, by id and reason (ADR-0031).",
+          "type": "array",
+          "items": {
+            "$ref": "disclosure-decision.schema.json#/$defs/denied"
+          }
         }
       },
       "required": ["cards"],

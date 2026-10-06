@@ -1,0 +1,20 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/gate-rules.schema.json#/$defs/fragment",
+  "description": "An adapter fragment can never allow (ADR-0031).",
+  "expect": {
+    "keyword": "const",
+    "instancePath": "/rules/0/effect"
+  },
+  "data": {
+    "source": "example-store-adapter",
+    "rules": [
+      {
+        "id": "widen",
+        "effect": "allow",
+        "targets": ["cloud_model"],
+        "match": {}
+      }
+    ]
+  }
+}

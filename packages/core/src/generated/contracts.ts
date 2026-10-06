@@ -189,6 +189,10 @@ export type StanceWeight = number;
  */
 export type PayloadHash = string;
 /**
+ * Opaque single-use token, base64url of at least 16 random bytes (128 bits).
+ */
+export type ConfirmationToken = string;
+/**
  * A decision card: a format-2 card of type decision with exactly eleven non-empty sections (ADR-0017). Saving one is a human-only operation (ADR-0016).
  */
 export type Decision = Card & {
@@ -309,6 +313,10 @@ export interface CardsSearchRequest {
 export interface CardPage {
   cards: Card[];
   nextCursor?: Cursor;
+  /**
+   * Cards the gate withheld for the caller's target, by id and reason (ADR-0031).
+   */
+  denied?: DeniedCard[];
 }
 /**
  * All card fields with the format v2 rules. Shared by Card (identity required) and CardDraft (identity forbidden).
@@ -480,6 +488,13 @@ export interface StanceCondition {
   card: CardId;
   position: StancePosition;
 }
+/**
+ * A card the gate withheld from this response, with the reason; never its content.
+ */
+export interface DeniedCard {
+  cardId: CardId;
+  reason: Text;
+}
 export interface ProposalListRequest {
   status?: 'pending' | 'accepted' | 'rejected';
   lageId?: CardId;
@@ -542,7 +557,7 @@ export interface Problem {
   detail?: string;
 }
 /**
- * What a model or agent receives about the active world (ADR-0016, ADR-0024 item 34). Built after the disclosure gate: every item is gate-cleared for `target`; denied cards are omitted and only counted in `withheld`. Layers are never merged into a score. Only accepted content appears as items; pending proposals are listed separately. Stance data appears only for target screen; a cloud_model package needs the user's per-transfer confirmation.
+ * What a model or agent receives about the active world (ADR-0016, ADR-0024 item 34). Built after the disclosure gate: every item is gate-cleared for `target`; denied cards are omitted and only counted in `withheld`. Layers are never merged into a score. Only accepted content appears as items; pending proposals are listed separately. Stance data appears only for target screen; a cloud_model package carries content only with a confirmed, consumed transfer token.
  */
 export interface ContextPackage {
   id: Ulid;
@@ -562,6 +577,10 @@ export interface ContextPackage {
    */
   withheld: number;
   transfer?: ContextTransferRef;
+  /**
+   * Cards the gate withheld, by id and reason. A cloud_model package without a confirmed transfer contains only these (ADR-0031).
+   */
+  denied?: DeniedCard[];
 }
 /**
  * One card for the target, with its provenance and gate decision. Layer and author are those of the card; a card without a layer is unclassified (ADR-0007).
@@ -639,13 +658,15 @@ export interface ContextTransferRef {
   payloadHash: PayloadHash;
 }
 /**
- * Input of context_package_get. The target is taken from the caller's registered connection, never from the request (ADR-0012).
+ * Input of context_package_get. The target is taken from the caller's registered connection, never from the request (ADR-0012). A cloud_model send carries the confirmation token of the transfer that previewed exactly this package (ADR-0031).
  */
 export interface ContextPackageRequest {
   worldId: WorldId;
   lageId?: CardId;
   question?: Text;
   maxItems?: number;
+  transferId?: Ulid;
+  confirmationToken?: ConfirmationToken;
 }
 /**
  * Result of DisclosureGate.decide(card, target) (ADR-0012). Default deny: without a matching allow rule the decision is deny. An allow for cloud_model is only valid with the user's per-transfer confirmation. Stance data is allowed for target screen only. Decisions are logged without card content.
@@ -663,7 +684,7 @@ export interface DisclosureDecision {
    * True when the decision is deny only because the per-transfer confirmation is missing.
    */
   confirmationRequired?: boolean;
-  confirmation?: DisclosureConfirmation;
+  confirmation?: DisclosureConfirmationRef;
   decidedAt: DateTime;
 }
 /**
@@ -674,20 +695,19 @@ export interface DisclosureSubject {
   cardId: CardId;
 }
 /**
- * The user's confirmation of one transfer. No standing consent: it covers this payload only.
+ * Reference to a confirmed transfer whose token was consumed for this send; recorded in gate decisions and context packages. Contains no token.
  */
-export interface DisclosureConfirmation {
+export interface DisclosureConfirmationRef {
   transferId: Ulid;
   payloadHash: PayloadHash;
   /**
    * @minItems 1
    */
   cardIds: CardId[];
-  confirmedBy: HumanAuthor;
   confirmedAt: DateTime;
 }
 /**
- * A previewed cloud_model transfer awaiting the user's confirmation (ADR-0012, ADR-0031). `cardIds` lists the ids of the objects in the envelope; `payloadHash` must be echoed by the confirmation; the transfer expires at `expiresAt` and can be confirmed once.
+ * A previewed cloud_model transfer awaiting the user's confirmation (ADR-0012, ADR-0031). The record lives in memory on the service, expires 5 minutes after the preview, and is void after a restart. `cardIds` lists the ids of the objects in the envelope; `payloadHash` must be echoed by the confirmation.
  */
 export interface DisclosureTransfer {
   transferId: Ulid;
@@ -725,10 +745,25 @@ export interface DisclosureModelRequest {
   outputSchema?: Record<string, unknown>;
 }
 /**
- * Body of the human-only confirm operation. The server rejects a payloadHash that differs from the transfer's (409), an expired transfer (410) and a second confirmation of the same transfer (409).
+ * Body of the human-only confirm operation (the transferId is in the path). The service rejects a payloadHash that differs from the stored one or from the hash of the current envelope, and a second confirmation (409), and an expired transfer (410).
  */
 export interface DisclosureConfirmRequest {
   payloadHash: PayloadHash;
+}
+/**
+ * Response of the human-only confirm operation (ADR-0031): a single-use confirmation token, at least 128 random bits, held server side, bound to the confirming human session, valid for 5 minutes and void after a restart. The send call carries it; the service consumes it atomically before sending an envelope whose hash equals `payloadHash`. Never logged.
+ */
+export interface DisclosureConfirmation {
+  transferId: Ulid;
+  payloadHash: PayloadHash;
+  /**
+   * @minItems 1
+   */
+  cardIds: CardId[];
+  token: ConfirmationToken;
+  tokenExpiresAt: DateTime;
+  confirmedBy: HumanAuthor;
+  confirmedAt: DateTime;
 }
 /**
  * Body of the human-only preview operation: what the user wants to send. The server builds the envelope from gate-cleared canonical objects only.
@@ -762,7 +797,7 @@ export interface Finding2 {
   retrievedAt: DateTime;
 }
 /**
- * Disclosure-gate configuration (ADR-0012, ADR-0031): allow and deny rules per target. A card is allowed for a target only if at least one allow rule matches it and no deny rule does: deny wins, and without a matching allow rule the decision is deny. Rules match card fields only; nothing matches stance data, which stays on the screen whatever the rules say (ADR-0008).
+ * Disclosure-gate configuration (ADR-0012, ADR-0031): the user's rule file (`<state>/gate-rules.yaml`), with allow and deny rules per target. A card is allowed for a target only if at least one allow rule matches it and no deny rule does: deny wins, and without a matching allow rule the decision is deny. Rules match card fields only; nothing matches stance data, which stays on the screen whatever the rules say (ADR-0008).
  */
 export interface GateRules {
   rules: GateRule[];
@@ -778,7 +813,7 @@ export interface GateRule {
   description?: string;
 }
 /**
- * All given criteria must hold (AND); within one criterion any listed value matches (OR). At least one criterion: a rule never matches every card by accident.
+ * All given criteria must hold (AND); within one criterion any listed value matches (OR). An empty match matches every card.
  */
 export interface GateMatch {
   /**
@@ -794,11 +829,11 @@ export interface GateMatch {
    */
   collection?: Collection[];
   /**
-   * Matches if the card appears in any of these worlds.
+   * Matches if the card appears in any of these worlds, given by name or id.
    *
    * @minItems 1
    */
-  worlds?: WorldId[];
+  worlds?: Text[];
   /**
    * @minItems 1
    */
@@ -817,6 +852,18 @@ export interface GateMatch {
    * Matches cards of a store whose configuration says synthetic: true (demo clearance, ADR-0028).
    */
   syntheticStore?: true;
+}
+/**
+ * Rules supplied by an adapter for its sensitive classes (ADR-0031). Deny rules only: a fragment with an allow rule is rejected at load time, so an adapter can only narrow what leaves the device.
+ */
+export interface GateRuleFragment {
+  /**
+   * The adapter that supplies the fragment.
+   */
+  source: string;
+  rules: (GateRule & {
+    effect?: 'deny';
+  })[];
 }
 /**
  * A fast, typed level-1 answer (ADR-0015). It is an attributed engine estimate ('<engine> estimates 0.82 for X'), never a verdict: it does not count as a decision, does not trigger rules and does not enter statistics. `choice` is one of `options`. World changes it implies arrive as proposals by agent:<engine>.

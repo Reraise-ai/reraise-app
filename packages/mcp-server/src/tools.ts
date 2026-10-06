@@ -7,6 +7,8 @@
 // (parity test in tools.test.ts). proposal_create is the only tool with side effects
 // (ADR-0011); there is no tool that reads or writes stances (ADR-0008). Identity and
 // disclosure target come from the registered connection, never from tool input (ADR-0012).
+// A connection registered as cloud_model receives card content only through a confirmed,
+// hash-bound transfer; otherwise responses carry the denied ids and reasons only (ADR-0031).
 
 export const SCHEMA_BASE = 'https://worldbuilder.invalid/schemas/v0/';
 

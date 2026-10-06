@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://worldbuilder.invalid/schemas/v0/context-package.schema.json",
   "title": "ContextPackage",
-  "description": "What a model or agent receives about the active world (ADR-0016, ADR-0024 item 34). Built after the disclosure gate: every item is gate-cleared for `target`; denied cards are omitted and only counted in `withheld`. Layers are never merged into a score. Only accepted content appears as items; pending proposals are listed separately. Stance data appears only for target screen; a cloud_model package needs the user's per-transfer confirmation.",
+  "description": "What a model or agent receives about the active world (ADR-0016, ADR-0024 item 34). Built after the disclosure gate: every item is gate-cleared for `target`; denied cards are omitted and only counted in `withheld`. Layers are never merged into a score. Only accepted content appears as items; pending proposals are listed separately. Stance data appears only for target screen; a cloud_model package carries content only with a confirmed, consumed transfer token.",
   "type": "object",
   "properties": {
     "id": {
@@ -46,6 +46,13 @@
     },
     "transfer": {
       "$ref": "#/$defs/transferRef"
+    },
+    "denied": {
+      "description": "Cards the gate withheld, by id and reason. A cloud_model package without a confirmed transfer contains only these (ADR-0031).",
+      "type": "array",
+      "items": {
+        "$ref": "disclosure-decision.schema.json#/$defs/denied"
+      }
     }
   },
   "required": [
@@ -85,7 +92,7 @@
       }
     },
     {
-      "description": "A cloud_model package carries the user's confirmation of this transfer.",
+      "description": "A cloud_model package carries card content only with a confirmed transfer whose token was consumed for it (ADR-0031); without one it has no items, only denied ids.",
       "if": {
         "properties": {
           "target": {
@@ -95,10 +102,22 @@
         "required": ["target"]
       },
       "then": {
-        "properties": {
-          "transfer": true
-        },
-        "required": ["transfer"]
+        "anyOf": [
+          {
+            "properties": {
+              "transfer": true
+            },
+            "required": ["transfer"]
+          },
+          {
+            "properties": {
+              "items": {
+                "type": "array",
+                "maxItems": 0
+              }
+            }
+          }
+        ]
       },
       "else": {
         "not": {
@@ -231,7 +250,7 @@
     },
     "request": {
       "title": "ContextPackageRequest",
-      "description": "Input of context_package_get. The target is taken from the caller's registered connection, never from the request (ADR-0012).",
+      "description": "Input of context_package_get. The target is taken from the caller's registered connection, never from the request (ADR-0012). A cloud_model send carries the confirmation token of the transfer that previewed exactly this package (ADR-0031).",
       "type": "object",
       "properties": {
         "worldId": {
@@ -247,10 +266,20 @@
           "type": "integer",
           "minimum": 1,
           "maximum": 500
+        },
+        "transferId": {
+          "$ref": "common.schema.json#/$defs/ulid"
+        },
+        "confirmationToken": {
+          "$ref": "disclosure-decision.schema.json#/$defs/confirmationToken"
         }
       },
       "required": ["worldId"],
-      "additionalProperties": false
+      "additionalProperties": false,
+      "dependentRequired": {
+        "transferId": ["confirmationToken"],
+        "confirmationToken": ["transferId"]
+      }
     }
   }
 }

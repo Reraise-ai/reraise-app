@@ -14,11 +14,17 @@
         "description": "The local user sees their own cards."
       },
       {
+        "id": "screen-all",
+        "effect": "allow",
+        "targets": ["screen"],
+        "match": {}
+      },
+      {
         "id": "hormuz-class-c-models",
         "effect": "allow",
         "targets": ["local_model", "cloud_model"],
         "match": {
-          "worlds": ["01M1DZPW00JGXPRPG4179ZPNB8"],
+          "worlds": ["Hormuz"],
           "class": ["C"]
         }
       },

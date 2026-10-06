@@ -3,7 +3,13 @@
 //
 // Conformance kit for DisclosureGate implementations (ADR-0008, ADR-0012, ADR-0031).
 
-import type { Card, DisclosureGate, DisclosureTarget } from '@worldbuilder/core';
+import type {
+  Card,
+  DisclosureGate,
+  DisclosureTarget,
+  DisclosureTransfer,
+  GateRuleFragment,
+} from '@worldbuilder/core';
 import { computePayloadHash } from '@worldbuilder/core';
 import { describe, expect, it } from 'vitest';
 
@@ -15,6 +21,8 @@ export interface DisclosureGateHarness {
    * rule also matches `deniedCard` for every target.
    */
   readonly configured: DisclosureGate;
+  /** The `configured` rules plus an adapter fragment; must throw if the fragment allows. */
+  withFragment(fragment: GateRuleFragment): DisclosureGate;
   readonly card: Card;
   readonly deniedCard: Card;
   /** A card no rule matches. */
@@ -26,6 +34,8 @@ export type DisclosureGateFactory = (now: () => Date) => DisclosureGateHarness;
 
 const TARGETS: readonly DisclosureTarget[] = ['screen', 'local_model', 'cloud_model', 'demo'];
 const request = { question: 'Conformance?', options: ['yes', 'no'] };
+const SESSION = 'session-a';
+const FIVE_MINUTES = 5 * 60 * 1000;
 
 const codeOf = (fn: () => unknown): unknown => {
   try {
@@ -35,6 +45,9 @@ const codeOf = (fn: () => unknown): unknown => {
   }
   return 'no error';
 };
+
+/** Bits of entropy carried by a base64url token. */
+const tokenBits = (token: string) => Math.floor(token.replace(/=+$/, '').length * 6);
 
 export function describeDisclosureGateConformance(
   name: string,
@@ -48,6 +61,13 @@ export function describeDisclosureGateConformance(
     };
     const previewOf = (gate: DisclosureGate, cards: Card[]) =>
       gate.preview({ connectorId: 'conformance', purpose: 'level1', request, cards });
+    const confirm = (gate: DisclosureGate, t: DisclosureTransfer, sessionId = SESSION) =>
+      gate.confirm({
+        transferId: t.transferId,
+        payloadHash: t.payloadHash,
+        sessionId,
+        currentEnvelope: t.preview,
+      });
 
     it.each(TARGETS)('denies %s by default (no rule)', (target) => {
       const { empty, card } = setup();
@@ -79,73 +99,185 @@ export function describeDisclosureGateConformance(
       }
     });
 
+    it('rejects an adapter fragment that allows, and lets a deny fragment narrow', () => {
+      const { withFragment, card } = setup();
+      const allow: GateRuleFragment = {
+        source: 'conformance-adapter',
+        rules: [{ id: 'widen', effect: 'allow' as 'deny', targets: ['cloud_model'], match: {} }],
+      };
+      expect(() => withFragment(allow)).toThrow();
+      const narrowed = withFragment({
+        source: 'conformance-adapter',
+        rules: [
+          { id: 'narrow', effect: 'deny', targets: ['local_model'], match: { ids: [card.id] } },
+        ],
+      });
+      expect(narrowed.decide({ kind: 'card', card }, 'local_model').decision).toBe('deny');
+      expect(narrowed.decide({ kind: 'card', card }, 'screen').decision).toBe('allow');
+    });
+
     it('never discloses stance data beyond the screen, whatever the rules say', () => {
       const { configured, card } = setup();
       const transfer = previewOf(configured, [card]);
-      const confirmation = configured.confirm(transfer.transferId, transfer.payloadHash);
+      const confirmation = confirm(configured, transfer);
+      const ref = configured.redeem({
+        token: confirmation.token,
+        sessionId: SESSION,
+        envelope: transfer.preview,
+      });
       expect(configured.decide({ kind: 'stance', card }, 'screen').decision).toBe('allow');
       for (const target of ['local_model', 'cloud_model', 'demo'] as const) {
-        const decision = configured.decide({ kind: 'stance', card }, target, confirmation);
-        expect(decision.decision, target).toBe('deny');
+        expect(configured.decide({ kind: 'stance', card }, target, ref).decision, target).toBe(
+          'deny',
+        );
       }
     });
 
-    it('previews exactly the cleared cards, hashed with RFC 8785', () => {
+    it('previews exactly the cleared cards, hashed with RFC 8785, for 5 minutes', () => {
       const { configured, card, deniedCard, otherCard } = setup();
       const transfer = previewOf(configured, [card, deniedCard, otherCard]);
       expect(transfer.cardIds).toEqual([card.id]);
       expect(transfer.preview.objects.map((c) => c.id)).toEqual([card.id]);
       expect(transfer.preview.target).toBe('cloud_model');
       expect(transfer.payloadHash).toBe(computePayloadHash(transfer.preview));
-      expect(Date.parse(transfer.expiresAt)).toBeGreaterThan(Date.parse(transfer.createdAt));
+      expect(Date.parse(transfer.expiresAt) - Date.parse(transfer.createdAt)).toBe(FIVE_MINUTES);
     });
 
-    it('denies cloud_model until the user confirms this payload', () => {
+    it('releases cloud content only through a confirmed, consumed single-use token', () => {
       const { configured, card, otherCard } = setup();
       const denied = configured.decide({ kind: 'card', card }, 'cloud_model');
       expect(denied.decision).toBe('deny');
       expect(denied.confirmationRequired).toBe(true);
 
       const transfer = previewOf(configured, [card]);
-      const confirmation = configured.confirm(transfer.transferId, transfer.payloadHash);
+      const confirmation = confirm(configured, transfer);
       expect(confirmation.confirmedBy).toBe('human');
       expect(confirmation.payloadHash).toBe(transfer.payloadHash);
-      const allowed = configured.decide({ kind: 'card', card }, 'cloud_model', confirmation);
-      expect(allowed.decision).toBe('allow');
-      expect(allowed.confirmation).toEqual(confirmation);
-      const outside = configured.decide(
-        { kind: 'card', card: otherCard },
-        'cloud_model',
-        confirmation,
+      expect(tokenBits(confirmation.token)).toBeGreaterThanOrEqual(128);
+      const unsent = {
+        transferId: confirmation.transferId,
+        payloadHash: confirmation.payloadHash,
+        cardIds: confirmation.cardIds,
+        confirmedAt: confirmation.confirmedAt,
+      };
+      // Confirmed but not yet sent: still denied.
+      expect(configured.decide({ kind: 'card', card }, 'cloud_model', unsent).decision).toBe(
+        'deny',
       );
-      expect(outside.decision).toBe('deny');
+
+      const ref = configured.redeem({
+        token: confirmation.token,
+        sessionId: SESSION,
+        envelope: transfer.preview,
+      });
+      expect(ref).not.toHaveProperty('token');
+      const allowed = configured.decide({ kind: 'card', card }, 'cloud_model', ref);
+      expect(allowed.decision).toBe('allow');
+      expect(allowed.confirmation).toEqual(ref);
+      expect(
+        configured.decide({ kind: 'card', card: otherCard }, 'cloud_model', ref).decision,
+      ).toBe('deny');
     });
 
-    it('rejects a mismatching hash (409), a replay (409) and an expired transfer (410)', () => {
+    it('rejects a confirm whose previewed or current hash differs, and a second confirm', () => {
+      const { configured, card } = setup();
+      const t = previewOf(configured, [card]);
+      const changed = { ...t.preview, connectorId: 'other-engine' };
+      expect(
+        codeOf(() =>
+          configured.confirm({
+            transferId: t.transferId,
+            payloadHash: t.payloadHash,
+            sessionId: SESSION,
+            currentEnvelope: changed,
+          }),
+        ),
+      ).toBe('mismatch');
+      expect(
+        codeOf(() =>
+          configured.confirm({
+            transferId: t.transferId,
+            payloadHash: `sha256:${'0'.repeat(64)}`,
+            sessionId: SESSION,
+            currentEnvelope: t.preview,
+          }),
+        ),
+      ).toBe('mismatch');
+      expect(
+        codeOf(() =>
+          configured.confirm({
+            transferId: '01M1HA4MC0T8585XX5H0E6NVRP',
+            payloadHash: t.payloadHash,
+            sessionId: SESSION,
+            currentEnvelope: t.preview,
+          }),
+        ),
+      ).toBe('unknown');
+      confirm(configured, t);
+      expect(codeOf(() => confirm(configured, t))).toBe('replayed');
+    });
+
+    it('rejects an expired transfer and an expired token', () => {
       const { configured, card, advance } = setup();
       const t1 = previewOf(configured, [card]);
-      expect(codeOf(() => configured.confirm(t1.transferId, `sha256:${'0'.repeat(64)}`))).toBe(
-        'mismatch',
-      );
-      expect(codeOf(() => configured.confirm('01M1HA4MC0T8585XX5H0E6NVRP', t1.payloadHash))).toBe(
-        'unknown',
-      );
-      configured.confirm(t1.transferId, t1.payloadHash);
-      expect(codeOf(() => configured.confirm(t1.transferId, t1.payloadHash))).toBe('replayed');
-
+      advance(FIVE_MINUTES);
+      expect(codeOf(() => confirm(configured, t1))).toBe('expired');
       const t2 = previewOf(configured, [card]);
-      advance(Date.parse(t2.expiresAt) - Date.parse(t2.createdAt));
-      expect(codeOf(() => configured.confirm(t2.transferId, t2.payloadHash))).toBe('expired');
+      const c2 = confirm(configured, t2);
+      advance(FIVE_MINUTES);
+      expect(
+        codeOf(() =>
+          configured.redeem({ token: c2.token, sessionId: SESSION, envelope: t2.preview }),
+        ),
+      ).toBe('expired');
     });
 
-    it('denies forged confirmations', () => {
+    it('consumes a token once, only from its session and only for the confirmed envelope', () => {
+      const { configured, card } = setup();
+      const t = previewOf(configured, [card]);
+      const c = confirm(configured, t);
+      expect(
+        codeOf(() =>
+          configured.redeem({ token: c.token, sessionId: 'session-b', envelope: t.preview }),
+        ),
+      ).toBe('session');
+      const edited = { ...t.preview, request: { ...t.preview.request, question: 'Edited?' } };
+      expect(
+        codeOf(() => configured.redeem({ token: c.token, sessionId: SESSION, envelope: edited })),
+      ).toBe('mismatch');
+      // The failed send consumed the token: a second use fails.
+      expect(
+        codeOf(() =>
+          configured.redeem({ token: c.token, sessionId: SESSION, envelope: t.preview }),
+        ),
+      ).toBe('replayed');
+
+      const t2 = previewOf(configured, [card]);
+      const c2 = confirm(configured, t2);
+      configured.redeem({ token: c2.token, sessionId: SESSION, envelope: t2.preview });
+      expect(
+        codeOf(() =>
+          configured.redeem({ token: c2.token, sessionId: SESSION, envelope: t2.preview }),
+        ),
+      ).toBe('replayed');
+      expect(
+        codeOf(() =>
+          configured.redeem({
+            token: 'never-issued-token-000000',
+            sessionId: SESSION,
+            envelope: t2.preview,
+          }),
+        ),
+      ).toBe('unknown');
+    });
+
+    it('denies forged confirmation references', () => {
       const { configured, card } = setup();
       const transfer = previewOf(configured, [card]);
       const forged = {
         transferId: transfer.transferId,
         payloadHash: transfer.payloadHash,
         cardIds: [card.id],
-        confirmedBy: 'human' as const,
         confirmedAt: '2026-10-06T00:00:00Z',
       };
       expect(configured.decide({ kind: 'card', card }, 'cloud_model', forged).decision).toBe(

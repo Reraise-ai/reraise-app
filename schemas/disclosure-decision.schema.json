@@ -28,7 +28,7 @@
       "type": "boolean"
     },
     "confirmation": {
-      "$ref": "#/$defs/confirmation"
+      "$ref": "#/$defs/confirmationRef"
     },
     "decidedAt": {
       "$ref": "common.schema.json#/$defs/dateTime"
@@ -120,7 +120,7 @@
     },
     "transfer": {
       "title": "DisclosureTransfer",
-      "description": "A previewed cloud_model transfer awaiting the user's confirmation (ADR-0012, ADR-0031). `cardIds` lists the ids of the objects in the envelope; `payloadHash` must be echoed by the confirmation; the transfer expires at `expiresAt` and can be confirmed once.",
+      "description": "A previewed cloud_model transfer awaiting the user's confirmation (ADR-0012, ADR-0031). The record lives in memory on the service, expires 5 minutes after the preview, and is void after a restart. `cardIds` lists the ids of the objects in the envelope; `payloadHash` must be echoed by the confirmation.",
       "type": "object",
       "properties": {
         "transferId": {
@@ -164,7 +164,7 @@
     },
     "confirmRequest": {
       "title": "DisclosureConfirmRequest",
-      "description": "Body of the human-only confirm operation. The server rejects a payloadHash that differs from the transfer's (409), an expired transfer (410) and a second confirmation of the same transfer (409).",
+      "description": "Body of the human-only confirm operation (the transferId is in the path). The service rejects a payloadHash that differs from the stored one or from the hash of the current envelope, and a second confirmation (409), and an expired transfer (410).",
       "type": "object",
       "properties": {
         "payloadHash": {
@@ -176,7 +176,7 @@
     },
     "confirmation": {
       "title": "DisclosureConfirmation",
-      "description": "The user's confirmation of one transfer. No standing consent: it covers this payload only.",
+      "description": "Response of the human-only confirm operation (ADR-0031): a single-use confirmation token, at least 128 random bits, held server side, bound to the confirming human session, valid for 5 minutes and void after a restart. The send call carries it; the service consumes it atomically before sending an envelope whose hash equals `payloadHash`. Never logged.",
       "type": "object",
       "properties": {
         "transferId": {
@@ -193,6 +193,12 @@
           "minItems": 1,
           "uniqueItems": true
         },
+        "token": {
+          "$ref": "#/$defs/confirmationToken"
+        },
+        "tokenExpiresAt": {
+          "$ref": "common.schema.json#/$defs/dateTime"
+        },
         "confirmedBy": {
           "$ref": "common.schema.json#/$defs/humanAuthor"
         },
@@ -200,7 +206,15 @@
           "$ref": "common.schema.json#/$defs/dateTime"
         }
       },
-      "required": ["transferId", "payloadHash", "cardIds", "confirmedBy", "confirmedAt"],
+      "required": [
+        "transferId",
+        "payloadHash",
+        "cardIds",
+        "token",
+        "tokenExpiresAt",
+        "confirmedBy",
+        "confirmedAt"
+      ],
       "additionalProperties": false
     },
     "payloadHash": {
@@ -284,6 +298,53 @@
         }
       },
       "required": ["connectorId", "purpose", "request", "cardIds"],
+      "additionalProperties": false
+    },
+    "confirmationToken": {
+      "title": "ConfirmationToken",
+      "description": "Opaque single-use token, base64url of at least 16 random bytes (128 bits).",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{22,}$"
+    },
+    "confirmationRef": {
+      "title": "DisclosureConfirmationRef",
+      "description": "Reference to a confirmed transfer whose token was consumed for this send; recorded in gate decisions and context packages. Contains no token.",
+      "type": "object",
+      "properties": {
+        "transferId": {
+          "$ref": "common.schema.json#/$defs/ulid"
+        },
+        "payloadHash": {
+          "$ref": "#/$defs/payloadHash"
+        },
+        "cardIds": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/cardId"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "confirmedAt": {
+          "$ref": "common.schema.json#/$defs/dateTime"
+        }
+      },
+      "required": ["transferId", "payloadHash", "cardIds", "confirmedAt"],
+      "additionalProperties": false
+    },
+    "denied": {
+      "title": "DeniedCard",
+      "description": "A card the gate withheld from this response, with the reason; never its content.",
+      "type": "object",
+      "properties": {
+        "cardId": {
+          "$ref": "common.schema.json#/$defs/cardId"
+        },
+        "reason": {
+          "$ref": "common.schema.json#/$defs/text"
+        }
+      },
+      "required": ["cardId", "reason"],
       "additionalProperties": false
     }
   }

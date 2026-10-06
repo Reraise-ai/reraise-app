@@ -1,0 +1,26 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/disclosure-decision.schema.json",
+  "description": "Decisions are logged; they reference a confirmation, never its token.",
+  "expect": {
+    "keyword": "additionalProperties",
+    "instancePath": "/confirmation"
+  },
+  "data": {
+    "subject": {
+      "kind": "card",
+      "cardId": "01M1E34QM03WVTE8T1RYS3AM18"
+    },
+    "target": "cloud_model",
+    "decision": "allow",
+    "reason": "confirmed",
+    "confirmation": {
+      "transferId": "01M1HA4MC0T8585XX5H0E6NVRP",
+      "payloadHash": "sha256:abababababababababababababababababababababababababababababababab",
+      "cardIds": ["01M1E34QM03WVTE8T1RYS3AM18"],
+      "confirmedAt": "2026-09-16T10:20:00Z",
+      "token": "synthetic-token-0000000000"
+    },
+    "decidedAt": "2026-09-16T10:20:01Z"
+  }
+}

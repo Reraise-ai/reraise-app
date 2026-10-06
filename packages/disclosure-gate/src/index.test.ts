@@ -10,7 +10,7 @@ import { describeDisclosureGateConformance } from '@worldbuilder/conformance';
 import type { Card, GateRules } from '@worldbuilder/core';
 import { computeContentHash } from '@worldbuilder/core';
 import { describe, expect, it } from 'vitest';
-import { createDisclosureGate, ruleMatches } from './index.js';
+import { createDisclosureGate, effectiveRules, ruleMatches } from './index.js';
 
 const STORE = '45aaff12-777f-40e3-a97c-8a592e1ea4f6';
 const SYNTHETIC_STORE = '56eb65bc-301e-4633-afb0-e1f3deff8f57';
@@ -46,6 +46,7 @@ const rules: GateRules = {
 describeDisclosureGateConformance('reference gate', (now) => ({
   empty: createDisclosureGate({ now }),
   configured: createDisclosureGate({ rules, now }),
+  withFragment: (fragment) => createDisclosureGate({ rules, fragments: [fragment], now }),
   card: shared,
   deniedCard: tagged,
   otherCard: secret,
@@ -59,12 +60,12 @@ describe('rule matching', () => {
       targets: ['screen' as const],
       match: { class: ['C' as const], worlds: [WORLD] },
     };
-    expect(ruleMatches(rule, shared, [])).toBe(true);
-    expect(
-      ruleMatches({ ...rule, match: { ...rule.match, class: ['A' as const] } }, shared, []),
-    ).toBe(false);
-    expect(ruleMatches({ ...rule, match: { ids: [secret.id, shared.id] } }, shared, [])).toBe(true);
-    expect(ruleMatches({ ...rule, match: { visibility: ['private' as const] } }, shared, [])).toBe(
+    expect(ruleMatches(rule, shared)).toBe(true);
+    expect(ruleMatches({ ...rule, match: { ...rule.match, class: ['A' as const] } }, shared)).toBe(
+      false,
+    );
+    expect(ruleMatches({ ...rule, match: { ids: [secret.id, shared.id] } }, shared)).toBe(true);
+    expect(ruleMatches({ ...rule, match: { visibility: ['private' as const] } }, shared)).toBe(
       true,
     );
   });
@@ -105,18 +106,45 @@ describe('reference gate output matches the schemas', () => {
       cards: [shared, secret],
     });
     check(`${id}#/$defs/transfer`, transfer);
-    const confirmation = gate.confirm(transfer.transferId, transfer.payloadHash);
+    const confirmation = gate.confirm({
+      transferId: transfer.transferId,
+      payloadHash: transfer.payloadHash,
+      sessionId: 's',
+      currentEnvelope: transfer.preview,
+    });
     check(`${id}#/$defs/confirmation`, confirmation);
+    const ref = gate.redeem({
+      token: confirmation.token,
+      sessionId: 's',
+      envelope: transfer.preview,
+    });
+    check(`${id}#/$defs/confirmationRef`, ref);
     for (const d of [
       gate.decide({ kind: 'card', card: shared }, 'local_model'),
       gate.decide({ kind: 'card', card: secret }, 'local_model'),
       gate.decide({ kind: 'card', card: tagged }, 'local_model'),
       gate.decide({ kind: 'card', card: shared }, 'cloud_model'),
-      gate.decide({ kind: 'card', card: shared }, 'cloud_model', confirmation),
-      gate.decide({ kind: 'stance', card: shared }, 'cloud_model', confirmation),
+      gate.decide({ kind: 'card', card: shared }, 'cloud_model', ref),
+      gate.decide({ kind: 'stance', card: shared }, 'cloud_model', ref),
     ]) {
       check(id, d);
     }
+  });
+
+  it('names the source of every rule and rejects allowing fragments', () => {
+    expect(
+      effectiveRules(rules, [
+        { source: 'store-x', rules: [{ id: 'd', effect: 'deny', targets: ['demo'], match: {} }] },
+      ]).map((r) => r.source),
+    ).toEqual(['user', 'user', 'store-x']);
+    expect(() =>
+      effectiveRules(rules, [
+        {
+          source: 'store-x',
+          rules: [{ id: 'a', effect: 'allow' as 'deny', targets: ['demo'], match: {} }],
+        },
+      ]),
+    ).toThrow('may only deny');
   });
 
   it('refuses a preview without any cleared card', () => {

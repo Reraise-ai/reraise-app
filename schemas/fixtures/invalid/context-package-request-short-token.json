@@ -1,0 +1,14 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/context-package.schema.json#/$defs/request",
+  "description": "Tokens carry at least 128 bits.",
+  "expect": {
+    "keyword": "pattern",
+    "instancePath": "/confirmationToken"
+  },
+  "data": {
+    "worldId": "01M1DZPW00JGXPRPG4179ZPNB8",
+    "transferId": "01M1HA4MC0T8585XX5H0E6NVRP",
+    "confirmationToken": "short"
+  }
+}

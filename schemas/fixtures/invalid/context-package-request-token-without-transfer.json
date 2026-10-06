@@ -1,0 +1,13 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/context-package.schema.json#/$defs/request",
+  "description": "A token is bound to one transfer and travels with its id.",
+  "expect": {
+    "keyword": "dependentRequired",
+    "instancePath": ""
+  },
+  "data": {
+    "worldId": "01M1DZPW00JGXPRPG4179ZPNB8",
+    "confirmationToken": "synthetic-token-0000000000"
+  }
+}

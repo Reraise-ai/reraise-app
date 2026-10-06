@@ -1,0 +1,46 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/context-package.schema.json",
+  "description": "A cloud_model MCP connection without a confirmed transfer gets denied ids and reasons only (ADR-0031).",
+  "data": {
+    "id": "01M1FK6TC038DQ5MVEW3P3ZGQ9",
+    "target": "cloud_model",
+    "worldId": "01M1DZPW00JGXPRPG4179ZPNB8",
+    "lageId": "01M1F21G80R816A1T0V2P6RACH",
+    "question": "Reroute laden tankers around the Cape for Q4?",
+    "createdAt": "2026-09-16T10:10:00Z",
+    "items": [],
+    "independence": {
+      "findings": 0,
+      "origins": 0
+    },
+    "pendingProposals": [
+      {
+        "proposalId": "01M1FFRYR0CNCMTND011BG5QPC",
+        "author": "agent:research-helper",
+        "kind": "create_card",
+        "status": "pending",
+        "summary": "Create card \"Insurer bulletin: war-risk premiums doubled\" on this Lage"
+      }
+    ],
+    "withheld": 4,
+    "denied": [
+      {
+        "cardId": "01M1E34QM03WVTE8T1RYS3AM18",
+        "reason": "cloud_model needs a confirmed transfer"
+      },
+      {
+        "cardId": "01M1E6JK80GR8G0JHMPVT7TDX4",
+        "reason": "cloud_model needs a confirmed transfer"
+      },
+      {
+        "cardId": "01M1EA0EW0V90F04X7AKQJSKK2",
+        "reason": "cloud_model needs a confirmed transfer"
+      },
+      {
+        "cardId": "01M1F8X7G0TTV1CC1FNKTNN0TJ",
+        "reason": "deny rule never-class-a"
+      }
+    ]
+  }
+}

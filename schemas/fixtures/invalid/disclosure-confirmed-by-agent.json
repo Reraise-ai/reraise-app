@@ -1,27 +1,18 @@
 {
   "synthetic": true,
-  "schema": "https://worldbuilder.invalid/schemas/v0/disclosure-decision.schema.json",
-  "description": "Only the human confirms a transfer (ADR-0026).",
+  "schema": "https://worldbuilder.invalid/schemas/v0/disclosure-decision.schema.json#/$defs/confirmation",
+  "description": "Only the human confirms a transfer (ADR-0026, ADR-0031).",
   "expect": {
     "keyword": "const",
-    "instancePath": "/confirmation/confirmedBy"
+    "instancePath": "/confirmedBy"
   },
   "data": {
-    "subject": {
-      "kind": "card",
-      "cardId": "01M1E34QM03WVTE8T1RYS3AM18"
-    },
-    "target": "cloud_model",
-    "decision": "allow",
-    "reason": "allow rule \"class C cards of this world to cloud models\" and confirmed transfer",
-    "ruleId": "class-c-cloud",
-    "confirmation": {
-      "transferId": "01M1HA4MC0T8585XX5H0E6NVRP",
-      "payloadHash": "sha256:abababababababababababababababababababababababababababababababab",
-      "cardIds": ["01M1E34QM03WVTE8T1RYS3AM18"],
-      "confirmedBy": "agent:research-helper",
-      "confirmedAt": "2026-09-16T10:20:00Z"
-    },
-    "decidedAt": "2026-09-16T10:20:01Z"
+    "transferId": "01M1HA4MC0T8585XX5H0E6NVRP",
+    "payloadHash": "sha256:abababababababababababababababababababababababababababababababab",
+    "cardIds": ["01M1E34QM03WVTE8T1RYS3AM18"],
+    "token": "synthetic-token-0000000000",
+    "tokenExpiresAt": "2026-09-16T10:25:00Z",
+    "confirmedBy": "agent:research-helper",
+    "confirmedAt": "2026-09-16T10:20:00Z"
   }
 }
