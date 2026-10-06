@@ -167,6 +167,7 @@ export function describeStorageAdapterConformance(
 
     it('rejects drafts that break the provenance and identity rules', async () => {
       const { adapter } = await factory();
+      const before = (await adapter.list({ limit: Number.MAX_SAFE_INTEGER })).items;
       const bad: Record<string, unknown>[] = [
         { ...draft, source: undefined },
         { ...draft, layer: 'evidenced', source: undefined },
@@ -182,7 +183,8 @@ export function describeStorageAdapterConformance(
           JSON.stringify(clean),
         ).rejects.toThrow();
       }
-      expect((await adapter.list()).items).toEqual([]);
+      // Nothing was written: the store holds exactly what it held before (it need not be empty).
+      expect((await adapter.list({ limit: Number.MAX_SAFE_INTEGER })).items).toEqual(before);
     });
 
     it('builds every uri from the store instance id, never from a hostname or path', async () => {
