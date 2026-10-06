@@ -1,0 +1,214 @@
+# Roadmap
+
+The build order is **contract-first, then a walking skeleton, then vertical slices**. Neither
+"UX first" nor "architecture first": the UX concept exists as design material, so the next
+step is to fix the contracts, then prove the thinnest real path end to end, then add one
+slice per pull request.
+
+::: info Status in one line
+**M0 is in progress.** Nothing past M0 is built. No feature is claimed unless an automated
+test backs it, and a milestone is "done" only when CI is green and its scenario runs. The
+table of record is [verification](./verification.md).
+:::
+
+GitHub milestones and one issue per slice will be created once repository access works.
+Until then this page is the plan of record.
+
+## Milestones at a glance
+
+| Milestone | Goal | Status | Done when |
+| --- | --- | --- | --- |
+| **M0** Repository foundation and contracts | Monorepo, tooling, CI, docs, ADRs, contracts as code. No features. | in progress | CI is green, schemas validate the examples, the ADR log is complete, the docs build |
+| **M1** Walking skeleton | Thinnest end-to-end path, everything real, nothing pretty | not started | one Playwright end-to-end test runs the scenario below in CI |
+| **M2+** Vertical slices | One pull request per slice: UI, API, adapter and tests together | not started | per slice, see [below](#m2-vertical-slices) |
+
+## M0: repository foundation and contracts
+
+Status: in progress.
+
+Scope:
+
+1. Monorepo, tooling, CI and docs skeleton: TypeScript strict, pnpm workspaces, Node 22,
+   ESLint, Prettier, Vitest, licensing, community files.
+2. An ADR for every binding decision (MADR format).
+3. Contracts as code, versioned: JSON Schema for Card, World, Lage, Edge, Stance, Decision,
+   SourceProfile and ContextPackage; OpenAPI 3.1 for the Board API; MCP tool definitions;
+   the adapter interfaces `StorageAdapter`, `SourceConnector`, `ModelConnector` and
+   `DisclosureGate`.
+4. Architecture documentation: arc42 and C4 diagrams.
+5. Example synthetic worlds (`hormuz`, `palma`) that the schemas validate.
+
+**Done when:** CI is green, the schemas validate the examples, the ADR log is complete and
+the docs build.
+
+## M1: walking skeleton
+
+Status: not started.
+
+Components: Board UI, Board API, the reference `markdown-files` storage adapter (same file
+conventions as the [card format](./reference/card-format.md), synthetic data), and an MCP
+server.
+
+Scenario, using the Hormuz example:
+
+1. Open a Lage.
+2. Place an existing card.
+3. Draw a `supports` edge.
+4. A test agent proposes a card through MCP.
+5. A human accepts the proposal.
+6. Reload: the state persisted.
+7. A context package is generated.
+8. The disclosure gate blocks a private card for the cloud target.
+
+**Done when:** one Playwright end-to-end test runs this scenario in CI. The first release
+(v0.1.0) waits until M1 passes on all three operating systems in CI.
+
+## M2+: vertical slices
+
+Each slice is one pull request with UI, API, adapter and tests. The order may change; the
+done criterion is what counts.
+
+| Slice | Done when |
+| --- | --- |
+| Decision card, protocol and outcome | A decision stores all 11 sections, reloads intact, rejects a `cardsUsed` id that does not exist, and entering the outcome creates a linked experience card. |
+| Rules panel replacing the barometer | Rules come from rule cards, never from code. Evaluation lists each rule as fired or not fired with the ids of triggering cards and shows no percentage. A proposed (unaccepted) card never fires a rule. |
+| Source profile and hit statistics from outcomes | Entering an outcome changes the stored hit count of the affected source, the earlier state stays retrievable, each dimension shows its sample size and "too little data" below five. |
+| Player fields with provenance | A seat entry without a source is rejected. Source pass is available on seats, moves, edges and decisions. |
+| Time slider on real timestamps | The board can be shown as of an earlier date from archived versions. |
+| What-if (non-persisting scenario layer) | A scenario layer changes no stored card and can be attached to a decision. |
+| Live channel (SSE) | Two open boards show a move within seconds, including agent proposals. |
+| Model connectors | Ollama, a cloud model and an external decision-service stub answer through one `ModelConnector` shape. The answer arrives as a proposal. A cloud call needs gate clearance and per-transfer confirmation. |
+| Source connectors | An Obsidian vault, a generic HTTP/JSON source and a document-system connector report new findings. They are referenced then pinned, with provenance, never ingested. |
+| Training export | A JSONL file of decision traces contains only cards with `training: true`. |
+| World collision on two local worlds | Two worlds overlaid on one question show shared, diverging and non-fitting cards without forcing consensus. |
+| Level 1 thinking | A typed answer from a local rules engine is shown as "engine estimates X for Y", with inputs, never as a verdict, and can be escalated to a board. |
+
+Later and out of scope here: a sharing platform, card-exchange economics, gamification and
+crypto, and fine-tuning itself. The data model keeps ids, content hash, `level` and
+`signature` reserved and builds nothing on them.
+
+## Mapping of earlier plans onto the milestones
+
+### Concept v1 phases 0 to 4
+
+| Concept v1 phase | Content | Now |
+| --- | --- | --- |
+| 0 Click prototype | static design study | done as `prototype/board.html`, frozen. Superseded by the board app in M1. |
+| 1 My world and board | cards, layers, stances, inbox ingest, three lenses, MCP read and propose | M1 for cards, layers, stances, edges, proposals, MCP. The ingest part is dropped (no ingestion). Lenses are M2+. |
+| 2 Decide and follow up | decisions, forecasts, review, source profiles, barometer | M2+ slices: decision card, source profile, time slider. The barometer is replaced by the Rules panel. |
+| 3 Several worlds and rules | overlays, rules from decisions, "what would I do" | M2+: rules panel, world collision, Level 1 thinking |
+| 4 Platform | sharing, signature, federation | out of scope. Fields reserved. |
+
+### Earlier cross-team roadmap (phases 0 to 5)
+
+That plan was written around one owner store, so its items are mapped to the generic
+product. Work specific to a particular store (its validator, its write channel and its
+deployment) is delivered as a separate adapter outside this repository.
+
+| Earlier phase and item | Maps to |
+| --- | --- |
+| **0 Foundation:** card format v2, typed edges, `lage` card, decision card with 11 fields, player fields | M0: [card format](./reference/card-format.md) and schemas |
+| 0: validator and write channel v2 | store-specific, outside this repo. Conformance kit tests the contract any adapter must pass (M0 skeleton, M1 full). |
+| 0: clean up the store | store-specific, outside this repo |
+| 0: rebuildable search index | M1: derived index in the reference adapter |
+| 0: visibility gate module | M0: `DisclosureGate` interface and `packages/disclosure-gate`. M1: blocks a private card for the cloud target. |
+| **1 Board on the real store:** board API | M0: OpenAPI 3.1 contract. M1: implementation. |
+| 1: live channel | M2+: live channel (SSE) |
+| 1: create a Lage, place cards, save position | M1 |
+| 1: decision card with 11 fields, outcome becomes experience | M2+: decision card slice |
+| 1: rules panel replaces the meter, rules from rule cards | M2+: rules panel slice |
+| 1: source pass everywhere | M1 counter, M2+ on seats, edges and decisions |
+| 1: selective context package with cloud warning | M1 package and gate. M2+ confirmation flow with model connectors. |
+| 1: training export v0 | M2+: training export slice |
+| 1: written interface contract | M0: OpenAPI and MCP contract |
+| **2 Own agents at the board:** MCP server, per-agent id and visibility | M0 contract, M1 implementation |
+| 2: human gate, agent moves as proposals | M1: proposals |
+| 2: brainstorm mode, "who sits at the table" | M2+ |
+| **3 Models and first sources:** model connectors with one shape | M0 interface, M2+ implementations |
+| 3: cloud confirmation, answer arrives as a card | M2+ with model connectors |
+| 3: external decision-service connector | M2+ stub, always behind the gate |
+| 3: source connectors, reference then pin | M2+: source connectors slice |
+| **4 More sources, loop, several worlds:** more connectors, same-origin matching | M2+ |
+| 4: outcome updates source statistics, multi-dimensional source rating | M2+: source profile slice |
+| 4: several worlds, what-if, "does not fit" marker | M2+ |
+| **5 Platform and training:** staged release, exchange, shared graph | out of scope here |
+| 5: world collision with real shared cards | out of scope; collision of two local worlds is M2+ |
+| 5: fine-tuning on decision traces | out of scope. Only the export exists. |
+
+## MVP-critical acceptance criteria
+
+An earlier audit compared a first UX prototype against the product definition (104
+requirements) and found 33 that the minimum viable product must meet. They are the source of
+the acceptance criteria below. The tests that prove them are tracked in
+[verification](./verification.md). "Audit #" is the requirement's number in that audit.
+
+### Product canon and model integrity
+
+| ID | Criterion | Audit # | Milestone |
+| --- | --- | --- | --- |
+| AC-01 | The three layers (`evidenced`, `said`, `experience`) are never merged into one figure. Every number on the board decomposes into layers. | 11 | M1 |
+| AC-02 | The user can classify any foreign statement with a private stance (`believed`, `rejected`, `undecided`, weight, note) without changing the card's layer. | 12 | M1 |
+| AC-03 | The interface contains no verdict: no meter, no percentage, no highlighted "winning" option. The Rules panel lists fired and not fired rules with triggering cards only. | 62 | M2+ |
+| AC-04 | The world's content types are visible and stored, including the user's own derivations and premises. | 5 | M1 |
+
+### Persistence and storage
+
+| ID | Criterion | Audit # | Milestone |
+| --- | --- | --- | --- |
+| AC-05 | The world stays with the user: state is written to files and survives a reload and a restart. | 6 | M1 |
+| AC-06 | Cards come from the user's own store through a `StorageAdapter`, and each card shows which system it came from. | 3 | M1 |
+
+### Board and situation
+
+| ID | Criterion | Audit # | Milestone |
+| --- | --- | --- | --- |
+| AC-07 | The user can create a Lage with their own question and any number of options. | 30 | M1 |
+| AC-08 | The user can draw, delete and reverse `supports` and `refutes` edges, and they persist. | 31 | M1 |
+
+### Decisions, rules and the loop
+
+| ID | Criterion | Audit # | Milestone |
+| --- | --- | --- | --- |
+| AC-09 | A decision card stores all 11 sections and they survive a reload. | 23 | M2+ |
+| AC-10 | Rules are explicit cards and evaluation reads from them, never from code. | 25 | M2+ |
+| AC-11 | The outcome of a decision becomes a linked experience card, and source statistics update. | 50 | M2+ |
+| AC-12 | A decision protocol exists across sessions, not only for the current one. | 99 | M2+ |
+| AC-13 | The rationale of a decision is stored. | 101 | M2+ |
+
+### Agents, models and interfaces
+
+| ID | Criterion | Audit # | Milestone |
+| --- | --- | --- | --- |
+| AC-14 | The model is replaceable: each target is backed by a real connector, and switching it changes only the connector. | 1 | M2+ |
+| AC-15 | The Worldbuilder is a layer a model can query. It is more than text to copy. | 2 | M1 |
+| AC-16 | A database stores, an API supplies context, a model answers, and all three exist. | 32 | M1 |
+| AC-17 | A model's answer returns to the board or the decision card as a proposal. | 33 | M2+ |
+| AC-18 | The context pipeline selects relevant cards (request, active world, cards, relations, decisions, provenance, package) and hands over to a real target. | 78 | M1 |
+| AC-19 | Relevance is chosen by the system from rules and cards, and a model can ask which assumptions, experiences and rules are relevant. | 26 | M2+ |
+| AC-20 | The interface is model-independent. Several targets exist, and a user can add one. | 76 | M2+ |
+| AC-21 | An agent queries the world itself (through MCP) and the user does not re-enter it. | 77 | M1 |
+| AC-22 | Single cards can be added to and removed from a context package by the user. | 79 | M1 |
+| AC-23 | A board API exists and the board is only a client of it. | 90 | M1 |
+| AC-24 | The supporting infrastructure (API, storage, integrations) exists. | 84 | M1 |
+| AC-25 | An external decision AI can be connected, at least as a stub behind the gate. | 89 | M2+ |
+
+### Privacy and provenance
+
+| ID | Criterion | Audit # | Milestone |
+| --- | --- | --- | --- |
+| AC-26 | Every world is private by default. A private card sent toward a cloud target is denied or warned about, and each cloud transfer needs confirmation. | 66 | M1 |
+| AC-27 | The user can see and control which private cards leave the device, and the world stays outside the model. | 80 | M1 |
+| AC-28 | Player entries (interests, capabilities, dependencies, moves) need a source, or are left empty. | 47 | M2+ |
+| AC-29 | The independence count is derived from the provenance chain, never typed in. | 70 | M1 |
+| AC-30 | A source pass is available on every card, seat, edge and decision. | 93 | M2+ |
+| AC-31 | Provenance is mandatory for players, moves, assumptions and decisions, and imported cards keep their original provenance. | 104 | M2+ |
+
+### Organisation
+
+| ID | Criterion | Audit # | Milestone |
+| --- | --- | --- | --- |
+| AC-32 | The project exists as its own repository with CI. | 98 | M0 |
+| AC-33 | UX and architecture are separate documents with the links between them written down. | 88 | M0 |
+
+Milestone column = the milestone in which the criterion is first expected to be demonstrated
+by an automated test. Dates are not promised.
