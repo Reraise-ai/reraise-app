@@ -26,14 +26,14 @@ The prototype `prototype/board.html` is kept as a frozen design study.
 
 ## What was superseded
 
-The binding record of each decision is the ADR log: see the [ADR index](../adr/README.md).
+The binding record of each decision is the ADR log: see the [ADR index](../adr/).
 [ADR-0024](../adr/0024-concept-v1-reconciliation.md) reconciles every concept v1 item
 (kept, changed, dropped or deferred) and is the authoritative list; the ADRs win over this page.
 In short:
 
 | Concept v1 said | Now | Why |
 | --- | --- | --- |
-| SQLite append-only event log as the source of truth, with projections | **Files are the truth**: Markdown with YAML front matter, compatible with the existing store's card format. Any database or index is derived and rebuildable. History is archived versions, not an event log. | The owner's store already works this way and the product must sit on top of any user's store. |
+| SQLite append-only event log as the source of truth, with projections | **Files are the truth**: Markdown with YAML front matter, compatible with an existing store's card format. Any database or index is derived and rebuildable. History is archived versions, not an event log. | The owner's store already works this way and the product must sit on top of any user's store. |
 | Four epistemic kinds BELEGT, GESAGT, GEGLAUBT, ERFAHRUNG | Three layers `evidenced`, `said`, `experience`. "Believed" is a private **stance** overlay per user per card. | A belief is the user's position on a card, not a kind of knowledge. Keeps the field `level` free for card tiers. |
 | Premise barometer weighting layers into support and weakening | **Rules panel**: which of the user's rules fired and which cards triggered them. No percentage. | A meter reads as a verdict and merges layers. |
 | Ingest pipeline for URLs, transcripts and PDFs, with an inbox triage | **No ingestion.** An inbox of new findings from connected sources, referenced with provenance and pinned on demand. | Cards are created in the user's own AI. We read and reference. |

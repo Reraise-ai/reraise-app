@@ -7,7 +7,7 @@ architecture is derived separately (see [Architecture](../architecture/index.md)
 two are linked, not merged.
 
 This page is an English adaptation of concept v1, updated to the later product decisions
-(see [concept v1 notes](./concept-v1-notes.md)). The ADRs in the [ADR log](../adr/README.md) are
+(see [concept v1 notes](./concept-v1-notes.md)). The ADRs in the [ADR log](../adr/) are
 normative; where this page disagrees with an ADR, the ADR wins. The reconciliation of every
 concept v1 item is in [ADR-0024](../adr/0024-concept-v1-reconciliation.md). All names, numbers and events in examples
 are invented; see [Scenarios](./scenarios.md).
@@ -216,7 +216,7 @@ rules apply right now?**
   **fired** or **not fired**, with the ids of the **cards that triggered it** and the unmet or
   unknown conditions.
 - There is **no percentage, no score, no aggregate and no recommended option**. The result
-  schema has no numeric score field. Rules come from the user's rule cards, never from code.
+  schema has no numeric score field.
 - Only accepted cards count as triggers. A pending or rejected proposal, or a Level 1 answer,
   never fires a rule ([ADR-0011](../adr/0011-agent-moves-are-proposals.md)).
 - **Withholding.** Conditions may reference the user's own stances. When the result is for a

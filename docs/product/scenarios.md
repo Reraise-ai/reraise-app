@@ -11,7 +11,7 @@ accidental. Example worlds in the repository carry `synthetic: true` in their fr
 and a CI check refuses data files that do not.
 :::
 
-The ADRs in the [ADR log](../adr/README.md) are normative. Where a step below shows something the
+The ADRs in the [ADR log](../adr/) are normative. Where a step below shows something the
 contracts do not cover yet (a forecast and review date on a decision, the foreign-body tray, series counters such as "3 of 4"), it illustrates the intended slice and needs an ADR first
 ([ADR-0017](../adr/0017-decision-card-and-training-export.md),
 [ADR-0024](../adr/0024-concept-v1-reconciliation.md)).

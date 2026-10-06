@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright The Worldbuilder contributors
-// Verifies that every in-site link with a #fragment in the built docs points at an existing id.
+// Verifies that every in-site link in the built docs points at an existing page and, when it has a
+// #fragment, at an existing id.
 // Run after `pnpm docs:build`.
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
@@ -22,7 +23,10 @@ export function collectIds(html) {
   return new Set([...html.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]));
 }
 
-/** Returns [{file, href}] for fragments that have no matching id on the target page. */
+/**
+ * Returns [{file, href, reason}] for in-site links whose target page is missing, and for
+ * #fragments that have no matching id on the target page.
+ */
 export function findBrokenAnchors(distDir) {
   const pages = new Map();
   const files = walkHtml(distDir);
@@ -31,11 +35,11 @@ export function findBrokenAnchors(distDir) {
   for (const [file, html] of pages) {
     for (const m of html.matchAll(/<a [^>]*href="([^"]+)"/g)) {
       const href = m[1].replace(/&amp;/g, '&');
+      if (/^([a-z][a-z0-9+.-]*:|\/\/)/i.test(href)) continue; // external link or other scheme
       const hash = href.indexOf('#');
-      if (hash === -1 || /^[a-z]+:/i.test(href)) continue;
-      const fragment = decodeURIComponent(href.slice(hash + 1));
-      if (!fragment) continue;
-      let pathname = href.slice(0, hash);
+      let pathname = hash === -1 ? href : href.slice(0, hash);
+      const fragment = hash === -1 ? '' : decodeURIComponent(href.slice(hash + 1));
+      pathname = pathname.split('?')[0];
       let target;
       if (pathname === '') target = file;
       else {
@@ -51,11 +55,15 @@ export function findBrokenAnchors(distDir) {
           path.join(distDir, pathname, 'index.html'),
         ];
         target = candidates.find((c) => existsSync(c) && statSync(c).isFile());
-        if (!target) continue; // a missing page is the dead-link check's job
+        if (!target) {
+          broken.push({ file: path.relative(distDir, file), href, reason: 'missing page' });
+          continue;
+        }
       }
+      if (!fragment) continue;
       const targetHtml = pages.get(path.resolve(target));
       if (targetHtml && !collectIds(targetHtml).has(fragment)) {
-        broken.push({ file: path.relative(distDir, file), href });
+        broken.push({ file: path.relative(distDir, file), href, reason: 'missing anchor' });
       }
     }
   }
@@ -69,7 +77,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     process.exit(1);
   }
   const broken = findBrokenAnchors(dist);
-  for (const b of broken) console.error(`broken anchor in ${b.file}: ${b.href}`);
+  for (const b of broken) console.error(`${b.reason} in ${b.file}: ${b.href}`);
   if (broken.length > 0) process.exit(1);
   console.log('check:doc-anchors ok');
 }

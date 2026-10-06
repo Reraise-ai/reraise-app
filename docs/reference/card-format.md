@@ -26,7 +26,7 @@ in both directions without loss.
 
 - **v2 only adds.** No existing card needs rewriting. A card without a v2 field is validated
   as before. The v2 rules apply once a card uses a v2 field or declares `format: 2`.
-- **Files are the truth.** Reference-adapter behaviour: the `markdown-files` adapter writes
+- **Files are the truth.** Reference-adapter behaviour (planned M1): the `markdown-files` adapter will write
   through one write path per store that validates every v2 card with the schema rules and takes
   a lock before writing. A card that fails is not written. Other stores have their own write
   channel; the conformance kit tests the contract, not the mechanism.
@@ -358,5 +358,5 @@ A store that uses the German header names maps one to one. The authoritative tab
 [Glossary](../glossary.md) ·
 [Why layers never merge](../explanation/layers-never-merge.md) ·
 [Provenance and independence](../explanation/provenance-and-independence.md) ·
-[ADR log](../adr/README.md) ·
+[ADR log](../adr/) ·
 [Schemas](https://github.com/Reraise-ai/reraise-app/tree/main/schemas)

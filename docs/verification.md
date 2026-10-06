@@ -48,7 +48,7 @@ Milestone M0 is in progress. Its done criteria come from the [roadmap](./roadmap
 
 ## Checks promised by the ADRs
 
-These are the automated checks the [ADRs](./adr/README.md) commit to. "Passing" means the check
+These are the automated checks the [ADRs](./adr/) commit to. "Passing" means the check
 exists today with a test and runs in a CI job in `.github/workflows/ci.yml`. Everything else is
 not started, and the status says so.
 

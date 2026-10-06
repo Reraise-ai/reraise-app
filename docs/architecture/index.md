@@ -5,7 +5,7 @@ text in this folder.
 
 Until then:
 
-- The binding decisions are in the [ADR log](../adr/README.md).
+- The binding decisions are in the [ADR log](../adr/).
 - The UX is specified separately in [Board UX](../product/board-ux.md). UX and architecture
   are linked on purpose and derived independently, so that the architecture is not read off
   the screens.

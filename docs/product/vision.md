@@ -249,7 +249,7 @@ should then align.
 
 This repository builds the first, local-first slice of that vision, plus the open interfaces
 that let it sit on top of any person's existing knowledge system. The decisions below are
-binding and each is recorded as an [ADR](../adr/README.md), and the ADRs are normative.
+binding and each is recorded as an [ADR](../adr/), and the ADRs are normative.
 
 ### What we build
 

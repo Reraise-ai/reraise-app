@@ -36,4 +36,15 @@ describe('check-doc-anchors', () => {
     });
     expect(findBrokenAnchors(dir).map((b) => b.href)).toEqual(['#nope', '/Worldbuilder/b#nope2']);
   });
+
+  it('reports links to missing pages, such as a README page that is not built', () => {
+    const dir = site({
+      'a.html':
+        '<a href="/Worldbuilder/adr/README">adr</a><a href="/Worldbuilder/adr/">ok</a><a href="https://example.org/x">ext</a>',
+      'adr/index.html': '<h1 id="x">x</h1>',
+    });
+    expect(findBrokenAnchors(dir)).toEqual([
+      { file: 'a.html', href: '/Worldbuilder/adr/README', reason: 'missing page' },
+    ]);
+  });
 });

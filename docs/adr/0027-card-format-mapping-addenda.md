@@ -48,7 +48,7 @@ universal and the owner's adapter already translates every other German identifi
 
 ### Confirmation
 
-Conformance tests: a Lage written by the owner's adapter with `## Stellung` is read as the
+Conformance tests: a store Lage with `## Stellung`, read by the adapter, yields the
 canonical Lage and is written back unchanged except for patched fields; the previous version of
 a rewritten Lage appears under the store's own archive folder name.
 
