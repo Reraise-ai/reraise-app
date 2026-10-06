@@ -29,7 +29,7 @@ names, not addresses, and nothing fetches them. `v0` is the pre-release contract
 | `source-profile.schema.json`         | eight dimensions, each with `n`                                | 0018             |
 | `prediction.schema.json`             | estimate: phrase and ICD 203 band                              | 0010             |
 | `disclosure-decision.schema.json`    | gate decision, transfer preview and payload hash, confirmation | 0012, 0031       |
-| `level1-answer.schema.json`          | level-1 answer and request                                     | 0015             |
+| `level1-prediction.schema.json`      | level-1 request and per-player prediction                      | 0035             |
 | `context-package.schema.json`        | context package for a target                                   | 0012, 0016       |
 | `training-export-record.schema.json` | one JSONL decision trace                                       | 0017             |
 | `finding.schema.json`                | a finding of a source connector                                | 0014             |

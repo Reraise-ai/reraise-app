@@ -219,6 +219,16 @@ export type Finding1 =
       originSystem: unknown;
     };
 /**
+ * Engine id, e.g. local-rules, a local model, or an external decision service. Shown as '<engine> estimates ...' and used as the proposal author agent:<engine>.
+ */
+export type Level1EngineId = string;
+/**
+ * The closed set of moves a player can make next: the enum of the engine's output schema for that player.
+ *
+ * @minItems 2
+ */
+export type Level1MoveOptions = Text[];
+/**
  * Input of proposal_create. Contains no author, id or status; the server sets them.
  */
 export type ProposalCreate = ProposalKindPayload & {
@@ -886,46 +896,72 @@ export interface GateRuleFragment {
   })[];
 }
 /**
- * A fast, typed level-1 answer (ADR-0015). It is an attributed engine estimate ('<engine> estimates 0.82 for X'), never a verdict: it does not count as a decision, does not trigger rules and does not enter statistics. `choice` is one of `options`. World changes it implies arrive as proposals by agent:<engine>.
+ * Result of a Level1Engine (ADR-0035): for each player on a Lage, the engine's predicted next move out of a closed set of move options, with the engine's own confidence and the ids of the on-board cards it used. An attributed estimate ('<engine> estimates ...'), never a verdict: it is not a card, does not count as a decision, does not trigger rules, does not enter statistics and is never shared (ADR-0036). `predictedMove` is one of `moveOptions` and every id in `cardIds` names a card of the request (checked by the conformance kit and the cross-check `level1-move`).
  */
-export interface Level1Answer {
-  id?: Ulid;
+export interface Level1Prediction {
+  engine: Level1EngineId;
+  lageId: CardId;
+  trigger: Level1Trigger;
   /**
-   * Engine name, e.g. local-rules, a local model, or the Jev connector.
+   * sha256:<hex> over the RFC 8785 serialisation of the request (ADR-0034). The board shows a prediction only while its request hash equals the hash of the current request; otherwise it is stale.
    */
-  engine: string;
-  question: Text;
+  requestHash: string;
   /**
-   * The closed set of options (the enum of the output schema).
-   *
-   * @minItems 2
+   * @minItems 1
    */
-  options: Text[];
-  choice: Text;
+  players: Level1PlayerPrediction[];
+  predictedAt: DateTime;
+}
+/**
+ * Why the engine ran. `assumption_changed`: the user placed, removed or edited an assumption card on the Lage (the what-if re-run; `cardIds` names the changed assumption cards). `lage_opened`: the Lage was opened. `manual`: the user asked.
+ */
+export interface Level1Trigger {
+  kind: 'lage_opened' | 'assumption_changed' | 'manual';
   /**
-   * The engine's own confidence for `choice`, shown attributed to the engine. Not an ICD 203 estimate.
+   * @minItems 1
+   */
+  cardIds?: CardId[];
+}
+/**
+ * The engine's estimate for one player: the predicted move (one of moveOptions), the engine's calibrated confidence for it, and the ids of the on-board cards it used (at least the player card).
+ */
+export interface Level1PlayerPrediction {
+  playerCardId: CardId;
+  moveOptions: Level1MoveOptions;
+  predictedMove: Text;
+  /**
+   * The engine's own calibrated confidence for predictedMove, shown attributed to the engine. Not an ICD 203 estimate by a source (ADR-0010).
    */
   confidence: number;
   /**
-   * Cards and rules the engine received (after the disclosure gate).
+   * Ids of the request cards the engine used.
+   *
+   * @minItems 1
    */
-  inputs: Level1Input[];
-  answeredAt: DateTime;
-}
-export interface Level1Input {
-  kind: 'card' | 'rule';
-  id: CardId;
+  cardIds: CardId[];
 }
 /**
- * What a ModelConnector receives for a level-1 decision: the question, the closed options, and gate-cleared inputs.
+ * One player to predict: an actor card on the Lage and its move options.
  */
-export interface Level1Request {
+export interface Level1PlayerRequest {
+  playerCardId: CardId;
+  moveOptions: Level1MoveOptions;
+}
+/**
+ * What a Level1Engine receives: the Lage, its question, the trigger, the players with their move options, and the gate-cleared canonical cards on the board (including the user's rule cards), nothing else. Never stance data. For a cloud_model engine `cards` are exactly the objects of one confirmed transfer (ADR-0031). Every playerCardId names a card in `cards` (cross-check `level1-players`).
+ */
+export interface Level1PredictionRequest {
+  lageId: CardId;
   question: Text;
+  trigger: Level1Trigger;
   /**
-   * @minItems 2
+   * @minItems 1
    */
-  options: Text[];
-  inputs: Level1Input[];
+  players: Level1PlayerRequest[];
+  /**
+   * @minItems 1
+   */
+  cards: Card[];
 }
 /**
  * An estimative statement found on a card (ADR-0010). Stores the source's original `phrase` verbatim and the mapped ICD 203 `band` (almost_no_chance 1-5 %, very_unlikely 5-20 %, unlikely 20-45 %, roughly_even 45-55 %, likely 55-80 %, very_likely 80-95 %, almost_certain 95-99 %). A number is stored only if the source stated one. The UI shows words. Mappings are made by a human or a deterministic lookup table; an agent's mapping is a proposal.

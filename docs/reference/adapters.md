@@ -1,6 +1,6 @@
 # Adapter interfaces
 
-The four interfaces through which The Worldbuilder reaches stores, sources, models and the
+The interfaces through which The Worldbuilder reaches stores, sources, models and the
 outside world ([ADR-0005](../adr/0005-universal-adapter-architecture.md)). They are TypeScript
 types in `packages/core/src/adapters/`, typed against the types generated from the JSON
 Schemas ([ADR-0028](../adr/0028-json-schema-contract-conventions.md)). If this page and the
@@ -74,17 +74,33 @@ Reports new findings from a connected source with their provenance; read only
 
 ## ModelConnector
 
-A replaceable model or engine: the local rules engine, a local model, a cloud model, or the
-Jev connector ([ADR-0015](../adr/0015-two-thinking-levels.md)).
+A replaceable model for level-2 support: a local or a cloud model answering a question about a
+context package ([ADR-0015](../adr/0015-two-thinking-levels.md)).
 
 | Member | Contract |
 | --- | --- |
-| `engine`, `target` | engine name (also the proposal author `agent:<engine>`) and its disclosure target class |
-| `decide(request, release?)` | level 1: a typed `Level1Answer`, shown attributed, never as a verdict |
+| `engine`, `target` | model name (also the proposal author `agent:<engine>`) and its disclosure target class |
 | `ask(pkg, question, release?)` | level 2 support: text plus `ProposalCreate`s; it never writes |
 
 A `cloud_model` connector is called only with the `DisclosureRelease` of one confirmed transfer
 and sends nothing but its objects ([ADR-0031](../adr/0031-gate-rules-and-confirmation-binding.md)).
+
+## Level1Engine
+
+The level-1 socket ([ADR-0035](../adr/0035-level1-engine-socket.md)): a fast engine that
+predicts, for each player on a Lage, the next move out of a closed set of move options, from
+the cards on the board and the user's rule cards only. The local default engine, a local
+model or an external decision service (for example Jev) plug in here.
+
+| Member | Contract |
+| --- | --- |
+| `engine`, `target` | engine id (shown as "`<engine>` estimates ...", proposal author `agent:<engine>`) and its disclosure target class |
+| `deterministic` | true if the same request always yields the same prediction; the local default engine is deterministic |
+| `predict(request, release?)` | a `Level1Prediction`: per player the move options, the predicted move (one of them), the engine's confidence in [0, 1] and the ids of the request cards it used, plus the RFC 8785 hash of the request. A `cloud_model` engine predicts only with the release of exactly the request's cards |
+
+Conformance: `describeLevel1EngineConformance` from `@worldbuilder/conformance` with a harness
+(`engine`, `request`); `level1PredictionProblems` is the same check as a function.
+`createFixedLevel1Engine` is a trivial fake to start from.
 
 ## DisclosureGate
 

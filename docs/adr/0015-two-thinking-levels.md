@@ -6,6 +6,11 @@ decision-makers: "Owner (product), CTO/orchestrator (technical)"
 
 # ADR-0015: Two thinking levels: fast typed answers and the board
 
+> Partly superseded by [ADR-0035](0035-level1-engine-socket.md): level 1 is the `Level1Engine`
+> socket with a per-player prediction contract; the level-1 result shape below and "engines are
+> `ModelConnector`s" no longer apply. The two levels, attribution, the no-verdict rule and
+> escalation stay.
+
 ## Context and Problem Statement
 
 The owner requires a fast "level 1" thinker (System 1) alongside the

@@ -23,7 +23,7 @@ C4Context
   }
 
   System_Ext(cloudllm, "Cloud model", "Any hosted LLM. Only gate-cleared cards, confirmed per transfer.")
-  System_Ext(jev, "Jev", "External Level 1 decision service. Cloud only. Interface to be defined by the owner.")
+  System_Ext(jev, "Jev", "One external Level 1 engine among several. Cloud only. Interface to be defined by the owner.")
   System_Ext(sources, "Connected sources", "Vaults, HTTP/JSON sources, document management, paid news services, legal databases.")
   System_Ext(platform, "Platform (later)", "Separate, closed card-exchange service. Not in this repository.")
 
@@ -31,9 +31,9 @@ C4Context
   Rel(agents, wb, "Read world, propose moves", "MCP")
   Rel(wb, stores, "Read, reference, patch", "StorageAdapter")
   Rel(wb, sources, "List new findings, reference then pin", "SourceConnector")
-  Rel(wb, localllm, "Context package, Level 1 request", "ModelConnector")
+  Rel(wb, localllm, "Context package, Level 1 request", "ModelConnector, Level1Engine")
   Rel(wb, cloudllm, "Gate-cleared context package", "ModelConnector")
-  Rel(wb, jev, "Gate-cleared Level 1 request", "ModelConnector")
+  Rel(wb, jev, "Gate-cleared Level 1 request", "Level1Engine")
   Rel(wb, platform, "Share single cards: content and provenance only", "later")
 
   UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")
@@ -50,9 +50,9 @@ reaches it over HTTPS or the store's own interface, as in the
 | User's agents (MAS) | MCP tool calls: `world_list`, `lage_get`, `cards_search`, `card_get`, `context_package_get`, `rules_evaluate`, `proposal_create`, `proposal_list`. Responses are gate-filtered for the connection's target class. | in (proposals), out (gate-cleared data) | tool names exist (M0 skeleton); contracts in progress (M0); server planned (M1) |
 | User's knowledge stores | Card files read, created and patched through the store's own write path; archived versions | both | reference adapter planned (M1); owner store adapter built outside this repository |
 | Connected sources | New findings with provenance (`uri`, connector, `originSystem`, retrieval time); nothing is ingested | in | planned (M2+) |
-| Local model | Gate-cleared context packages or Level 1 requests; answers come back as proposals or typed Level 1 results | both | planned (M2+) |
+| Local model | Gate-cleared context packages or Level 1 requests; answers come back as proposals or per-player Level 1 predictions | both | planned (M2+); the default local level-1 engine right after M1 |
 | Cloud model | Same as local model, but only after per-transfer confirmation | both | planned (M2+) |
-| Jev | Level 1 request with an output schema and gate-cleared inputs; typed answer with calibrated confidence | both | stub planned (M2+), interface to be defined by the owner |
+| Jev | One `Level1Engine` adapter among several: the Level 1 request with gate-cleared, confirmed cards; a per-player prediction with calibrated confidence | both | adapter after the level-1 slice; interface to be defined by the owner ([ADR-0035](../adr/0035-level1-engine-socket.md)) |
 | Platform | Single shared cards, content and provenance only, never stances; peer-to-peer exchange between users is end-to-end encrypted | out | later ([ADR-0021](../adr/0021-privacy-and-sharing-model.md)) |
 
 Out of scope by decision: ingestion of podcasts and articles
@@ -68,8 +68,8 @@ mechanics ([ADR-0021](../adr/0021-privacy-and-sharing-model.md)).
 | Agent to MCP server | MCP over Streamable HTTP at `/mcp` of the local service, or over stdio through the stateless bridge `worldbuilder mcp --stdio` that forwards to it ([ADR-0029](../adr/0029-process-topology.md)) | `127.0.0.1` by default | Bearer token per registered agent connection; the token fixes `agent:<name>` and the disclosure target class ([ADR-0026](../adr/0026-security-defaults.md)) |
 | Worldbuilder to knowledge store | `StorageAdapter` (TypeScript interface); the adapter may delegate to the store's own write channel as an external process or service | local file system or the store's own interface | Writes are patches; every write validated and locked by the store's write path ([ADR-0023](../adr/0023-core-domain-model.md)) |
 | Worldbuilder to source | `SourceConnector` (read only) | connector-specific (file system, HTTP/JSON) | Results are references with provenance ([ADR-0014](../adr/0014-no-ingestion-inbox-of-findings.md)) |
-| Worldbuilder to model or Jev | `ModelConnector` | local endpoint or HTTPS | Called only with gate-cleared canonical objects; provider credentials from environment variables or the OS keychain ([ADR-0026](../adr/0026-security-defaults.md)) |
-| Jev | `POST /v1/decide` with caller-defined output schema | HTTPS | Request and response shape provisional until the owner fixes the interface ([ADR-0015](../adr/0015-two-thinking-levels.md)) |
+| Worldbuilder to model or level-1 engine | `ModelConnector` (level 2), `Level1Engine` (level 1) | local endpoint or HTTPS | Called only with gate-cleared canonical objects; provider credentials from environment variables or the OS keychain ([ADR-0026](../adr/0026-security-defaults.md)) |
+| Jev | `POST /v1/decide` with caller-defined output schema, inside its `Level1Engine` adapter | HTTPS | Wire shape provisional until the owner fixes the interface; the core contract is `level1-prediction.schema.json` ([ADR-0035](../adr/0035-level1-engine-socket.md)) |
 
 The inbox of findings, the board's view of `SourceConnector` results, is specified as UX in
 [Board UX, inbox](../product/board-ux.md#7-inbox-new-findings-from-connected-sources).

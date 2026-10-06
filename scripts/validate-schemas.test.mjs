@@ -217,12 +217,28 @@ describe('collectUlids', () => {
 });
 
 describe('cross-checks', () => {
-  it('flag a level-1 choice outside the options', () => {
-    const answer = { options: ['a', 'b'], choice: 'c' };
-    expect(crossCheck('level1-answer.schema.json', answer).map((f) => f.check)).toEqual([
-      'level1-choice',
+  it('flag a predicted move outside the move options (ADR-0035)', () => {
+    const player = { playerCardId: '01M1E34QM03WVTE8T1RYS3AM18', moveOptions: ['a', 'b'] };
+    const prediction = { players: [{ ...player, predictedMove: 'c' }] };
+    expect(crossCheck('level1-prediction.schema.json', prediction).map((f) => f.check)).toEqual([
+      'level1-move',
     ]);
-    expect(crossCheck('level1-answer.schema.json', { ...answer, choice: 'a' })).toEqual([]);
+    expect(
+      crossCheck('level1-prediction.schema.json', { players: [{ ...player, predictedMove: 'a' }] }),
+    ).toEqual([]);
+  });
+
+  it('flag a level-1 player that is not on the board or named twice (ADR-0035)', () => {
+    const id = '01M1E34QM03WVTE8T1RYS3AM18';
+    const name = 'level1-prediction.schema.json#/$defs/request';
+    const player = { playerCardId: id, moveOptions: ['a', 'b'] };
+    expect(crossCheck(name, { players: [player], cards: [{ id }] })).toEqual([]);
+    expect(crossCheck(name, { players: [player], cards: [] }).map((f) => f.check)).toEqual([
+      'level1-players',
+    ]);
+    expect(
+      crossCheck(name, { players: [player, player], cards: [{ id }] }).map((f) => f.message),
+    ).toEqual([`player ${id} is named twice`]);
   });
 
   it('flag any card id in a training record that did not opt in, but not world or proposal ids', () => {

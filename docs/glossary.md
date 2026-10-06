@@ -164,6 +164,6 @@ Store headings are matched with and without umlaut transliteration (`ae`, `oe`, 
 - **Disclosure targets:** `screen`, `local_model`, `cloud_model`, `demo`.
 - **Thinking levels:** Level 1 (fast, "System 1") and Level 2 (deliberate, "System 2", the board).
 - **Proposal kinds:** `place_card`, `move_card`, `add_edge`, `create_card`, `comment`.
-- **Adapters:** `StorageAdapter`, `SourceConnector`, `ModelConnector`, `DisclosureGate`.
+- **Adapters:** `StorageAdapter`, `SourceConnector`, `ModelConnector`, `Level1Engine`, `DisclosureGate`.
 - **ICD 203:** the intelligence-community standard of verbal probability bands used for
   stored probability phrases.

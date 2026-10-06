@@ -134,7 +134,7 @@ Privacy is structural, not a setting ([ADR-0012](../adr/0012-disclosure-gate.md)
   after a confirmed, hash-bound transfer; a `local_model` connection follows the gate rules without
   per-transfer confirmation ([ADR-0031](../adr/0031-gate-rules-and-confirmation-binding.md)).
 - **Every egress path calls the gate:** context packages, MCP responses, `ModelConnector`
-  calls (including Jev), `rules_evaluate` for non-screen targets, and exports (decided under
+  and `Level1Engine` calls (including Jev), `rules_evaluate` for non-screen targets, and exports (decided under
   `cloud_model` semantics with a per-export confirmation).
 - **Canonical egress only.** Egress serialises canonical objects after the decision, never
   raw store files, so store fields outside the model cannot leak.
@@ -186,7 +186,7 @@ Privacy is structural, not a setting ([ADR-0012](../adr/0012-disclosure-gate.md)
 - **Non-counting rule:** pending or rejected proposals count nowhere: not in rules
   evaluation, statistics, source profiles, decision cards, training export, nor as accepted
   fact in context packages ([ADR-0011](../adr/0011-agent-moves-are-proposals.md)).
-- Model answers and Level 1 results that imply world changes arrive as proposals with
+- Model answers and Level 1 predictions that imply world changes arrive as proposals with
   `author: agent:<engine-name>`.
 
 ## 8.7 Security
@@ -225,8 +225,9 @@ The system never states a conclusion as its own.
 
 - No meter, no percentage, no aggregate, no "recommended option" field in any contract
   ([ADR-0013](../adr/0013-rules-panel-replaces-barometer.md)).
-- Level 1 answers are attributed: "`<engine>` estimates 0.82 for X", with inputs
-  ([ADR-0015](../adr/0015-two-thinking-levels.md)).
+- Level 1 predictions are attributed: "`<engine>` estimates 0.71: X" next to each player, with
+  the cards used ([ADR-0015](../adr/0015-two-thinking-levels.md),
+  [ADR-0035](../adr/0035-level1-engine-socket.md)).
 - Verbal probabilities are stored as phrase plus ICD 203 band; the UI shows words
   ([ADR-0010](../adr/0010-estimative-probability-scale.md)).
 - Source profiles have no overall score; below a minimum sample size the UI shows

@@ -1,0 +1,47 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/level1-prediction.schema.json",
+  "description": "A level-1 prediction is an attributed estimate, never a verdict (ADR-0015, ADR-0035).",
+  "expect": {
+    "keyword": "additionalProperties",
+    "instancePath": ""
+  },
+  "data": {
+    "engine": "local-rules",
+    "lageId": "01M1F21G80R816A1T0V2P6RACH",
+    "trigger": {
+      "kind": "lage_opened"
+    },
+    "requestHash": "sha256:1e03e1ced73a921874c0d39dd69088ec2d3f48837afac698ef11a625ca769a21",
+    "players": [
+      {
+        "playerCardId": "01M1EDEAG082WZ7T7D204BHZDC",
+        "moveOptions": [
+          "Keep night transit restrictions",
+          "Lift the restrictions",
+          "Stop tankers at night"
+        ],
+        "predictedMove": "Keep night transit restrictions",
+        "confidence": 0.71,
+        "cardIds": ["01M1EDEAG082WZ7T7D204BHZDC", "01M1E34QM03WVTE8T1RYS3AM18"]
+      },
+      {
+        "playerCardId": "01M1EGW640BMD0RDT5NGRMFD70",
+        "moveOptions": [
+          "Reroute via the Cape of Good Hope",
+          "Hold course and buy war-risk cover",
+          "Delay sailings by two weeks"
+        ],
+        "predictedMove": "Hold course and buy war-risk cover",
+        "confidence": 0.58,
+        "cardIds": [
+          "01M1EGW640BMD0RDT5NGRMFD70",
+          "01M1EMA1R0AH9ZTK3YJK33TNER",
+          "01M1EV5S00YXKKGEG772AZM7P9"
+        ]
+      }
+    ],
+    "predictedAt": "2026-09-16T10:12:00Z",
+    "verdict": "Keep night transit restrictions"
+  }
+}
