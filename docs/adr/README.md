@@ -70,3 +70,4 @@ MCP tool definitions, the adapter interfaces, or the product canon
 | [0041](0041-usage-ledger-and-metrics.md) | A derived usage ledger and exactly defined knowledge-loop metrics per agent and week | accepted | 2026-10-06 |
 | [0042](0042-memory-route-classification.md) | `memory_route` classifies agent memories with ordered deterministic rules | accepted | 2026-10-06 |
 | [0043](0043-digest-atlas-regeneration.md) | `wb digest` regenerates atlas pages deterministically, with card links and a staleness check | accepted | 2026-10-06 |
+| [0044](0044-hermes-integration-package.md) | The Hermes integration is a separate package with a stdlib-only native plugin | accepted | 2026-10-07 |

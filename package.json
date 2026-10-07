@@ -28,7 +28,8 @@
     "generate:types": "node scripts/generate-types.mjs",
     "check:generated": "node scripts/generate-types.mjs --check",
     "lint:openapi": "node scripts/lint-openapi.mjs",
-    "check:licence-imports": "node scripts/check-licence-imports.mjs"
+    "check:licence-imports": "node scripts/check-licence-imports.mjs",
+    "test:hermes": "node scripts/test-hermes.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",

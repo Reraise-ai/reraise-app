@@ -18,6 +18,7 @@ Copyright: The Worldbuilder contributors.
 | `packages/knowledge-loop`                         | Apache-2.0        |
 | `packages/training-export`                        | Apache-2.0        |
 | `packages/conformance`                            | Apache-2.0        |
+| `integrations/hermes`                             | Apache-2.0        |
 | `schemas/`                                        | Apache-2.0        |
 | `examples/`                                       | Apache-2.0        |
 | `docs/` (including the card format specification) | Apache-2.0        |

@@ -1,0 +1,72 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright The Worldbuilder contributors
+#
+# Native Hermes plugin manifest (fields: hermes_cli/plugins_manifest.py, PluginManifest).
+name: worldbuilder-knowledge-loop
+version: 0.1.0
+description: >-
+  Makes the Worldbuilder knowledge loop mandatory and checkable for Hermes agents: consults the
+  knowledge at the start of a task, requires receipts in hand-offs, and routes memory writes.
+author: The Worldbuilder contributors
+license: Apache-2.0
+manifest_version: 2
+provides_tools: []
+provides_hooks:
+  - pre_llm_call
+  - pre_tool_call
+  - post_tool_call
+  - on_session_end
+  - kanban_task_completed
+config_schema:
+  server:
+    type: str
+    default: worldbuilder
+    description: Name of the mcp_servers entry that points at the Worldbuilder service.
+  world_id:
+    type: str
+    default: ''
+    description: ULID of the world the agents consult (required; see docs/how-to/connect-hermes.md).
+  lage_id:
+    type: str
+    default: ''
+    description: Optional ULID of the Lage (board) to scope the consult to.
+  max_context_items:
+    type: int
+    default: 12
+    description: Cards listed in the injected consult summary (the package itself is not truncated).
+  max_context_chars:
+    type: int
+    default: 6000
+    description: Upper bound for the text injected into the turn.
+  call_timeout:
+    type: float
+    default: 15
+    description: Seconds per MCP call (Hermes abandons a hook after plugins.hook_callback_timeout).
+  require_receipt_for_delegation:
+    type: bool
+    default: false
+    description: Block delegate_task while the current task has no valid Knowledge Receipt.
+  gate_kanban_complete:
+    type: bool
+    default: true
+    description: Block kanban_complete unless metadata carries the receipts and cardWritten.
+  route_memory:
+    type: bool
+    default: true
+    description: Route writes of the memory tool through memory_route.
+  memory_on_error:
+    type: str
+    default: allow
+    description: 'allow or block memory writes when the Worldbuilder cannot be reached.'
+  task_ref_prefix:
+    type: str
+    default: hermes
+    description: Prefix of task references derived from a session id.
+  agent:
+    type: str
+    default: agent:hermes
+    description: The name this agent is registered with in the Worldbuilder (agent:<name>); written into task records.
+  task_records_dir:
+    type: str
+    default: ''
+    description: Folder for task records (one JSON file per task). Empty means <HERMES_HOME>/worldbuilder/task-records. Point the cron jobs at the same folder.

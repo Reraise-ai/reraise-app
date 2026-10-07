@@ -1,0 +1,84 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright The Worldbuilder contributors
+#
+# Merge this into ~/.hermes/config.yaml (keep your own keys). Placeholders only.
+# Key paths verified against hermes-agent: website/docs/user-guide/features/mcp.md,
+# tool-search.md, plugins.md, hermes_cli/plugins.py (call_mcp, mcp_allowlist, get_config).
+
+# 1. The Worldbuilder as an MCP server of this Hermes agent (one registered connection per agent:
+#    `worldbuilder agent add <name> --target local_model|cloud_model`, ADR-0037).
+mcp_servers:
+  worldbuilder:
+    # Streamable HTTP (the default transport for a server with a url). Change the port if you did.
+    url: 'http://127.0.0.1:4310/mcp'
+    headers:
+      # Resolved from ~/.hermes/.env when the server connects; never write the token here.
+      Authorization: 'Bearer ${WORLDBUILDER_AGENT_TOKEN}'
+    # Optional: narrow the tool surface (glob patterns allowed). With tool search off (below) every
+    # tool of every MCP server costs context in every turn, so list only what the agent needs.
+    # An orchestrator that consults, writes back and looks things up:
+    tools:
+      include:
+        - knowledge_consult
+        - knowledge_write_back
+        - memory_route
+        - decision_record
+        - decision_outcome
+        - context_package_get
+        - cards_search
+        - card_get
+        - lage_get
+        - proposal_create
+        - proposal_list
+    # stdio instead (agent speaks only stdio): replace url/headers with
+    #   command: "worldbuilder"
+    #   args: ["mcp", "--stdio"]
+    #   env: { WORLDBUILDER_AGENT_TOKEN_FILE: "/path/to/your/config/worldbuilder/<name>.token" }
+
+# 2. Keep the knowledge tools always visible.
+#    By default Hermes hides ALL MCP tools behind its tool search bridge (tool_search / tool_describe /
+#    tool_call). The measured failure of an agent system was exactly that: the knowledge tools were
+#    never found. `defer: []` does not undefer MCP tools; the only switch is `enabled: "off"`.
+#    TRADE-OFF: "off" is global. Every MCP and plugin tool of this agent is then listed with its
+#    full schema in every turn, which costs context; keep the surface small with `tools.include`
+#    above and on your other MCP servers. Alternative if that cost is too high: leave tool search on
+#    and set `listing: "on"` with a large `listing_max_tokens` so tool names stay visible. Then the
+#    model must still run tool_describe before knowledge_write_back; the plugin's consult and the
+#    receipt fields in hand-offs do not depend on this, but expect fewer write-backs.
+tools:
+  tool_search:
+    enabled: 'off'
+
+# 3. The plugin (copy plugins/worldbuilder-knowledge-loop to ~/.hermes/plugins/, see the how-to).
+plugins:
+  enabled:
+    - worldbuilder-knowledge-loop
+  entries:
+    worldbuilder-knowledge-loop:
+      # Default-deny: a plugin may call only the MCP servers listed here (ctx.call_mcp).
+      mcp_allowlist:
+        - worldbuilder
+      settings:
+        # Required: the world agents consult (a ULID from `world_list`).
+        world_id: '<ULID of your world>'
+        # Optional: scope the consult to one Lage (board).
+        # lage_id: "<ULID of the Lage>"
+        # The name this agent is registered with (worldbuilder agent add <name>), written into task records.
+        agent: 'agent:orchestrator'
+        # Where task records go (default: $HERMES_HOME/worldbuilder/task-records). The cron jobs read
+        # the same folder unless WB_TASKS_DIR says otherwise.
+        # task_records_dir: "/path/to/task-records"
+        # Name of the mcp_servers entry above.
+        server: worldbuilder
+        # Block delegate_task while the task has no Knowledge Receipt (default: only add the
+        # mandatory receipt fields to the hand-off).
+        require_receipt_for_delegation: false
+        # Block kanban_complete unless its metadata carries the receipts and cardWritten.
+        gate_kanban_complete: true
+        # Route memory tool writes through memory_route (lessons become card proposals).
+        route_memory: true
+        # When the Worldbuilder cannot be reached: "allow" the memory write (nothing is lost) or "block".
+        memory_on_error: allow
+  # A pre_tool_call hook that takes longer than this is abandoned and the tool is blocked
+  # (fail closed). The plugin keeps its own budget of 25 s inside it for memory writes.
+  hook_callback_timeout: 30

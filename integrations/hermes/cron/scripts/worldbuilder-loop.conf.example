@@ -1,0 +1,24 @@
+# Settings of the Worldbuilder knowledge-loop cron scripts. Copy to
+#   $HERMES_HOME/scripts/worldbuilder-loop.conf
+# KEY=VALUE per line, no quotes, no spaces around "=". Placeholders only; fill in your own paths.
+
+# The wb command (a command with arguments is fine, a path with spaces is not).
+WB_BIN=wb
+
+# Where the Worldbuilder keeps its local state (receipt log, proposals, atlas). Empty = per-user default.
+WB_STATE_DIR=
+
+# Your card store (markdown-files). Needed by the digest, the watchdog and, for atlas freshness, the metrics.
+WB_STORE=/path/to/your/card-store
+
+# Folder with the task records (*.json from the plugin, *.md hand-offs; other files are ignored).
+# Empty: <HERMES_HOME>/worldbuilder/task-records, where the plugin writes (setting task_records_dir).
+WB_TASKS_DIR=
+
+# Optional: atlas output folder (default: <state>/atlas) and gate rule file (default: <state>/gate-rules.yaml).
+WB_ATLAS_DIR=
+WB_GATE_RULES=
+
+# Optional tuning.
+WB_TASK_LOOKBACK_HOURS=24
+WB_MAX_ATLAS_LAG_HOURS=72

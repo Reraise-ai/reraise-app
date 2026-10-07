@@ -119,6 +119,10 @@ Not decided until a concrete installation's storage is known. The integration st
 
 ### Documentation and test agent
 
+- [`docs/how-to/connect-hermes.md`](../how-to/connect-hermes.md): the knowledge-loop integration
+  for Hermes (`integrations/hermes/`): MCP registration with tool search off, a native plugin
+  for consult, hand-off receipts and memory routing, templates and cron jobs
+  ([ADR-0039](0039-knowledge-loop-receipts.md)). Tested in CI against a fake Hermes harness.
 - `docs/how-to/connect-hermes-agent.md`: a generic MCP client configuration for Streamable
   HTTP and for the stdio bridge, token handling, choosing the target class and a first
   proposal. Parts that need the M1 service are marked "available from M1".
@@ -130,8 +134,9 @@ Not decided until a concrete installation's storage is known. The integration st
 
 ### Consequences
 
-- Good, because any MCP-capable agent system connects the same way; Hermes needs no special
-  code.
+- Good, because any MCP-capable agent system connects the same way; the product, the service and
+  the MCP server contain no Hermes code. The Hermes-side glue (a native plugin, templates, cron
+  jobs) is a separate package, [ADR-0044](0044-hermes-integration-package.md).
 - Good, because every proposal names the exact agent, and every agent gets exactly the
   disclosure its models justify.
 - Bad, because a multi-agent system with many agents means many registrations and tokens; a

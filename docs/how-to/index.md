@@ -10,6 +10,7 @@ checked in CI where possible.
 | Guide | Audience |
 | --- | --- |
 | [Connect a Hermes agent in 5 minutes](./connect-hermes-agent.md) | agent operators. Any MCP-capable agent; the service parts are available from M1. |
+| [Connect Hermes in 5 minutes](./connect-hermes.md) | Hermes operators. The knowledge loop: plugin, receipts in hand-offs, memory routing, cron jobs. |
 
 ## Planned
 
