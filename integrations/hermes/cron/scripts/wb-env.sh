@@ -40,6 +40,12 @@ if [ -f "$wb_conf" ]; then
   done <"$wb_conf"
 fi
 
+# The plugin writes its task records to <HERMES_HOME>/worldbuilder/task-records (setting
+# task_records_dir): use that folder when WB_TASKS_DIR is not set and the folder exists.
+if [ -z "$WB_TASKS_DIR" ] && [ -d "${HERMES_HOME:-$HOME/.hermes}/worldbuilder/task-records" ]; then
+  WB_TASKS_DIR="${HERMES_HOME:-$HOME/.hermes}/worldbuilder/task-records"
+fi
+
 # wb_cmd <args...>: run the wb command line; --state goes last, after the subcommand and its
 # arguments (WB_BIN may be a command with arguments, such as
 # "node /path/to/dist/bin.js"; a path with spaces is not supported).

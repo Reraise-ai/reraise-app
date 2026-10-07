@@ -134,8 +134,9 @@ Not decided until a concrete installation's storage is known. The integration st
 
 ### Consequences
 
-- Good, because any MCP-capable agent system connects the same way; Hermes needs no special
-  code.
+- Good, because any MCP-capable agent system connects the same way; the product, the service and
+  the MCP server contain no Hermes code. The Hermes-side glue (a native plugin, templates, cron
+  jobs) is a separate package, [ADR-0044](0044-hermes-integration-package.md).
 - Good, because every proposal names the exact agent, and every agent gets exactly the
   disclosure its models justify.
 - Bad, because a multi-agent system with many agents means many registrations and tokens; a

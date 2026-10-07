@@ -63,6 +63,11 @@ plugins:
         world_id: '<ULID of your world>'
         # Optional: scope the consult to one Lage (board).
         # lage_id: "<ULID of the Lage>"
+        # The name this agent is registered with (worldbuilder agent add <name>), written into task records.
+        agent: 'agent:orchestrator'
+        # Where task records go (default: $HERMES_HOME/worldbuilder/task-records). The cron jobs read
+        # the same folder unless WB_TASKS_DIR says otherwise.
+        # task_records_dir: "/path/to/task-records"
         # Name of the mcp_servers entry above.
         server: worldbuilder
         # Block delegate_task while the task has no Knowledge Receipt (default: only add the

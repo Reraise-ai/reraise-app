@@ -16,10 +16,12 @@ automatic, the hand-off fields required, and `wb receipts verify` the only judge
 :::
 
 ::: warning Status
-The plugin, templates and cron scripts are tested against a fake Hermes harness in CI, not
-against a running Hermes. The service side of the tools `knowledge_consult`,
-`knowledge_write_back` and `memory_route` is a separate slice; until it ships, the plugin reports
-"no receipt" and the verifier rejects the task, which is the intended failure mode.
+The plugin, templates and cron scripts are tested against a fake Hermes harness, not against a
+running Hermes: the CI job is defined and the tests pass locally; no CI run has happened yet. The
+service side of the tools `knowledge_consult`, `knowledge_write_back` and `memory_route` is a
+separate slice; until it ships, the plugin reports "no receipt" and the verifier rejects the
+task, which is the intended failure mode. The design is recorded in
+[ADR-0044](../adr/0044-hermes-integration-package.md).
 :::
 
 ## 1. Register the agent and its token (1 minute)
@@ -51,6 +53,8 @@ Merge `integrations/hermes/config/config.snippet.yaml` into `~/.hermes/config.ya
 - `plugins.entries.worldbuilder-knowledge-loop.mcp_allowlist: [worldbuilder]`: Hermes denies a
   plugin every MCP server that is not listed.
 - `settings.world_id`: the ULID of the world agents consult (from `world_list`).
+- `settings.agent`: the name the agent is registered with, as `agent:<name>`; it is written into
+  task records.
 
 ## 3. Install the plugin (1 minute)
 
@@ -63,18 +67,20 @@ What it does:
 
 | Hook | Behaviour |
 | --- | --- |
-| `pre_llm_call` | On the first turn of a task and when the task changes it calls `knowledge_consult` and injects the summary and the Knowledge Receipt id. Server unreachable: an explicit notice and "no receipt"; it never pretends. |
-| `pre_tool_call` on `delegate_task` | Adds an `output_schema` that requires `knowledgeReceipt`, `writeBackReceipt` and `cardWritten` (`{cardId}` or `{notNeededBecause}`); optionally blocks delegation without a consult. |
+| `pre_llm_call` | On the first turn of a session, and when the turn names another task with a line `Task ref: <id>`, it calls `knowledge_consult` and injects the summary and the Knowledge Receipt id. A task change is recognised only by that explicit line. Server unreachable: an explicit notice and "no receipt"; it never pretends. |
+| `pre_tool_call` on `delegate_task` | Adds an `output_schema` that requires `knowledgeReceipt`, `writeBackReceipt` and `cardWritten` (`{proposalId}`, `{cardId}` or `{notNeededBecause}`), and starts every child goal with the child's own `Task ref:` line. A spawn whose shape it cannot read is blocked; optionally blocks delegation without a consult. |
 | `pre_tool_call` on `kanban_complete` | Blocks a hand-off whose metadata lacks the receipts and `cardWritten`. |
 | `pre_tool_call` on `memory` | `memory_route`: a durable lesson becomes a private card proposal through `knowledge_write_back` and the memory write is blocked; an ephemeral operations fact is allowed. |
+| `on_session_end`, `kanban_task_completed` | Write one task record (JSON) per task into `settings.task_records_dir` (default `$HERMES_HOME/worldbuilder/task-records`), with the receipts the plugin knows. A task that never consulted still gets a record, without a receipt, so the nightly validation rejects it. |
+| `post_tool_call` | Notes receipts of `knowledge_consult` and `knowledge_write_back` calls the model made itself, for the task record. |
 | system prompt section | A short rule: consult first, hand off with receipts, lessons are cards. |
 
 ## 4. Use the templates (1 minute)
 
 `integrations/hermes/templates/` holds the task template, the hand-off template and the task
 record. Both templates have the mandatory lines **Knowledge receipt** and **Card written: id |
-not needed because ...**. A hand-off is saved as a task record in the folder the nightly job
-reads. The plugin's `reviewer` skill rejects any hand-off for which `wb receipts verify` does not
+not needed because ...**. A hand-off written by an agent is saved as a Markdown task record in
+the folder the nightly job reads; the plugin writes the JSON records of that same folder itself. The plugin's `reviewer` skill rejects any hand-off for which `wb receipts verify` does not
 exit 0.
 
 ## 5. Install the cron jobs (1 minute)
@@ -82,7 +88,7 @@ exit 0.
 ```sh
 sh integrations/hermes/cron/install-cron.sh --dry-run     # prints every step
 sh integrations/hermes/cron/install-cron.sh --deliver local
-# edit $HERMES_HOME/scripts/worldbuilder-loop.conf (store, task record folder)
+# edit $HERMES_HOME/scripts/worldbuilder-loop.conf (the card store; the task record folder defaults to the plugin's)
 ```
 
 On Windows use `integrations/hermes/cron/install-cron.ps1` (same options). Four no-agent jobs are
@@ -106,10 +112,25 @@ Check with `hermes cron list` and `hermes cron doctor`.
 3. Run the plugin tests without Hermes: `pip install -e "integrations/hermes[test]"` and
    `pnpm test:hermes`.
 
-## Known limits
+## Defaults and known limits
 
-- Whether Hermes' background memory review path passes through `pre_tool_call` is not verified;
-  the nightly validation and the metrics catch what it misses.
+These defaults are decisions with a safer alternative; they are recorded in
+[OQ-16 to OQ-18](../owner-questions.md) and in ADR-0044.
+
+- `memory_on_error: allow`: when the Worldbuilder cannot be reached the memory write goes ahead
+  (nothing is lost); set `block` to stop it instead.
+- `gate_kanban_complete: true`: `kanban_complete` without the receipts in `metadata` is blocked.
+- `require_receipt_for_delegation: false`: delegation is not blocked while the parent has no
+  receipt; the child must still return its own receipts.
+- Only writes through Hermes' `memory` tool are routed. A memory write that bypasses it (a background
+  memory review fork, a memory provider writing directly) is not caught; only the lack of agent cards
+  shows it. Whether the background review path passes
+  through `pre_tool_call` is not verified.
+- A kanban completion in another process than the agent's session writes no record: the record comes
+  from the session that ran the task (`on_session_end`).
+- The plugin has never run inside a real Hermes: hook names and payloads follow the Hermes source
+  (commit `65bc6727`), and the tests use a fake host.
+
 - Hooks are abandoned after `plugins.hook_callback_timeout` (30 s) and then fail closed; the
   plugin keeps its own call budget inside it.
 - A receipt proves that a consult happened for a task, not that the agent used it well; the

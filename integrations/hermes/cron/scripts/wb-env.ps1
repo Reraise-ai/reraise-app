@@ -37,6 +37,10 @@ if (Test-Path -LiteralPath $WbConf -PathType Leaf) {
     }
 }
 
+# The task records the plugin writes (setting task_records_dir) are the default WB_TASKS_DIR.
+$defaultTasks = Join-Path (Join-Path $hermesHome 'worldbuilder') 'task-records'
+if (-not $Wb.WB_TASKS_DIR -and (Test-Path -LiteralPath $defaultTasks -PathType Container)) { $Wb.WB_TASKS_DIR = $defaultTasks }
+
 # Invoke-Wb <args...>: run wb; returns @{ Code; Out; Err } (WB_BIN may be "node C:\path\dist\bin.js").
 function Invoke-Wb {
     param([string[]]$Arguments)
@@ -47,12 +51,18 @@ function Invoke-Wb {
     $all += $Arguments
     if ($Wb.WB_STATE_DIR) { $all += @('--state', $Wb.WB_STATE_DIR) }
     $errFile = [System.IO.Path]::GetTempFileName()
+    # Windows PowerShell 5.1 wraps native stderr lines in error records, which 'Stop' would turn
+    # into a terminating error before $LASTEXITCODE is read: run with 'Continue' for this one call.
+    $previous = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
     try {
+        $global:LASTEXITCODE = 0
         $out = & $exe @all 2>$errFile
         $code = $LASTEXITCODE
+        $ErrorActionPreference = $previous
         return @{ Code = $code; Out = (($out | Out-String).TrimEnd()); Err = ((Get-Content -LiteralPath $errFile -Raw) + '').TrimEnd() }
     }
-    finally { Remove-Item -LiteralPath $errFile -Force -ErrorAction SilentlyContinue }
+    finally { $ErrorActionPreference = $previous; Remove-Item -LiteralPath $errFile -Force -ErrorAction SilentlyContinue }
 }
 
 function Assert-WbSetting {

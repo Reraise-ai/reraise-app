@@ -68,5 +68,5 @@ config_schema:
     description: The name this agent is registered with in the Worldbuilder (agent:<name>); written into task records.
   task_records_dir:
     type: str
-    default: ""
+    default: ''
     description: Folder for task records (one JSON file per task). Empty means <HERMES_HOME>/worldbuilder/task-records. Point the cron jobs at the same folder.

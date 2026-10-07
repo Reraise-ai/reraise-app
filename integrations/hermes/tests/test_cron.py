@@ -342,15 +342,19 @@ JOBS = {
 }
 
 
-def _install(tmp: Path, *args: str, existing: str = "") -> tuple[subprocess.CompletedProcess[str], Path, Path]:
+def _install(
+    tmp: Path, *args: str, existing: str = "", list_fails: bool = False, create_fails: bool = False
+) -> tuple[subprocess.CompletedProcess[str], Path, Path]:
     home = tmp / "hermes-home"
     bin_dir = tmp / "bin"
     bin_dir.mkdir(exist_ok=True)
     log = tmp / "hermes.log"
     fake = bin_dir / "hermes"
     fake.write_text(
-        '#!/bin/sh\nif [ "$1 $2" = "cron list" ]; then printf \'%s\' "$HERMES_EXISTING"; exit 0; fi\n'
+        '#!/bin/sh\nif [ "$1 $2" = "cron list" ]; then\n'
+        '  [ -n "$HERMES_LIST_FAILS" ] && exit 1\n  printf \'%s\' "$HERMES_EXISTING"; exit 0\nfi\n'
         'printf \'%s\\0\' "$@" >> "$HERMES_LOG"; printf \'\\n\' >> "$HERMES_LOG"\n'
+        '[ -n "$HERMES_CREATE_FAILS" ] && exit 3\nexit 0\n'
     )
     fake.chmod(0o755)
     env = {
@@ -358,6 +362,8 @@ def _install(tmp: Path, *args: str, existing: str = "") -> tuple[subprocess.Comp
         "HOME": str(tmp),
         "HERMES_LOG": str(log),
         "HERMES_EXISTING": existing,
+        "HERMES_LIST_FAILS": "1" if list_fails else "",
+        "HERMES_CREATE_FAILS": "1" if create_fails else "",
     }
     assert SH is not None
     result = subprocess.run(
@@ -419,6 +425,46 @@ def test_installer_dry_run_changes_nothing_and_prints_the_commands(tmp_path: Pat
             f"[dry-run] hermes cron create '{schedule}' --no-agent --script {script} --name {name} --deliver telegram"
             in result.stdout
         )
+
+
+def test_installer_reports_failed_jobs_and_exits_non_zero(tmp_path: Path) -> None:
+    result, _, log = _install(tmp_path, create_fails=True)
+    assert result.returncode == 1
+    assert result.stderr.count("FAILED") == 4 and "4 step(s) failed" in result.stderr
+    assert "done." not in result.stdout
+
+
+def test_installer_falls_back_to_the_job_file_when_the_list_fails(tmp_path: Path) -> None:
+    cron = tmp_path / "hermes-home" / "cron"
+    cron.mkdir(parents=True)
+    (cron / "jobs.json").write_text('{"jobs": [{"name": "worldbuilder-watchdog"}]}')
+    result, _, log = _install(tmp_path, list_fails=True)
+    assert result.returncode == 0 and "hermes cron list failed" in result.stderr
+    assert "worldbuilder-watchdog" not in [j[j.index("--name") + 1] for j in _created(log)]
+    assert "job worldbuilder-watchdog exists; left alone" in result.stdout
+
+
+def test_default_task_folder_is_the_one_the_plugin_writes(env: Env, tmp_path: Path) -> None:
+    home = tmp_path / "hh"
+    folder = home / "worldbuilder" / "task-records"
+    folder.mkdir(parents=True)
+    _record(env, "x.md", 1)  # a record elsewhere must not be picked up
+    (folder / "t.json").write_text("{}")
+    env.write_conf(WB_TASKS_DIR=None)
+    probe = f'. {SCRIPTS}/wb-env.sh; printf %s "$WB_TASKS_DIR"'
+    out = subprocess.run(
+        [SH, "-c", probe],
+        capture_output=True,
+        text=True,
+        env={
+            "PATH": os.environ["PATH"],
+            "HOME": str(tmp_path),
+            "HERMES_HOME": str(home),
+            "WB_LOOP_CONF": str(env.conf),
+        },
+        check=False,
+    )
+    assert out.stdout == str(folder), out.stderr
 
 
 def test_installer_rejects_unknown_options(tmp_path: Path) -> None:

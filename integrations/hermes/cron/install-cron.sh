@@ -43,13 +43,17 @@ quote() {
   esac
 }
 
+failed=0
+# step <command...>: run it (or print it with --dry-run); a failure is counted and reported at the end.
 step() {
   if [ "$dry" -eq 1 ]; then
     printf '[dry-run]'
     for arg in "$@"; do printf ' %s' "$(quote "$arg")"; done
     printf '\n'
-  else
-    "$@"
+  elif ! "$@"; then
+    echo "install-cron.sh: FAILED: $*" >&2
+    failed=$((failed + 1))
+    return 1
   fi
 }
 
@@ -71,7 +75,13 @@ if [ "$dry" -eq 0 ] && ! command -v hermes >/dev/null 2>&1; then
   exit 2
 fi
 existing=""
-[ "$dry" -eq 0 ] && existing=$(hermes cron list --all 2>/dev/null || true)
+if [ "$dry" -eq 0 ]; then
+  if ! existing=$(hermes cron list --all 2>/dev/null); then
+    # Without the list a second run would create every job twice: read Hermes' job file instead.
+    echo "install-cron.sh: hermes cron list failed; checking $home/cron/jobs.json for existing jobs" >&2
+    existing=$(cat "$home/cron/jobs.json" 2>/dev/null || true)
+  fi
+fi
 
 job() { # job <name> <schedule> <script>
   case "$existing" in
@@ -85,4 +95,8 @@ job worldbuilder-nightly-validate "37 3 * * *" wb-nightly-validate.sh
 job worldbuilder-weekly-metrics "23 7 * * MON" wb-weekly-metrics.sh
 job worldbuilder-watchdog "41 6 * * *" wb-watchdog.sh
 
+if [ "$failed" -gt 0 ]; then
+  echo "install-cron.sh: $failed step(s) failed; fix the cause and run it again (finished jobs are left alone)" >&2
+  exit 1
+fi
 echo "done. Check with: hermes cron list ; hermes cron doctor"
