@@ -103,7 +103,7 @@ const CORPUS: [string, MemoryRouteRequest['kindHint'] | undefined, string, strin
     'knowledge_hint',
   ],
   ['Checked the queue and moved on to the next item', undefined, 'ephemeral_ops_fact', 'default'],
-  // Review cases (rules:v2).
+  // Review cases (added in rules:v2).
   [
     'Lesson learned: the admin password for the staging box is Summer2026!',
     'learning',
@@ -170,7 +170,7 @@ const CORPUS: [string, MemoryRouteRequest['kindHint'] | undefined, string, strin
     'ephemeral_ops_fact',
     'personal_data',
   ],
-  ['The one-time pin is 4711 for the vault', 'learning', 'ephemeral_ops_fact', 'secret'],
+  ['The one-time pin: 4711 for the vault', 'learning', 'ephemeral_ops_fact', 'secret'],
   ['Read the three new findings in the inbox', 'unknown', 'ephemeral_ops_fact', 'default'],
   [
     'Meeting moved from 10:30 to the afternoon slot',
@@ -191,11 +191,11 @@ describe('routeMemory (ADR-0042)', () => {
     };
     const result = routeMemory(request);
     expect([result.route, result.ruleId]).toEqual([route, ruleId]);
-    expect(result.classifier).toBe('rules:v2');
+    expect(result.classifier).toBe('rules:v3');
     expect(validateContract('memory-route.schema.json', result)).toEqual({ ok: true });
   });
 
-  it('covers every rule of rules:v2 in the corpus', () => {
+  it('covers every rule of rules:v3 in the corpus', () => {
     const rules = new Set(CORPUS.map((c) => c[3]));
     expect([...rules].sort()).toEqual(
       [
@@ -251,5 +251,91 @@ describe('routeMemory (ADR-0042)', () => {
     const text =
       'Analysis at https://news.example.org/2026/very-long-article-title-about-the-strait-and-tankers';
     expect(routeMemory({ text }).ruleId).toBe('public_source');
+  });
+});
+
+describe('token-like runs and known prefixes (rules:v3)', () => {
+  // Built from parts at run time: no token-like literal sits in the repository (ADR-0022).
+  const tail = (n: number, alphabet = 'abcdefghjkmnpqrstuvwxyz0123456789') =>
+    Array.from({ length: n }, (_, i) => alphabet[(i * 7) % alphabet.length]).join('');
+  const lower36 = ['k3j9', 'x82m', 'q71p', 'z0w4', 'v55n', 'b62c', 'r9t8', 'y3u1', 'h2g6'].join('');
+  const UPPER = 'ABCDEFGHJKLMNPQRSTUVWXYZ234567';
+
+  it.each([
+    ['a lower-case 36-character token with many digits', `The deploy uses ${lower36} for uploads`],
+    ['a Slack bot token', `Bot runs with ${'xox' + 'b-'}${tail(12, '0123456789')}-${tail(24)}`],
+    ['a Slack user token', `Use ${'xox' + 'p-'}${tail(30)} always`],
+    ['a GitHub personal token', `Lesson: ${'gh' + 'p_'}${tail(36)} works`],
+    ['a GitHub OAuth token', `Lesson: ${'gh' + 'o_'}${tail(36)} works`],
+    ['a GitHub user-to-server token', `Lesson: ${'gh' + 'u_'}${tail(36)} works`],
+    ['a GitHub server token', `Lesson: ${'gh' + 's_'}${tail(36)} works`],
+    ['a GitHub refresh token', `Lesson: ${'gh' + 'r_'}${tail(36)} works`],
+    ['a fine-grained GitHub token', `Lesson: ${'github' + '_pat_'}${tail(40)} works`],
+    ['a secret API key with sk-', `The model key ${'sk' + '-'}${tail(40)} always works`],
+    ['a live secret key', `Payments use ${'sk' + '_live_'}${tail(24)} always`],
+    ['a live publishable key', `Payments use ${'pk' + '_live_'}${tail(24)} always`],
+    ['an access key id', `Uploads use ${'AK' + 'IA'}${tail(16, UPPER)} always`],
+    ['a temporary access key id', `Uploads use ${'AS' + 'IA'}${tail(16, UPPER)} always`],
+    ['a browser API key', `Maps use ${'AI' + 'za'}${tail(35)} always`],
+    ['a GitLab token', `CI uses ${'glpat' + '-'}${tail(20)} always`],
+    ['a private key block', `${'-----BEGIN RSA ' + 'PRIVATE KEY-----'} always rotate`],
+    [
+      'a Slack webhook',
+      `Lesson: the webhook is https://hooks.${'slack'}.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX always`,
+    ],
+    ['an npm token', `Insight: ${'npm' + '_'}${tail(36)} is the publish key we always use`],
+    [
+      'a JSON Web Token',
+      `Insight: always use ${'eyJ' + 'hbGciOiJIUzI1NiJ9'}.${'eyJ' + 'zdWIiOiIxMjM0NTY3ODkwIn0'}.${tail(43)} for the API`,
+    ],
+    [
+      'a URL with a password',
+      `Lesson: the db url ${'postgres'}://app:${'hunter2'}@db.example.org/app always works`,
+    ],
+    ['a project key with sk-', `Lesson: ${'sk' + '-proj-'}${tail(22)} always works`],
+  ])('treats %s as a secret', (_name, text) => {
+    const r = routeMemory({ text, kindHint: 'learning' });
+    expect([r.route, r.ruleId]).toEqual(['ephemeral_ops_fact', 'secret']);
+  });
+
+  it.each([
+    ['a task-force note', 'The task-force always reviews the routes because of insurance'],
+    ['an asked question', 'The analyst asked-for reviews tend to come back within a week'],
+    [
+      'a long lower-case slug with few digits',
+      'see https://news.example.org/2026/very-long-article-title-about-the-strait-and-tankers',
+    ],
+    ['a long word compound', 'internationalisation-and-localisation-guidelines always apply here'],
+    ['a short sk- word', 'The ski-lift always closes early because of wind'],
+    [
+      'a dated news URL',
+      'Lesson: insurers always reprice within a week, see https://example.org/news/2026/10/05/strait-closure-update-123456',
+    ],
+    [
+      'a wb: card URI',
+      `Lesson: card wb:45aaff12-777f-40e3-a97c-8a592e1ea4f6/${'01M1EQQXC0'}MVA4E2WAPG22HEY0 always shows the pattern`,
+    ],
+    [
+      'a canonical UUID',
+      'Insight: the shipping reports for 2026 always follow the pattern 45aaff12-777f-40e3-a97c-8a592e1ea4f6',
+    ],
+    [
+      'joined dates',
+      'Lesson: the sequence 2026-10-01/2026-10-08/2026-10-15/2026-10-22 always shows weekly repricing',
+    ],
+    [
+      'a mixed-case URL path',
+      'Lesson: the report https://example.org/Reports/2026/Q3-Shipping-Report-Final-Version-With-Annex always lists tanker losses',
+    ],
+    [
+      'pin and token in prose',
+      'Lesson: we always skip the pin when the token count is low because it costs time',
+    ],
+    [
+      'two ULIDs',
+      'Lesson: cards 01M1EQQXC0MVA4E2WAPG22HEY0 and 01M1EMA1R0AH9ZTK3YJK33TNER always conflict because of sources',
+    ],
+  ])('keeps %s free of the secret rule', (_name, text) => {
+    expect(routeMemory({ text }).ruleId).not.toBe('secret');
   });
 });

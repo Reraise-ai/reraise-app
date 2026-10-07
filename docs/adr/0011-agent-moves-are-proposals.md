@@ -9,6 +9,8 @@ decision-makers: "Owner (product), CTO/orchestrator (technical)"
 > Refined by [ADR-0039](0039-knowledge-loop-receipts.md): `knowledge_write_back`,
 > `decision_record` and `decision_outcome` also create proposals, and a new kind `record_outcome`
 > proposes the outcome of a decision card. Every agent write is still a proposal.
+> Habit metrics ([ADR-0041](0041-usage-ledger-and-metrics.md)) may report proposed counts as
+> labelled telemetry; targets count accepted proposals only.
 
 ## Context and Problem Statement
 
