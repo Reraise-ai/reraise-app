@@ -399,12 +399,20 @@ export class Level1Service {
     // The new Lage inherits the most restrictive clearance of what it copies (ADR-0045): its class
     // is the most restrictive class among the copied cards and it is private.
     const cls = CLASS_ORDER.find((c) => copied.some((x) => x.class === c));
-    const candidate = {
-      ...lage,
-      id: newUlid(),
+    // Tags and collection are matched by gate rules too: the new card inherits the union of the
+    // tags of the cards it copies from (source Lage, player, rule cards) and the source collection.
+    const sources = [lage, ...request.cards.filter((c) => c.id === playerCardId || c.rule)];
+    const tags = [...new Set(sources.flatMap((c) => c.tags ?? []))].sort();
+    const inherited = {
+      type: 'lage',
       visibility: 'private',
-      ...(cls ? { class: cls } : { class: undefined }),
-    } as Card;
+      ...(draft.create.worlds ? { worlds: draft.create.worlds } : {}),
+      ...(lage.collection !== undefined ? { collection: lage.collection } : {}),
+      ...(tags.length > 0 ? { tags } : {}),
+      ...(cls ? { class: cls } : {}),
+    };
+    // The clearance is computed on exactly the fields of the card that will be written.
+    const candidate = { ...inherited, id: newUlid(), format: 2, title: 'x' } as unknown as Card;
     // Text is copied from a card only if that card clears for every model target the new Lage
     // card would clear for; otherwise the wording is neutral.
     const targets: DisclosureTarget[] = [];
@@ -425,11 +433,8 @@ export class Level1Service {
       : draft.create.lage.options.map((_, i) => `Move ${i + 1}`);
     const card = {
       format: 2,
-      type: 'lage',
       title: `Next move of ${name}`,
-      ...(draft.create.worlds ? { worlds: draft.create.worlds } : {}),
-      visibility: 'private',
-      ...(cls ? { class: cls } : {}),
+      ...inherited,
       lage: {
         ...draft.create.lage,
         question: `What is the most likely next move of ${name}?${

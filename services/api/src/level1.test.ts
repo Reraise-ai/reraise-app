@@ -893,6 +893,78 @@ describe('escalation inherits the most restrictive clearance', () => {
   });
 });
 
+describe('escalation inherits tags and collection of its sources', () => {
+  const RULES = `rules:
+  - { id: screen-all, effect: allow, targets: [screen], match: {} }
+  - { id: models, effect: allow, targets: [local_model], match: { type: [lage, organisation, rule] } }
+  - { id: no-secret, effect: deny, targets: [local_model], match: { tags: [secret] } }
+`;
+  const variants: [string, (f: Fixture, w: World) => Promise<void>][] = [
+    ['only the source Lage is tagged', async () => undefined],
+    [
+      'the Lage, the player and a rule card are tagged',
+      async (f, w) => {
+        await f.adapter.patch(w.navy, { tags: ['secret'] });
+        f.store.seed(f.store.nextExternalId(), {
+          format: 2,
+          author: 'human',
+          worlds: [f.worldId],
+          visibility: 'public',
+          type: 'rule',
+          title: 'Tagged rule',
+          tags: ['secret'],
+          rule: { when: [{ kind: 'card_on_lage', card: w.navy }], then: 'SECRET-RULE-ACTION' },
+        });
+      },
+    ],
+    [
+      'only the player is tagged',
+      async (f, w) => {
+        await f.adapter.patch(w.navy, { tags: ['secret'] });
+      },
+    ],
+  ];
+  it.each(variants)('a tag deny holds on the escalated Lage when %s', async (name, prepare) => {
+    const f = await fixture({ rules: RULES });
+    const w = seedWorld(f, name === 'only the player is tagged' ? {} : { tags: ['secret'] });
+    await prepare(f, w);
+    await predict(f, w);
+    const res = await f.human('POST', url(w, '/escalate'), { playerCardId: w.navy });
+    expectContract('level1_escalate', res, 201);
+    const created = res.json() as Card;
+    expect(created.tags).toContain('secret');
+    expect(created.visibility).toBe('private');
+    const read = await f.agent('scripted', 'GET', `/lagen/${created.id}`);
+    expect(read.statusCode).toBe(404);
+    for (const text of [
+      'Reroute laden',
+      'Coastal navy',
+      'Announced night transit',
+      'SECRET-RULE-ACTION',
+    ]) {
+      expect(read.body).not.toContain(text);
+    }
+    const pkg = await f.agent('scripted', 'POST', '/context-packages', {
+      worldId: f.worldId,
+      lageId: created.id,
+    });
+    for (const text of ['Reroute laden', 'Coastal navy', 'Announced night transit']) {
+      expect(pkg.body).not.toContain(text);
+    }
+  });
+
+  it('inherits the collection of the source Lage', async () => {
+    const f = await fixture({ rules: OPEN });
+    const w = seedWorld(f, { collection: 'decisions' });
+    await predict(f, w);
+    const created = (
+      await f.human('POST', url(w, '/escalate'), { playerCardId: w.navy })
+    ).json() as Card;
+    expect(created.collection).toBe('decisions');
+  });
+  const OPEN = 'rules:\n  - { id: screen-all, effect: allow, targets: [screen], match: {} }\n';
+});
+
 describe('robustness of the request', () => {
   it('leaves out a card that is not a valid card, names its id and does not fail', async () => {
     const f = await fixture();

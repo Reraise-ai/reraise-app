@@ -109,14 +109,22 @@ The new Lage copies content from other cards: the player's title, the move texts
 the source Lage, and the ids of the cards used. So it must not become a way to read what the gate
 would deny (decision of the review, 2026-10-07):
 
-- The new Lage card is private and its `class` is the most restrictive class (A before B before C)
-  among the source Lage and the cards placed on it.
+- The new Lage card is private. Its `class` is the most restrictive class (A before B before C)
+  among the source Lage and the cards placed on it. Its `tags` are the union of the tags of the
+  cards it copies from (the source Lage, the player card and the rule cards of the request), and it
+  keeps the source Lage's `collection`, because gate rules match on these fields too.
 - The player's title, the move texts and the source question are copied only if the card they come
   from (the player card; the player card and every rule card of the request for the moves; the
   source Lage for the question) clears, for every model target (`local_model`, `cloud_model`) for
-  which the new Lage card itself would clear. Otherwise the wording is neutral: "this player",
+  which the new Lage card itself would clear. That is decided on exactly the card that is written
+  (same type, visibility, class, tags, collection and worlds), never on a copy of the source. If it
+  clears for no model target, text may be copied: no model can read the card. Otherwise the wording is neutral: "this player",
   "Move 1" to "Move n", no source question. The placed cards are only ids; each stays gated on its
   own.
+
+Later widening of the rules follows the new card's own (inherited) tags and class, not those of
+the source: a rule that opens the source Lage to a model does not open the escalated one unless it
+matches the escalated card's fields, and a tag deny on any source keeps holding.
 
 ### What the service keeps
 
