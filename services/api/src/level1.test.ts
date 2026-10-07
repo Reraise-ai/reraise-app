@@ -902,8 +902,9 @@ describe('escalation checks what the store wrote', () => {
     await predict(f, w);
     const create = f.adapter.create.bind(f.adapter);
     const spy = vi.spyOn(f.adapter, 'create').mockImplementation(async (draft, author) => {
-      const { class: _dropped, ...weaker } = draft as CardDraft & { class?: string };
-      return create(weaker as CardDraft, author);
+      const weaker = { ...draft } as CardDraft & { class?: string };
+      delete weaker.class;
+      return create(weaker, author);
     });
     const res = await f.human('POST', url(w, '/escalate'), { playerCardId: w.navy });
     expect(spy).toHaveBeenCalled();
