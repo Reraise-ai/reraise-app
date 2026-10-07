@@ -9,10 +9,9 @@ import json
 import re
 
 import pytest
-from jsonschema import Draft202012Validator
-
 from harness.fake_worldbuilder import WORLD_ID
 from harness.schema_check import assert_valid
+from jsonschema import Draft202012Validator
 
 TASK = "Assess whether tankers reroute around the Cape for the transit restrictions in Q4"
 
@@ -46,7 +45,8 @@ def test_delegate_task_gets_an_output_schema_requiring_receipts(world) -> None: 
     decision = hermes.pre_tool_call("delegate_task", SPAWN)
     assert decision.modified and not decision.blocked
     task = decision.args["tasks"][0]
-    assert task["goal"] == SPAWN["tasks"][0]["goal"]  # the model's own fields survive
+    # the model's own goal survives; the child's reference leads it
+    assert task["goal"] == "Task ref: TASK-2026-0042.s1\n" + SPAWN["tasks"][0]["goal"]
     schema = task["output_schema"]
     assert set(schema["required"]) == {"knowledgeReceipt", "writeBackReceipt", "cardWritten"}
     Draft202012Validator.check_schema(schema)
@@ -74,7 +74,11 @@ def test_a_conforming_child_answer_validates_and_a_lazy_one_does_not(world) -> N
     wb, hermes = world
     hermes.pre_llm_call(user_message=TASK, is_first_turn=True)
     # the child does its two mandatory calls through the same fake service
-    hermes.ctx.call_mcp("worldbuilder", "knowledge_write_back", {"taskRef": "hermes:session-1.s1", "notNeeded": {"reason": "no_new_knowledge"}})
+    hermes.ctx.call_mcp(
+        "worldbuilder",
+        "knowledge_write_back",
+        {"taskRef": "hermes:session-1.s1", "notNeeded": {"reason": "no_new_knowledge"}},
+    )
     validator = Draft202012Validator(_contract(hermes.pre_tool_call("delegate_task", SPAWN)))
     good = _handoff(wb)
     assert validator.is_valid({"summary": "done", **good})
@@ -87,12 +91,22 @@ def test_a_conforming_child_answer_validates_and_a_lazy_one_does_not(world) -> N
 def test_the_model_s_own_schema_is_extended_not_replaced(world) -> None:  # type: ignore[no-untyped-def]
     _, hermes = world
     hermes.pre_llm_call(user_message=TASK, is_first_turn=True)
-    mine = {"type": "object", "properties": {"verdict": {"type": "string"}}, "required": ["verdict"], "additionalProperties": False}
+    mine = {
+        "type": "object",
+        "properties": {"verdict": {"type": "string"}},
+        "required": ["verdict"],
+        "additionalProperties": False,
+    }
     decision = hermes.pre_tool_call("delegate_task", {"tasks": [{"goal": "g", "output_schema": mine}]})
     schema = _contract(decision)
     assert set(schema["required"]) == {"verdict", "knowledgeReceipt", "writeBackReceipt", "cardWritten"}
     assert "verdict" in schema["properties"] and schema["additionalProperties"] is False
-    assert mine == {"type": "object", "properties": {"verdict": {"type": "string"}}, "required": ["verdict"], "additionalProperties": False}
+    assert mine == {
+        "type": "object",
+        "properties": {"verdict": {"type": "string"}},
+        "required": ["verdict"],
+        "additionalProperties": False,
+    }
 
 
 def test_a_double_encoded_schema_is_understood(world) -> None:  # type: ignore[no-untyped-def]
@@ -133,7 +147,10 @@ def test_the_legacy_single_goal_shape_is_rewritten_at_top_level(world) -> None: 
     _, hermes = world
     hermes.pre_llm_call(user_message=TASK, is_first_turn=True)
     decision = hermes.pre_tool_call("delegate_task", {"goal": "g", "context": "c"})
-    assert decision.args["goal"] == "g" and "knowledgeReceipt" in decision.args["output_schema"]["properties"]
+    assert (
+        decision.args["goal"] == "Task ref: hermes:session-1.s1\ng"
+        and "knowledgeReceipt" in decision.args["output_schema"]["properties"]
+    )
     assert decision.args["context"].startswith("c\n\nWORLDBUILDER HAND-OFF")
 
 
@@ -173,7 +190,11 @@ def test_require_receipt_for_delegation_blocks_without_a_consult(make_world) -> 
     wb.reachable = False
     hermes.pre_llm_call(user_message=TASK, is_first_turn=True)
     decision = hermes.pre_tool_call("delegate_task", SPAWN)
-    assert decision.blocked and "no Knowledge Receipt" in (decision.message or "") and "unreachable" in (decision.message or "")
+    assert (
+        decision.blocked
+        and "no Knowledge Receipt" in (decision.message or "")
+        and "unreachable" in (decision.message or "")
+    )
     wb.reachable = True
     hermes.pre_llm_call(user_message="retry", is_first_turn=False)
     assert not hermes.pre_tool_call("delegate_task", SPAWN).blocked
@@ -190,7 +211,11 @@ def test_a_confirmation_required_receipt_counts_as_a_consult(make_world) -> None
 
 def test_kanban_complete_without_receipts_is_blocked_with_instructions(world) -> None:  # type: ignore[no-untyped-def]
     _, hermes = world
-    for args in ({"summary": "done"}, {"summary": "done", "metadata": {}}, {"summary": "d", "metadata": {"knowledgeReceipt": "x"}}):
+    for args in (
+        {"summary": "done"},
+        {"summary": "done", "metadata": {}},
+        {"summary": "d", "metadata": {"knowledgeReceipt": "x"}},
+    ):
         decision = hermes.pre_tool_call("kanban_complete", args)
         assert decision.blocked
         assert "knowledgeReceipt" in decision.message and "writeBackReceipt" in decision.message  # type: ignore[operator]
@@ -200,7 +225,11 @@ def test_kanban_complete_without_receipts_is_blocked_with_instructions(world) ->
 def test_kanban_complete_with_valid_fields_passes(world) -> None:  # type: ignore[no-untyped-def]
     wb, hermes = world
     hermes.pre_llm_call(user_message=TASK, is_first_turn=True)
-    hermes.ctx.call_mcp("worldbuilder", "knowledge_write_back", {"taskRef": "hermes:session-1", "notNeeded": {"reason": "no_new_knowledge"}})
+    hermes.ctx.call_mcp(
+        "worldbuilder",
+        "knowledge_write_back",
+        {"taskRef": "hermes:session-1", "notNeeded": {"reason": "no_new_knowledge"}},
+    )
     decision = hermes.pre_tool_call("kanban_complete", {"summary": "done", "metadata": _handoff(wb)})
     assert not decision.blocked and not decision.modified
 
@@ -208,7 +237,11 @@ def test_kanban_complete_with_valid_fields_passes(world) -> None:  # type: ignor
 def test_kanban_metadata_is_checked_for_shape_not_only_presence(world) -> None:  # type: ignore[no-untyped-def]
     wb, hermes = world
     hermes.pre_llm_call(user_message=TASK, is_first_turn=True)
-    hermes.ctx.call_mcp("worldbuilder", "knowledge_write_back", {"taskRef": "hermes:session-1", "notNeeded": {"reason": "no_new_knowledge"}})
+    hermes.ctx.call_mcp(
+        "worldbuilder",
+        "knowledge_write_back",
+        {"taskRef": "hermes:session-1", "notNeeded": {"reason": "no_new_knowledge"}},
+    )
     good = _handoff(wb)
     for broken in (
         {**good, "knowledgeReceipt": {"receiptId": good["knowledgeReceipt"]["receiptId"]}},
@@ -239,7 +272,11 @@ def test_the_handoff_the_plugin_demands_is_what_the_verifier_reads(world) -> Non
     """A valid hand-off becomes a valid task record with three more keys (task-record.schema.json)."""
     wb, hermes = world
     hermes.pre_llm_call(user_message=f"Task ref: TASK-2026-0042\n{TASK}", is_first_turn=True)
-    hermes.ctx.call_mcp("worldbuilder", "knowledge_write_back", {"taskRef": "TASK-2026-0042", "notNeeded": {"reason": "no_new_knowledge"}})
+    hermes.ctx.call_mcp(
+        "worldbuilder",
+        "knowledge_write_back",
+        {"taskRef": "TASK-2026-0042", "notNeeded": {"reason": "no_new_knowledge"}},
+    )
     fields = _handoff(wb)
     record = {
         "taskRef": "TASK-2026-0042",
@@ -250,3 +287,73 @@ def test_the_handoff_the_plugin_demands_is_what_the_verifier_reads(world) -> Non
     }
     assert_valid("task-record.schema.json", record)
     assert WORLD_ID  # the harness world
+
+
+# --- action, tasks and shapes as Hermes reads them (tools/delegate_tool.py) ---------------------------
+
+
+@pytest.mark.parametrize("action", [None, "", "  ", "spawn", " Spawn ", "SPAWN"])
+def test_spawn_is_recognised_like_hermes_does(world, action) -> None:  # type: ignore[no-untyped-def]
+    _, hermes = world
+    hermes.pre_llm_call(user_message=TASK, is_first_turn=True)
+    decision = hermes.pre_tool_call("delegate_task", {**SPAWN, "action": action})
+    assert decision.modified and not decision.blocked
+    assert "knowledgeReceipt" in decision.args["tasks"][0]["output_schema"]["properties"]
+
+
+@pytest.mark.parametrize("action", ["List", " STOP ", "Steer"])
+def test_control_actions_are_recognised_after_normalising(world, action) -> None:  # type: ignore[no-untyped-def]
+    _, hermes = world
+    decision = hermes.pre_tool_call("delegate_task", {"action": action, "subagent_id": "sa-1"})
+    assert not decision.blocked and not decision.modified
+
+
+def test_tasks_passed_as_a_json_string_are_decoded_and_rewritten(world) -> None:  # type: ignore[no-untyped-def]
+    _, hermes = world
+    hermes.pre_llm_call(user_message=TASK, is_first_turn=True)
+    decision = hermes.pre_tool_call("delegate_task", {"tasks": json.dumps(SPAWN["tasks"])})
+    assert decision.modified and not decision.blocked
+    tasks = decision.args["tasks"]
+    assert isinstance(tasks, list) and tasks[0]["goal"].endswith(SPAWN["tasks"][0]["goal"])
+    assert "knowledgeReceipt" in tasks[0]["output_schema"]["properties"]
+
+
+@pytest.mark.parametrize(
+    "args",
+    [
+        {"tasks": "not json at all"},
+        {"tasks": '{"goal": "an object, not a list"}'},
+        {"tasks": [{"goal": "ok"}, "a string task"]},
+        {"tasks": [{"context": "no goal"}]},
+        {"tasks": 7},
+        {},
+        {"goal": "   "},
+    ],
+)
+def test_a_spawn_of_unknown_shape_is_blocked_not_passed_through(world, args) -> None:  # type: ignore[no-untyped-def]
+    _, hermes = world
+    hermes.pre_llm_call(user_message=TASK, is_first_turn=True)
+    decision = hermes.pre_tool_call("delegate_task", args)
+    assert decision.blocked and "delegate_task blocked" in (decision.message or "")
+
+
+def test_a_child_turn_whose_user_message_is_only_the_goal_consults_for_its_own_task(world) -> None:  # type: ignore[no-untyped-def]
+    wb, hermes = world
+    hermes.pre_llm_call(user_message=f"Task ref: TASK-2026-0042\n{TASK}", is_first_turn=True)
+    # the model copied the parent's reference into the goal; the plugin's child reference still leads
+    spawn = {"tasks": [{"goal": "Task ref: TASK-2026-0042\nFind the insurers' view", "context": "c"}]}
+    goal = hermes.pre_tool_call("delegate_task", spawn).args["tasks"][0]["goal"]
+    assert goal.startswith("Task ref: TASK-2026-0042.s1\n")
+    hermes.pre_llm_call(session_id="child-1", user_message=goal, is_first_turn=True)
+    assert wb.calls[-1][0] == "knowledge_consult" and wb.calls[-1][1]["taskRef"] == "TASK-2026-0042.s1"
+    assert wb.receipts[-1]["taskRef"] == "TASK-2026-0042.s1"
+
+
+def test_the_handoff_block_beats_a_copied_parent_ref(world) -> None:  # type: ignore[no-untyped-def]
+    import sys
+
+    _, hermes = world
+    sessions = sys.modules[next(m for m in sys.modules if m.endswith(".session"))]
+    text = "Task ref: PARENT-1\nWORLDBUILDER HAND-OFF (mandatory)\nTask ref: PARENT-1.s2\nmore"
+    assert sessions.explicit_task_ref(text) == "PARENT-1.s2"
+    assert sessions.explicit_task_ref("Task ref: A-1\nTask ref: B-2") == "A-1"

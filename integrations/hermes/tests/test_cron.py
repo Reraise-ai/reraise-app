@@ -18,7 +18,6 @@ import time
 from pathlib import Path
 
 import pytest
-
 from harness.schema_check import REPO_ROOT
 from test_wb_verify import WB, drive_task, task_record
 
@@ -76,7 +75,9 @@ class Env:
             "STUB_EXIT": stub.get("exit", "0"),
         }
         assert SH is not None
-        return subprocess.run([SH, str(SCRIPTS / script)], capture_output=True, text=True, env=env, timeout=60, check=False)
+        return subprocess.run(
+            [SH, str(SCRIPTS / script)], capture_output=True, text=True, env=env, timeout=60, check=False
+        )
 
     def calls(self) -> list[str]:
         return self.log.read_text().splitlines() if self.log.exists() else []
@@ -120,7 +121,9 @@ def test_digest_success_is_silent_and_passes_the_settings(env: Env) -> None:
     env.write_conf(WB_ATLAS_DIR="/atlas out", WB_GATE_RULES="/rules.yaml")
     result = env.run("wb-nightly-digest.sh", stdout="wrote 3 pages\n")
     assert (result.returncode, result.stdout) == (0, "")
-    assert env.calls() == [f"ARGS: digest --store {env.settings['WB_STORE']} --out /atlas out --gate-rules /rules.yaml --state {env.settings['WB_STATE_DIR']}"]
+    assert env.calls() == [
+        f"ARGS: digest --store {env.settings['WB_STORE']} --out /atlas out --gate-rules /rules.yaml --state {env.settings['WB_STATE_DIR']}"
+    ]
 
 
 def test_digest_failure_is_delivered_with_wb_s_exit_code(env: Env) -> None:
@@ -154,7 +157,11 @@ def test_validate_checks_only_todays_records_in_one_run(env: Env) -> None:
     result = env.run("wb-nightly-validate.sh")
     assert (result.returncode, result.stdout) == (0, "")
     calls = env.calls()
-    assert len(calls) == 2 and calls[0].startswith("ARGS: receipts verify ") and calls[0].endswith(f" --state {env.settings['WB_STATE_DIR']}")
+    assert (
+        len(calls) == 2
+        and calls[0].startswith("ARGS: receipts verify ")
+        and calls[0].endswith(f" --state {env.settings['WB_STATE_DIR']}")
+    )
     names = {re.sub(r"^\d+-", "", f) for f in calls[1].removeprefix("DIR: ").split("|") if f}
     assert names == {"new one.md", "second.json"}  # the old record is not verified; spaces survive
 
@@ -219,7 +226,12 @@ def test_weekly_metrics_fails_when_wb_fails(env: Env) -> None:
 
 
 def metrics_json(lag: float | None, accepted: int, proposed: int = 0) -> str:
-    return json.dumps({"atlas": {"pages": 1, "stalePages": 0, "lagHours": lag}, "totals": {"cardsAccepted": accepted, "cardsProposed": proposed}})
+    return json.dumps(
+        {
+            "atlas": {"pages": 1, "stalePages": 0, "lagHours": lag},
+            "totals": {"cardsAccepted": accepted, "cardsProposed": proposed},
+        }
+    )
 
 
 needs_node = pytest.mark.skipif(NODE is None, reason="no node (wb needs it too)")
@@ -303,7 +315,9 @@ def test_validate_and_metrics_scripts_with_the_real_wb(make_world, tmp_path: Pat
     ok = run("wb-nightly-validate.sh")
     assert (ok.returncode, ok.stdout) == (0, ""), ok.stdout + ok.stderr
 
-    (tasks / "lazy.md").write_text(f"---\ntaskRef: TASK-LAZY\nagent: agent:orchestrator\ncompletedAt: {now}\n---\n", encoding="utf-8")
+    (tasks / "lazy.md").write_text(
+        f"---\ntaskRef: TASK-LAZY\nagent: agent:orchestrator\ncompletedAt: {now}\n---\n", encoding="utf-8"
+    )
     bad = run("wb-nightly-validate.sh")
     assert bad.returncode == 1 and "NO VALID RECEIPTS" in bad.stdout and "missing" in bad.stdout
 
@@ -339,23 +353,42 @@ def _install(tmp: Path, *args: str, existing: str = "") -> tuple[subprocess.Comp
         'printf \'%s\\0\' "$@" >> "$HERMES_LOG"; printf \'\\n\' >> "$HERMES_LOG"\n'
     )
     fake.chmod(0o755)
-    env = {"PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}", "HOME": str(tmp), "HERMES_LOG": str(log), "HERMES_EXISTING": existing}
+    env = {
+        "PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}",
+        "HOME": str(tmp),
+        "HERMES_LOG": str(log),
+        "HERMES_EXISTING": existing,
+    }
     assert SH is not None
-    result = subprocess.run([SH, str(CRON / "install-cron.sh"), "--hermes-home", str(home), *args], capture_output=True, text=True, env=env, timeout=60, check=False)
+    result = subprocess.run(
+        [SH, str(CRON / "install-cron.sh"), "--hermes-home", str(home), *args],
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=60,
+        check=False,
+    )
     return result, home, log
 
 
 def _created(log: Path) -> list[list[str]]:
     if not log.exists():
         return []
-    lines = [l for l in log.read_text().split("\n") if l]
+    lines = [ln for ln in log.read_text().split("\n") if ln]
     return [[p for p in line.split("\0") if p] for line in lines]
 
 
 def test_installer_copies_scripts_creates_the_settings_and_the_four_jobs(tmp_path: Path) -> None:
     result, home, log = _install(tmp_path)
     assert result.returncode == 0, result.stderr
-    for name in ("wb-env.sh", "wb-nightly-digest.sh", "wb-nightly-validate.sh", "wb-weekly-metrics.sh", "wb-watchdog.sh", "wb-watchdog.ps1"):
+    for name in (
+        "wb-env.sh",
+        "wb-nightly-digest.sh",
+        "wb-nightly-validate.sh",
+        "wb-weekly-metrics.sh",
+        "wb-watchdog.sh",
+        "wb-watchdog.ps1",
+    ):
         assert (home / "scripts" / name).is_file()
     assert os.access(home / "scripts" / "wb-watchdog.sh", os.X_OK)
     assert (home / "scripts" / "worldbuilder-loop.conf").is_file()
@@ -382,7 +415,10 @@ def test_installer_dry_run_changes_nothing_and_prints_the_commands(tmp_path: Pat
     result, home, log = _install(tmp_path, "--dry-run", "--deliver", "telegram")
     assert result.returncode == 0 and not home.exists() and not log.exists()
     for name, (schedule, script) in JOBS.items():
-        assert f"[dry-run] hermes cron create '{schedule}' --no-agent --script {script} --name {name} --deliver telegram" in result.stdout
+        assert (
+            f"[dry-run] hermes cron create '{schedule}' --no-agent --script {script} --name {name} --deliver telegram"
+            in result.stdout
+        )
 
 
 def test_installer_rejects_unknown_options(tmp_path: Path) -> None:
@@ -393,7 +429,10 @@ def test_installer_rejects_unknown_options(tmp_path: Path) -> None:
 HERMES_SRC = os.environ.get("HERMES_SRC")
 
 
-@pytest.mark.skipif(not HERMES_SRC or not (Path(HERMES_SRC or "x") / "hermes_cli" / "subcommands" / "cron.py").is_file(), reason="set HERMES_SRC to a hermes-agent checkout")
+@pytest.mark.skipif(
+    not HERMES_SRC or not (Path(HERMES_SRC or "x") / "hermes_cli" / "subcommands" / "cron.py").is_file(),
+    reason="set HERMES_SRC to a hermes-agent checkout",
+)
 def test_every_install_command_parses_with_the_real_hermes_cron_parser(tmp_path: Path) -> None:
     """Syntax check against hermes_cli/subcommands/cron.py (the real argparse definition)."""
     _, _, log = _install(tmp_path)
@@ -413,7 +452,13 @@ def test_every_install_command_parses_with_the_real_hermes_cron_parser(tmp_path:
         print(json.dumps(out))
         """
     )
-    done = subprocess.run([sys.executable, "-I", "-c", code, HERMES_SRC or "", json.dumps(argvs)], capture_output=True, text=True, timeout=120, check=False)
+    done = subprocess.run(
+        [sys.executable, "-I", "-c", code, HERMES_SRC or "", json.dumps(argvs)],
+        capture_output=True,
+        text=True,
+        timeout=120,
+        check=False,
+    )
     assert done.returncode == 0, done.stderr
     parsed = json.loads(done.stdout)
     assert [p["name"] for p in parsed] == list(JOBS)
@@ -438,7 +483,9 @@ def test_every_shell_script_has_a_powershell_variant_with_the_same_settings() ->
 @pytest.mark.parametrize("path", sorted(CRON.rglob("*.ps1")), ids=lambda p: p.name)
 def test_powershell_scripts_parse(path: Path) -> None:
     command = f"$e=$null;$t=$null;[void][System.Management.Automation.Language.Parser]::ParseFile('{path}',[ref]$t,[ref]$e);if($e){{$e|%{{$_.Message}};exit 1}}"
-    done = subprocess.run(["pwsh", "-NoProfile", "-Command", command], capture_output=True, text=True, timeout=60, check=False)
+    done = subprocess.run(
+        ["pwsh", "-NoProfile", "-Command", command], capture_output=True, text=True, timeout=60, check=False
+    )
     assert done.returncode == 0, done.stdout + done.stderr
 
 
@@ -447,5 +494,5 @@ def test_scripts_are_executable_posix_sh() -> None:
         assert path.read_text().startswith("#!/bin/sh\n"), path
         if path.name != "wb-env.sh":
             assert path.stat().st_mode & stat.S_IXUSR, f"{path.name} is not executable"
-        code = [l for l in path.read_text().splitlines() if not l.lstrip().startswith("#")]
-        assert not [l for l in code if "[[" in l or re.match(r"\s*local\s", l)], f"{path.name}: bashism"
+        code = [ln for ln in path.read_text().splitlines() if not ln.lstrip().startswith("#")]
+        assert not [ln for ln in code if "[[" in ln or re.match(r"\s*local\s", ln)], f"{path.name}: bashism"

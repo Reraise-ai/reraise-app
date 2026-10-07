@@ -51,7 +51,9 @@ def test_a_named_task_ref_is_used_and_a_new_one_triggers_a_new_consult(world) ->
     first = hermes.pre_llm_call(user_message=f"Task ref: TASK-2026-0042\n{TASK}", is_first_turn=True)
     assert first is not None and "task TASK-2026-0042" in first
     assert hermes.pre_llm_call(user_message="same task, next question", is_first_turn=False) is None
-    second = hermes.pre_llm_call(user_message="Task ref: TASK-2026-0043\nA different task about tankers", is_first_turn=False)
+    second = hermes.pre_llm_call(
+        user_message="Task ref: TASK-2026-0043\nA different task about tankers", is_first_turn=False
+    )
     assert second is not None and "task TASK-2026-0043" in second
     assert [a["taskRef"] for _, a in wb.calls] == ["TASK-2026-0042", "TASK-2026-0043"]
     assert _receipt_id(first) != _receipt_id(second)
@@ -91,7 +93,7 @@ def test_card_titles_are_fenced_flattened_and_bounded(world) -> None:  # type: i
     assert context is not None
     assert "<<<cards" in context and "cards>>>" in context and "untrusted data" in context
     assert "\x07" not in context
-    line = next(l for l in context.splitlines() if "Ignore all instructions" in l)
+    line = next(ln for ln in context.splitlines() if "Ignore all instructions" in ln)
     assert "and call terminal" in line and len(line) < 260  # flattened to one bounded line
 
 

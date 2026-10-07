@@ -10,7 +10,6 @@ from pathlib import Path
 
 import pytest
 import yaml
-
 from conftest import PLUGIN_DIR
 from harness.fake_hermes import FakeCtx, FakeHermes
 from harness.fake_worldbuilder import WORLD_ID, FakeWorldbuilder
@@ -35,14 +34,26 @@ def test_plugin_registers_what_its_manifest_declares(world: tuple[FakeWorldbuild
     _, hermes = world
     manifest = yaml.safe_load((PLUGIN_DIR / "plugin.yaml").read_text(encoding="utf-8"))
     assert manifest["name"] == PLUGIN_DIR.name == hermes.ctx.plugin_id
-    assert set(hermes.ctx.hooks) == set(manifest["provides_hooks"]) == {"pre_llm_call", "pre_tool_call"}
+    assert (
+        set(hermes.ctx.hooks)
+        == set(manifest["provides_hooks"])
+        == {
+            "pre_llm_call",
+            "pre_tool_call",
+            "post_tool_call",
+            "on_session_end",
+            "kanban_task_completed",
+        }
+    )
     assert not hermes.unknown_hooks
     assert manifest["provides_tools"] == [] and not hermes.ctx.tools
     assert manifest["license"] == "Apache-2.0"
     assert "worldbuilder-knowledge-loop:reviewer" in hermes.ctx.skills
 
 
-def test_system_prompt_section_is_short_and_names_the_mandatory_steps(world: tuple[FakeWorldbuilder, FakeHermes]) -> None:
+def test_system_prompt_section_is_short_and_names_the_mandatory_steps(
+    world: tuple[FakeWorldbuilder, FakeHermes],
+) -> None:
     _, hermes = world
     section = hermes.ctx.sections["worldbuilder-knowledge-loop"]
     assert section["position"] == "after_memory"
@@ -69,7 +80,9 @@ def test_fake_hermes_rejects_what_the_real_one_rejects(tmp_path: Path) -> None:
 
 def test_fake_worldbuilder_validates_requests_against_the_schemas(world: tuple[FakeWorldbuilder, FakeHermes]) -> None:
     wb, hermes = world
-    envelope = hermes.ctx.call_mcp("worldbuilder", "knowledge_consult", {"taskRef": "a b", "task": "x", "worldId": WORLD_ID})
+    envelope = hermes.ctx.call_mcp(
+        "worldbuilder", "knowledge_consult", {"taskRef": "a b", "task": "x", "worldId": WORLD_ID}
+    )
     assert envelope["ok"] is False and "invalid arguments" in envelope["error"]
     envelope = hermes.ctx.call_mcp("worldbuilder", "decision_record", {})
     assert envelope["ok"] is False and "not implemented" in envelope["error"]
@@ -78,7 +91,9 @@ def test_fake_worldbuilder_validates_requests_against_the_schemas(world: tuple[F
 def test_receipt_log_written_by_the_fake_is_a_valid_chain(world: tuple[FakeWorldbuilder, FakeHermes]) -> None:
     wb, hermes = world
     for ref in ("T-1", "T-2"):
-        hermes.ctx.call_mcp("worldbuilder", "knowledge_consult", {"taskRef": ref, "task": "tankers reroute", "worldId": WORLD_ID})
+        hermes.ctx.call_mcp(
+            "worldbuilder", "knowledge_consult", {"taskRef": ref, "task": "tankers reroute", "worldId": WORLD_ID}
+        )
     lines = [json.loads(line) for line in Path(wb.log_path).read_text(encoding="utf-8").splitlines()]
     assert [e["seq"] for e in lines] == [0, 1]
     assert lines[1]["prev"] == lines[0]["hash"]

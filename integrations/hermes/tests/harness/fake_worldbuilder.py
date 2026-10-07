@@ -15,8 +15,9 @@ fake stands in. It is held to the contract, not to the implementation:
   (schemas/receipt-log-entry.schema.json, ADR-0040), so the real ``wb receipts verify`` can be run
   over what the plugin produced (tests/test_wb_verify.py).
 
-Not faithful (and not meant to be): card matching is keyword overlap, the memory classifier is a
-tiny stand-in for the ordered rules of ADR-0042, ``draftHash`` is a JCS hash of the draft instead of
+Not faithful (and not meant to be): card matching is keyword overlap, the memory classifier is the real
+rules:v3 of packages/knowledge-loop run in node (a tiny stand-in only without node), ``draftHash`` is a
+JCS hash of the draft instead of
 the card content hash of ADR-0034, and decision_record / decision_outcome are not implemented.
 Passing against this fake proves the plugin honours the contracts; it does not prove the service.
 """
@@ -28,7 +29,9 @@ import hmac
 import json
 import random
 import re
-from datetime import datetime, timedelta, timezone
+import shutil
+import subprocess
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -43,8 +46,23 @@ LAGE_ID = "01M1F21G80R816A1T0V2P6RACH"
 
 _SECRET = re.compile(r"(?i)\b(password|passphrase|token|secret|api key|bearer)\b[^.;!?]{0,40}(:|=|\bis\b)")
 _LOCAL = re.compile(r"(?i)(localhost|\b\d{1,3}(\.\d{1,3}){3}\b|:\d{2,5}\b|(^|\s)/[a-z]+/)")
-_TRANSIENT = re.compile(r"(?i)\b(today|yesterday|right now|currently|restart(ed)?|timeout|timed out|retry|cron|exit code)\b")
+_TRANSIENT = re.compile(
+    r"(?i)\b(today|yesterday|right now|currently|restart(ed)?|timeout|timed out|retry|cron|exit code)\b"
+)
 _DURABLE = re.compile(r"(?i)\b(lesson|learned|always|never|because|tends to|in general|prefers|insight)\b")
+
+
+ROUTE_CLI = Path(__file__).with_name("route_cli.mjs")
+ROUTE_DIST = Path(__file__).resolve().parents[4] / "packages" / "knowledge-loop" / "dist" / "route.js"
+REAL_CLASSIFIER = bool(shutil.which("node")) and ROUTE_DIST.is_file()
+
+
+def real_route(request: dict[str, Any]) -> dict[str, Any]:
+    """The classifier of packages/knowledge-loop (rules:v3), run in node. Needs a built package."""
+    done = subprocess.run(
+        ["node", str(ROUTE_CLI)], input=json.dumps(request), capture_output=True, text=True, timeout=30, check=True
+    )
+    return json.loads(done.stdout)
 
 
 class FakeWorldbuilder(FakeMcpTransport):
@@ -56,7 +74,11 @@ class FakeWorldbuilder(FakeMcpTransport):
         target: str = "local_model",
         start: datetime | None = None,
         seed: int = 7,
+        real_classifier: bool | None = None,
     ) -> None:
+        # memory_route uses the real rules of packages/knowledge-loop whenever node and a built
+        # package exist (always in CI); only without them the tiny stand-in below answers.
+        self.real_classifier = REAL_CLASSIFIER if real_classifier is None else real_classifier
         self.state_dir = Path(state_dir)
         self.state_dir.mkdir(parents=True, exist_ok=True)
         self.log_path = self.state_dir / "receipt-log.jsonl"
@@ -64,7 +86,7 @@ class FakeWorldbuilder(FakeMcpTransport):
         self.target = target
         self.key = hashlib.sha256(b"synthetic device receipt key").digest()
         self._rng = random.Random(seed)
-        self._now = start or datetime(2026, 10, 5, 9, 0, 0, tzinfo=timezone.utc)
+        self._now = start or datetime(2026, 10, 5, 9, 0, 0, tzinfo=UTC)
         self.calls: list[tuple[str, dict[str, Any]]] = []
         self.receipts: list[dict[str, Any]] = []
         self.proposals: list[dict[str, Any]] = []
@@ -73,8 +95,7 @@ class FakeWorldbuilder(FakeMcpTransport):
         self.reachable = True
         package = fixture("context-package-screen-with-stance")
         self.cards = [
-            {"card": item["card"], "provenance": item["provenance"], "gate": item["gate"]}
-            for item in package["items"]
+            {"card": item["card"], "provenance": item["provenance"], "gate": item["gate"]} for item in package["items"]
         ]
 
     # --- clock and ids --------------------------------------------------------------------
@@ -247,6 +268,10 @@ class FakeWorldbuilder(FakeMcpTransport):
     def _tool_memory_route(self, arguments: dict[str, Any]) -> dict[str, Any]:
         self._check_request("memory-route.schema.json#/$defs/request", arguments)
         text = arguments["text"]
+        if self.real_classifier:
+            result = real_route({k: v for k, v in arguments.items() if k in ("text", "kindHint", "source")})
+            assert_valid("memory-route.schema.json", result)
+            return result
         if _SECRET.search(text):
             result = {"route": "ephemeral_ops_fact", "ruleId": "secret", "signals": ["secret_like"]}
         elif _LOCAL.search(text):

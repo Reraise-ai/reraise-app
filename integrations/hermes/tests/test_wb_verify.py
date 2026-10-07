@@ -19,7 +19,6 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-
 from harness.fake_worldbuilder import FakeWorldbuilder
 from harness.schema_check import REPO_ROOT
 
@@ -102,11 +101,18 @@ def test_a_card_written_from_memory_is_the_tasks_write_back(world, tmp_path) -> 
     hermes.pre_llm_call(user_message=f"Task ref: {ref}\n{TASK}", is_first_turn=True)
     wb.tick(20)
     decision = hermes.pre_tool_call(
-        "memory", {"target": "memory", "action": "add", "content": "Lesson learned: premiums tend to double within a day."}
+        "memory",
+        {"target": "memory", "action": "add", "content": "Lesson learned: premiums tend to double within a day."},
     )
     assert decision.blocked
     wb.tick(20)
-    handoff = {"taskRef": ref, "agent": wb.agent, "knowledge": wb.receipts[0], "writeBack": wb.receipts[-1], "completedAt": wb.now()}
+    handoff = {
+        "taskRef": ref,
+        "agent": wb.agent,
+        "knowledge": wb.receipts[0],
+        "writeBack": wb.receipts[-1],
+        "completedAt": wb.now(),
+    }
     assert handoff["writeBack"]["result"] == "proposed"
     result = verify(tmp_path, wb, task_record(handoff))
     assert result.returncode == 0, result.stdout + result.stderr
@@ -152,7 +158,9 @@ def test_another_tasks_receipts_cannot_be_reused(world, tmp_path) -> None:  # ty
     wb, hermes = world
     first = drive_task(wb, hermes, "TASK-2026-0047")
     second = {**drive_task(wb, hermes, "TASK-2026-0048")}
-    stolen = task_record(second, knowledgeReceipt={"receiptId": first["knowledge"]["receiptId"], "hash": first["knowledge"]["hash"]})
+    stolen = task_record(
+        second, knowledgeReceipt={"receiptId": first["knowledge"]["receiptId"], "hash": first["knowledge"]["hash"]}
+    )
     result = verify(tmp_path, wb, stolen)
     assert result.returncode == 1 and "wrong_task" in result.stdout
 
@@ -179,8 +187,16 @@ def test_metrics_count_the_plugin_driven_tasks(world, tmp_path) -> None:  # type
         handoff = drive_task(wb, hermes, f"TASK-2026-01{number}0")
         (records / f"t{number}.md").write_text(task_record(handoff), encoding="utf-8")
     result = run_wb(
-        "metrics", "--log", str(wb.log_path), "--tasks", str(records), "--proposals", str(tmp_path / "none"),
-        "--now", "2026-10-06T00:00:00Z", "--json",
+        "metrics",
+        "--log",
+        str(wb.log_path),
+        "--tasks",
+        str(records),
+        "--proposals",
+        str(tmp_path / "none"),
+        "--now",
+        "2026-10-06T00:00:00Z",
+        "--json",
     )
     assert result.returncode == 0, result.stdout + result.stderr
     totals = json.loads(result.stdout)["totals"]

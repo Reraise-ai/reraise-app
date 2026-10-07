@@ -19,16 +19,18 @@ Target ``user`` is never sent to the Worldbuilder: it holds personal profile fac
 
 from __future__ import annotations
 
+import logging
 import re
 from typing import Any
 
 from .client import Deadline, WorldbuilderClient, WorldbuilderError
 from .session import SessionStore, TaskState, derive_task_ref
-from .settings import ULID_RE, Settings
+from .settings import ULID_RE, Settings, hook_budget
+
+logger = logging.getLogger(__name__)
 
 _WRITE_ACTIONS = ("add", "replace")
 _MAX_TEXT = 4000  # schemas/memory-route.schema.json#/$defs/request
-_HOOK_BUDGET_SECONDS = 25.0  # Hermes abandons a pre_tool_call callback after 30 s (fails closed)
 
 
 def _content(op: dict[str, Any]) -> str:
@@ -67,9 +69,7 @@ def make_memory_policy(client: WorldbuilderClient, settings: Settings, store: Se
             }
         return None  # allow: the note stays where it always went; nothing is lost
 
-    def route_one(
-        text: str, state: TaskState, deadline: Deadline
-    ) -> tuple[str, dict[str, Any] | None]:
+    def route_one(text: str, state: TaskState, deadline: Deadline) -> tuple[str, dict[str, Any] | None]:
         """('ephemeral', None) or ('card', write-back result); raises WorldbuilderError."""
         routed = client.call("memory_route", {"text": text}, deadline)
         if routed.get("route") != "card_proposal":
@@ -95,7 +95,7 @@ def make_memory_policy(client: WorldbuilderClient, settings: Settings, store: Se
         return "card", result
 
     def memory_policy(args: dict[str, Any], session_id: str, task_id: str) -> dict[str, Any] | None:
-        if not settings.route_memory or args.get("target", "memory") != "memory":
+        if not settings.route_memory or (args.get("target") or "memory") != "memory":
             return None
         batch = args.get("operations") if isinstance(args.get("operations"), list) else None
         operations = batch if batch is not None else [args]
@@ -112,7 +112,7 @@ def make_memory_policy(client: WorldbuilderClient, settings: Settings, store: Se
 
         key = store.key(session_id, task_id)
         state = store.get(key) or TaskState(task_ref=derive_task_ref("memory", key))
-        deadline = Deadline(_HOOK_BUDGET_SECONDS)
+        deadline = Deadline(hook_budget())
         routed_away: dict[int, dict[str, Any]] = {}
         try:
             for index, text in candidates:
@@ -120,30 +120,43 @@ def make_memory_policy(client: WorldbuilderClient, settings: Settings, store: Se
                 if kind == "card" and result is not None:
                     routed_away[index] = result
         except WorldbuilderError as exc:
+            # No memory text in the log: it may hold anything the agent was told.
+            logger.warning(
+                "worldbuilder-knowledge-loop: memory routing failed (%s) after %d of %d items",
+                exc.kind,
+                len(routed_away),
+                len(candidates),
+            )
             if routed_away:
                 # Some items already became proposals: keep them out of memory, and say that the
                 # rest was not routed, so nothing is written twice and nothing is dropped.
-                return _apply(batch, args, routed_away, note=f"routing stopped ({exc.kind}); the other items were not written")
+                return _apply(
+                    batch,
+                    args,
+                    routed_away,
+                    state,
+                    note=f"routing stopped ({exc.kind}); the other items were not written",
+                )
             return fail(f"{exc.kind}: {exc.message}")
         if not routed_away:
             return None
         last = list(routed_away.values())[-1]["receipt"]
         state.write_back = {"receiptId": last["receiptId"], "hash": last["hash"]}
         store.put(key, state)
-        return _apply(batch, args, routed_away)
+        return _apply(batch, args, routed_away, state)
 
     def _apply(
         batch: list[Any] | None,
         args: dict[str, Any],
         routed_away: dict[int, dict[str, Any]],
+        state: TaskState | None = None,
         note: str = "",
     ) -> dict[str, Any]:
         lines = []
         for result in routed_away.values():
             receipt, proposal = result["receipt"], result["proposal"]
             lines.append(
-                f"proposal {proposal['id']} (write-back receipt {receipt['receiptId']}, "
-                f"hash {receipt['hash']})"
+                f"proposal {proposal['id']} (write-back receipt {receipt['receiptId']}, hash {receipt['hash']})"
             )
         summary = (
             "Worldbuilder: the durable lesson was proposed as a private card, not saved to memory: "
@@ -155,6 +168,10 @@ def make_memory_policy(client: WorldbuilderClient, settings: Settings, store: Se
         if batch is not None:
             remaining = [op for index, op in enumerate(batch) if index not in routed_away]
             if remaining and not note:
+                # modify cannot carry a message: tell the model on its next turn which items
+                # became proposals (pre_llm_call delivers state.notices once).
+                if state is not None:
+                    state.notices.append(summary)
                 return {"action": "modify", "args": {"operations": remaining}}
         return {"action": "block", "message": summary}
 

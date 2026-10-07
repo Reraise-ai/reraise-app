@@ -10,7 +10,25 @@ requires-python = ">=3.11"
 dependencies = []
 
 [project.optional-dependencies]
-test = ["pytest>=8", "jsonschema>=4.21", "pyyaml>=6"]
+test = ["pytest>=8", "jsonschema>=4.21", "pyyaml>=6", "ruff>=0.6"]
+
+# Nothing here is installed as a package: the plugin is copied into $HERMES_HOME/plugins/. The
+# project exists for the test extras, and an empty list keeps setuptools from auto-discovering
+# the plugins/, config/ and cron/ folders as packages.
+[tool.setuptools]
+py-modules = []
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+extend-exclude = ["tests/__pycache__"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+
+[tool.ruff.lint.per-file-ignores]
+# Long literal lines in test fixtures (shell commands, PowerShell one-liners).
+"tests/test_cron.py" = ["E501"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

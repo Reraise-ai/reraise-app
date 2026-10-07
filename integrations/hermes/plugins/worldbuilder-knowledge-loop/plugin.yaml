@@ -14,6 +14,9 @@ provides_tools: []
 provides_hooks:
   - pre_llm_call
   - pre_tool_call
+  - post_tool_call
+  - on_session_end
+  - kanban_task_completed
 config_schema:
   server:
     type: str
@@ -59,3 +62,11 @@ config_schema:
     type: str
     default: hermes
     description: Prefix of task references derived from a session id.
+  agent:
+    type: str
+    default: agent:hermes
+    description: The name this agent is registered with in the Worldbuilder (agent:<name>); written into task records.
+  task_records_dir:
+    type: str
+    default: ""
+    description: Folder for task records (one JSON file per task). Empty means <HERMES_HOME>/worldbuilder/task-records. Point the cron jobs at the same folder.

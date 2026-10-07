@@ -17,12 +17,21 @@ import json
 import re
 import sys
 import threading
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 # hermes_cli/plugins.py: VALID_HOOKS (the subset relevant here; the real set is larger).
-VALID_HOOKS = {"pre_tool_call", "post_tool_call", "pre_llm_call", "post_llm_call", "on_session_start", "on_session_end"}
+VALID_HOOKS = {
+    "pre_tool_call",
+    "post_tool_call",
+    "pre_llm_call",
+    "post_llm_call",
+    "on_session_start",
+    "on_session_end",
+    "kanban_task_completed",
+}
 # hermes_cli/plugins_dispatch.py: SYSTEM_PROMPT_SECTION_POSITIONS, *_MAX_CHARS.
 SYSTEM_PROMPT_SECTION_POSITIONS = {"after_memory"}
 MAX_SYSTEM_PROMPT_SECTION_CHARS = 4000
@@ -88,7 +97,7 @@ class FakeCtx:
     """The PluginContext surface the plugin uses (hermes_cli/plugins.py)."""
 
     plugin_id: str
-    host: "FakeHermes"
+    host: FakeHermes
     hooks: dict[str, list[Callable[..., Any]]] = field(default_factory=dict)
     tools: dict[str, dict[str, Any]] = field(default_factory=dict)
     sections: dict[str, dict[str, Any]] = field(default_factory=dict)
@@ -108,12 +117,20 @@ class FakeCtx:
         self, id: str, content: Any, *, position: str = "after_memory", max_chars: int = 4000
     ) -> None:
         if not _SECTION_ID_RE.match(id):
-            raise ValueError("system prompt section id must be 1-128 lowercase characters using letters, numbers, '.', '_', or '-'")
+            raise ValueError(
+                "system prompt section id must be 1-128 lowercase characters using letters, numbers, '.', '_', or '-'"
+            )
         if not isinstance(content, str) and not callable(content):
             raise TypeError("system prompt section content must be a string or callable")
         if position not in SYSTEM_PROMPT_SECTION_POSITIONS:
-            raise ValueError("system prompt section position must be one of: " + ", ".join(sorted(SYSTEM_PROMPT_SECTION_POSITIONS)))
-        if isinstance(max_chars, bool) or not isinstance(max_chars, int) or not 0 < max_chars <= MAX_SYSTEM_PROMPT_SECTION_CHARS:
+            raise ValueError(
+                "system prompt section position must be one of: " + ", ".join(sorted(SYSTEM_PROMPT_SECTION_POSITIONS))
+            )
+        if (
+            isinstance(max_chars, bool)
+            or not isinstance(max_chars, int)
+            or not 0 < max_chars <= MAX_SYSTEM_PROMPT_SECTION_CHARS
+        ):
             raise ValueError(f"system prompt section max_chars must be between 1 and {MAX_SYSTEM_PROMPT_SECTION_CHARS}")
         if id in self.sections:
             raise ValueError(f"system prompt section {id!r} is already registered")
@@ -135,7 +152,9 @@ class FakeCtx:
         return self.host.settings.get(key, default)
 
     # call_mcp: hermes_cli/plugins.py: PluginContext.call_mcp (allowlist, timeout clamp, envelope).
-    def call_mcp(self, server: str, tool: str, arguments: dict[str, Any] | None = None, timeout: float = 30) -> dict[str, Any]:
+    def call_mcp(
+        self, server: str, tool: str, arguments: dict[str, Any] | None = None, timeout: float = 30
+    ) -> dict[str, Any]:
         if server not in self.host.mcp_allowlist:
             raise PermissionError(
                 f"Plugin {self.plugin_id!r} is not allowed to call MCP server {server!r}. Add it to "
@@ -199,7 +218,7 @@ class FakeHermes:
 
     # hermes_cli/plugins_loader.py: spec_from_file_location(module_name, init_file,
     # submodule_search_locations=[plugin_dir]) so that relative imports inside the plugin work.
-    def load(self) -> "FakeHermes":
+    def load(self) -> FakeHermes:
         manifest_path = self.plugin_dir / "plugin.yaml"
         assert manifest_path.is_file(), "plugin.yaml missing"
         module_name = "hermes_plugins." + re.sub(r"\W", "_", self.plugin_dir.name)
@@ -229,7 +248,10 @@ class FakeHermes:
             except Exception as exc:
                 if hook == "pre_tool_call":
                     results.append(
-                        {"action": "block", "message": f"pre_tool_call callback {callback.__name__} raised {type(exc).__name__}: {exc}"}
+                        {
+                            "action": "block",
+                            "message": f"pre_tool_call callback {callback.__name__} raised {type(exc).__name__}: {exc}",
+                        }
                     )
         return results
 
@@ -307,9 +329,57 @@ class FakeHermes:
             if action == "block":
                 message = result.get("message")
                 if isinstance(message, str) and message:
-                    return ToolDecision(True, message, modified if modified is not None else original, modified is not None)
+                    return ToolDecision(
+                        True, message, modified if modified is not None else original, modified is not None
+                    )
         final = modified if modified is not None else original
         return ToolDecision(False, None, final, modified is not None)
+
+    def post_tool_call(
+        self,
+        tool_name: str,
+        args: dict[str, Any],
+        result: str,
+        *,
+        session_id: str = "session-1",
+        task_id: str | None = None,
+    ) -> None:
+        """hooks.md ``post_tool_call``: ``result`` is always a JSON string; observer, return ignored."""
+        self._invoke(
+            "post_tool_call",
+            tool_name=tool_name,
+            args=args,
+            result=result,
+            task_id=session_id if task_id is None else task_id,
+            session_id=session_id,
+            duration_ms=5,
+            status="ok",
+        )
+
+    def on_session_end(
+        self, *, session_id: str = "session-1", completed: bool = True, interrupted: bool = False
+    ) -> None:
+        """hooks.md ``on_session_end``: session_id, completed, interrupted, model, platform."""
+        self._invoke(
+            "on_session_end",
+            session_id=session_id,
+            completed=completed,
+            interrupted=interrupted,
+            model="test/model",
+            platform="cli",
+        )
+
+    def kanban_task_completed(self, *, task_id: str = "t_1", summary: str = "done") -> None:
+        """hooks.md ``kanban_task_completed``: task_id, profile_name, board, assignee, run_id, summary."""
+        self._invoke(
+            "kanban_task_completed",
+            task_id=task_id,
+            profile_name="default",
+            board="default",
+            assignee="orchestrator",
+            run_id=1,
+            summary=summary,
+        )
 
     # --- inspection -----------------------------------------------------------------------
 

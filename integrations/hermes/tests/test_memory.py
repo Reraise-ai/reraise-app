@@ -49,7 +49,10 @@ def test_the_card_draft_is_private_untrained_and_valid(world) -> None:  # type: 
     card = wb.calls[-1][1]["card"]
     assert card["release"] == "private" and card["training"] is False
     assert card["layer"] == "experience" and card["worlds"] == [WORLD_ID]
-    assert card["title"] == "Lesson learned: war-risk premiums tend to double within a day of the first transit announcement."
+    assert (
+        card["title"]
+        == "Lesson learned: war-risk premiums tend to double within a day of the first transit announcement."
+    )
     assert "author" not in card and "id" not in card  # set by the service from the connection
     assert_valid("write-back-receipt.schema.json#/$defs/request", wb.calls[-1][1])
 
@@ -105,7 +108,9 @@ def test_a_batch_keeps_the_operational_items_and_drops_the_lessons(world) -> Non
 def test_a_batch_of_only_lessons_is_blocked_and_names_every_proposal(world) -> None:  # type: ignore[no-untyped-def]
     wb, hermes = world
     other = "Insight: carriers always reroute before insurers reprice, because rerouting is cheaper."
-    decision = hermes.pre_tool_call("memory", memory(operations=[{"action": "add", "content": LESSON}, {"action": "add", "content": other}]))
+    decision = hermes.pre_tool_call(
+        "memory", memory(operations=[{"action": "add", "content": LESSON}, {"action": "add", "content": other}])
+    )
     assert decision.blocked and len(wb.proposals) == 2
     assert all(p["id"] in (decision.message or "") for p in wb.proposals)
 
@@ -159,3 +164,49 @@ def test_the_allowlist_is_enforced_for_memory_too(make_world) -> None:  # type: 
     wb, hermes = make_world(mcp_allowlist=[], settings={"memory_on_error": "block"})
     decision = hermes.pre_tool_call("memory", memory(action="add", content=LESSON))
     assert decision.blocked and "mcp_allowlist" in (decision.message or "")
+
+
+def test_an_explicit_null_target_means_memory(world) -> None:  # type: ignore[no-untyped-def]
+    # Hermes: ``target = "memory" if target is None else target`` (tools/memory_tool.py)
+    wb, hermes = world
+    assert hermes.pre_tool_call("memory", {"target": None, "action": "add", "content": LESSON}).blocked
+    assert len(wb.proposals) == 1
+    assert hermes.pre_tool_call("memory", {"target": "", "action": "add", "content": LESSON}).blocked
+
+
+def test_the_batch_notice_reaches_the_model_on_its_next_turn(world) -> None:  # type: ignore[no-untyped-def]
+    wb, hermes = world
+    hermes.pre_llm_call(user_message="Task ref: TASK-9\nTankers", is_first_turn=True)
+    ops = [{"action": "add", "content": OPS}, {"action": "add", "content": LESSON}]
+    decision = hermes.pre_tool_call("memory", memory(operations=ops))
+    assert decision.modified and decision.args["operations"] == [ops[0]]
+    notice = hermes.pre_llm_call(user_message="next", is_first_turn=False) or ""
+    assert wb.proposals[0]["id"] in notice and "not saved to memory" in notice
+    assert not hermes.pre_llm_call(user_message="and next", is_first_turn=False)  # told once
+
+
+def test_a_routing_failure_is_logged_without_the_memory_text(make_world, caplog) -> None:  # type: ignore[no-untyped-def]
+    import logging
+
+    wb, hermes = make_world()
+    wb.reachable = False
+    with caplog.at_level(logging.WARNING):
+        hermes.pre_tool_call("memory", memory(action="add", content=LESSON))
+    assert "memory routing failed" in caplog.text and "war-risk" not in caplog.text
+
+
+def test_the_hook_budget_follows_hermes_hook_callback_timeout(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    import sys
+    import types
+
+    from harness.fake_hermes import HOOK_CALLBACK_TIMEOUT_SECONDS
+
+    settings = sys.modules[next(m for m in sys.modules if m.endswith(".settings") and "hermes_plugins" in m)]
+    assert settings.hook_budget() == HOOK_CALLBACK_TIMEOUT_SECONDS - settings.HOOK_MARGIN  # not in Hermes: default
+    fake = types.ModuleType("hermes_cli.config")
+    fake.load_config_readonly = lambda: {"plugins": {"hook_callback_timeout": 12}}  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "hermes_cli", types.ModuleType("hermes_cli"))
+    monkeypatch.setitem(sys.modules, "hermes_cli.config", fake)
+    assert settings.hook_budget() == 12 - settings.HOOK_MARGIN
+    fake.load_config_readonly = lambda: {"plugins": {"hook_callback_timeout": 3}}  # type: ignore[attr-defined]
+    assert settings.hook_budget() == 2.0  # never below two seconds

@@ -99,7 +99,7 @@ def _is_ref(value: Any) -> bool:
 def _is_card_written(value: Any) -> bool:
     if not isinstance(value, dict) or len(value) != 1:
         return False
-    (key, item), = value.items()
+    ((key, item),) = value.items()
     if key in ("proposalId", "cardId"):
         return isinstance(item, str) and bool(ULID_RE.match(item))
     return key == "notNeededBecause" and item in NOT_NEEDED_REASONS
@@ -145,9 +145,7 @@ def merge_output_schema(existing: Any) -> tuple[dict[str, Any] | None, str | Non
         return None, "its output_schema has no usable properties"
     properties.update(contract["properties"])
     required = merged.get("required", [])
-    merged["required"] = list(
-        dict.fromkeys([*(required if isinstance(required, list) else []), *CONTRACT_FIELDS])
-    )
+    merged["required"] = list(dict.fromkeys([*(required if isinstance(required, list) else []), *CONTRACT_FIELDS]))
     return merged, None
 
 
@@ -175,9 +173,17 @@ def _block(message: str) -> dict[str, str]:
 
 def make_delegate_policy(settings: Settings, store: SessionStore):
     def delegate_policy(args: dict[str, Any], session_id: str, task_id: str) -> dict[str, Any] | None:
-        if args.get("action", "spawn") != "spawn":
-            return None  # list, steer and stop do not hand work off
+        # Hermes: ``(action or "").strip().lower()``; "" and "spawn" spawn, list/steer/stop control
+        # running children, anything else is an error of Hermes' own (tools/delegate_tool.py).
+        raw_action = args.get("action")
+        action = (raw_action if isinstance(raw_action, str) else "").strip().lower()
+        if action not in ("", "spawn"):
+            return None  # list, steer, stop and unknown actions hand no work off
         key = store.key(session_id, task_id)
+        with store.session_lock(key):
+            return _spawn(args, key)
+
+    def _spawn(args: dict[str, Any], key: str) -> dict[str, Any]:
         state = store.get(key) or TaskState(task_ref=derive_task_ref(settings.task_ref_prefix, key))
         store.put(key, state)
         if settings.require_receipt_for_delegation and state.consult is None:
@@ -189,17 +195,23 @@ def make_delegate_policy(settings: Settings, store: SessionStore):
         parent_receipt = state.consult.receipt_id if state.consult else None
 
         tasks = args.get("tasks")
-        if isinstance(tasks, list) and tasks:
+        if isinstance(tasks, str) and tasks.strip():
+            try:
+                tasks = json.loads(tasks)  # models sometimes pass the batch as a JSON string
+            except ValueError:
+                return _block("delegate_task blocked: `tasks` is a string that is not JSON; pass a list of tasks.")
+        if tasks not in (None, "", []):
+            if not isinstance(tasks, list) or not all(isinstance(t, dict) for t in tasks):
+                return _block("delegate_task blocked: `tasks` must be a list of task objects.")
             new_tasks = []
             for task in tasks:
-                if not isinstance(task, dict):
-                    return None  # malformed: let delegate_task report it
                 rewritten = _rewrite_task(task, state, parent_receipt, settings)
                 if isinstance(rewritten, str):
                     return _block(f"delegate_task blocked: {rewritten}")
                 new_tasks.append(rewritten)
             return {"action": "modify", "args": {"tasks": new_tasks}}
-        if "goal" in args:  # the legacy single-goal shape: top-level goal/context/output_schema
+        if isinstance(args.get("goal"), str) and args["goal"].strip():
+            # The single-goal shape: top-level goal, context and output_schema.
             rewritten = _rewrite_task(
                 {k: args[k] for k in ("goal", "context", "output_schema") if k in args},
                 state,
@@ -210,25 +222,30 @@ def make_delegate_policy(settings: Settings, store: SessionStore):
                 return _block(f"delegate_task blocked: {rewritten}")
             return {
                 "action": "modify",
-                "args": {k: rewritten[k] for k in ("context", "output_schema") if k in rewritten},
+                "args": {k: rewritten[k] for k in ("goal", "context", "output_schema")},
             }
-        return None
+        # Fail closed: a spawn whose shape is not understood would hand work off without the contract.
+        return _block(
+            "delegate_task blocked: neither `goal` nor `tasks` is usable, so the hand-off contract cannot be added."
+        )
 
     def _rewrite_task(
         task: dict[str, Any], state: TaskState, parent_receipt: str | None, settings: Settings
     ) -> dict[str, Any] | str:
         schema, reason = merge_output_schema(task.get("output_schema"))
         if schema is None:
-            return (
-                f"{reason}. Hand-offs must carry the Worldbuilder receipts; use a plain object "
-                "schema or none."
-            )
+            return f"{reason}. Hand-offs must carry the Worldbuilder receipts; use a plain object schema or none."
+        goal = task.get("goal")
+        if not isinstance(goal, str) or not goal.strip():
+            return "a task has no goal"
         state.delegations += 1
         child = child_task_ref(state.task_ref, state.delegations)
         block = handoff_block(state.task_ref, child, parent_receipt, settings.server)
         base = task.get("context")
         context = f"{base.rstrip()}\n\n{block}" if isinstance(base, str) and base.strip() else block
-        return {**task, "output_schema": schema, "context": context}
+        # The child's first turn may be only its goal: the reference goes first, where
+        # explicit_task_ref finds it, so the child consults for its own task, not its parent's.
+        return {**task, "goal": f"Task ref: {child}\n{goal}", "output_schema": schema, "context": context}
 
     return delegate_policy
 

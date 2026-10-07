@@ -92,6 +92,8 @@ jobs:
           python-version: '3.11'
       - run: pnpm install --frozen-lockfile
       - run: python -m pip install -e "integrations/hermes[test]"
+      - name: Lint the Python of the integration (ruff)
+        run: ruff check integrations/hermes && ruff format --check integrations/hermes
       - run: pnpm test:hermes
 
   audit:

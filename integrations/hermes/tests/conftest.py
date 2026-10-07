@@ -2,11 +2,11 @@
 # Copyright The Worldbuilder contributors
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 import pytest
-
 from harness.fake_hermes import FakeHermes
 from harness.fake_worldbuilder import WORLD_ID, FakeWorldbuilder
 

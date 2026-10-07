@@ -14,6 +14,9 @@ features/hooks.md):
   hand-off without them.
 * ``pre_tool_call`` on ``memory``: routes writes with ``memory_route``; durable lessons become
   private card proposals through ``knowledge_write_back``.
+* task records: ``on_session_end`` and ``kanban_task_completed`` write one task-record JSON per task
+  (taskRef, agent, receipts known) into ``task_records_dir`` for the nightly validation and metrics;
+  ``post_tool_call`` notes receipts of tool calls the model made itself;
 * a short rule in the system prompt (``register_system_prompt_section``).
 
 The MCP server must be listed in ``plugins.entries.worldbuilder-knowledge-loop.mcp_allowlist``;
@@ -31,6 +34,7 @@ from .consult import make_pre_llm_call
 from .handoff import make_delegate_policy, make_kanban_policy
 from .memory_gate import make_memory_policy
 from .prompt import SECTION_ID, rule_text
+from .records import make_kanban_completed, make_post_tool_call, make_session_end
 from .session import SessionStore
 from .settings import Settings, load_settings
 
@@ -57,7 +61,7 @@ def register(ctx: Any) -> None:
         tool_name, args = _tool_name_args(kwargs)
         if tool_name not in ("delegate_task", "kanban_complete"):
             return None
-        try:
+        try:  # delegate_policy takes the per-session lock itself
             if tool_name == "delegate_task":
                 return delegate_policy(args, str(kwargs.get("session_id") or ""), str(kwargs.get("task_id") or ""))
             return kanban_policy(args)
@@ -69,8 +73,10 @@ def register(ctx: Any) -> None:
         tool_name, args = _tool_name_args(kwargs)
         if tool_name != "memory":
             return None
+        session_id, task_id = str(kwargs.get("session_id") or ""), str(kwargs.get("task_id") or "")
         try:
-            return memory_policy(args, str(kwargs.get("session_id") or ""), str(kwargs.get("task_id") or ""))
+            with store.session_lock(store.key(session_id, task_id)):
+                return memory_policy(args, session_id, task_id)
         except Exception as exc:
             logger.exception("worldbuilder-knowledge-loop: memory routing failed")
             if settings.memory_on_error == "block":
@@ -80,6 +86,9 @@ def register(ctx: Any) -> None:
     ctx.register_hook("pre_llm_call", make_pre_llm_call(client, settings, store))
     ctx.register_hook("pre_tool_call", pre_tool_call_handoff)
     ctx.register_hook("pre_tool_call", pre_tool_call_memory)
+    ctx.register_hook("post_tool_call", make_post_tool_call(settings, store))
+    ctx.register_hook("on_session_end", make_session_end(settings, store))
+    ctx.register_hook("kanban_task_completed", make_kanban_completed(settings, store))
     ctx.register_system_prompt_section(SECTION_ID, rule_text(settings.server), position="after_memory")
 
     register_skill = getattr(ctx, "register_skill", None)
