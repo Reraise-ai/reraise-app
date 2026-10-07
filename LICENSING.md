@@ -16,6 +16,7 @@ Copyright: The Worldbuilder contributors.
 | `packages/disclosure-gate`                        | Apache-2.0        |
 | `packages/local-state`                            | Apache-2.0        |
 | `packages/knowledge-loop`                         | Apache-2.0        |
+| `packages/level1-engines`                         | Apache-2.0        |
 | `packages/training-export`                        | Apache-2.0        |
 | `packages/conformance`                            | Apache-2.0        |
 | `integrations/hermes`                             | Apache-2.0        |

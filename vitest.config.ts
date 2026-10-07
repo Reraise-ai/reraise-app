@@ -8,6 +8,7 @@ const alias = Object.fromEntries(
   [
     'core',
     'conformance',
+    'level1-engines',
     'disclosure-gate',
     'local-state',
     'knowledge-loop',
