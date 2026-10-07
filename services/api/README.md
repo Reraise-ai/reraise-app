@@ -105,8 +105,8 @@ fixed reason code. Denied cards are left out and listed by id and a fixed reason
   over cleared cards only and the answer never lists denied cards, so a query for text in a denied
   card looks like a query for absent text. Only an explicit id lookup says "no".
 - A context package for a Lage needs the Lage in the requested world and, for a model target, the
-  Lage cleared by the gate; a hidden Lage answers like a missing one (400: the contract declares no
-  404 for this operation).
+  Lage cleared by the gate; a hidden Lage answers like a missing one (404, byte-identical). A world
+  with no card cleared for a model target answers like an unknown world (empty package, no count).
 
 ## Decisions of this slice that the contract leaves open
 
@@ -139,5 +139,7 @@ fixed reason code. Denied cards are left out and listed by id and a fixed reason
 - No per-agent quota on pending proposals.
 - The atlas lag of `usage_metrics_get` is unknown (see above); task records are read from
   `<state>/tasks` (files that are not task records count as no task).
+- A card write-back whose receipt cannot be written is withdrawn: its proposal is rejected (the
+  schema records every decision as the human's) and the answer is 503.
 - A `consultReceiptId` passed to `knowledge_write_back` is not checked against the log at write
   time; the verifier reports a mismatch (`unlinked`).
