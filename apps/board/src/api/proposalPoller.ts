@@ -10,11 +10,13 @@ import type { Proposal } from '@worldbuilder/core';
 import type { BoardClient } from './client.js';
 
 export const POLL_INTERVAL_MS = 2000;
+export const MAX_BACKOFF_MS = 30_000;
 const PAGE = 200;
 
 export interface PollerOptions {
   client: Pick<BoardClient, 'proposal_list'>;
-  lageId: string;
+  /** Only the proposals of this Lage; without it every proposal (the global view). */
+  lageId?: string;
   intervalMs?: number;
   /** Called with every proposal that was created or changed since the last poll. */
   onChanges(changed: Proposal[]): void;
@@ -32,6 +34,11 @@ export interface Poller {
   pollOnce(): Promise<void>;
 }
 
+/** Delay before the next poll: the interval, doubled per failure in a row, at most 30 s. */
+export function nextDelay(intervalMs: number, failures: number): number {
+  return Math.min(MAX_BACKOFF_MS, intervalMs * 2 ** failures);
+}
+
 export function createProposalPoller(options: PollerOptions): Poller {
   const interval = options.intervalMs ?? POLL_INTERVAL_MS;
   const setTimer = options.setTimer ?? ((fn, ms) => setTimeout(fn, ms));
@@ -40,50 +47,64 @@ export function createProposalPoller(options: PollerOptions): Poller {
   let cursor: string | undefined;
   let handle: unknown;
   let running = false;
-  let stopped = true;
+  // Every stop starts a new generation: an answer that arrives after a stop is dropped, so no
+  // callback runs once the poller was stopped (for example by a closed board).
+  let generation = 0;
+  let failures = 0;
   let inFlight: Promise<void> | undefined;
 
-  async function pollOnce(): Promise<void> {
+  function pollOnce(): Promise<void> {
     if (inFlight) return inFlight;
-    inFlight = (async () => {
+    const mine = generation;
+    const current = (): boolean => mine === generation;
+    const run = (async () => {
       try {
         for (;;) {
           const page = await options.client.proposal_list({
-            lageId: options.lageId,
+            ...(options.lageId ? { lageId: options.lageId } : {}),
             limit: PAGE,
             ...(cursor ? { changedSince: cursor } : {}),
           });
+          if (!current()) return;
           if (page.nextCursor) cursor = page.nextCursor;
+          failures = 0;
           options.onSuccess?.();
           if (page.proposals.length > 0) options.onChanges(page.proposals);
           if (page.proposals.length < PAGE) return;
         }
       } catch (e) {
+        if (!current()) return;
+        failures++;
         options.onError?.(e);
       } finally {
-        inFlight = undefined;
+        if (current()) inFlight = undefined;
       }
     })();
-    return inFlight;
+    inFlight = run;
+    return run;
   }
 
-  function schedule(): void {
-    if (stopped) return;
-    handle = setTimer(() => {
-      void pollOnce().finally(schedule);
-    }, interval);
+  function schedule(mine: number): void {
+    if (mine !== generation || !running) return;
+    handle = setTimer(
+      () => {
+        void pollOnce().finally(() => schedule(mine));
+      },
+      nextDelay(interval, failures),
+    );
   }
 
   return {
     start() {
       if (running) return;
       running = true;
-      stopped = false;
-      void pollOnce().finally(schedule);
+      const mine = generation;
+      void pollOnce().finally(() => schedule(mine));
     },
     stop() {
-      stopped = true;
       running = false;
+      generation++;
+      inFlight = undefined;
       if (handle !== undefined) clearTimer(handle);
       handle = undefined;
     },

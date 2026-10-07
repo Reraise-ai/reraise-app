@@ -50,6 +50,8 @@ export interface ClientOptions {
   /** The human session token printed by `worldbuilder serve`. */
   token: string;
   fetch?: typeof fetch;
+  /** Called once for every 401 answer: the session is gone, so the board signs out here. */
+  onUnauthorized?: () => void;
 }
 
 export interface SearchParams {
@@ -125,10 +127,13 @@ export function createClient(options: ClientOptions): BoardClient {
       }
     }
     if (!res.ok) {
+      if (res.status === 401) options.onUnauthorized?.();
       const problem = isProblem(json) ? json : undefined;
       throw new ApiError(
         res.status,
-        problem?.detail ?? problem?.title ?? `request failed with status ${res.status}`,
+        problem?.detail && problem.title
+          ? `${problem.title}: ${problem.detail}`
+          : (problem?.detail ?? problem?.title ?? `request failed with status ${res.status}`),
         problem,
       );
     }

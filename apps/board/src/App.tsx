@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { createClient } from './api/client.js';
 import { clearSession, loadSession, saveSession, type Session } from './api/session.js';
 import { LageList } from './components/LageList.js';
+import { ProposalsInbox } from './components/ProposalsInbox.js';
 import { UsagePanel } from './components/UsagePanel.js';
 import { Login } from './components/Login.js';
 import { Workbench } from './components/Workbench.js';
@@ -45,27 +46,26 @@ function Signed(props: {
   onSignOut(): void;
 }) {
   const { session, fetchImpl, onSignOut } = props;
+  // Any 401, from any call, ends the session (the token is wrong or the service was restarted).
   const client = useMemo(
-    () => createClient({ ...session, ...(fetchImpl ? { fetch: fetchImpl } : {}) }),
-    [session, fetchImpl],
+    () =>
+      createClient({
+        ...session,
+        ...(fetchImpl ? { fetch: fetchImpl } : {}),
+        onUnauthorized: onSignOut,
+      }),
+    [session, fetchImpl, onSignOut],
   );
   const [worldId, setWorldId] = useState<string | undefined>();
   const [openLage, setOpenLage] = useState<string | null>(null);
-  const [authError, setAuthError] = useState(false);
   const [view, setView] = useState<'boards' | 'usage'>('boards');
 
   useEffect(() => {
     client
       .world_list()
       .then((w) => setWorldId(w.worlds[0]?.id))
-      .catch((e: { status?: number }) => {
-        if (e.status === 401) setAuthError(true);
-      });
+      .catch(() => undefined);
   }, [client]);
-
-  useEffect(() => {
-    if (authError) onSignOut();
-  }, [authError, onSignOut]);
 
   return (
     <div className="wb-shell">
@@ -104,7 +104,17 @@ function Signed(props: {
           onClose={() => setOpenLage(null)}
         />
       ) : (
-        <LageList client={client} worldId={worldId} onOpen={setOpenLage} />
+        <>
+          <LageList client={client} worldId={worldId} onOpen={setOpenLage} />
+          <aside className="wb-page" aria-label="All proposals">
+            <ProposalsInbox
+              client={client}
+              {...(props.pollIntervalMs !== undefined
+                ? { pollIntervalMs: props.pollIntervalMs }
+                : {})}
+            />
+          </aside>
+        </>
       )}
     </div>
   );

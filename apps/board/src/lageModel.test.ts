@@ -98,3 +98,21 @@ describe('Lage edits', () => {
     );
   });
 });
+
+describe('a human change takes over an edge', () => {
+  const agentEdge = () => ({
+    ...base(),
+    edges: [{ from: 'A', to: 'B', kind: 'supports' as const, by: 'agent:scout' as const }],
+  });
+  it('sets by human when reversing', () => {
+    const l = agentEdge();
+    expect(reverseEdge(l, l.edges[0]!, NOW).edges[0]).toMatchObject({ from: 'B', by: 'human' });
+  });
+  it('sets by human when changing the kind', () => {
+    const l = agentEdge();
+    expect(setEdgeKind(l, l.edges[0]!, 'refutes', NOW).edges[0]).toMatchObject({
+      kind: 'refutes',
+      by: 'human',
+    });
+  });
+});

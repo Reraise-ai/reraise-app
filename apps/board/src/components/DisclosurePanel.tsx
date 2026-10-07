@@ -11,6 +11,7 @@ import type {
 import type { BoardClient } from '../api/client.js';
 import { ApiError } from '../api/client.js';
 import { describeError } from '../errors.js';
+import { canonicalJson } from '../canonicalJson.js';
 import { LAYER_LABEL, layerOf } from './CardNode.js';
 
 interface Props {
@@ -80,7 +81,9 @@ export function DisclosurePanel(props: Props) {
       if (e instanceof ApiError && e.status === 400) {
         setView({
           step: 'blocked',
-          reason: 'The gate clears no card of this board for a cloud model.',
+          reason: `The gate clears no card of this board for a cloud model${
+            e.problem?.detail ? ` (${e.problem.detail})` : ''
+          }.`,
           denied: deniedFor(placedIds, []),
         });
       } else {
@@ -126,7 +129,7 @@ export function DisclosurePanel(props: Props) {
               setView({ step: 'idle' });
             }}
           >
-            <option value="local_model">local_model</option>
+            <option value="local_model">Screen view of the package</option>
             <option value="cloud_model">cloud_model</option>
           </select>
         </div>
@@ -180,9 +183,8 @@ export function DisclosurePanel(props: Props) {
 function CloudWarning() {
   return (
     <p className="wb-warning" role="note" data-testid="context-cloud-warning">
-      A cloud model runs outside this device. Only cards the gate clears can be sent, only after you
-      confirm this one transfer, and every transfer needs its own confirmation. Your stances,
-      ratings and private conclusions never leave.
+      A cloud model runs outside this device. Your stances never leave. Other private cards leave
+      only if the gate clears them and you confirm this transfer.
     </p>
   );
 }
@@ -222,10 +224,33 @@ function TransferPreview(props: {
   return (
     <div data-testid="context-preview">
       <h3>This would be sent ({transfer.cardIds.length})</h3>
+      <p className="wb-muted">
+        This is the complete envelope. Nothing else leaves, and only after you confirm.
+      </p>
+      <dl className="wb-envelope">
+        <dt>Target</dt>
+        <dd data-testid="context-envelope-target">{transfer.preview.target}</dd>
+        <dt>Connector</dt>
+        <dd data-testid="context-envelope-connector">{transfer.preview.connectorId}</dd>
+        <dt>Request (question, options, output schema)</dt>
+        <dd>
+          <pre className="wb-json" tabIndex={0} data-testid="context-envelope-request">
+            {canonicalJson(transfer.preview.request)}
+          </pre>
+        </dd>
+      </dl>
       <ul className="wb-list" aria-label="Cards that would be sent">
         {transfer.preview.objects.map((c) => (
           <li key={c.id} data-testid={`context-send-${c.id}`}>
-            {c.title}
+            <strong>{c.title}</strong>
+            <pre
+              className="wb-json"
+              tabIndex={0}
+              aria-label={`Every field of ${c.title}`}
+              data-testid={`context-send-json-${c.id}`}
+            >
+              {canonicalJson(c)}
+            </pre>
           </li>
         ))}
       </ul>

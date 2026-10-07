@@ -85,10 +85,11 @@ export function Workbench({ client, lageId, worldId, pollIntervalMs, onClose }: 
   }, [load]);
 
   // Proposals: poll with the change cursor every 2 seconds while this Lage is open (ADR-0032).
+  // Without a lageId: a proposal that names no Lage (an outcome, a comment, a card not placed
+  // yet) must be decidable too. The panel marks the ones that belong to another Lage.
   useEffect(() => {
     const poller = createProposalPoller({
       client,
-      lageId,
       ...(pollIntervalMs !== undefined ? { intervalMs: pollIntervalMs } : {}),
       onSuccess: () => alive.current && setPollError(null),
       onChanges: (changed) => {
@@ -175,7 +176,7 @@ export function Workbench({ client, lageId, worldId, pollIntervalMs, onClose }: 
     for (const p of proposals) {
       if (p.status !== 'pending') continue;
       const pl = p.payload as Record<string, unknown>;
-      for (const key of ['cardId', 'from', 'to']) {
+      for (const key of ['cardId', 'from', 'to', 'decisionId']) {
         const v = pl[key];
         if (typeof v === 'string' && !asked.current.has(v) && !loaded?.cards.has(v)) wanted.add(v);
       }
@@ -216,7 +217,7 @@ export function Workbench({ client, lageId, worldId, pollIntervalMs, onClose }: 
   return (
     <div className="wb-workbench" data-testid="workbench">
       <div className="wb-canvas-wrap">
-        <div className="wb-status" role="status" data-testid="board-status">
+        <div className="wb-status" data-testid="board-status">
           <button type="button" onClick={onClose} data-testid="board-close">
             Lagen
           </button>{' '}
@@ -230,7 +231,7 @@ export function Workbench({ client, lageId, worldId, pollIntervalMs, onClose }: 
             <div
               data-testid="board-message"
               className={message.kind === 'error' ? 'wb-error' : 'wb-muted'}
-              role={message.kind === 'error' ? 'alert' : undefined}
+              role={message.kind === 'error' ? 'alert' : 'status'}
             >
               {message.text}
             </div>
@@ -253,6 +254,7 @@ export function Workbench({ client, lageId, worldId, pollIntervalMs, onClose }: 
       <aside className="wb-sidebar" aria-label="Board tools">
         <ProposalsPanel
           proposals={proposals}
+          currentLageId={lageId}
           titles={titles}
           onDecide={decide}
           pollError={pollError}

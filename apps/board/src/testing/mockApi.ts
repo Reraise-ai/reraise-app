@@ -135,7 +135,7 @@ export interface MockApi {
   /** Simulates another writer bumping the Lage version. */
   bumpLage(lageId: string): void;
   /** The next request whose "METHOD /path" matches (default: any) answers with this problem. */
-  failNext(status: number, title?: string, match?: RegExp): void;
+  failNext(status: number, title?: string, match?: RegExp, detail?: string): void;
 }
 
 function json(status: number, body: unknown, problem = false): Response {
@@ -154,7 +154,7 @@ export function createMockApi(initial: { lage?: Lage } = {}): MockApi {
 
   let seq = 0;
   let changeSeq = 0;
-  let fail: { status: number; title: string; match: RegExp } | undefined;
+  let fail: { status: number; title: string; match: RegExp; detail?: string } | undefined;
   const state: { proposalSeq: Map<string, number> } = { proposalSeq: new Map() };
   const api: MockApi = {
     calls: [],
@@ -179,8 +179,8 @@ export function createMockApi(initial: { lage?: Lage } = {}): MockApi {
       const c = cards.get(lageId)!;
       cards.set(lageId, { ...c, lage: { ...c.lage!, version: c.lage!.version + 1 } });
     },
-    failNext(status, title = 'forced failure', match = /./) {
-      fail = { status, title, match };
+    failNext(status, title = 'forced failure', match = /./, detail) {
+      fail = { status, title, match, ...(detail ? { detail } : {}) };
     },
   };
 
@@ -241,7 +241,9 @@ export function createMockApi(initial: { lage?: Lage } = {}): MockApi {
     if (fail?.match.test(`${method} ${url.pathname}`)) {
       const f = fail;
       fail = undefined;
-      return problem(f.status, f.title);
+      return f.detail
+        ? json(f.status, { title: f.title, status: f.status, detail: f.detail }, true)
+        : problem(f.status, f.title);
     }
     const p = url.pathname;
     let m: RegExpMatchArray | null;
@@ -367,7 +369,11 @@ export function createMockApi(initial: { lage?: Lage } = {}): MockApi {
       return json(200, prop);
     }
     if (p === '/disclosure/transfers' && method === 'POST') {
-      const req = body as { cardIds: string[] };
+      const req = body as {
+        cardIds: string[];
+        connectorId: string;
+        request: Record<string, unknown>;
+      };
       const cleared = req.cardIds.filter((cid) => cards.get(cid)?.visibility === 'public');
       if (cleared.length === 0)
         return problem(400, 'no card of this transfer is cleared for cloud_model');
@@ -378,8 +384,8 @@ export function createMockApi(initial: { lage?: Lage } = {}): MockApi {
         payloadHash: `sha256:${'a'.repeat(64)}`,
         preview: {
           target: 'cloud_model',
-          connectorId: 'board-test',
-          request: {},
+          connectorId: req.connectorId,
+          request: req.request,
           objects: cleared.map((cid) => cards.get(cid)!) as [Card, ...Card[]],
         },
         createdAt: '2026-10-06T10:00:00.000Z',

@@ -2,7 +2,13 @@
 // Copyright The Worldbuilder contributors
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Proposal } from '@worldbuilder/core';
-import { POLL_INTERVAL_MS, createProposalPoller, mergeProposals } from './proposalPoller.js';
+import {
+  MAX_BACKOFF_MS,
+  POLL_INTERVAL_MS,
+  createProposalPoller,
+  mergeProposals,
+  nextDelay,
+} from './proposalPoller.js';
 import { LAGE_ID, createMockApi } from '../testing/mockApi.js';
 import { createClient } from './client.js';
 import { BASE, TOKEN } from '../testing/mockApi.js';
@@ -141,6 +147,77 @@ describe('proposal poller (ADR-0032)', () => {
     await vi.advanceTimersByTimeAsync(0);
     expect(n).toBe(1);
     poller.stop();
+  });
+});
+
+describe('poller backoff and stop', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it('doubles the delay per failure up to 30 s and resets after a success', async () => {
+    expect([0, 1, 2, 3, 4, 5, 9].map((n) => nextDelay(2000, n))).toEqual([
+      2000, 4000, 8000, 16000, 30000, 30000, 30000,
+    ]);
+    expect(MAX_BACKOFF_MS).toBe(30_000);
+    let fail = true;
+    const times: number[] = [];
+    const poller = createProposalPoller({
+      client: {
+        proposal_list: async () => {
+          times.push(Date.now());
+          if (fail) throw new Error('down');
+          return { proposals: [] };
+        },
+      },
+      onChanges: () => {},
+    });
+    const t0 = Date.now();
+    poller.start();
+    await vi.advanceTimersByTimeAsync(4000 + 8000 + 16000);
+    expect(times.map((t) => t - t0)).toEqual([0, 4000, 12000, 28000]);
+    fail = false;
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(times.map((t) => t - t0)).toEqual([0, 4000, 12000, 28000, 58000]);
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(times).toHaveLength(6);
+    poller.stop();
+  });
+
+  it('runs no callback after stop, even for an answer still in flight', async () => {
+    let release!: () => void;
+    const seen: string[] = [];
+    const poller = createProposalPoller({
+      client: {
+        proposal_list: () =>
+          new Promise((resolve) => {
+            release = () => resolve({ proposals: [prop('late')], nextCursor: 'c' });
+          }),
+      },
+      onChanges: (c) => seen.push(...c.map((p) => p.id)),
+      onSuccess: () => seen.push('success'),
+      onError: () => seen.push('error'),
+    });
+    poller.start();
+    await vi.advanceTimersByTimeAsync(0);
+    poller.stop();
+    release();
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(seen).toEqual([]);
+  });
+
+  it('polls without a lageId when none is given (global view)', async () => {
+    const calls: unknown[] = [];
+    const poller = createProposalPoller({
+      client: {
+        proposal_list: async (p) => {
+          calls.push(p);
+          return { proposals: [] };
+        },
+      },
+      onChanges: () => {},
+    });
+    await poller.pollOnce();
+    expect(calls).toEqual([{ limit: 200 }]);
   });
 });
 

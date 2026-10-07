@@ -9,6 +9,9 @@ interface Props {
   client: BoardClient;
 }
 
+const ISO_WEEK = /^[0-9]{4}-W(0[1-9]|[1-4][0-9]|5[0-3])$/;
+const WEEK_DEBOUNCE_MS = 300;
+
 const TARGET_LABELS: Record<string, string> = {
   receipt_coverage_7d: 'Tasks with a knowledge receipt (7 days)',
   agent_cards_7d: 'Accepted agent cards per week',
@@ -22,6 +25,9 @@ function formatValue(id: string, v: number | null): string {
   return String(Math.round(v * 10) / 10);
 }
 
+/** A target without a value is never met, whatever the service says (ADR-0041). */
+const isMet = (t: UsageTarget): boolean => t.value !== null && t.met;
+
 function formatTarget(t: UsageTarget): string {
   const sign = t.comparison === 'at_least' ? 'at least' : 'at most';
   return `${sign} ${formatValue(t.id, t.threshold)}`;
@@ -33,6 +39,7 @@ function formatTarget(t: UsageTarget): string {
  * data is reported as not met.
  */
 export function UsagePanel({ client }: Props) {
+  const [draft, setDraft] = useState('');
   const [week, setWeek] = useState('');
   const [metrics, setMetrics] = useState<UsageMetrics | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -52,6 +59,14 @@ export function UsagePanel({ client }: Props) {
     void load(week);
   }, [load, week]);
 
+  const weekValid = draft === '' || ISO_WEEK.test(draft);
+  // Ask only for a valid week, and only when typing paused.
+  useEffect(() => {
+    if (!weekValid) return;
+    const t = setTimeout(() => setWeek(draft), WEEK_DEBOUNCE_MS);
+    return () => clearTimeout(t);
+  }, [draft, weekValid]);
+
   return (
     <main className="wb-page" data-testid="usage-panel" aria-labelledby="usage-h">
       <h2 id="usage-h">Usage metrics</h2>
@@ -62,12 +77,18 @@ export function UsagePanel({ client }: Props) {
         ISO week (empty for the last 7 days){' '}
         <input
           data-testid="usage-week"
-          value={week}
+          value={draft}
           placeholder="2026-W41"
-          pattern="[0-9]{4}-W[0-9]{2}"
-          onChange={(e) => setWeek(e.target.value.trim())}
+          aria-invalid={!weekValid}
+          aria-describedby={weekValid ? undefined : 'usage-week-hint'}
+          onChange={(e) => setDraft(e.target.value.trim())}
         />
       </label>
+      {!weekValid && (
+        <p id="usage-week-hint" className="wb-error" data-testid="usage-week-hint">
+          Use the form 2026-W41 (year, W, two-digit week from 01 to 53).
+        </p>
+      )}
       {error && (
         <p role="alert" className="wb-error" data-testid="usage-error">
           {error}
@@ -88,11 +109,11 @@ export function UsagePanel({ client }: Props) {
             </thead>
             <tbody>
               {metrics.targets.map((t) => (
-                <tr key={t.id} data-testid={`usage-target-${t.id}`} data-met={String(t.met)}>
+                <tr key={t.id} data-testid={`usage-target-${t.id}`} data-met={String(isMet(t))}>
                   <th scope="row">{TARGET_LABELS[t.id] ?? t.id}</th>
                   <td data-testid={`usage-value-${t.id}`}>{formatValue(t.id, t.value)}</td>
                   <td>{formatTarget(t)}</td>
-                  <td data-testid={`usage-status-${t.id}`}>{t.met ? 'met' : 'not met'}</td>
+                  <td data-testid={`usage-status-${t.id}`}>{isMet(t) ? 'met' : 'not met'}</td>
                 </tr>
               ))}
             </tbody>

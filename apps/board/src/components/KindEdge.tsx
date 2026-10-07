@@ -47,6 +47,7 @@ export function KindEdge(props: EdgeProps<KindEdgeType>) {
     targetPosition,
   });
   const kind = data?.kind ?? 'unspecified';
+  const by = data?.by ?? 'unknown';
   return (
     <>
       <BaseEdge
@@ -58,13 +59,19 @@ export function KindEdge(props: EdgeProps<KindEdgeType>) {
       />
       <EdgeLabelRenderer>
         <div
-          className="wb-badge"
+          className="wb-badge wb-edge-label"
+          data-testid={`edge-label-${props.id}`}
           style={{
             position: 'absolute',
             transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
           }}
         >
           {kind}
+          {by.startsWith('agent:') && (
+            <span className="wb-badge" data-kind="agent" data-testid={`edge-author-${props.id}`}>
+              {by}
+            </span>
+          )}
         </div>
       </EdgeLabelRenderer>
     </>

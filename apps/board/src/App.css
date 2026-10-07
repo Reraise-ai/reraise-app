@@ -368,3 +368,22 @@ label {
   clip-path: inset(50%);
   white-space: nowrap;
 }
+
+.wb-json {
+  max-height: 14rem;
+  overflow: auto;
+  margin: var(--wb-space-half) 0;
+  padding: var(--wb-space-1);
+  border: var(--wb-stroke) solid var(--wb-line);
+  background: var(--wb-surface);
+  font-family: var(--wb-font-mono);
+  font-size: var(--wb-text-s);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.wb-envelope dt {
+  color: var(--wb-text-muted);
+}
+.wb-envelope dd {
+  margin: 0 0 var(--wb-space-1);
+}

@@ -3,11 +3,14 @@
 import { useState } from 'react';
 import type { Card, Proposal } from '@worldbuilder/core';
 import { summarizeProposal } from '../proposalSummary.js';
+import { canonicalJson } from '../canonicalJson.js';
 import { describeError } from '../errors.js';
 
 interface Props {
   proposals: readonly Proposal[];
   titles: ReadonlyMap<string, Card>;
+  /** The open Lage; a proposal for another Lage is marked as such. */
+  currentLageId?: string;
   /** Accept or reject; the board refreshes afterwards. Rejects with the service's problem. */
   onDecide(proposal: Proposal, decision: 'accept' | 'reject'): Promise<void>;
   pollError?: string | null;
@@ -17,7 +20,7 @@ interface Props {
  * Proposals of agents (ADR-0011). Nothing here counts until a human accepts it; accept and
  * reject are human-only endpoints, so this panel is the only place that calls them.
  */
-export function ProposalsPanel({ proposals, titles, onDecide, pollError }: Props) {
+export function ProposalsPanel({ proposals, titles, currentLageId, onDecide, pollError }: Props) {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const pending = proposals.filter((p) => p.status === 'pending');
@@ -45,9 +48,18 @@ export function ProposalsPanel({ proposals, titles, onDecide, pollError }: Props
           {p.kind}
         </span>
         {p.status !== 'pending' && <span className="wb-muted">{p.status}</span>}
+        {currentLageId && otherLage(p, currentLageId) && (
+          <span className="wb-badge" data-testid={`proposal-scope-${p.id}`}>
+            another Lage
+          </span>
+        )}
       </div>
       <div data-testid={`proposal-summary-${p.id}`}>{summarizeProposal(p, titles)}</div>
       {p.rationale && <div className="wb-muted">{p.rationale}</div>}
+      <details className="wb-applied" data-testid={`proposal-applied-${p.id}`}>
+        <summary>What will be applied</summary>
+        <AppliedFields proposal={p} titles={titles} />
+      </details>
       {p.status === 'pending' && (
         <div className="wb-row">
           <button
@@ -101,5 +113,47 @@ export function ProposalsPanel({ proposals, titles, onDecide, pollError }: Props
         </>
       )}
     </section>
+  );
+}
+
+function otherLage(p: Proposal, currentLageId: string): boolean {
+  const id = (p.payload as { lageId?: unknown }).lageId;
+  return typeof id === 'string' && id !== currentLageId;
+}
+
+/** Every field of the payload as text, so you see exactly what accepting would write. */
+function AppliedFields({
+  proposal,
+  titles,
+}: {
+  proposal: Proposal;
+  titles: ReadonlyMap<string, Card>;
+}) {
+  const payload = proposal.payload as Record<string, unknown>;
+  const decisionId = proposal.kind === 'record_outcome' ? payload['decisionId'] : undefined;
+  return (
+    <dl className="wb-envelope">
+      {typeof decisionId === 'string' && (
+        <>
+          <dt>Decision</dt>
+          <dd data-testid={`proposal-decision-${proposal.id}`}>
+            {titles.get(decisionId)?.title ?? 'title not available'}{' '}
+            <span className="wb-mono">{decisionId}</span>
+          </dd>
+        </>
+      )}
+      {Object.entries(payload)
+        .sort(([a], [b]) => (a < b ? -1 : 1))
+        .map(([key, value]) => (
+          <div key={key} data-testid={`proposal-field-${proposal.id}-${key}`}>
+            <dt>{key}</dt>
+            <dd>
+              <pre className="wb-json" tabIndex={0}>
+                {typeof value === 'string' ? value : canonicalJson(value)}
+              </pre>
+            </dd>
+          </div>
+        ))}
+    </dl>
   );
 }

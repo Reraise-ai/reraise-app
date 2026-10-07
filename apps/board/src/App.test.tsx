@@ -368,6 +368,120 @@ describe('proposals (polling, ADR-0032)', () => {
   });
 });
 
+describe('proposal details', () => {
+  it('lists every field of a create_card proposal before accepting', async () => {
+    const api = createMockApi();
+    await openLage(api);
+    const p = api.addProposal({
+      author: 'agent:scout',
+      kind: 'create_card',
+      payload: {
+        lageId: LAGE_ID,
+        x: 40,
+        y: 80,
+        card: {
+          format: 2,
+          type: 'evidence',
+          title: 'Tanker note',
+          layer: 'evidenced',
+          body: 'Eight tankers rerouted.',
+          source: 'https://example.invalid/tracker',
+          sourceDate: '2026-10-01',
+          worlds: ['01JA0000000000000000000W01'],
+          edges: [{ target: C1, kind: 'supports', by: 'agent:scout' }],
+          interests: [{ text: 'Keep the lane open', source: 'Synthetic report' }],
+        },
+      },
+    });
+    await screen.findByTestId(`proposal-${p.id}`);
+    const applied = screen.getByTestId(`proposal-applied-${p.id}`).textContent!;
+    for (const needle of [
+      'Eight tankers rerouted.',
+      'https://example.invalid/tracker',
+      '2026-10-01',
+      'evidence',
+      '01JA0000000000000000000W01',
+      'supports',
+      'Keep the lane open',
+      'Synthetic report',
+    ]) {
+      expect(applied).toContain(needle);
+    }
+    expect(screen.getByTestId(`proposal-field-${p.id}-x`).textContent).toContain('40');
+    expect(screen.getByTestId(`proposal-field-${p.id}-y`).textContent).toContain('80');
+    expect(screen.getByTestId(`proposal-field-${p.id}-lageId`).textContent).toContain(LAGE_ID);
+  });
+
+  it('shows the decision, the expected hash and the outcome of a record_outcome proposal', async () => {
+    const api = createMockApi();
+    await openLage(api);
+    const p = api.addProposal({
+      author: 'agent:scout',
+      kind: 'record_outcome',
+      payload: {
+        decisionId: C1,
+        outcome: 'Rerouted; the delay was two days.',
+        expectedContentHash: `sha256:${'b'.repeat(64)}`,
+      },
+    });
+    await screen.findByTestId(`proposal-${p.id}`);
+    await waitFor(() =>
+      expect(screen.getByTestId(`proposal-decision-${p.id}`).textContent).toContain(
+        'Strait traffic report',
+      ),
+    );
+    const text = screen.getByTestId(`proposal-applied-${p.id}`).textContent!;
+    expect(text).toContain(C1);
+    expect(text).toContain('Rerouted; the delay was two days.');
+    expect(text).toContain('b'.repeat(64));
+  });
+});
+
+describe('global proposals', () => {
+  it('shows a proposal that names no Lage, marks one for another Lage, and can decide it', async () => {
+    const api = createMockApi();
+    await openLage(api);
+    const other = api.addProposal({
+      author: 'agent:scout',
+      kind: 'comment',
+      payload: { lageId: '01JA0000000000000000000ZZZ', text: 'elsewhere' },
+    });
+    await screen.findByTestId(`proposal-${other.id}`);
+    expect(screen.getByTestId(`proposal-scope-${other.id}`).textContent).toBe('another Lage');
+    const loose = api.addProposal({
+      author: 'agent:scout',
+      kind: 'comment',
+      payload: { text: 'no lage at all' },
+    });
+    await screen.findByTestId(`proposal-${loose.id}`);
+    expect(screen.queryByTestId(`proposal-scope-${loose.id}`)).toBeNull();
+    await userEvent.click(screen.getByTestId(`proposal-accept-${loose.id}`));
+    await waitFor(() =>
+      expect(screen.getByTestId(`proposal-${loose.id}`).dataset['status']).toBe('accepted'),
+    );
+    expect(
+      api.calls
+        .filter((c) => c.path.startsWith('/proposals?'))
+        .every((c) => !/lageId/.test(c.path)),
+    ).toBe(true);
+  });
+
+  it('is also on the Lagen screen, where an unplaced proposal can be decided', async () => {
+    const api = createMockApi();
+    const p = api.addProposal({
+      author: 'agent:scout',
+      kind: 'comment',
+      payload: { text: 'before any board is open' },
+    });
+    signedIn(api);
+    const row = await screen.findByTestId(`proposal-${p.id}`);
+    await userEvent.click(within(row).getByTestId(`proposal-reject-${p.id}`));
+    await waitFor(() =>
+      expect(screen.getByTestId(`proposal-${p.id}`).dataset['status']).toBe('rejected'),
+    );
+  });
+});
+
 describe('disclosure', () => {
   const lageWithPrivate = () =>
     createMockApi({
@@ -378,12 +492,28 @@ describe('disclosure', () => {
     const api = lageWithPrivate();
     await openLage(api);
     await userEvent.selectOptions(screen.getByTestId('context-target'), 'cloud_model');
-    expect(screen.getByTestId('context-cloud-warning').textContent).toMatch(/outside this device/);
+    expect(screen.getByTestId('context-cloud-warning').textContent).toMatch(
+      /Your stances never leave\. Other private cards leave only if the gate clears them and you confirm this transfer\./,
+    );
     await userEvent.click(screen.getByTestId('context-run'));
     await screen.findByTestId('context-preview');
     expect(screen.getByTestId(`context-send-${C1}`)).toBeTruthy();
     expect(screen.getByTestId(`context-send-${C2}`)).toBeTruthy();
     expect(screen.queryByTestId(`context-send-${C3}`)).toBeNull();
+    // The whole envelope is readable before the confirm button is used.
+    const confirm = screen.getByTestId('context-confirm') as HTMLButtonElement;
+    expect(confirm.disabled).toBe(false);
+    expect(screen.getByTestId('context-envelope-target').textContent).toBe('cloud_model');
+    expect(screen.getByTestId('context-envelope-connector').textContent).toBe(
+      'board-context-package',
+    );
+    const request = screen.getByTestId('context-envelope-request').textContent!;
+    expect(request).toContain('Should the buyer reroute?');
+    expect(request).toContain('Reroute');
+    expect(request).toContain('Wait');
+    expect(screen.getByTestId(`context-send-json-${C1}`).textContent).toContain(
+      'Daily transits fell by a third.',
+    );
     expect(screen.getByTestId(`context-denied-${C3}`).textContent).toContain(C3);
     // Nothing was released yet.
     expect(
@@ -404,6 +534,20 @@ describe('disclosure', () => {
     >;
     expect(send['confirmationToken']).toMatch(/^confirm-token/);
     expect(send['transferId']).toBeTruthy();
+  });
+
+  it('cloud: shows the problem detail when the service refuses with 400', async () => {
+    const api = lageWithPrivate();
+    await openLage(api);
+    await userEvent.selectOptions(screen.getByTestId('context-target'), 'cloud_model');
+    await userEvent.click(screen.getByTestId('context-run'));
+    await screen.findByTestId('context-preview');
+    await userEvent.click(screen.getByTestId('context-cancel'));
+    api.failNext(400, 'refused', /disclosure\/transfers/, 'the rule says no');
+    await userEvent.click(screen.getByTestId('context-run'));
+    expect((await screen.findByTestId('context-blocked')).textContent).toContain(
+      'the rule says no',
+    );
   });
 
   it('cloud: a board with only private cards is blocked and sends nothing', async () => {
@@ -505,6 +649,17 @@ describe('stance overlay (human-only stance_save)', () => {
 });
 
 describe('usage metrics panel', () => {
+  it('never shows met for a target without a value, even if the service says met', async () => {
+    const api = createMockApi();
+    api.usage = {
+      ...api.usage,
+      targets: api.usage.targets.map((t) => ({ ...t, value: null, met: true })),
+    };
+    signedIn(api);
+    await userEvent.click(await screen.findByTestId('nav-usage'));
+    expect((await screen.findByTestId('usage-status-agent_cards_7d')).textContent).toBe('not met');
+  });
+
   it('shows each target on its own, with no data reported as not met', async () => {
     const api = createMockApi();
     signedIn(api);
@@ -529,12 +684,28 @@ describe('usage metrics panel', () => {
     await userEvent.click(await screen.findByTestId('nav-usage'));
     expect((await screen.findByTestId('usage-value-agent_cards_7d')).textContent).toBe('no data');
     expect(screen.getByTestId('usage-decisions').textContent).toBe('no store');
+    fireEvent.change(screen.getByTestId('usage-week'), { target: { value: '2026-W4' } });
+    expect(screen.getByTestId('usage-week-hint')).toBeTruthy();
     fireEvent.change(screen.getByTestId('usage-week'), { target: { value: '2026-W40' } });
     await waitFor(() =>
       expect(api.calls.some((c) => c.path === '/metrics/usage?week=2026-W40')).toBe(true),
     );
+    expect(screen.queryByTestId('usage-week-hint')).toBeNull();
+    // The half-typed week was never sent.
+    expect(api.calls.some((c) => c.path.includes('W4') && !c.path.includes('W40'))).toBe(false);
     api.failNext(403, 'human only', /metrics/);
     fireEvent.change(screen.getByTestId('usage-week'), { target: { value: '2026-W39' } });
     expect((await screen.findByTestId('usage-error')).textContent).toContain('human only');
+  });
+});
+
+describe('unauthorized', () => {
+  it('signs out when any call answers 401, not only the first', async () => {
+    const api = createMockApi();
+    await openLage(api);
+    api.failNext(401, 'Unauthorized', /^GET \/cards/);
+    await userEvent.type(screen.getByTestId('search-input'), 'strait');
+    await userEvent.click(screen.getByTestId('search-submit'));
+    await screen.findByTestId('login-form');
   });
 });

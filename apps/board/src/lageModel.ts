@@ -96,7 +96,7 @@ export function removeEdge(lage: Lage, edge: LageEdge, now = new Date()): Lage {
   return bump({ ...lage, edges: lage.edges.filter((e) => !sameEdge(e, edge)) }, now);
 }
 
-/** Applies a change to one edge; if it then equals another edge, the two become one. */
+/** Applies a change to one edge (the caller sets `by: 'human'`: a person changed it); if it then equals another edge, the two become one. */
 function changeEdge(
   lage: Lage,
   edge: LageEdge,
@@ -113,11 +113,11 @@ function changeEdge(
 }
 
 export function reverseEdge(lage: Lage, edge: LageEdge, now = new Date()): Lage {
-  return changeEdge(lage, edge, (e) => ({ ...e, from: e.to, to: e.from }), now);
+  return changeEdge(lage, edge, (e) => ({ ...e, from: e.to, to: e.from, by: 'human' }), now);
 }
 
 export function setEdgeKind(lage: Lage, edge: LageEdge, kind: EdgeKind, now = new Date()): Lage {
-  return changeEdge(lage, edge, (e) => ({ ...e, kind }), now);
+  return changeEdge(lage, edge, (e) => ({ ...e, kind, by: 'human' }), now);
 }
 
 /** Stable key of an edge on the canvas. */
