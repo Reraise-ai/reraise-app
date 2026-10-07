@@ -34,7 +34,7 @@ describe('board client', () => {
     await client.lage_save(LAGE_ID, { ...lage, version: 2 });
     const created = await client.lage_create({ title: 'New', worlds: [WORLD_ID], lage });
     await client.card_get(CARDS[0]!.id!);
-    await client.stance_save(CARDS[0]!.id!, { position: 'believed', weight: 0.5 });
+    await client.stance_save(CARDS[0]!.id!, { position: 'believed', weight: 2 });
     await client.stance_get(CARDS[0]!.id!);
     await client.context_package_get({ worldId: WORLD_ID, lageId: LAGE_ID });
     await client.proposal_list({ lageId: LAGE_ID, changedSince: '5', limit: 200 });
