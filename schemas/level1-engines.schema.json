@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://worldbuilder.invalid/schemas/v0/level1-engines.schema.json",
   "title": "Level1Engines",
-  "description": "The registry of cloud level-1 engines in the per-user state directory, <state>/level1-engines.yaml (ADR-0030, ADR-0035, ADR-0044). There is none by default. The built-in local engine needs no entry. Each entry names an engine id, the wire preset of the System One adapter and the https base URL; the credential is never stored here, only the path of an owner-only file that holds it. Nothing is sent to an engine without a hash-bound confirmation of that transfer (ADR-0031). Local state: never sent, exported or shared.",
+  "description": "The registry of cloud level-1 engines in the per-user state directory, <state>/level1-engines.yaml (ADR-0030, ADR-0035, ADR-0045). There is none by default. The built-in local engine needs no entry. Each entry names an engine id, the wire preset of the System One adapter and the https base URL; the credential is never stored here, only the path of an owner-only file that holds it. Nothing is sent to an engine without a hash-bound confirmation of that transfer (ADR-0031). Local state: never sent, exported or shared.",
   "type": "object",
   "properties": {
     "engines": {

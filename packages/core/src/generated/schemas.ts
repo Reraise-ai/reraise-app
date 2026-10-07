@@ -233,7 +233,7 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
       level1PredictRequest: {
         title: 'Level1PredictRequest',
         description:
-          'Body of the human-only level1_predict (ADR-0035, ADR-0044): run one engine on a Lage. `engine` is `local` (the built-in deterministic engine) or the id of a configured cloud engine. A cloud engine needs the transfer flow: the first call (without `transferId`) answers `confirmation_required` with the previewed envelope; after the human confirmed it (`disclosure_confirm`) the call is repeated with the `transferId` and the single-use `confirmationToken`, and only then is anything sent. `trigger` says why the engine runs; an `assumption_changed` trigger names the changed assumption cards (the service keeps those that are assumption cards of the request, and records `manual` if none is).',
+          'Body of the human-only level1_predict (ADR-0035, ADR-0045): run one engine on a Lage. `engine` is `local` (the built-in deterministic engine) or the id of a configured cloud engine. A cloud engine needs the transfer flow: the first call (without `transferId`) answers `confirmation_required` with the previewed envelope; after the human confirmed it (`disclosure_confirm`) the call is repeated with the `transferId` and the single-use `confirmationToken`, and only then is anything sent. `trigger` says why the engine runs; an `assumption_changed` trigger names the changed assumption cards (the service keeps those that are assumption cards of the request, and records `manual` if none is).',
         type: 'object',
         properties: {
           engine: {
@@ -311,6 +311,14 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
               required: ['status'],
             },
             then: { properties: { transfer: true }, required: ['transfer'] },
+          },
+          {
+            if: { properties: { status: { const: 'no_players' } }, required: ['status'] },
+            then: { properties: {} },
+          },
+          {
+            if: { properties: { status: { const: 'superseded' } }, required: ['status'] },
+            then: { properties: {} },
           },
         ],
       },
@@ -1791,7 +1799,7 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
     $id: 'https://worldbuilder.invalid/schemas/v0/level1-engines.schema.json',
     title: 'Level1Engines',
     description:
-      'The registry of cloud level-1 engines in the per-user state directory, <state>/level1-engines.yaml (ADR-0030, ADR-0035, ADR-0044). There is none by default. The built-in local engine needs no entry. Each entry names an engine id, the wire preset of the System One adapter and the https base URL; the credential is never stored here, only the path of an owner-only file that holds it. Nothing is sent to an engine without a hash-bound confirmation of that transfer (ADR-0031). Local state: never sent, exported or shared.',
+      'The registry of cloud level-1 engines in the per-user state directory, <state>/level1-engines.yaml (ADR-0030, ADR-0035, ADR-0045). There is none by default. The built-in local engine needs no entry. Each entry names an engine id, the wire preset of the System One adapter and the https base URL; the credential is never stored here, only the path of an owner-only file that holds it. Nothing is sent to an engine without a hash-bound confirmation of that transfer (ADR-0031). Local state: never sent, exported or shared.',
     type: 'object',
     properties: { engines: { type: 'array', items: { $ref: '#/$defs/engine' } } },
     required: ['engines'],

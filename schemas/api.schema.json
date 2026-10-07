@@ -274,7 +274,7 @@
     },
     "level1PredictRequest": {
       "title": "Level1PredictRequest",
-      "description": "Body of the human-only level1_predict (ADR-0035, ADR-0044): run one engine on a Lage. `engine` is `local` (the built-in deterministic engine) or the id of a configured cloud engine. A cloud engine needs the transfer flow: the first call (without `transferId`) answers `confirmation_required` with the previewed envelope; after the human confirmed it (`disclosure_confirm`) the call is repeated with the `transferId` and the single-use `confirmationToken`, and only then is anything sent. `trigger` says why the engine runs; an `assumption_changed` trigger names the changed assumption cards (the service keeps those that are assumption cards of the request, and records `manual` if none is).",
+      "description": "Body of the human-only level1_predict (ADR-0035, ADR-0045): run one engine on a Lage. `engine` is `local` (the built-in deterministic engine) or the id of a configured cloud engine. A cloud engine needs the transfer flow: the first call (without `transferId`) answers `confirmation_required` with the previewed envelope; after the human confirmed it (`disclosure_confirm`) the call is repeated with the `transferId` and the single-use `confirmationToken`, and only then is anything sent. `trigger` says why the engine runs; an `assumption_changed` trigger names the changed assumption cards (the service keeps those that are assumption cards of the request, and records `manual` if none is).",
       "type": "object",
       "properties": {
         "engine": {
@@ -413,6 +413,32 @@
               "transfer": true
             },
             "required": ["transfer"]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "no_players"
+              }
+            },
+            "required": ["status"]
+          },
+          "then": {
+            "properties": {}
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "superseded"
+              }
+            },
+            "required": ["status"]
+          },
+          "then": {
+            "properties": {}
           }
         }
       ]
