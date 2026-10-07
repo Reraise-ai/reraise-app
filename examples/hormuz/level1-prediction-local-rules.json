@@ -1,7 +1,7 @@
 {
   "synthetic": true,
   "schema": "https://worldbuilder.invalid/schemas/v0/level1-prediction.schema.json",
-  "description": "Level-1 predictions of the local rules engine for the two players of the Q4 routing Lage, shown next to each player as \"local-rules estimates 0.71: Keep night transit restrictions\" (ADR-0035).",
+  "description": "Level-1 predictions of the local rules engine for the two players of the Q4 routing Lage, shown next to each player as \"local-rules estimates 0.71 for Keep night transit restrictions\" (ADR-0035).",
   "data": {
     "engine": "local-rules",
     "lageId": "01M1F21G80R816A1T0V2P6RACH",

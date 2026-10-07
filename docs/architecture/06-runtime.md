@@ -149,7 +149,7 @@ sequenceDiagram
       API-->>UI: show the error, keep the prediction stale
     else valid
       API-->>UI: prediction per player
-      UI-->>H: "<engine> estimates 0.71: Keep restrictions" next to each player, with the cards used
+      UI-->>H: "<engine> estimates 0.71 for Keep restrictions" next to each player, with the cards used
       opt escalate a player prediction to level 2
         H->>UI: Escalate
         UI->>API: Lage create: question about that player's next move, options, cards used placed

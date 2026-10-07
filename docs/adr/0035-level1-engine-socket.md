@@ -122,7 +122,7 @@ several.
 
 ### Display and escalation
 
-- Next to each player: "`<engine>` estimates `<confidence>`: `<predictedMove>`", with the
+- Next to each player: "`<engine>` estimates `<confidence>` for `<predictedMove>`" (amended 2026-10-07 on the owner's wording; this ADR first wrote a colon), with the
   cards used one click away. Never "the answer is", never without the engine name.
 - Escalation to level 2: from any player prediction the user can open a level-2 board
   analysis: a new Lage (human-only Lage create) whose question asks for that player's next
