@@ -1,38 +1,401 @@
 /* SPDX-License-Identifier: AGPL-3.0-or-later */
 /* Copyright The Worldbuilder contributors */
 
+/* Structural styles only; every colour, font and size is a token. */
+
+* {
+  box-sizing: border-box;
+}
+
 body {
   margin: 0;
   background: var(--wb-surface);
   color: var(--wb-text);
   font-family: var(--wb-font-body);
+  font-size: var(--wb-text-m);
 }
 
-.wb-placeholder {
-  padding: var(--wb-space-3);
-}
-
-.wb-placeholder h1 {
-  margin: 0 0 var(--wb-space-1);
+h1,
+h2,
+h3 {
   font-family: var(--wb-font-display);
+  font-weight: 600;
+  margin: 0 0 var(--wb-space-1);
+}
+
+h1 {
+  font-size: var(--wb-text-l);
   color: var(--wb-accent);
 }
 
-.wb-legend {
-  display: flex;
-  gap: var(--wb-space-2);
-  padding: 0;
-  list-style: none;
+h2 {
+  font-size: var(--wb-text-m);
+  color: var(--wb-accent);
 }
 
-.wb-legend [data-layer='evidenced'] {
+a,
+button,
+input,
+select,
+textarea,
+[tabindex] {
+  font: inherit;
+}
+
+:focus-visible {
+  outline: var(--wb-stroke-strong) solid var(--wb-focus);
+  outline-offset: 2px;
+}
+
+button,
+input,
+select,
+textarea {
+  background: var(--wb-surface);
+  color: var(--wb-text);
+  border: var(--wb-stroke) solid var(--wb-line);
+  border-radius: var(--wb-radius);
+  padding: var(--wb-space-half) var(--wb-space-1);
+}
+
+button {
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  border-color: var(--wb-accent);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+button.wb-primary {
+  background: var(--wb-accent);
+  color: var(--wb-on-accent);
+  border-color: var(--wb-accent);
+}
+
+label {
+  display: block;
+  font-size: var(--wb-text-s);
+  color: var(--wb-text-muted);
+  margin-bottom: var(--wb-space-half);
+}
+
+.wb-field {
+  margin-bottom: var(--wb-space-1);
+}
+
+.wb-field input,
+.wb-field select,
+.wb-field textarea {
+  display: block;
+  width: 100%;
+}
+
+.wb-muted {
+  color: var(--wb-text-muted);
+  font-size: var(--wb-text-s);
+}
+
+.wb-error {
+  color: var(--wb-danger);
+}
+
+.wb-warning {
+  border: var(--wb-stroke) solid var(--wb-warning);
+  color: var(--wb-warning);
+  padding: var(--wb-space-1);
+  margin: var(--wb-space-1) 0;
+}
+
+.wb-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.wb-list > li {
+  border-top: var(--wb-stroke) solid var(--wb-line);
+  padding: var(--wb-space-1) 0;
+}
+
+.wb-row {
+  display: flex;
+  gap: var(--wb-space-1);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* Shell */
+
+.wb-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.wb-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--wb-space-2);
+  padding: var(--wb-space-1) var(--wb-space-2);
+  border-bottom: var(--wb-stroke) solid var(--wb-line);
+}
+
+.wb-header h1 {
+  margin: 0;
+}
+
+.wb-page {
+  padding: var(--wb-space-2);
+  max-width: 48rem;
+}
+
+.wb-workbench {
+  display: grid;
+  grid-template-columns: 1fr var(--wb-sidebar-width);
+  flex: 1;
+  min-height: 0;
+}
+
+.wb-canvas-wrap {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+}
+
+.wb-sidebar {
+  overflow-y: auto;
+  border-left: var(--wb-stroke) solid var(--wb-line);
+  padding: var(--wb-space-1) var(--wb-space-2);
+}
+
+.wb-sidebar > section {
+  margin-bottom: var(--wb-space-2);
+  padding-bottom: var(--wb-space-1);
+  border-bottom: var(--wb-stroke) solid var(--wb-line);
+}
+
+.wb-status {
+  position: absolute;
+  top: var(--wb-space-1);
+  left: var(--wb-space-1);
+  z-index: 5;
+  background: var(--wb-surface-raised);
+  border: var(--wb-stroke) solid var(--wb-line);
+  padding: var(--wb-space-half) var(--wb-space-1);
+  max-width: 32rem;
+}
+
+/* Canvas (React Flow structural CSS is imported; its colour variables are mapped to tokens) */
+
+.react-flow {
+  --xy-background-color: var(--wb-surface);
+  --xy-edge-stroke: var(--wb-text-muted);
+  --xy-edge-stroke-selected: var(--wb-accent);
+  --xy-node-border-radius: var(--wb-radius);
+  --xy-handle-background-color: var(--wb-accent);
+  --xy-handle-border-color: var(--wb-surface);
+  --xy-connectionline-stroke: var(--wb-accent);
+  --xy-selection-background-color: transparent;
+  --xy-attribution-background-color: var(--wb-surface-raised);
+  --xy-selection-border: var(--wb-stroke) dashed var(--wb-accent);
+  --xy-background-pattern-color: var(--wb-line);
+  --xy-node-color: var(--wb-text);
+  --xy-node-border: var(--wb-stroke) solid var(--wb-line);
+  --xy-node-border-selected: var(--wb-stroke-strong) solid var(--wb-accent);
+  --xy-connectionline-stroke-width: var(--wb-stroke-strong);
+  --xy-edge-stroke-width: var(--wb-stroke-strong);
+  --xy-resize-background-color: var(--wb-accent);
+  --xy-minimap-background-color: var(--wb-surface-raised);
+  --xy-minimap-mask-background-color: var(--wb-surface);
+  --xy-minimap-mask-stroke-color: var(--wb-accent);
+  --xy-minimap-node-background-color: var(--wb-line);
+  --xy-minimap-node-stroke-color: var(--wb-text-muted);
+  background: var(--wb-surface);
+  color: var(--wb-text);
+}
+
+.react-flow__edge-path {
+  stroke-width: var(--wb-stroke-strong);
+}
+
+.wb-edge--supports .react-flow__edge-path,
+.wb-edge--supports {
+  stroke: var(--wb-edge-supports);
+}
+
+.wb-edge--refutes .react-flow__edge-path,
+.wb-edge--refutes {
+  stroke: var(--wb-edge-refutes);
+  stroke-dasharray: 8 5;
+}
+
+.wb-edge-label {
+  font-size: var(--wb-text-s);
+  fill: var(--wb-text);
+}
+
+.wb-arrow--supports {
+  fill: var(--wb-edge-supports);
+}
+
+.wb-arrow--refutes {
+  fill: var(--wb-edge-refutes);
+}
+
+/* Card nodes. The layer is told by border style AND a text label, never by colour alone. */
+
+.wb-card {
+  width: 15rem;
+  background: var(--wb-surface-raised);
+  border: var(--wb-stroke-strong) solid var(--wb-line);
+  border-radius: var(--wb-radius);
+  padding: var(--wb-space-1);
+  position: relative;
+}
+
+.wb-card[data-selected='true'] {
+  outline: var(--wb-stroke) solid var(--wb-accent);
+  outline-offset: 3px;
+}
+
+.wb-card[data-layer='evidenced'] {
+  border-color: var(--wb-color-evidenced);
+  border-style: solid;
+}
+
+.wb-card[data-layer='said'] {
+  border-color: var(--wb-color-said);
+  border-style: dashed;
+}
+
+.wb-card[data-layer='experience'] {
+  border-color: var(--wb-color-experience);
+  border-style: double;
+}
+
+.wb-card[data-layer='unclassified'],
+.wb-card[data-withheld='true'] {
+  border-style: dotted;
+  color: var(--wb-text-muted);
+}
+
+.wb-card-title {
+  font-family: var(--wb-font-display);
+  margin: 0 0 var(--wb-space-half);
+  font-size: var(--wb-text-m);
+}
+
+.wb-badge {
+  display: inline-block;
+  font-size: var(--wb-text-s);
+  border: var(--wb-stroke) solid currentcolor;
+  border-radius: var(--wb-radius);
+  padding: 0 var(--wb-space-half);
+  margin-right: var(--wb-space-half);
+}
+
+.wb-badge[data-kind='evidenced'] {
   color: var(--wb-color-evidenced);
 }
 
-.wb-legend [data-layer='said'] {
+.wb-badge[data-kind='said'] {
   color: var(--wb-color-said);
 }
 
-.wb-legend [data-layer='experience'] {
+.wb-badge[data-kind='experience'] {
+  color: var(--wb-color-experience);
+}
+
+.wb-badge[data-kind='agent'] {
+  color: var(--wb-color-agent);
+}
+
+/* The user's own overlay: shown on this screen only, never exported (ADR-0008). */
+.wb-stance {
+  margin-top: var(--wb-space-half);
+  border-top: var(--wb-stroke) solid var(--wb-color-believed);
+  color: var(--wb-color-believed);
+  font-size: var(--wb-text-s);
+  padding-top: var(--wb-space-half);
+}
+
+.wb-card .react-flow__handle {
+  width: var(--wb-space-1);
+  height: var(--wb-space-1);
+}
+
+.wb-pkg-denied {
+  color: var(--wb-danger);
+  font-family: var(--wb-font-mono);
+  font-size: var(--wb-text-s);
+}
+
+.wb-mono {
+  font-family: var(--wb-font-mono);
+  font-size: var(--wb-text-s);
+  word-break: break-all;
+}
+
+@media (max-width: 60rem) {
+  .wb-workbench {
+    grid-template-columns: 1fr;
+    grid-template-rows: 60vh auto;
+  }
+  .wb-sidebar {
+    border-left: none;
+    border-top: var(--wb-stroke) solid var(--wb-line);
+  }
+}
+
+.wb-edge-tag {
+  background: var(--wb-surface);
+  pointer-events: all;
+}
+
+.react-flow__attribution a {
+  color: var(--wb-text-muted);
+}
+
+.react-flow__controls button {
+  background: var(--wb-surface-raised);
   color: var(--wb-text);
+  border-color: var(--wb-line);
+}
+
+.react-flow__controls button svg {
+  fill: currentcolor;
+}
+
+.wb-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.wb-json {
+  max-height: 14rem;
+  overflow: auto;
+  margin: var(--wb-space-half) 0;
+  padding: var(--wb-space-1);
+  border: var(--wb-stroke) solid var(--wb-line);
+  background: var(--wb-surface);
+  font-family: var(--wb-font-mono);
+  font-size: var(--wb-text-s);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.wb-envelope dt {
+  color: var(--wb-text-muted);
+}
+.wb-envelope dd {
+  margin: 0 0 var(--wb-space-1);
 }

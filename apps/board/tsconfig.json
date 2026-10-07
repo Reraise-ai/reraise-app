@@ -7,7 +7,10 @@
     "jsx": "react-jsx",
     "noEmit": true,
     "declaration": false,
-    "types": ["vite/client"]
+    "types": ["vite/client"],
+    "paths": {
+      "@worldbuilder/core": ["../../packages/core/src/generated/contracts.ts"]
+    }
   },
   "include": ["src", "vite.config.ts"]
 }

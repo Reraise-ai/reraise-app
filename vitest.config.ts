@@ -39,6 +39,7 @@ export default defineConfig({
           name: 'board',
           environment: 'jsdom',
           include: ['apps/board/src/**/*.test.{ts,tsx}'],
+          setupFiles: ['apps/board/src/testing/setup.ts'],
         },
       },
     ],
