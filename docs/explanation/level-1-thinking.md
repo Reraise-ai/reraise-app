@@ -38,11 +38,13 @@ careful clerk, not like a clairvoyant:
   drops it. If it only looks a little like one, it just counts against the move.
 - **Dependencies make drastic moves less likely.** Stopping or cutting something the player
   depends on is penalised.
-- **Your rules are read as your expectations.** If one of your rules fires and its action is one
-  of the options, that option gets a push, and the rule card is listed among the cards used.
+- **Your rules count only for the players they are about.** If one of your rules fires, names a
+  player (or a card linked to that player) and its action is one of that player's options, that
+  option gets a small push and the rule card is listed among the cards used. A rule about the
+  board in general moves nobody.
 - **It admits when it does not know.** With no evidence it picks the first option at "one in n"
   confidence. With only one kind of evidence the confidence is pulled towards "one in n". It never
-  claims more than 0.95.
+  claims more than 0.95, and the board never shows more than 0.99.
 
 The comparison of words is simple on purpose: it matches the important words of short phrases and
 does not understand negation or meaning. That is why every estimate can show a breakdown of what

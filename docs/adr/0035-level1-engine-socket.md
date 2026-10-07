@@ -110,7 +110,8 @@ several.
 - Triggers: `lage_opened`, `manual`, and `assumption_changed` with the ids of the assumption
   cards (type `assumption`) the user placed, removed or edited on the Lage.
 - The board shows a prediction only while its `requestHash` equals the hash of the current
-  request; otherwise the prediction is stale and shown as such. Requests are debounced
+  request; otherwise the prediction is stale and shown as such (amended 2026-10-07: compared with
+  the trigger left out, so undoing an assumption makes the prediction current again). Requests are debounced
   (latest wins); a late answer whose hash is no longer current is discarded.
 - For a `local_model` engine the service re-runs automatically on every trigger. For a
   `cloud_model` engine any change produces a new request hash and therefore a new transfer:

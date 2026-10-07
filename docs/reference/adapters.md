@@ -147,10 +147,15 @@ features in [0, 1] from the request cards only and adds them up with fixed weigh
   "without" line demands is not affected. If every option is removed, the engine predicts the
   highest scoring one at uniform confidence and sets `allExcluded`.
 - **Rules.** A rule card is evaluated against the request cards only (`card_on_lage`,
-  `card_field`, `tag` and `edge` over `edges` of the request cards). A rule with a `stance`
-  condition never fires: the engine never receives stances. A fired rule whose `then` matches an
-  option reads as the user's own expectation for that option; the rule card and the cards it
-  names count as used.
+  `card_field`, `tag` and `edge`). A rule with a `stance` condition never fires: the engine never
+  receives stances. A fired rule whose `then` matches an option reads as the user's own
+  expectation for that option, but only for a player the rule names in its conditions, or whose
+  linked card the rule names (an edge to or from the player). A rule about the board in general
+  boosts nobody (owner question OQ-20). The rule card and the cards it names count as used for
+  the players it applies to.
+- **Edges.** Only the `edges` stored on the request's cards count today (as dependencies,
+  linked evidence and rule edge conditions). Edges drawn on the Lage (`Lage.edges`) are not part
+  of the request and are not mapped yet: a follow-up of the service slice.
 - **Confidence.** `softmax(score / T)` over the options that stayed, with `T =
   CONFIDENCE_TEMPERATURE = 0.5`; shrunk linearly towards 1/n when fewer than two kinds of
   evidence (`ENOUGH_EVIDENCE_KINDS`) were found; at most 0.95; at most 0.8 when an option was
@@ -158,7 +163,7 @@ features in [0, 1] from the request cards only and adds them up with fixed weigh
   (owner question OQ-19).
 - **Ties and no evidence.** Ties go to the earlier move option. No evidence gives the first
   option at 1/n.
-- **`cardIds`.** The player card first, then the request cards that contributed to some feature
+- **`cardIds`.** The player card always first, then the request cards that contributed to some feature
   or removal (sources of matched entries that are on the board, linked cards, fired rule cards
   and the cards their conditions name), in request order. Never a card outside the request.
 - **Limits.** Matching is lexical on content words of English phrases (light stemming, Dice
@@ -181,8 +186,12 @@ features in [0, 1] from the request cards only and adds them up with fixed weigh
 - a `cloud_model` engine runs only with the release of a freshly confirmed transfer; without it
   nothing is sent, the previous prediction comes back `stale: true` and `needsConfirmation: true`.
 
-`isStale(prediction, request)` is the display rule of ADR-0035 (hash equality) and
+`isStale(prediction, request)` is the display rule of ADR-0035: the request hash with the trigger
+left out (`stalenessKey`), so undoing an assumption makes the prediction current again.
 `currentOnly(prediction, request)` drops a late answer. Debouncing (latest wins) is the caller's.
+The helper also validates the engine's answer (`answerProblems`): another engine, Lage, request
+hash or player list, or a move outside the options, is rejected with an error instead of being
+shown.
 
 ### Escalation to level 2
 
@@ -199,12 +208,24 @@ with the engine's name.
 `createSystemOneHttpAdapter({ baseUrl, fetch?, apiKey?, engine?, preset?, timeoutMs?, maxStateChars? })`
 returns a `Level1Engine` with `target: cloud_model` and `deterministic: false`.
 
-- **Only a release.** `predict(request, release)` first checks that the release is a
-  `DisclosureRelease` holding exactly the request's cards (id and content hash, in order), that
-  its confirmation names the same cards and that every object still hashes to its content hash.
+- **Only a release, bound to the envelope.** `predict(request, release)` first checks that the
+  release is a `DisclosureRelease` holding exactly the request's cards (id and content hash, in
+  order), that its confirmation names the same cards and that every object still hashes to its
+  content hash. Then it recomputes the envelope with `level1EnvelopeFor(engine, request,
+  release.objects)` and requires `computePayloadHash(envelope) === release.confirmation.payloadHash`.
   Otherwise it throws `Level1EngineError('release_required')` and sends nothing. The body is built
-  from `release.objects`, never from raw cards. This is a consistency check; consent is enforced
-  by the service, which gets the release only from `DisclosureGate.redeem`.
+  from `release.objects` (never from raw cards) and carries exactly the question, options and
+  output schema of that envelope, so a confirmation for another connector, question, options,
+  output schema or card set is worthless. Only links to released cards are sent. Neither check
+  proves that the release is genuine or unspent: that is the service's
+  `DisclosureGate.redeem` (single use, bound to the session).
+- **The envelope.** `level1EnvelopeFor(engine, request, objects)` returns `{ target: 'cloud_model',
+  connectorId: engine, request: { question, options, outputSchema }, objects }`.
+  `DisclosureModelRequest.options` is a flat list, so `options` holds `<playerCardId>: <move>` for
+  every move option of every player, players in request order, and `outputSchema` carries the full
+  per-player structure (the move an enum of that player's options, `cardIds` an enum of the
+  released ids). The service previews this envelope, the user confirms its hash, and the release
+  from `redeem` goes unchanged to the adapter.
 - **Content only.** The state text carries id, type, layer, title, date, source, body, player
   fields (not `personalityType`), the rule and the links. No `uri`, `externalId`, worlds, tags,
   class, visibility, release or training flag.
@@ -239,7 +260,9 @@ returns a `Level1Engine` with `target: cloud_model` and `deterministic: false`.
   `cardIds` a list of released ids (the player card is added as the minimum), every requested
   player must be answered; anything else is `bad_response`. HTTP errors are reported by status
   only; neither the answer body nor the credential nor a transport error text is ever put into an
-  error. Redirects are not followed. `baseUrl` must be https (http only on loopback) and carry no
+  error. The response is rejected early on a declared `content-length` above 1 MB, otherwise read
+  with a 1 MB byte cap and cancelled when it grows past it; the body of an error response is
+  cancelled unread. Redirects are not followed. `baseUrl` must be https (http only on loopback) and carry no
   credentials. Tests inject `fetch`; the package never touches the network by itself.
 - **Presets.** A `SystemOneProviderPreset` (`id`, `defaultEngine`, `path`, `buildBody`,
   `readAnswers`) adapts another wire format; `GENERIC_SYSTEM_ONE_PRESET` and `JEV_PRESET` are
@@ -254,8 +277,9 @@ it; the package's tests do this for both presets.
 ### Board display contract
 
 `formatEstimate({ engine, predictedMove, confidence })` returns
-`"<engine> estimates 0.82 for <move>"`: two decimals, always with the engine, newlines and control
-characters collapsed, a confidence outside [0, 1] rejected. `formatEstimates(prediction)` gives one
+`"<engine> estimates 0.82 for <move>"`: two decimals and never above 0.99 (1.00 would read as
+certainty; display only), always with the engine, newlines and control characters collapsed, a
+confidence outside [0, 1] rejected. `formatEstimates(prediction)` gives one
 line per player. `apps/board` shows exactly this text next to each player card, marks it stale
 when `isStale` is true, offers the cards used (`cardIds`) one click away and an "open as board"
 action that calls `buildLevel2Draft`. It must not word an estimate as an answer or add its own
@@ -268,10 +292,15 @@ Not written in this slice. The service (`services/api`) needs to:
 
 1. build the `Level1PredictionRequest` for a Lage: question, players (actor cards with their
    move options), the canonical cards on the Lage plus the user's applicable rule cards, each
-   after `DisclosureGate.decide` for the engine's target (no stances, no pending proposals);
-2. call `engine.predict(request)` for a `local_model` engine, or, for a `cloud_model` engine,
-   `preview` the transfer, wait for the user to `confirm` it, `redeem` it and pass the release
-   unchanged to `engine.predict(request, release)`;
+   after `DisclosureGate.decide` for the engine's target (no stances, no pending proposals). Cards
+   carry their own `edges`; the Lage's drawn edges are not mapped into the request yet (follow-up);
+2. call `engine.predict(request)` for a `local_model` engine. For a `cloud_model` engine, build the
+   envelope with `level1EnvelopeFor(engine.engine, request, gateClearedCards)` and pass exactly
+   that envelope (connector, question, options, output schema, objects) to
+   `DisclosureGate.preview`; show it to the user; after `confirm`, `redeem` and pass the release
+   unchanged to `engine.predict(request, release)`. The adapter refuses any release whose
+   `payloadHash` is not the hash of the envelope it recomputes, so the request used for `preview`
+   and for `predict` must be the same;
 3. keep the latest prediction per Lage in memory, debounce triggers (latest wins) and drop answers
    with `currentOnly`; use `rerunOnAssumptionChange` for `assumption_changed`;
 4. expose the prediction (and, for the local engine, `explain`) to the board and create the level-2
