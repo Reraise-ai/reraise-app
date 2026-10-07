@@ -7,6 +7,7 @@
 import type { Card, Lage, LocalStateStore, Stance, StorageAdapter } from '@worldbuilder/core';
 import type { Disclosures } from './disclosure.js';
 import type { GateService } from './gate.js';
+import type { Level1Service } from './level1.js';
 import type { ReceiptStore } from './receipts.js';
 import type { Mutex } from './util.js';
 
@@ -17,6 +18,8 @@ export interface Services {
   readonly disclosures: Disclosures;
   /** Device receipt key and receipt log (ADR-0039, ADR-0040). */
   readonly receipts: ReceiptStore;
+  /** Level 1: engines, the latest prediction per Lage, escalation (ADR-0045). */
+  readonly level1: Level1Service;
   /** Serialises every write that reads then changes the store (single writer, ADR-0006). */
   readonly writes: Mutex;
   readonly now: () => Date;

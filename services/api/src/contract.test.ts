@@ -733,6 +733,24 @@ describe('storage errors become problems (ADR-0005)', () => {
   });
 });
 
+describe('level1_get, level1_predict, level1_escalate', () => {
+  it('answer for a Lage without a player, and refuse to escalate without a prediction', async () => {
+    const state = await f.human('GET', `/lagen/${f.ids.lage}/level1`);
+    expectContract('level1_get', state, 200);
+    const predicted = await f.human('POST', `/lagen/${f.ids.lage}/level1`, {
+      engine: 'local',
+      trigger: { kind: 'manual' },
+    });
+    expectContract('level1_predict', predicted, 200);
+    expect(predicted.json().status).toBe('no_players');
+    const escalated = await f.human('POST', `/lagen/${f.ids.lage}/level1/escalate`, {
+      playerCardId: f.ids.evPublic,
+    });
+    expectContract('level1_escalate', escalated, 409);
+    expectContract('level1_get', await f.human('GET', '/lagen/not-an-id/level1'), 400);
+  });
+});
+
 describe('contract coverage', () => {
   it('declares 503 for every operation that touches the store or the receipt log, and 404 for a hidden Lage', () => {
     const ops = loadOperations();

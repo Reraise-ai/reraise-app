@@ -13,6 +13,7 @@ import { isIP } from 'node:net';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
 import { addAgent, listAgents, removeAgent } from './agent-registry.js';
+import { configuredEngineIds } from './level1-engines.js';
 import { writePrivateFile, type AgentTarget } from './auth.js';
 import { DEFAULT_PORT } from './app.js';
 import type { StorageAdapter } from '@worldbuilder/core';
@@ -207,7 +208,12 @@ async function agent(argv: string[], deps: MainDeps): Promise<void> {
   if (values.target !== 'local_model' && values.target !== 'cloud_model') {
     throw new UsageError('--target must be local_model or cloud_model');
   }
-  const { token } = await addAgent(stateDir, { name, target: values.target as AgentTarget });
+  const { token } = await addAgent(
+    stateDir,
+    { name, target: values.target as AgentTarget },
+    undefined,
+    await configuredEngineIds(stateDir),
+  );
   out.write(`Registered agent:${name} as ${values.target}.\n`);
   if (values['token-file'] !== undefined) {
     // For scripts and agent configurations: the token goes to an owner-only file (the agent

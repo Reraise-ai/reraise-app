@@ -40,6 +40,19 @@ const body = {
 const HUMAN_ONLY: { id: string; method: string; url: string; payload?: unknown }[] = [
   { id: 'lage_create', method: 'POST', url: '/lagen', payload: body },
   { id: 'lage_save', method: 'PUT', url: `/lagen/${ULID}`, payload: body.lage },
+  { id: 'level1_get', method: 'GET', url: `/lagen/${ULID}/level1` },
+  {
+    id: 'level1_predict',
+    method: 'POST',
+    url: `/lagen/${ULID}/level1`,
+    payload: { engine: 'local', trigger: { kind: 'manual' } },
+  },
+  {
+    id: 'level1_escalate',
+    method: 'POST',
+    url: `/lagen/${ULID}/level1/escalate`,
+    payload: { playerCardId: ULID },
+  },
   { id: 'stance_get', method: 'GET', url: `/cards/${ULID}/stance` },
   {
     id: 'stance_save',

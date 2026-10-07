@@ -248,6 +248,9 @@ importers:
       '@worldbuilder/knowledge-loop':
         specifier: workspace:*
         version: link:../../packages/knowledge-loop
+      '@worldbuilder/level1-engines':
+        specifier: workspace:*
+        version: link:../../packages/level1-engines
       '@worldbuilder/local-state':
         specifier: workspace:*
         version: link:../../packages/local-state

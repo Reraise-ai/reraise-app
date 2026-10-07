@@ -245,6 +245,22 @@ describe('reserved agent names', () => {
       addAgent(path.join(dir, 'st'), { name: 'locally', target: 'local_model' }),
     ).resolves.toHaveProperty('token');
   });
+
+  it('also refuses the id of a cloud engine configured in level1-engines.yaml', async () => {
+    const state = path.join(dir, 'st-engines');
+    await mkdir(state, { recursive: true });
+    await writeFile(
+      path.join(state, 'level1-engines.yaml'),
+      'engines:\n  - { id: scripted-cloud, preset: generic, baseUrl: "https://engine.example.invalid/", enabled: true }\n',
+    );
+    const err = sink();
+    expect(
+      await main(['agent', 'add', 'scripted-cloud', '--target', 'cloud_model', '--state', state], {
+        stderr: err,
+      }),
+    ).toBe(1);
+    expect(err.text()).toContain('reserved');
+  });
 });
 
 describe('--allow-host values', () => {
