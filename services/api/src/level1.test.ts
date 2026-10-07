@@ -912,16 +912,46 @@ describe('escalation checks what the store wrote', () => {
     expect(res.body).toContain('weaker clearance');
   });
 
-  it('refuses a card the store wrote as visible', async () => {
+  it('refuses a card the store wrote as visible, and retires it', async () => {
     const f = await fixture({ rules: FIXTURE_RULES });
     const w = seedWorld(f);
     await predict(f, w);
     const create = f.adapter.create.bind(f.adapter);
-    vi.spyOn(f.adapter, 'create').mockImplementation(async (draft, author) =>
-      create({ ...draft, visibility: 'public' } as CardDraft, author),
-    );
+    let written: string | undefined;
+    vi.spyOn(f.adapter, 'create').mockImplementation(async (draft, author) => {
+      written = await create({ ...draft, visibility: 'public' } as CardDraft, author);
+      return written;
+    });
     const res = await f.human('POST', url(w, '/escalate'), { playerCardId: w.navy });
     expect(res.statusCode).toBe(500);
+    expect(res.body).toContain('retired');
+    expect(res.body).not.toContain(written!);
+    expect(await f.adapter.read(written!)).toBeFalsy();
+    expect((await f.adapter.versions(written!)).length).toBeGreaterThan(0);
+  });
+
+  it('refuses and retires a card that clears for a target the computed one does not (tags dropped)', async () => {
+    const f = await fixture({
+      rules: `rules:
+  - { id: screen-all, effect: allow, targets: [screen], match: {} }
+  - { id: models, effect: allow, targets: [local_model], match: { type: [lage] } }
+  - { id: no-secret, effect: deny, targets: [local_model], match: { tags: [secret] } }
+`,
+    });
+    const w = seedWorld(f, { tags: ['secret'] });
+    await predict(f, w);
+    const create = f.adapter.create.bind(f.adapter);
+    let written: string | undefined;
+    vi.spyOn(f.adapter, 'create').mockImplementation(async (draft, author) => {
+      const weaker = { ...draft } as CardDraft & { tags?: string[] };
+      delete weaker.tags;
+      written = await create(weaker, author);
+      return written;
+    });
+    const res = await f.human('POST', url(w, '/escalate'), { playerCardId: w.navy });
+    expect(res.statusCode).toBe(500);
+    expect(res.body).toContain('retired');
+    expect(await f.adapter.read(written!)).toBeFalsy();
   });
 });
 

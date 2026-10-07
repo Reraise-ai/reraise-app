@@ -458,7 +458,21 @@ export class Level1Service {
     let weaker = created.visibility !== 'private' || rank(created.class) > rank(cls);
     for (const t of MODEL_TARGETS)
       if (!targets.includes(t) && (await this.s.gate.clears(created, t))) weaker = true;
-    if (weaker) throw new HttpError(500, 'the board analysis was stored with a weaker clearance');
+    if (weaker) {
+      // Retire the card so the weaker copy never stays live; no ids in the details.
+      try {
+        await this.s.writes.run(() => this.s.storage.archive(id));
+      } catch {
+        throw new HttpError(
+          500,
+          'the board analysis was stored with a weaker clearance and could not be retired',
+        );
+      }
+      throw new HttpError(
+        500,
+        'the board analysis was stored with a weaker clearance and was retired',
+      );
+    }
     return created;
   }
 }
