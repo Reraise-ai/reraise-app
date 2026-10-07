@@ -134,6 +134,11 @@ In addition to [ADR-0023](0023-core-domain-model.md) and
   pages, the RFC 9457 error). `finding.schema.json` is the `SourceConnector` result
   ([ADR-0014](0014-no-ingestion-inbox-of-findings.md)); `decision.schema.json#/$defs/draft`
   is the body of the human-only decision create operation.
+- Error statuses: an unknown id and an id the caller's target may not see are the same 404 with
+  the same body (`context_package_get` and `knowledge_consult` for a Lage); every operation that
+  reads or writes the store or the receipt log declares 503 `ServiceUnavailable`, with the
+  problem types `store-locked` ("Store locked") and `receipt-log-unavailable` ("Receipt log
+  unavailable").
 - `schemas/openapi/board-api.yaml` (OpenAPI 3.1) references the JSON Schemas by relative
   path. Each operation that mirrors an MCP tool has the tool name as `operationId`; a query
   or path parameter references the property of the tool's input schema

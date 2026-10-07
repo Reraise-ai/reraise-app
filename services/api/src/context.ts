@@ -70,7 +70,7 @@ async function scopeCards(
     // Unknown, in another world, or (for a model) not cleared by the gate: one and the same
     // answer, so a model cannot tell a hidden Lage from a missing one (as rules_evaluate).
     if (!lage || !lage.worlds?.includes(req.worldId) || !(await lageCleared(s, principal, lage))) {
-      throw new HttpError(400, 'unknown Lage');
+      throw new HttpError(404, 'unknown Lage');
     }
     const cards: Card[] = [];
     for (const placement of lage.lage.cards.slice(0, max)) {

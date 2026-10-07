@@ -214,4 +214,11 @@ describe('MCP / Board API parity', () => {
       if (op.requestBody) expect(Object.keys(op.responses), id).toContain('413');
     }
   });
+
+  it('declares 503 for every operation that touches the store or the receipt log (ADR-0028)', () => {
+    for (const [id, { op }] of operations) {
+      if (id === 'memory_route') expect(Object.keys(op.responses), id).not.toContain('503');
+      else expect(Object.keys(op.responses), id).toContain('503');
+    }
+  });
 });

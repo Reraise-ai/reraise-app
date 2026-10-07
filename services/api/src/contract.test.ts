@@ -268,7 +268,7 @@ describe('context_package_get with a Lage', () => {
     for (const who of ['scripted', 'cloud-scripted']) {
       const hidden = await ask(who, { worldId: f.worldId, lageId: privateLage });
       const missing = await ask(who, { worldId: f.worldId, lageId: unknown });
-      expectContract('context_package_get', hidden, 400);
+      expectContract('context_package_get', hidden, 404);
       expect(hidden.body).toBe(missing.body);
     }
     // the human sees their own Lage; a cleared Lage still works for both model classes
@@ -292,7 +292,7 @@ describe('context_package_get with a Lage', () => {
       expectContract(
         'context_package_get',
         await ask(who, { worldId: other, lageId: f.ids.lage }),
-        400,
+        404,
       );
     }
   });
@@ -708,6 +708,11 @@ describe('storage errors become problems (ADR-0005)', () => {
     try {
       const res = await f.human('GET', `/cards/${f.ids.evPublic}`);
       expect(res.statusCode).toBe(status);
+      if (status === 503) {
+        expectContract('card_get', res, 503);
+        expect(res.json().title).toBe('Store locked');
+        expect(res.json().type).toContain('store-locked');
+      }
       expect(res.headers['content-type']).toContain('application/problem+json');
       expect(res.body).not.toContain('SECRET-CARD-TEXT');
       expect(res.json().status).toBe(status);
@@ -729,6 +734,16 @@ describe('storage errors become problems (ADR-0005)', () => {
 });
 
 describe('contract coverage', () => {
+  it('declares 503 for every operation that touches the store or the receipt log, and 404 for a hidden Lage', () => {
+    const ops = loadOperations();
+    for (const op of ops) {
+      if (op.id === 'memory_route') expect(op.responses.has(503)).toBe(false);
+      else expect(op.responses.has(503), op.id).toBe(true);
+    }
+    for (const id of ['context_package_get', 'knowledge_consult']) {
+      expect(ops.find((o) => o.id === id)!.responses.has(404), id).toBe(true);
+    }
+  });
   it('has a test for every operation of the OpenAPI contract', () => {
     const all = loadOperations().map((o) => o.id);
     expect(all.length).toBeGreaterThanOrEqual(19);

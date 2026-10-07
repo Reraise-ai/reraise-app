@@ -139,7 +139,7 @@ describe('knowledge_consult', () => {
   it('a failed consult leaves no receipt', async () => {
     const before = (await logLines()).length;
     const bad = await consult('scripted', { lageId: '01ARZ3NDEKTSV4RRFFQ69G5FAV' });
-    expect(bad.statusCode).toBe(400);
+    expectContract('knowledge_consult', bad, 404);
     expect(await logLines()).toHaveLength(before);
   });
   it('a cloud_model connection: confirmation_required first, then cards after the human confirmed', async () => {
