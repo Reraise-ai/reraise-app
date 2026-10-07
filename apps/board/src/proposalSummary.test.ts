@@ -25,6 +25,9 @@ describe('summarizeProposal', () => {
       summarizeProposal(p('create_card', { card: { title: 'T', layer: 'said' } }), titles),
     ).toBe('Create card "T" (said)');
     expect(summarizeProposal(p('comment', { text: 'hello' }), titles)).toBe('Comment: hello');
+    expect(
+      summarizeProposal(p('record_outcome', { decisionId: C1, outcome: 'Rerouted, held' }), titles),
+    ).toBe('Record outcome of decision "Strait traffic report": Rerouted, held');
   });
 
   it('falls back to a short id for a card the screen cannot name', () => {

@@ -20,6 +20,7 @@ import type {
   ProposalPage,
   Stance,
   StanceInput,
+  UsageMetrics,
   WorldList,
 } from '@worldbuilder/core';
 
@@ -83,6 +84,8 @@ export interface BoardClient {
   proposal_reject(proposalId: string, note?: string): Promise<Proposal>;
   disclosure_transfer_preview(body: DisclosurePreviewRequest): Promise<DisclosureTransfer>;
   disclosure_confirm(transferId: string, payloadHash: string): Promise<DisclosureConfirmation>;
+  /** Human-only (ADR-0041). Without `week` the rolling 7 days. */
+  usage_metrics_get(week?: string): Promise<UsageMetrics>;
 }
 
 function query(params: Record<string, string | number | undefined>): string {
@@ -151,6 +154,7 @@ export function createClient(options: ClientOptions): BoardClient {
     disclosure_transfer_preview: (body) => call('POST', '/disclosure/transfers', body),
     disclosure_confirm: (id, payloadHash) =>
       call('POST', `/disclosure/transfers/${enc(id)}/confirm`, { payloadHash }),
+    usage_metrics_get: (week) => call('GET', `/metrics/usage${query({ week })}`),
   };
 }
 

@@ -27,5 +27,7 @@ export function summarizeProposal(p: Proposal, titles: Titles): string {
     }
     case 'comment':
       return `Comment: ${String(pl['text'] ?? '')}`;
+    case 'record_outcome':
+      return `Record outcome of decision ${name(titles, pl['decisionId'])}: ${String(pl['outcome'] ?? '')}`;
   }
 }

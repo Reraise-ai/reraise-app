@@ -503,3 +503,38 @@ describe('stance overlay (human-only stance_save)', () => {
     expect((await screen.findByRole('alert')).textContent).toMatch(/state dir read-only/);
   });
 });
+
+describe('usage metrics panel', () => {
+  it('shows each target on its own, with no data reported as not met', async () => {
+    const api = createMockApi();
+    signedIn(api);
+    await userEvent.click(await screen.findByTestId('nav-usage'));
+    expect((await screen.findByTestId('usage-value-receipt_coverage_7d')).textContent).toBe('60 %');
+    expect(screen.getByTestId('usage-status-receipt_coverage_7d').textContent).toBe('not met');
+    expect(screen.getByTestId('usage-accepted').textContent).toContain('3');
+    expect(screen.getByTestId('usage-decisions').textContent).toBe('1 of 4');
+    expect(screen.getByTestId('usage-atlas').textContent).toContain('30 h');
+    expect(screen.getByTestId('usage-agent-agent:scout')).toBeTruthy();
+    expect(screen.queryByText(/score|rank/i)).toBeNull();
+  });
+
+  it('asks for a given ISO week and shows the service problem', async () => {
+    const api = createMockApi();
+    api.usage = {
+      ...api.usage,
+      targets: api.usage.targets.map((t) => ({ ...t, value: null, met: false })),
+      decisions: null,
+    };
+    signedIn(api);
+    await userEvent.click(await screen.findByTestId('nav-usage'));
+    expect((await screen.findByTestId('usage-value-agent_cards_7d')).textContent).toBe('no data');
+    expect(screen.getByTestId('usage-decisions').textContent).toBe('no store');
+    fireEvent.change(screen.getByTestId('usage-week'), { target: { value: '2026-W40' } });
+    await waitFor(() =>
+      expect(api.calls.some((c) => c.path === '/metrics/usage?week=2026-W40')).toBe(true),
+    );
+    api.failNext(403, 'human only', /metrics/);
+    fireEvent.change(screen.getByTestId('usage-week'), { target: { value: '2026-W39' } });
+    expect((await screen.findByTestId('usage-error')).textContent).toContain('human only');
+  });
+});

@@ -17,6 +17,7 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "build": "pnpm -r --if-present build",
+    "check:board-tokens": "node scripts/check-board-tokens.mjs",
     "check:spdx": "node scripts/check-spdx.mjs",
     "check:no-real-data": "pnpm --filter @worldbuilder/core build && node scripts/check-no-real-data.mjs",
     "validate:schemas": "pnpm --filter @worldbuilder/core build && node scripts/validate-schemas.mjs",

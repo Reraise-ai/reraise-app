@@ -13,6 +13,7 @@ import type {
   Proposal,
   Stance,
   DisclosureTransfer,
+  UsageMetrics,
 } from '@worldbuilder/core';
 
 export const TOKEN = 'test-session-token';
@@ -85,6 +86,41 @@ export function makeLage(over: Partial<Lage> = {}): Lage {
   };
 }
 
+export function makeUsage(): UsageMetrics {
+  const counts = {
+    tasks: 10,
+    tasksWithReceipts: 6,
+    consults: 8,
+    consultsNothingFound: 1,
+    writeBacks: 5,
+    writeBacksNotNeeded: 2,
+    cardsProposed: 4,
+    decisionsProposed: 1,
+    outcomesProposed: 0,
+    cardsAccepted: 3,
+    cardsRejected: 1,
+    receiptCoverage: 0.6,
+  };
+  return {
+    generatedAt: '2026-10-06T12:00:00.000Z',
+    window: {
+      kind: 'rolling_7d',
+      start: '2026-09-29T12:00:00.000Z',
+      end: '2026-10-06T12:00:00.000Z',
+    },
+    agents: [{ agent: 'agent:scout', ...counts }],
+    totals: counts,
+    decisions: { total: 4, withOutcome: 1 },
+    atlas: { pages: 3, stalePages: 1, lagHours: 30 },
+    targets: [
+      { id: 'receipt_coverage_7d', comparison: 'at_least', threshold: 0.8, value: 0.6, met: false },
+      { id: 'agent_cards_7d', comparison: 'at_least', threshold: 5, value: 3, met: false },
+      { id: 'atlas_lag_hours', comparison: 'at_most', threshold: 24, value: 30, met: false },
+      { id: 'decisions_with_outcome', comparison: 'at_least', threshold: 10, value: 1, met: false },
+    ],
+  };
+}
+
 export interface MockApi {
   fetch: typeof fetch;
   calls: { method: string; path: string; body?: unknown; headers: Record<string, string> }[];
@@ -94,6 +130,8 @@ export interface MockApi {
   transfers: Map<string, DisclosureTransfer & { token?: string; confirmed?: boolean }>;
   /** Simulates an agent proposal arriving over MCP. */
   addProposal(p: Omit<Proposal, 'id' | 'createdAt' | 'status'> & Partial<Proposal>): Proposal;
+  /** What GET /metrics/usage answers; replace it to test other numbers. */
+  usage: UsageMetrics;
   /** Simulates another writer bumping the Lage version. */
   bumpLage(lageId: string): void;
   /** The next request whose "METHOD /path" matches (default: any) answers with this problem. */
@@ -124,6 +162,7 @@ export function createMockApi(initial: { lage?: Lage } = {}): MockApi {
     proposals: [],
     stances: new Map(),
     transfers: new Map(),
+    usage: makeUsage(),
     fetch: undefined as unknown as typeof fetch,
     addProposal(p) {
       const full = {
@@ -207,6 +246,12 @@ export function createMockApi(initial: { lage?: Lage } = {}): MockApi {
     const p = url.pathname;
     let m: RegExpMatchArray | null;
 
+    if (p === '/metrics/usage' && method === 'GET') {
+      const week = url.searchParams.get('week');
+      if (week && !/^[0-9]{4}-W(0[1-9]|[1-4][0-9]|5[0-3])$/.test(week))
+        return problem(400, 'bad week');
+      return json(200, api.usage);
+    }
     if (p === '/worlds' && method === 'GET') {
       return json(200, { worlds: [{ id: WORLD_ID, name: 'Hormuz (synthetic)' }] });
     }
