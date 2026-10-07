@@ -11,6 +11,7 @@ need no code.
 | [Provenance and independence](./provenance-and-independence.md) | Why does the system count origins instead of copies, and why is there no credibility score? |
 | [Why the LLM is replaceable](./llm-is-replaceable.md) | How does the architecture keep your world independent of any model? |
 | [Why receipts, not reminders](./receipts-not-reminders.md) | Why must agents cite checked receipts for consulting and writing back the knowledge, instead of being reminded to? |
+| [Level 1: a quick guess, never a verdict](./level-1-thinking.md) | What does the fast per-player estimate use, how sure is it, and why is it never an answer? |
 
 ## Planned
 

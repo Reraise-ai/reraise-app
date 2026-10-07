@@ -101,6 +101,7 @@ export default withMermaid({
             },
             { text: 'Why the LLM is replaceable', link: '/explanation/llm-is-replaceable' },
             { text: 'Why receipts, not reminders', link: '/explanation/receipts-not-reminders' },
+            { text: 'Level 1: a quick guess', link: '/explanation/level-1-thinking' },
           ],
         },
       ],

@@ -7,7 +7,7 @@ import {
   level1PredictionProblems,
 } from '@worldbuilder/conformance';
 import { hashJcs } from '@worldbuilder/core';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   CONFIDENCE_TEMPERATURE,
   EXCLUSION_CONFIDENCE_CAP,
@@ -335,6 +335,18 @@ describe('local rules engine: predictions', () => {
     expect(player(p, ID.navy).predictedMove).toBe(NAVY_OPTIONS[0]);
     // the user's rule and the consortium's red line meet in one option each
     expect(CONSORTIUM_OPTIONS).toContain(player(p, ID.consortium).predictedMove);
+  });
+});
+
+describe('local rules engine: no network', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('predicts without ever calling fetch', async () => {
+    const fetchSpy = vi.fn(() => Promise.reject(new Error('network is off')));
+    vi.stubGlobal('fetch', fetchSpy);
+    const p = await engine.predict(requestOf());
+    expect(p.players).toHaveLength(2);
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 });
 
