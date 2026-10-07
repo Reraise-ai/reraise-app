@@ -188,6 +188,9 @@ importers:
       '@worldbuilder/conformance':
         specifier: workspace:*
         version: link:../conformance
+      '@worldbuilder/storage-markdown-files':
+        specifier: workspace:*
+        version: link:../adapters/storage-markdown-files
       ajv:
         specifier: ^8.20.0
         version: 8.20.0
