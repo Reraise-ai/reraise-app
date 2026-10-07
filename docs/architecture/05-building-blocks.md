@@ -169,5 +169,5 @@ server package; it may import generated contract types from `core`.
 | Proposals | Lifecycle from `pending` to `accepted` or `rejected`, the non-counting rule | M1 |
 | Context package | Selection from request, active world, cards, relations, decisions and provenance; per-card gate decision; pending proposals in a separate section | M1 |
 | Rules | `rules_evaluate(lage)`: fired or not fired, triggering card ids, `withheld: n` for non-screen targets | M2+ |
-| Level 1 | Request building (players, move options, gate-cleared cards), prediction validation, staleness by request hash ([ADR-0035](../adr/0035-level1-engine-socket.md)) | slice after M1 |
+| Level 1 | Request building (players, move options, gate-cleared cards), prediction validation, staleness by request hash ([ADR-0035](../adr/0035-level1-engine-socket.md), [ADR-0045](../adr/0045-level1-service-seam.md)); service operations, engine registry and board panel | done (local engine, service, board; cloud engines tested against a fake service) |
 | Outcome loop and source profile | Hit statistics, profile dimensions with sample sizes | M2+ |

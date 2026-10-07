@@ -100,11 +100,11 @@ Points the end-to-end test asserts:
 
 ## 6.2 Level 1 prediction through a cloud engine
 
-Status: planned (level-1 slice right after M1). Level 1 is the `Level1Engine` socket
+Status: implemented in the service and the board ([ADR-0045](../adr/0045-level1-service-seam.md)); tested against a fake engine service, no real engine. Level 1 is the `Level1Engine` socket
 ([ADR-0035](../adr/0035-level1-engine-socket.md)): per player on the Lage, the engine predicts
 the next move out of a closed set of move options, from the cards on the board and the user's
-rule cards. The default engine is local (`local_model`, no confirmation, automatic what-if
-re-runs). The flow below is the cloud case, for example the Jev adapter, whose wire format
+rule cards. The default engine is local (built in, cleared as the screen, no confirmation, automatic
+what-if re-runs). The flow below is the cloud case, for example the Jev adapter, whose wire format
 stays inside the adapter: every run is `cloud_model` egress with per-transfer confirmation.
 
 ```mermaid
@@ -119,7 +119,7 @@ sequenceDiagram
   participant X as External engine
 
   H->>UI: Changes an assumption on the Lage, engine is a cloud engine
-  UI->>API: level-1 run (Lage, trigger assumption_changed)
+  UI->>API: level1_predict (engine, trigger manual)
   API->>C: build request: players with move options, cards on the board plus rule cards
   loop each request card
     C->>G: decide(card, cloud_model)
@@ -129,14 +129,14 @@ sequenceDiagram
   C-->>API: request of cleared cards, denied cards with reasons
   API->>G: preview(purpose level1, connector = engine, cleared cards)
   G-->>API: transfer: envelope, payloadHash, expiry in 5 min
-  API-->>UI: prediction marked stale, preview of the whole envelope
+  API-->>UI: confirmation_required with the transfer: the whole envelope (a changed board only marks the old estimate stale)
   alt the human declines
     Note over API,G: Nothing is sent. The gate log keeps ids and decisions, never content.
   else the human confirms
     H->>UI: Confirm this transfer
     UI->>API: confirm with transferId and previewed hash (human-only)
     API-->>UI: single-use token bound to this session, valid 5 minutes
-    UI->>API: run with token
+    UI->>API: level1_predict again with transferId and token
     API->>G: redeem(token, envelope)
     G-->>API: release: exactly the confirmed objects
     API->>E: predict(request, release)
@@ -146,13 +146,13 @@ sequenceDiagram
     E-->>API: Level1Prediction
     API->>C: validate: schema, move in options, cards from the request, request hash
     alt invalid
-      API-->>UI: show the error, keep the prediction stale
+      API-->>UI: 502 with fixed wording, the latest estimate is kept as it was
     else valid
       API-->>UI: prediction per player
       UI-->>H: "<engine> estimates 0.71 for Keep restrictions" next to each player, with the cards used
       opt escalate a player prediction to level 2
         H->>UI: Escalate
-        UI->>API: Lage create: question about that player's next move, options, cards used placed
+        UI->>API: level1_escalate (player): new Lage with a based_on edge to this one
       end
     end
   end

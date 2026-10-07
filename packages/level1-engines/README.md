@@ -16,7 +16,8 @@ fast, attributed estimates of each player's next move, from the cards on a Lage.
 - `formatEstimate`: "`<engine>` estimates 0.82 for `<move>`", for the board.
 
 All engines run `describeLevel1EngineConformance` from `@worldbuilder/conformance`. The service
-wiring and the board panel are separate slices; see
+(`services/api`, [ADR-0045](../../docs/adr/0045-level1-service-seam.md)) and the board panel
+(`apps/board`) use it; the board imports only `@worldbuilder/level1-engines/format`. See
 [docs/reference/adapters.md](../../docs/reference/adapters.md#level-1-engines).
 
 Licence: Apache-2.0.

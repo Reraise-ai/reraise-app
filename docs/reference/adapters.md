@@ -282,31 +282,42 @@ certainty; display only), always with the engine, newlines and control character
 confidence outside [0, 1] rejected. `formatEstimates(prediction)` gives one
 line per player. `apps/board` shows exactly this text next to each player card, marks it stale
 when `isStale` is true, offers the cards used (`cardIds`) one click away and an "open as board"
-action that calls `buildLevel2Draft`. It must not word an estimate as an answer or add its own
-verdict. The panel itself is a follow-up for `apps/board`; the board only needs to import the
-formatter.
+action (the human-only `level1_escalate`, which uses `buildLevel2Draft`). It must not word an
+estimate as an answer or add its own verdict. The panel is `apps/board/src/components/Level1Panel.tsx`;
+it imports the formatter through the `@worldbuilder/level1-engines/format` subpath, which has no
+runtime imports.
 
 ### Service seam
 
-Not written in this slice. The service (`services/api`) needs to:
+Implemented in `services/api` ([ADR-0045](../adr/0045-level1-service-seam.md)); the code is
+`level1.ts` (request, what-if, escalation), `level1-engines.ts` (registry) and `level1-ops.ts`
+(three human-only operations: `level1_get`, `level1_predict`, `level1_escalate`; none is an MCP
+tool).
 
-1. build the `Level1PredictionRequest` for a Lage: question, players (actor cards with their
-   move options), the canonical cards on the Lage plus the user's applicable rule cards, each
-   after `DisclosureGate.decide` for the engine's target (no stances, no pending proposals). Cards
-   carry their own `edges`; the Lage's drawn edges are not mapped into the request yet (follow-up);
-2. call `engine.predict(request)` for a `local_model` engine. For a `cloud_model` engine, build the
-   envelope with `level1EnvelopeFor(engine.engine, request, gateClearedCards)` and pass exactly
-   that envelope (connector, question, options, output schema, objects) to
-   `DisclosureGate.preview`; show it to the user; after `confirm`, `redeem` and pass the release
-   unchanged to `engine.predict(request, release)`. The adapter refuses any release whose
-   `payloadHash` is not the hash of the envelope it recomputes, so the request used for `preview`
-   and for `predict` must be the same;
-3. keep the latest prediction per Lage in memory, debounce triggers (latest wins) and drop answers
-   with `currentOnly`; use `rerunOnAssumptionChange` for `assumption_changed`;
-4. expose the prediction (and, for the local engine, `explain`) to the board and create the level-2
-   Lage from `buildLevel2Draft` on a human request, recording `sourceLageId`;
-5. register the adapters in the connection settings (`createJevAdapter` needs a base URL and a
-   credential from the user's secret store, never from the repository).
+1. The `Level1PredictionRequest` is built from the Lage: the question, the players (actor, person
+   and organisation cards placed on it, with `buildMoveOptions`), the placed cards and the user's
+   rule cards that apply to it (no `worlds`, or a world in common; at most 50), each cleared by the
+   gate. The built-in engine runs in the service and is cleared as the screen; a cloud engine is
+   cleared as `cloud_model`. An assumption card the user rejected is left out; no stance and no
+   pending proposal is ever included. A trigger keeps only assumption cards of the request, else
+   it becomes `manual`. Lage edges are still not mapped into the request (follow-up).
+2. A local run calls `engine.predict(request)` (`rerunOnAssumptionChange` for an assumption
+   trigger). A cloud run is two calls of `level1_predict`: the first previews
+   `level1EnvelopeFor(engine, request, cleared)` as a transfer (purpose `level1`) and answers
+   `confirmation_required` with the whole envelope; after the human's `disclosure_confirm` the
+   second carries `transferId` and the single-use token. The service refuses (409) if the envelope
+   hash differs from the confirmed one, redeems once, and passes the release unchanged to
+   `engine.predict(request, release)`. An engine failure is a 502 with fixed wording.
+3. The latest prediction per Lage is kept in memory (`MAX_KEPT_PREDICTIONS`); a late answer (a
+   newer call, or a board that changed while the engine ran, `currentOnly`) is `superseded` and
+   dropped; `level1_get` reports `stale` with `isStale`. The board debounces (500 ms) and asks.
+4. `level1_get?explain=true` adds the local engine's breakdown while the prediction is current;
+   `level1_escalate` creates the level-2 Lage from `buildLevel2Draft` with a `based_on` edge to
+   the source Lage.
+5. Cloud engines are configured in `<state>/level1-engines.yaml`
+   (`schemas/level1-engines.schema.json`): `id`, `preset` (`generic` or `jev`), `baseUrl`,
+   `enabled`, optionally `apiKeyFile` (an owner-only file; the key is never in the YAML) and
+   `timeoutMs`. None by default; the Jev preset is listed as unavailable until it is configured.
 
 ## DisclosureGate
 

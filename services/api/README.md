@@ -147,6 +147,31 @@ fixed reason code. Denied cards are left out and listed by id and a fixed reason
   Lage cleared by the gate; a hidden Lage answers like a missing one (404, byte-identical). A world
   with no card cleared for a model target answers like an unknown world (empty package, no count).
 
+## Level 1 (ADR-0035, ADR-0045)
+
+Three human-only operations (agents get 403; none is an MCP tool):
+
+- `GET /lagen/{lageId}/level1` (`level1_get`): the engines on offer and the latest prediction held
+  in memory, with `stale`; `?explain=true` adds the basis of the local engine while it is current.
+- `POST /lagen/{lageId}/level1` (`level1_predict`): `{ engine: "local" | <cloud engine id>,
+trigger, transferId?, confirmationToken? }`. `local` is the built-in deterministic engine,
+  cleared as the screen. A cloud engine answers `confirmation_required` with the previewed
+  envelope first; after `disclosure_confirm` the same call with `transferId` and the token sends
+  exactly the confirmed objects, once. Statuses: `predicted`, `confirmation_required`,
+  `no_players`, `superseded` (the board changed while the engine ran; nothing is stored).
+- `POST /lagen/{lageId}/level1/escalate` (`level1_escalate`): `{ playerCardId }` creates a Lage for
+  that player from the latest, still current prediction, with a `based_on` edge to the source.
+
+The request is built from the cards on the Lage and the user's applicable rule cards, each
+cleared by the gate; a rejected assumption is left out and no stance is sent. Predictions live in
+memory only: never in a card, the store, the gate log or a context package.
+
+Cloud engines are listed in `<state>/level1-engines.yaml` (schema `level1-engines.schema.json`);
+there is none by default and `jev` is shown as unavailable until an enabled entry exists. The
+credential is the path of an owner-only file (`apiKeyFile`), never a value in the YAML. The ids
+`local`, `local-rules`, `jev` and every configured engine id cannot be used as an agent name.
+Tests: `src/level1.test.ts`.
+
 ## Decisions of this slice that the contract leaves open
 
 - Accepting a proposal: `place_card` and `move_card` write a new Lage version; `add_edge` writes a
@@ -180,8 +205,10 @@ fixed reason code. Denied cards are left out and listed by id and a fixed reason
   replayed beyond `initialize` and `initialized`.
 
 - No gate rule fragments from adapters are passed yet (the `StorageAdapter` interface has none).
-- Level-1 and export transfers (`purpose` other than `context_package`) can be previewed and
-  confirmed but have no send path yet.
+- Export transfers (`purpose: export`) can be previewed and confirmed but have no send path yet
+  (`level1` transfers have one, see Level 1).
+- Level 1: Lage edges drawn on the board are not part of the engine request yet; the real Jev wire
+  format is unconfirmed (OD-4), so the Jev preset is a template tested against a fake service.
 - No per-agent quota on pending proposals.
 - The atlas lag of `usage_metrics_get` is unknown (see above); task records are read from
   `<state>/tasks` (files that are not task records count as no task).
