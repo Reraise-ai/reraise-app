@@ -233,6 +233,53 @@ describe('context_package_get', () => {
   });
 });
 
+describe('context_package_get with a Lage', () => {
+  const ask = (who: 'human' | string, body: unknown) =>
+    who === 'human'
+      ? f.human('POST', '/context-packages', body)
+      : f.agent(who, 'POST', '/context-packages', body);
+  let privateLage: string;
+  it('a model cannot tell a Lage the gate does not clear from one that does not exist', async () => {
+    const made = await f.human('POST', '/lagen', {
+      title: 'Private Lage',
+      worlds: [f.worldId],
+      lage: emptyLage(),
+    });
+    privateLage = cardOf(made).id;
+    const unknown = '01ARZ3NDEKTSV4RRFFQ69G5FAV';
+    for (const who of ['scripted', 'cloud-scripted']) {
+      const hidden = await ask(who, { worldId: f.worldId, lageId: privateLage });
+      const missing = await ask(who, { worldId: f.worldId, lageId: unknown });
+      expectContract('context_package_get', hidden, 400);
+      expect(hidden.body).toBe(missing.body);
+    }
+    // the human sees their own Lage; a cleared Lage still works for both model classes
+    expectContract(
+      'context_package_get',
+      await ask('human', { worldId: f.worldId, lageId: privateLage }),
+      200,
+    );
+    expectContract(
+      'context_package_get',
+      await ask('scripted', { worldId: f.worldId, lageId: f.ids.lage }),
+      200,
+    );
+    const cloud = await ask('cloud-scripted', { worldId: f.worldId, lageId: f.ids.lage });
+    expectContract('context_package_get', cloud, 200);
+    expect(cloud.json().confirmationRequired).toBeDefined();
+  });
+  it('the Lage must belong to the requested world, for every caller', async () => {
+    const other = '01ARZ3NDEKTSV4RRFFQ69G5FAW';
+    for (const who of ['human', 'scripted', 'cloud-scripted']) {
+      expectContract(
+        'context_package_get',
+        await ask(who, { worldId: other, lageId: f.ids.lage }),
+        400,
+      );
+    }
+  });
+});
+
 describe('rules_evaluate', () => {
   it('evaluates the rules on a Lage', async () => {
     const res = await f.human('POST', '/rules/evaluate', { lageId: f.ids.lage });

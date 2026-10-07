@@ -59,10 +59,19 @@ const connectorIdOf = (name: string): string =>
   `agent-${name.toLowerCase().replace(/[^a-z0-9._-]/g, '-')}`.slice(0, 64);
 
 /** The cards a package is about: the cards placed on the Lage, else the cards of the world. */
-async function scopeCards(s: Services, req: ContextPackageRequest, max: number): Promise<Card[]> {
+async function scopeCards(
+  s: Services,
+  principal: Principal,
+  req: ContextPackageRequest,
+  max: number,
+): Promise<Card[]> {
   if (req.lageId !== undefined) {
     const lage = await readLage(s, req.lageId);
-    if (!lage) throw new HttpError(400, 'unknown Lage');
+    // Unknown, in another world, or (for a model) not cleared by the gate: one and the same
+    // answer, so a model cannot tell a hidden Lage from a missing one (as rules_evaluate).
+    if (!lage || !lage.worlds?.includes(req.worldId) || !(await lageCleared(s, principal, lage))) {
+      throw new HttpError(400, 'unknown Lage');
+    }
     const cards: Card[] = [];
     for (const placement of lage.lage.cards.slice(0, max)) {
       const card = await s.storage.read(placement.id);
@@ -74,6 +83,18 @@ async function scopeCards(s: Services, req: ContextPackageRequest, max: number):
     (cursor) => s.storage.list({ worldId: req.worldId, limit: 200, ...(cursor ? { cursor } : {}) }),
     max,
   );
+}
+
+/**
+ * May this caller know the Lage exists? The screen always may. A model target needs the rules
+ * to clear the Lage card; for a cloud_model connection "cleared" is the gate's answer that the
+ * card could go out after the human confirmed the transfer.
+ */
+async function lageCleared(s: Services, principal: Principal, lage: Card): Promise<boolean> {
+  const target = targetOf(principal);
+  if (target === 'screen') return true;
+  const d = await s.gate.decide(lage, target);
+  return d.decision === 'allow' || (target === 'cloud_model' && d.confirmationRequired === true);
 }
 
 async function pendingProposals(s: Services, lageId: string | undefined) {
@@ -137,7 +158,7 @@ export async function buildContextPackage(
   }
 
   // Screen and local_model: the cards the rules clear for this target.
-  const cards = await scopeCards(s, req, max);
+  const cards = await scopeCards(s, principal, req, max);
   const { allowed, denied } = await s.gate.filter(cards, target);
   const items = itemsOf(allowed, () => 'cleared by the gate rules');
   if (target === 'screen') {
@@ -213,7 +234,7 @@ async function cloudPackage(
   }
 
   // First call: no content. Ask the human to confirm exactly what would be sent.
-  const cards = await scopeCards(s, req, max);
+  const cards = await scopeCards(s, principal, req, max);
   const { denied } = await s.gate.filter(cards, 'cloud_model'); // logs; cloud never passes decide
   let transfer: DisclosureTransfer | undefined;
   if (cards.length > 0) {
