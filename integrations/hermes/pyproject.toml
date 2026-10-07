@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright The Worldbuilder contributors
+[project]
+name = "worldbuilder-hermes"
+version = "0.1.0"
+description = "Worldbuilder knowledge loop for Hermes agents: native plugin, config and cron templates, and a fake-Hermes test harness"
+license = "Apache-2.0"
+requires-python = ">=3.11"
+# The plugin itself uses only the standard library: Hermes runs it in its own interpreter.
+dependencies = []
+
+[project.optional-dependencies]
+test = ["pytest>=8", "jsonschema>=4.21", "pyyaml>=6"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["tests"]
+addopts = "-ra -q"
+markers = ["needs_wb: runs the real `wb` command line (node and a built packages/knowledge-loop)"]
