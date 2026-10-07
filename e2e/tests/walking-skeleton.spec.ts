@@ -106,65 +106,63 @@ test('hormuz walking skeleton', async ({ page }) => {
   const scripted = agent;
   let proposal!: Proposal;
   let cursor: string | undefined;
-  {
-    await test.step('the scripted agent consults the knowledge and gets a receipt', async () => {
-      expect(await scripted.listTools()).toEqual(
-        expect.arrayContaining(['knowledge_consult', 'proposal_create', 'proposal_list']),
-      );
-      const consulted = await scripted.call<ConsultResult>('knowledge_consult', {
-        taskRef: 'e2e:task-1',
-        task: 'Check whether the insurance spike is corroborated before the Q4 routing decision',
-        worldId: HORMUZ.worldId,
-        lageId: HORMUZ.lageId,
-      });
-      expect(consulted.receipt.receiptId).toMatch(/^[0-9A-Z]{26}$/);
-      expect(consulted.receipt.hash).toMatch(/^sha256:[0-9a-f]{64}$/);
-      const ids = consulted.package.items.map((i) => i.card.id);
-      expect(ids).toContain(HORMUZ.wireReportId);
-      // The gate withholds the class A card from a local model, and the receipt says nothing
-      // about the task text or any card content.
-      expect(ids).not.toContain(HORMUZ.privateCardId);
-      expect(JSON.stringify(consulted)).not.toContain(HORMUZ.privateCardBodyText);
-      expect(JSON.stringify(consulted.receipt)).not.toContain('insurance spike');
-      // The stance is private to the screen: the agent never gets it, nor its note.
-      expect(JSON.stringify(consulted)).not.toContain(STANCE_NOTE);
-      expect(JSON.stringify(consulted)).not.toContain('"stance"');
+  await test.step('the scripted agent consults the knowledge and gets a receipt', async () => {
+    expect(await scripted.listTools()).toEqual(
+      expect.arrayContaining(['knowledge_consult', 'proposal_create', 'proposal_list']),
+    );
+    const consulted = await scripted.call<ConsultResult>('knowledge_consult', {
+      taskRef: 'e2e:task-1',
+      task: 'Check whether the insurance spike is corroborated before the Q4 routing decision',
+      worldId: HORMUZ.worldId,
+      lageId: HORMUZ.lageId,
     });
+    expect(consulted.receipt.receiptId).toMatch(/^[0-9A-Z]{26}$/);
+    expect(consulted.receipt.hash).toMatch(/^sha256:[0-9a-f]{64}$/);
+    const ids = consulted.package.items.map((i) => i.card.id);
+    expect(ids).toContain(HORMUZ.wireReportId);
+    // The gate withholds the class A card from a local model, and the receipt says nothing
+    // about the task text or any card content.
+    expect(ids).not.toContain(HORMUZ.privateCardId);
+    expect(JSON.stringify(consulted)).not.toContain(HORMUZ.privateCardBodyText);
+    expect(JSON.stringify(consulted.receipt)).not.toContain('insurance spike');
+    // The stance is private to the screen: the agent never gets it, nor its note.
+    expect(JSON.stringify(consulted)).not.toContain(STANCE_NOTE);
+    expect(JSON.stringify(consulted)).not.toContain('"stance"');
+  });
 
-    await test.step('the agent reads the board (lage_get) before proposing', async () => {
-      const lage = await scripted.call<{ lage: { cards: { id: string }[] } }>('lage_get', {
-        lageId: HORMUZ.lageId,
-      });
-      expect(lage.lage.cards.map((c) => c.id)).toContain(HORMUZ.wireReportId);
-      const card = await scripted.call('card_get', { cardId: HORMUZ.navyCardId });
-      expect(JSON.stringify([lage, card])).not.toContain(STANCE_NOTE);
-      cursor = (await scripted.call<{ nextCursor?: string }>('proposal_list', {})).nextCursor;
+  await test.step('the agent reads the board (lage_get) before proposing', async () => {
+    const lage = await scripted.call<{ lage: { cards: { id: string }[] } }>('lage_get', {
+      lageId: HORMUZ.lageId,
     });
+    expect(lage.lage.cards.map((c) => c.id)).toContain(HORMUZ.wireReportId);
+    const card = await scripted.call('card_get', { cardId: HORMUZ.navyCardId });
+    expect(JSON.stringify([lage, card])).not.toContain(STANCE_NOTE);
+    cursor = (await scripted.call<{ nextCursor?: string }>('proposal_list', {})).nextCursor;
+  });
 
-    await test.step('the agent proposes a card; nothing counts before the human accepts', async () => {
-      proposal = await scripted.call<Proposal>('proposal_create', {
-        kind: 'create_card',
-        payload: {
-          card: {
-            format: 2,
-            type: 'claim',
-            title: AGENT_CARD_TITLE,
-            layer: 'said',
-            originSystem: 'Synthetic insurer bulletin (e2e)',
-            body: 'An invented insurer bulletin repeats that war-risk quotes rose within a day.',
-          },
-          lageId: HORMUZ.lageId,
-          x: 720,
-          y: 300,
+  await test.step('the agent proposes a card; nothing counts before the human accepts', async () => {
+    proposal = await scripted.call<Proposal>('proposal_create', {
+      kind: 'create_card',
+      payload: {
+        card: {
+          format: 2,
+          type: 'claim',
+          title: AGENT_CARD_TITLE,
+          layer: 'said',
+          originSystem: 'Synthetic insurer bulletin (e2e)',
+          body: 'An invented insurer bulletin repeats that war-risk quotes rose within a day.',
         },
-        rationale: 'Synthetic: a second source for the insurance experience card.',
-      });
-      expect(proposal.status).toBe('pending');
-      expect(proposal.author).toBe(`agent:${env.agents.local.name}`);
-      const disk = await readFile(lageFile, 'utf8');
-      expect(disk).not.toContain(AGENT_CARD_TITLE);
+        lageId: HORMUZ.lageId,
+        x: 720,
+        y: 300,
+      },
+      rationale: 'Synthetic: a second source for the insurance experience card.',
     });
-  }
+    expect(proposal.status).toBe('pending');
+    expect(proposal.author).toBe(`agent:${env.agents.local.name}`);
+    const disk = await readFile(lageFile, 'utf8');
+    expect(disk).not.toContain(AGENT_CARD_TITLE);
+  });
 
   await test.step('the proposal shows in the board panel with "What will be applied"', async () => {
     // The panel polls every 2 seconds; no reload and no action of the user.
@@ -313,6 +311,18 @@ test('hormuz walking skeleton', async ({ page }) => {
     expect(created[0]).toContain(`author: agent:${env.agents.local.name}`);
     // private by default: no release, no visibility, no training opt-in
     expect(created[0]).not.toMatch(/^(training: true|release:|visibility:)/m);
+
+    // Stances never leave the device: no file anywhere under the store holds the note text.
+    const holders: string[] = [];
+    const walk = async (dir: string): Promise<void> => {
+      for (const entry of await readdir(dir, { withFileTypes: true })) {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) await walk(full);
+        else if ((await readFile(full, 'utf8')).includes(STANCE_NOTE)) holders.push(full);
+      }
+    };
+    await walk(env.storeDir);
+    expect(holders).toEqual([]);
 
     // The receipt log of the state directory holds the consults (ids and hashes, no task text).
     const log = await readFile(path.join(env.stateDir, 'receipt-log.jsonl'), 'utf8');

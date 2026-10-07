@@ -449,6 +449,30 @@ export class Level1Service {
     const id = await this.s.writes.run(() => this.s.storage.create(card as CardDraft, 'human'));
     const created = await this.s.storage.read(id);
     if (!created) throw new HttpError(500, 'the board analysis could not be read back');
+    // Trust what the store actually wrote, not what was asked for: the card read back by the id the
+    // store returned must be at least as restrictive as computed (ADR-0045).
+    const rank = (c: string | undefined): number => {
+      const i = CLASS_ORDER.findIndex((x) => x === c);
+      return i < 0 ? CLASS_ORDER.length : i;
+    };
+    let weaker = created.visibility !== 'private' || rank(created.class) > rank(cls);
+    for (const t of MODEL_TARGETS)
+      if (!targets.includes(t) && (await this.s.gate.clears(created, t))) weaker = true;
+    if (weaker) {
+      // Retire the card so the weaker copy never stays live; no ids in the details.
+      try {
+        await this.s.writes.run(() => this.s.storage.archive(id));
+      } catch {
+        throw new HttpError(
+          500,
+          'the board analysis was stored with a weaker clearance and could not be retired',
+        );
+      }
+      throw new HttpError(
+        500,
+        'the board analysis was stored with a weaker clearance and was retired',
+      );
+    }
     return created;
   }
 }

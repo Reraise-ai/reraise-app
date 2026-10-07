@@ -103,16 +103,13 @@ describe('the local rules engine on the Hormuz example', () => {
     ]);
   });
 
-  it('matches the committed fixture (ignoring the time)', async () => {
-    const request = await hormuzRequest();
-    const timeless = (x: Record<string, unknown>) =>
-      Object.fromEntries(Object.entries(x).filter(([k]) => k !== 'predictedAt'));
-    const made = timeless({ ...(await engine.predict(request)) });
+  it('matches the committed fixture exactly (fixed predictedAt)', async () => {
+    const made = await engine.predict(await hormuzRequest());
     const { data } = JSON.parse(await readFile(FIXTURE, 'utf8')) as {
       data: Record<string, unknown>;
     };
-    expect(timeless(data)).toEqual(made);
-    expect(data.predictedAt).toBe('2026-09-16T10:12:00Z');
+    expect(data).toEqual({ ...made });
+    expect(data.predictedAt).toBe('2026-09-16T10:12:00.000Z');
   });
 
   it.skipIf(!process.env.WB_REGENERATE_FIXTURE)('regenerates the fixture', async () => {

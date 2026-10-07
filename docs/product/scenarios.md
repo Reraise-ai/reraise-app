@@ -25,9 +25,9 @@ the Hormuz path from "open a Lage" to "context package and blocked private card"
 Today's date in the example: 5 October 2026. The user has a world "Geopolitics" with three
 premises and the stance they hold on each (stances are private):
 
-- P1 "Geopolitics beats markets" (believed, weight 0.7)
-- P2 "States act on interests, not rhetoric" (believed, weight 0.8)
-- P3 "Oil price shocks hit my portfolio within weeks" (believed, weight 0.55)
+- P1 "Geopolitics beats markets" (believed, weight 3 of 3)
+- P2 "States act on interests, not rhetoric" (believed, weight 3 of 3)
+- P3 "Oil price shocks hit my portfolio within weeks" (believed, weight 2 of 3)
 
 The user's portfolio in the example is also invented: 60 % broad index fund, 10 % energy
 shares, 8 % gold, 22 % cash.
@@ -85,7 +85,7 @@ Edges are drawn: an alliance, a conflict, and two `depends_on` edges.
 12 September "no interest in closing the strait" (layer: said, original text kept). On 20 September a naval
 exercise with mine-laying practice took place, evidenced by an invented institute's
 satellite analysis (layer: evidenced, page 3). The user draws a `refutes` edge between them,
-marked with a lightning symbol. They set a stance on the statement: rejected, weight 0.6,
+marked with a lightning symbol. They set a stance on the statement: rejected, weight 2 of 3,
 note "the exercise speaks against it, but an exercise is also deterrence". The stance is
 private.
 
@@ -183,7 +183,7 @@ with their provenance, not ingested:
 | "stairwell is damp" (voice note) | experience-type observation by me | own observation without evidence; with a photo it would be evidenced |
 
 The "8 %" statement is marked as a forecast (author: the agent, resolution 30 November 2028)
-and the user sets a stance: rejected, weight 0.7, note "agent has a commission interest".
+and the user sets a stance: rejected, weight 3 of 3, note "agent has a commission interest".
 Provenance shows the facade statement as a chain acquaintance → neighbour: **1 origin**,
 unverifiable.
 

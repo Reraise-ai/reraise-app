@@ -25,5 +25,7 @@ temporary directory for inspection.
 - `tests/walking-skeleton.spec.ts`: the scenario "hormuz walking skeleton".
 - `tests/a11y.spec.ts`: axe-core on the main screens (no serious or critical violation).
 
-The tests use the `data-testid` contract in `apps/board/README.md`. All specs share one service,
-so they run in one worker; the walking skeleton changes the temporary store on purpose.
+The tests use the `data-testid` contract in `apps/board/README.md`. Every spec file starts its
+own stack (own temporary store, state directory, service and board ports), so files do not see
+each other's changes; the walking skeleton changes its temporary store on purpose. Playwright
+runs with one worker (see `playwright.config.ts`), so the stacks are started one after another.

@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright The Worldbuilder contributors
 //
-// The stack of the M1 e2e, started once per spec file (so no file sees what another changed): a temporary copy of the synthetic Hormuz store, a temporary state
-// directory with gate rules, two registered test agents, the built `worldbuilder serve` on a free
-// loopback port and the built board served by `vite preview` next to it. Nothing here touches
-// the repository or a real user state directory.
+// The stack of the M1 e2e, started once per spec file (so no file sees what another changed):
+// a temporary copy of the synthetic Hormuz store, a temporary state directory with gate rules,
+// two registered test agents, the built `worldbuilder serve` on a free loopback port and the
+// built board served by `vite preview` next to it. Nothing here touches the repository or a real
+// user state directory.
 
 import { spawn, type ChildProcess } from 'node:child_process';
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';

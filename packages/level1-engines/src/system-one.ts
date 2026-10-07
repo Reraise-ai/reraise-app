@@ -55,7 +55,11 @@ export interface DecidePlayer {
   readonly moveOptions: readonly string[];
 }
 
-/** What a preset turns into a wire body: everything comes from the release. */
+/**
+ * What a preset turns into a wire body. Only gate-cleared cards are sent: `state` and `cardIds`
+ * come from the disclosure release, and the question, options and output schema from the
+ * confirmed envelope. Nothing else from the board reaches a preset.
+ */
 export interface DecideInput {
   readonly question: string;
   /** The flattened options of the confirmed envelope (`<playerCardId>: <move>`). */

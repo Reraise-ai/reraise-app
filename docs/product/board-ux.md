@@ -92,7 +92,7 @@ Status: planned (M1).
 **Believed is not a layer.** It is a *stance*: the user's own position on a card, stored per
 user per card as `position` (believed, rejected, undecided), `weight`, `note`, `updatedAt`,
 with history kept ([ADR-0008](../adr/0008-believed-as-private-stance.md)). A stance appears as a strip under the card in the user's own accent
-colour. A said card can at once be "said by X" and "believed by me at weight 0.7", and both are
+colour. A said card can at once be "said by X" and "believed by me at weight 3 of 3", and both are
 visible. An evidenced card can carry a stance in the same way. A card with no stance has no strip; the strip is never filled
 with a default. Stances are private and never leave the device. They live in local files, never in card files, and the disclosure gate allows stance data for the `screen` target only, with no rule able to widen this ([ADR-0012](../adr/0012-disclosure-gate.md)). A legacy "believed" card
 from another system is read as a said card authored by the user plus a believed stance.
