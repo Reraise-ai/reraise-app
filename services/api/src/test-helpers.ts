@@ -43,6 +43,8 @@ export interface Fixture {
     readonly stanceRule: string;
   };
   readonly tokens: Readonly<Record<string, string>>;
+  /** Base URL of the listening service (`listen: true` only); `inject` calls need `HOST_HEADER`. */
+  readonly url: string;
   /** Call as the human (session token) or as a registered agent (bearer token). */
   human(method: string, url: string, payload?: unknown): Promise<LightMyRequestResponse>;
   agent(
@@ -65,6 +67,8 @@ export interface FixtureOptions {
   readonly rules?: string | null;
   readonly agents?: Readonly<Record<string, AgentTarget>>;
   readonly bodyLimit?: number;
+  /** Listen on a free loopback port (real HTTP, for the MCP tests); `url` is set then. */
+  readonly listen?: boolean;
   readonly now?: () => Date;
 }
 
@@ -162,10 +166,11 @@ export async function makeFixture(options: FixtureOptions = {}): Promise<Fixture
   const service = await createService({
     storage: adapter,
     stateDir,
-    port: PORT,
+    port: options.listen ? 0 : PORT,
     ...(options.bodyLimit !== undefined ? { bodyLimit: options.bodyLimit } : {}),
     ...(options.now ? { now: options.now } : {}),
   });
+  const bound = options.listen ? await service.listen() : undefined;
   const raw: Fixture['raw'] = (opts) =>
     service.app.inject({
       ...opts,
@@ -179,6 +184,7 @@ export async function makeFixture(options: FixtureOptions = {}): Promise<Fixture
     worldId,
     ids: { evPublic, evPrivate, evCopy, evLoose, lage, rule, stanceRule },
     tokens,
+    url: bound ? `http://127.0.0.1:${bound.port}` : '',
     human: (method, url, payload) =>
       raw({ method, url, payload, headers: { 'x-worldbuilder-session': service.sessionToken } }),
     agent: (name, method, url, payload) =>

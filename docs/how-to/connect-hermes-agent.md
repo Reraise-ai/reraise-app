@@ -5,11 +5,12 @@ MCP. Nothing in it is specific to Hermes: any agent that speaks MCP over Streama
 stdio connects the same way. The decisions behind it are in
 [ADR-0037](../adr/0037-hermes-agents-as-mcp-clients.md).
 
-::: warning Status
-The contracts are fixed (the MCP tools, the token rules, the registry format). The service,
-the `worldbuilder` command line and the `/mcp` endpoint are **available from M1**; steps that
-need them are marked. Until then this page is the specification the M1 end-to-end test agent
-follows.
+::: tip Status
+Available now: the service (`worldbuilder serve`), the agent registry (`worldbuilder agent`),
+the `/mcp` endpoint and the stdio bridge (`worldbuilder mcp --stdio`). Every step below is
+covered by an automated test that follows it with the official MCP client
+(`services/api/src/mcp.test.ts`, `services/api/src/mcp-bridge.test.ts`). Nothing here has run in
+CI yet.
 :::
 
 ## What you get
@@ -34,24 +35,23 @@ end up, not where the agent process runs.
 If one Hermes agent uses a local model and another a hosted one, register the first as
 `local_model` and the second as `cloud_model`. When in doubt, choose `cloud_model`.
 
-## 2. Register the agent (available from M1)
+## 2. Register the agent
 
-Start the Worldbuilder service, then register the agent under the name it should carry on the
-board. Its proposals will show `agent:<name>`.
-
-```sh
-worldbuilder agent add planner --target local_model
-```
-
-The command prints a token **once**. Store it in a file only you can read, and never put it on
-a command line or in a repository:
+Start the Worldbuilder service (`worldbuilder serve --store <your store>`, see the Quickstart in the
+repository README), then register the
+agent under the name it should carry on the board. Its proposals will show `agent:<name>`.
 
 ```sh
 umask 077
 mkdir -p "${XDG_CONFIG_HOME:-$HOME/.config}/worldbuilder"
-# paste the printed token into this file
-"${EDITOR:-vi}" "${XDG_CONFIG_HOME:-$HOME/.config}/worldbuilder/planner.token"
+worldbuilder agent add planner --target local_model \
+  --token-file "${XDG_CONFIG_HOME:-$HOME/.config}/worldbuilder/planner.token"
 ```
+
+With `--token-file` the token goes straight into a file only you can read and is not printed.
+Without it the command prints the token **once**; then paste it into such a file yourself. Never
+put a token on a command line or in a repository. If the service runs with a state directory of
+its own (`--state`), pass the same `--state` to `agent add`.
 
 The service keeps only a hash of the token, in `agents.yaml` in its state directory
 ([ADR-0030](../adr/0030-local-state-on-the-device.md)). `worldbuilder agent list` shows the
@@ -83,7 +83,10 @@ start script) rather than writing the token into the configuration file:
 ```
 
 The key names (`type`, `url`, `headers`) differ slightly between clients; the essentials are
-the URL and the `Authorization: Bearer <token>` header.
+the URL and the `Authorization: Bearer <token>` header. The service accepts `Host` and `Origin`
+values of its own address only: a client must talk to `127.0.0.1` (or the host you started the
+service with), and a browser page cannot call `/mcp` unless you allowed its origin with
+`--allow-origin`.
 
 ### stdio (through the bridge)
 
@@ -105,22 +108,30 @@ named in `WORLDBUILDER_AGENT_TOKEN_FILE`:
 }
 ```
 
-The bridge never opens your stores and fails with a clear error if the service is not
-running.
+The bridge never opens your stores, never writes a file and fails with a clear error if the
+service is not running. It talks to `http://127.0.0.1:4310` unless you set `WORLDBUILDER_URL`
+(or pass `--url`) to where `worldbuilder serve` listens. The token is never a command-line
+argument: the bridge refuses `--token`. Plain `http://` works for this machine only; for a
+service on another host the URL must be `https://`. If the service forgot the session (idle for
+30 minutes, restarted), the bridge opens a new one by itself and repeats the call; if that fails
+it prints "session expired" and exits non-zero, so the host can restart it.
 
-## 4. Check the connection (available from M1)
+## 4. Check the connection
 
-Ask the agent to call `world_list` (no arguments). It returns the worlds of your store. If it
-fails:
+Ask the agent to call `world_list` (no arguments). It returns the worlds of your store, as far
+as your gate rules let this agent's target class see them; a fresh installation allows cards on
+your own screen only, so the list is empty until you add an `allow` rule for `local_model` or
+`cloud_model` in `gate-rules.yaml` of the state directory
+([ADR-0031](../adr/0031-gate-rules-and-confirmation-binding.md)). If it fails:
 
 | Symptom | Cause |
 | --- | --- |
 | 401 or "unauthorized" | token missing, mistyped or revoked; register again |
-| request rejected for its host or origin | the client is not talking to `127.0.0.1` or sends a browser origin ([ADR-0029](../adr/0029-process-topology.md)) |
+| 403 with "Host header is not allowed" or "Origin header is not allowed" | the client is not talking to the address the service listens on, or it sends a browser origin; see the note under the HTTP configuration |
 | cards listed only by id and reason | the gate denied them for this agent's target class; adjust your gate rules if you want to allow them ([ADR-0031](../adr/0031-gate-rules-and-confirmation-binding.md)) |
 | `confirmationRequired` with a `transferId` | the agent is registered as `cloud_model`; confirm the transfer on the board, then let the agent call again with the `transferId` |
 
-## 5. Make the first proposal (available from M1)
+## 5. Make the first proposal
 
 Let the agent read the board and comment on it. Tool arguments, as JSON:
 
@@ -144,6 +155,25 @@ for `lage_get`, then for `proposal_create`:
 The proposal appears on your board within a few seconds. Accept or reject it there; only you
 can.
 
+## The tools
+
+The agent sees thirteen tools, nothing else is exposed
+([ADR-0016](../adr/0016-mcp-first-and-openapi-contracts.md),
+[ADR-0039](../adr/0039-knowledge-loop-receipts.md)).
+
+| Tool | Writes? | What it does |
+| --- | --- | --- |
+| `world_list`, `lage_get`, `cards_search`, `card_get` | no | see worlds and boards, read cards the gate clears |
+| `context_package_get` | no | gate-cleared cards with provenance, pending proposals by id and kind only |
+| `rules_evaluate` | no | which of your rules fire, without a percentage |
+| `proposal_list` | no | proposals and their status, with `changedSince` polling |
+| `knowledge_consult` | receipt only | the context package for a task plus a Knowledge Receipt; call it first in every task |
+| `memory_route` | no | classify a memory item: card proposal or ephemeral ops fact |
+| `proposal_create`, `knowledge_write_back`, `decision_record`, `decision_outcome` | proposals | the only write paths; each makes a pending proposal for you to accept |
+
+A failed call is a tool error whose text is the problem details (status, title, detail) and
+never card content.
+
 ## 6. Follow your decisions
 
 The agent learns what happened to its proposals by polling `proposal_list` with the cursor of
@@ -164,6 +194,11 @@ the same connection; polling with `changedSince` keeps working for catch-up.
 - register, change or remove agent connections;
 - release a card for sharing, or share anything with other people;
 - receive card content as a `cloud_model` agent without your confirmation of that transfer.
+
+For a `cloud_model` agent the first `context_package_get` (or `knowledge_consult`) answers
+`confirmationRequired` with a `transferId` and no content. You confirm that exact transfer on
+the board; the agent then calls again with the `transferId` and receives exactly the confirmed
+cards, once.
 
 ## Hermes' own knowledge
 

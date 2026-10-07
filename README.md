@@ -56,11 +56,37 @@ See [LICENSING.md](LICENSING.md) for which licence applies where.
 
 ## Quickstart
 
-Available from M1. Until then, to work on the foundations:
+Run the service on the synthetic Hormuz world and connect an agent over MCP. The board UI is
+available too; the end-to-end browser test is still to come, and nothing here has run in CI yet.
 
 ```sh
 corepack enable
 pnpm install
+pnpm build
+cp -r examples/hormuz /tmp/hormuz-store            # work on a copy: the service writes to it
+
+# the service: Board API and MCP at http://127.0.0.1:4310 (prints a session token once)
+node services/api/dist/cli.js serve --store /tmp/hormuz-store
+
+# in a second terminal: register an agent (the token goes to an owner-only file)
+umask 077
+node services/api/dist/cli.js agent add planner --target local_model --token-file ./planner.token
+
+# Streamable HTTP: any MCP client with  url http://127.0.0.1:4310/mcp
+#                  and header           Authorization: Bearer <contents of planner.token>
+# stdio-only clients start the bridge, which forwards to the running service:
+WORLDBUILDER_AGENT_TOKEN_FILE=./planner.token node services/api/dist/cli.js mcp --stdio
+
+pnpm --filter @worldbuilder/board dev              # the board; paste the session token
+```
+
+A fresh installation lets the gate show cards on your own screen only, so an agent sees no
+cards until you add an `allow` rule for its target class (see
+[Connect a Hermes agent](docs/how-to/connect-hermes-agent.md), which also lists the tools).
+
+To work on the foundations:
+
+```sh
 pnpm lint && pnpm typecheck && pnpm test && pnpm build
 pnpm docs:dev      # preview the docs site locally
 pnpm docs:build    # build it (dead links fail the build)

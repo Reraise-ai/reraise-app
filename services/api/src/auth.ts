@@ -20,7 +20,16 @@ export type Principal =
       readonly name: string;
       readonly author: AgentAuthor;
       readonly target: AgentTarget;
+      /** `sha256:<hex>` of the bearer token: with the name and target it identifies a connection. */
+      readonly tokenHash?: string;
     };
+
+/**
+ * What a registered connection is for session purposes: it changes when the connection is
+ * revoked, gets another token or another target class.
+ */
+export const connectionKey = (name: string, target: AgentTarget, tokenHash: string | undefined) =>
+  `agent:${name}:${target}:${tokenHash ?? 'none'}`;
 
 /** The disclosure target of a caller, taken from its credential and never from a request. */
 export const targetOf = (p: Principal): 'screen' | AgentTarget =>

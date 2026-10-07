@@ -5,8 +5,9 @@
 //   worldbuilder serve --store <path> [--state <path>] [--port <n>] [--host <h>]
 //                      [--allow-host <h>]... [--allow-origin <o>]...
 //   worldbuilder agent add <name> --target local_model|cloud_model [--state <path>]
-//   worldbuilder mcp --stdio            (next slice: the stateless stdio bridge)
+//   worldbuilder mcp --stdio [--url <service URL>]   (the stateless stdio bridge, ADR-0029)
 
+import { bridgeMain, type BridgeMainIo } from '@worldbuilder/mcp-server';
 import { assertStateDirSafe, resolveStateDir } from '@worldbuilder/local-state';
 import { isIP } from 'node:net';
 import path from 'node:path';
@@ -26,7 +27,9 @@ const USAGE = `Usage:
   worldbuilder agent list [--state <path>] [--store <path>]
   worldbuilder agent remove <name> [--state <path>] [--store <path>]
   (the agent name may also be given as --name <name>)
-  worldbuilder mcp --stdio
+  worldbuilder mcp --stdio [--url <service URL>]
+                         (token from WORLDBUILDER_AGENT_TOKEN_FILE or WORLDBUILDER_AGENT_TOKEN;
+                          service URL from --url or WORLDBUILDER_URL, default http://127.0.0.1:4310)
 `;
 
 class UsageError extends Error {}
@@ -40,6 +43,10 @@ export interface MainDeps {
   readonly onServe?: (service: Service) => void;
   /** Replaces the request logger of `serve` (tests turn it off). */
   readonly logger?: boolean | object;
+  /** The environment the stdio bridge reads its token and service URL from. */
+  readonly env?: Readonly<Record<string, string | undefined>>;
+  /** Streams and fetch of the stdio bridge (tests). */
+  readonly bridge?: Pick<BridgeMainIo, 'stdin' | 'stdout' | 'fetch' | 'readFile'>;
 }
 
 const isLoopback = (host: string) => ['127.0.0.1', '::1', 'localhost'].includes(host);
@@ -223,7 +230,11 @@ export async function main(argv: string[], deps: MainDeps = {}): Promise<number>
         await agent(rest, deps);
         return 0;
       case 'mcp':
-        throw new Error('"mcp --stdio" is not part of this build; it arrives with the MCP slice');
+        // stdout belongs to the protocol: every message of the bridge itself goes to stderr.
+        return await bridgeMain(rest, deps.env ?? process.env, {
+          ...deps.bridge,
+          ...(deps.stderr ? { stderr: deps.stderr } : {}),
+        });
       default:
         throw new UsageError('expected one of: serve, agent, mcp');
     }
