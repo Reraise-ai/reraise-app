@@ -8,6 +8,7 @@
 
 import type {
   Card,
+  DisclosurePreviewEnvelope,
   DisclosureRelease,
   Level1Engine,
   Level1Prediction,
@@ -26,6 +27,15 @@ export interface Level1EngineHarness {
    * gate-cleared cards on the board (the player cards among them) plus any rule cards.
    */
   readonly request: Level1PredictionRequest;
+  /**
+   * Builds the release of a confirmed transfer of `cards` for `request`, as the gate would return
+   * it for the envelope this engine sends (see `releaseOfEnvelope`). A cloud engine that binds
+   * the confirmation to its envelope must supply it; the default is `releaseOf(cards)`.
+   */
+  readonly releaseFor?: (
+    request: Level1PredictionRequest,
+    cards: readonly Card[],
+  ) => DisclosureRelease;
 }
 
 export type Level1EngineFactory = () => Promise<Level1EngineHarness> | Level1EngineHarness;
@@ -71,23 +81,28 @@ export function level1PredictionProblems(
   return problems;
 }
 
-/** The release of a confirmed transfer of exactly `cards`, as the gate would return it. */
-export function releaseOf(cards: readonly Card[]): DisclosureRelease {
-  const objects = structuredClone([...cards]);
+/** The release of a confirmed transfer of `envelope`, as the gate would return it. */
+export function releaseOfEnvelope(envelope: DisclosurePreviewEnvelope): DisclosureRelease {
+  const objects = structuredClone([...envelope.objects]);
   return {
     confirmation: {
       transferId: '01M1HA4MC0T8585XX5H0E6NVRP',
-      payloadHash: computePayloadHash({
-        target: 'cloud_model',
-        connectorId: 'conformance',
-        request: {},
-        objects,
-      }),
+      payloadHash: computePayloadHash(envelope),
       cardIds: objects.map((c) => c.id),
       confirmedAt: '2026-10-06T10:00:00Z',
     },
     objects,
   };
+}
+
+/** The release of a confirmed transfer of exactly `cards`, as the gate would return it. */
+export function releaseOf(cards: readonly Card[]): DisclosureRelease {
+  return releaseOfEnvelope({
+    target: 'cloud_model',
+    connectorId: 'conformance',
+    request: {},
+    objects: structuredClone([...cards]),
+  });
 }
 
 const failed = async (p: Promise<unknown>) =>
@@ -101,10 +116,15 @@ const timeless = ({ predictedAt: _at, ...rest }: Level1Prediction) => rest;
 
 export function describeLevel1EngineConformance(name: string, factory: Level1EngineFactory): void {
   describe(`Level1Engine conformance: ${name}`, () => {
+    const releaseFor = (
+      h: Level1EngineHarness,
+      request: Level1PredictionRequest,
+      cards: readonly Card[],
+    ) => (h.releaseFor ? h.releaseFor(request, cards) : releaseOf(cards));
     const run = async (h: Level1EngineHarness, request = h.request) =>
       h.engine.predict(
         request,
-        h.engine.target === 'cloud_model' ? releaseOf(request.cards) : undefined,
+        h.engine.target === 'cloud_model' ? releaseFor(h, request, request.cards) : undefined,
       );
 
     it('declares an engine id and a model target class', async () => {
@@ -146,24 +166,22 @@ export function describeLevel1EngineConformance(name: string, factory: Level1Eng
       const h = await factory();
       if (h.engine.target !== 'cloud_model') return;
       const { request, engine } = h;
+      const rel = (cards: readonly Card[]) => releaseFor(h, request, cards);
       expect(await failed(engine.predict(request)), 'without a release').toBe(true);
       const [first, ...rest] = request.cards;
       if (rest.length > 0) {
         expect(
-          await failed(engine.predict(request, releaseOf(rest))),
+          await failed(engine.predict(request, rel(rest))),
           'a request card outside the release',
         ).toBe(true);
       }
       const edited = { ...first!, title: `${first!.title} (edited)` };
-      const editedRelease = releaseOf([
-        { ...edited, contentHash: computeContentHash(edited) },
-        ...rest,
-      ]);
+      const editedRelease = rel([{ ...edited, contentHash: computeContentHash(edited) }, ...rest]);
       expect(
         await failed(engine.predict(request, editedRelease)),
         'a card edited after confirmation',
       ).toBe(true);
-      const prediction = await engine.predict(request, releaseOf(request.cards));
+      const prediction = await engine.predict(request, rel(request.cards));
       expect(level1PredictionProblems(engine, request, prediction)).toEqual([]);
     });
   });

@@ -15,6 +15,7 @@ export {
   describeLevel1EngineConformance,
   level1PredictionProblems,
   releaseOf,
+  releaseOfEnvelope,
 } from './level1-engine.js';
 export type { Level1EngineFactory, Level1EngineHarness } from './level1-engine.js';
 export { createFixedLevel1Engine, releaseCoversRequest } from './level1-fake.js';

@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Level-1 engines (ADR-0035) in the new package `@worldbuilder/level1-engines`: the deterministic
+  local rules engine (`createLocalRulesEngine`, with a per-option basis), the what-if re-run and
+  stale-prediction helpers, the level-2 escalation draft, the cloud System One HTTP adapter
+  template with a Jev preset (release-only, injected `fetch`; the real Jev wire format is
+  unconfirmed) and `formatEstimate` for the board. Service wiring and the board panel follow.
 - Knowledge loop (ADR-0039 to ADR-0043): Knowledge and Write-back Receipts, the hash-chained
   receipt log and its fail-closed verifier, usage metrics per agent and week with the owner's
   targets, deterministic memory routing and atlas pages with card links and staleness, in the
