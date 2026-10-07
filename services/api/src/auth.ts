@@ -3,7 +3,6 @@
 //
 // Credentials (ADR-0026, ADR-0029): the human session token and the registered agent
 // connections. Tokens are compared by SHA-256, so the lookup does not leak how much of a guess
-// connections. Tokens are compared by SHA-256, so the lookup does not leak how much of a guess
 // was right. The registry of agent connections is in agent-registry.ts.
 
 import type { AgentAuthor } from '@worldbuilder/core';

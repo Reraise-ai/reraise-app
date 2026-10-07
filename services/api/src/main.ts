@@ -11,7 +11,7 @@ import { assertStateDirSafe, resolveStateDir } from '@worldbuilder/local-state';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
 import { addAgent, listAgents, removeAgent } from './agent-registry.js';
-import type { AgentTarget } from './auth.js';
+import { writePrivateFile, type AgentTarget } from './auth.js';
 import { DEFAULT_PORT } from './app.js';
 import type { StorageAdapter } from '@worldbuilder/core';
 import { createService, type Service } from './service.js';
@@ -21,6 +21,7 @@ const USAGE = `Usage:
   worldbuilder serve --store <path> [--state <path>] [--port <n>] [--host <h>]
                      [--allow-host <host>]... [--allow-origin <origin>]...
   worldbuilder agent add <name> --target local_model|cloud_model [--state <path>] [--store <path>]
+                         [--token-file <path>]
   worldbuilder agent list [--state <path>] [--store <path>]
   worldbuilder agent remove <name> [--state <path>] [--store <path>]
   (the agent name may also be given as --name <name>)
@@ -144,6 +145,7 @@ async function agent(argv: string[], deps: MainDeps): Promise<void> {
       target: { type: 'string' },
       state: { type: 'string' },
       store: { type: 'string', multiple: true },
+      'token-file': { type: 'string' },
     },
     allowPositionals: true,
     strict: true,
@@ -182,6 +184,13 @@ async function agent(argv: string[], deps: MainDeps): Promise<void> {
   }
   const { token } = await addAgent(stateDir, { name, target: values.target as AgentTarget });
   out.write(`Registered agent:${name} as ${values.target}.\n`);
+  if (values['token-file'] !== undefined) {
+    // For scripts and agent configurations: the token goes to an owner-only file (the agent
+    // reads it from WORLDBUILDER_AGENT_TOKEN_FILE, ADR-0037) and is never printed.
+    await writePrivateFile(absolute(values['token-file']), `${token}\n`);
+    out.write(`Token written to ${absolute(values['token-file'])} (owner-only). Not shown.\n`);
+    return;
+  }
   out.write(`Token (shown once; only its hash is stored):\n${token}\n`);
 }
 

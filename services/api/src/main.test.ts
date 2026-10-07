@@ -149,6 +149,34 @@ describe('worldbuilder agent: state directory and names', () => {
       }),
     ).toBe(2);
   });
+  it('--token-file writes the token to an owner-only file and prints nothing secret', async () => {
+    const state = path.join(dir, 'state');
+    const file = path.join(dir, 'secrets', 'agent.token');
+    const out = sink();
+    expect(
+      await main(
+        [
+          'agent',
+          'add',
+          'filed',
+          '--target',
+          'cloud_model',
+          '--state',
+          state,
+          '--token-file',
+          file,
+        ],
+        { stdout: out },
+      ),
+    ).toBe(0);
+    const token = (await readFile(file, 'utf8')).trim();
+    expect(token.length).toBeGreaterThanOrEqual(43);
+    expect(out.text()).not.toContain(token);
+    if (process.platform !== 'win32') expect((await stat(file)).mode & 0o777).toBe(0o600);
+    const registry = new AgentRegistry(path.join(state, 'agents.yaml'));
+    await registry.loadStrict();
+    await expect(registry.lookup(token)).resolves.toMatchObject({ name: 'filed' });
+  });
   it('refuses a state directory inside a Git working tree or a store, like serve', async () => {
     const repo = path.join(dir, 'repo');
     await mkdir(path.join(repo, '.git'), { recursive: true });
