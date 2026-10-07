@@ -56,7 +56,11 @@ export function ProposalsPanel({ proposals, titles, currentLageId, onDecide, pol
       </div>
       <div data-testid={`proposal-summary-${p.id}`}>{summarizeProposal(p, titles)}</div>
       {p.rationale && <div className="wb-muted">{p.rationale}</div>}
-      <details className="wb-applied" data-testid={`proposal-applied-${p.id}`}>
+      <details
+        className="wb-applied"
+        open={p.status === 'pending'}
+        data-testid={`proposal-applied-${p.id}`}
+      >
         <summary>What will be applied</summary>
         <AppliedFields proposal={p} titles={titles} />
       </details>
