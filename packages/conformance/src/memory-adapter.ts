@@ -25,7 +25,13 @@ import type {
   World,
   WriteGuard,
 } from '@worldbuilder/core';
-import { buildUri, computeContentHash, deriveCardId, encodeUlid } from '@worldbuilder/core';
+import {
+  buildUri,
+  computeContentHash,
+  deriveCardId,
+  encodeUlid,
+  StorageError,
+} from '@worldbuilder/core';
 import type { StorageAdapterHarness } from './storage.js';
 import { schemaValidator } from './validate.js';
 
@@ -227,7 +233,10 @@ export class MemoryStorageAdapter implements StorageAdapter {
 
   async create(draft: CardDraft, author: KnownAuthor): Promise<CardId> {
     if (!validateDraft(draft)) {
-      throw new Error(`invalid card draft: ${JSON.stringify(validateDraft.errors)}`);
+      throw new StorageError(
+        'invalid',
+        `invalid card draft: ${JSON.stringify(validateDraft.errors)}`,
+      );
     }
     // A draft's contentHash is not stored: the hash is recomputed on every read.
     const content: Record<string, unknown> = { ...draft, author };
@@ -238,20 +247,30 @@ export class MemoryStorageAdapter implements StorageAdapter {
   async patch(id: CardId, patch: CardPatch, guard: WriteGuard = {}): Promise<void> {
     const externalId = this.store.externalIdOf(id);
     const stored = externalId === undefined ? undefined : this.store.cards.get(externalId);
-    if (!stored || externalId === undefined) throw new Error(`unknown card ${id}`);
+    if (!stored || externalId === undefined)
+      throw new StorageError('not_found', `unknown card ${id}`);
     const keys = Object.keys(patch);
     this.assertKnown(keys);
     const blocked = keys.filter((k) => NOT_PATCHABLE.has(k));
-    if (blocked.length > 0) throw new Error(`cannot patch ${blocked.join(', ')}`);
+    if (blocked.length > 0) throw new StorageError('invalid', `cannot patch ${blocked.join(', ')}`);
 
     const current = this.toCard(externalId, stored);
+    if (guard.contentHash !== undefined && guard.contentHash !== current.contentHash) {
+      throw new StorageError(
+        'conflict',
+        `content changed: stored ${current.contentHash}, expected ${guard.contentHash}`,
+      );
+    }
     if (patch.lage) {
       const version = current.lage?.version;
       if (guard.lageVersion !== undefined && guard.lageVersion !== version) {
-        throw new Error(`version conflict: stored ${version}, expected ${guard.lageVersion}`);
+        throw new StorageError(
+          'conflict',
+          `version conflict: stored ${version}, expected ${guard.lageVersion}`,
+        );
       }
       if (version !== undefined && patch.lage.version !== version + 1) {
-        throw new Error('a new Lage version must be the stored version plus one');
+        throw new StorageError('invalid', 'a new Lage version must be the stored version plus one');
       }
       this.pushVersion(externalId, current);
     }
@@ -272,7 +291,8 @@ export class MemoryStorageAdapter implements StorageAdapter {
   async archive(id: CardId): Promise<void> {
     const externalId = this.store.externalIdOf(id);
     const stored = externalId === undefined ? undefined : this.store.cards.get(externalId);
-    if (!stored || externalId === undefined) throw new Error(`unknown card ${id}`);
+    if (!stored || externalId === undefined)
+      throw new StorageError('not_found', `unknown card ${id}`);
     this.pushVersion(externalId, this.toCard(externalId, stored));
     this.store.cards.delete(externalId);
   }
@@ -302,7 +322,8 @@ export class MemoryStorageAdapter implements StorageAdapter {
 
   private assertKnown(keys: readonly string[]): void {
     const unknown = keys.filter((k) => !CONTENT_FIELDS.has(k));
-    if (unknown.length > 0) throw new Error(`not a canonical card field: ${unknown.join(', ')}`);
+    if (unknown.length > 0)
+      throw new StorageError('invalid', `not a canonical card field: ${unknown.join(', ')}`);
   }
 
   private pushVersion(externalId: string, card: Card): void {
@@ -330,7 +351,7 @@ export function memoryHarness(ids: StorageCapabilities['ids'] = 'native'): Stora
     raw: async (id) => {
       const externalId = store.externalIdOf(id);
       const stored = externalId === undefined ? undefined : store.cards.get(externalId);
-      if (!stored) throw new Error(`unknown card ${id}`);
+      if (!stored) throw new StorageError('not_found', `unknown card ${id}`);
       return stored.lines.join('\n');
     },
     seed: {

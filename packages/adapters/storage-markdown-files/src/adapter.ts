@@ -462,7 +462,7 @@ export class MarkdownFilesAdapter implements StorageAdapter {
     try {
       card = parseCardText(text, this.ctx).card;
     } catch (err) {
-      if (err instanceof MarkdownStoreError && err.code === 'parse') {
+      if (err instanceof MarkdownStoreError && err.reason === 'parse') {
         throw new MarkdownStoreError('invalid_card', err.message);
       }
       throw err;
