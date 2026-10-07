@@ -153,13 +153,17 @@ export class McpSessions<Caller> {
   /** Tell every open session that the tool list may have changed (also a live test hook). */
   async notifyToolListChanged(): Promise<void> {
     await Promise.all(
-      [...this.sessions.values()].map((s) => s.server.server.sendToolListChanged().catch(() => undefined)),
+      [...this.sessions.values()].map((s) =>
+        s.server.server.sendToolListChanged().catch(() => undefined),
+      ),
     );
   }
 
   /** End every session of a caller, for example after its token was revoked. */
   async closeCaller(key: string): Promise<void> {
-    await Promise.all([...this.sessions.values()].filter((s) => s.key === key).map((s) => this.drop(s)));
+    await Promise.all(
+      [...this.sessions.values()].filter((s) => s.key === key).map((s) => this.drop(s)),
+    );
   }
 
   /** End every session (service shutdown). */

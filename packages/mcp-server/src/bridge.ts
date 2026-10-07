@@ -150,7 +150,11 @@ export async function runBridge(options: BridgeOptions): Promise<number> {
         Promise.allSettled([http.close(), stdio.close()]).then(() => resolve(code)),
       );
     };
-    // The host closed stdin: the session is over.
+    // The host closed stdin: the session is over. (The SDK's stdio transport does not report the
+    // end of its input itself.)
+    const input = options.stdin ?? process.stdin;
+    input.once('end', () => finish(0));
+    input.once('close', () => finish(0));
     stdio.onclose = () => finish(0);
     http.onclose = () => finish(0);
     stdio.onerror = (e) => stderr.write(`worldbuilder mcp: stdio error: ${e.message}\n`);
@@ -231,7 +235,9 @@ export async function bridgeMain(
       );
       return 2;
     } else {
-      stderr.write(`worldbuilder mcp: unknown argument ${a.startsWith('--') ? a.split('=')[0] : '(positional)'}\n`);
+      stderr.write(
+        `worldbuilder mcp: unknown argument ${a.startsWith('--') ? a.split('=')[0] : '(positional)'}\n`,
+      );
       return 2;
     }
   }

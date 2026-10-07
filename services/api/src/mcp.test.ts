@@ -31,7 +31,9 @@ afterAll(async () => {
 });
 
 const mcpUrl = () => new URL('/mcp', f.url);
-const bearer = (token: string) => ({ requestInit: { headers: { authorization: `Bearer ${token}` } } });
+const bearer = (token: string) => ({
+  requestInit: { headers: { authorization: `Bearer ${token}` } },
+});
 
 const open: Client[] = [];
 afterAll(async () => {
@@ -65,13 +67,19 @@ async function fails(client: Client, name: string, args: Record<string, unknown>
   const content = result.content as { type: string; text: string }[];
   expect(content).toHaveLength(1);
   expect(content[0]!.type).toBe('text');
-  return { text: content[0]!.text, problem: JSON.parse(content[0]!.text) as Record<string, unknown> };
+  return {
+    text: content[0]!.text,
+    problem: JSON.parse(content[0]!.text) as Record<string, unknown>,
+  };
 }
 
 const human = (method: string, path: string, body?: unknown) =>
   fetch(new URL(path, f.url), {
     method,
-    headers: { 'x-worldbuilder-session': f.service.sessionToken, 'content-type': 'application/json' },
+    headers: {
+      'x-worldbuilder-session': f.service.sessionToken,
+      'content-type': 'application/json',
+    },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
 
@@ -81,13 +89,19 @@ function rawMcp(
   body: string | undefined,
   method = 'POST',
   path = '/mcp',
-): Promise<{ status: number; body: string; headers: Record<string, string | string[] | undefined> }> {
+): Promise<{
+  status: number;
+  body: string;
+  headers: Record<string, string | string[] | undefined>;
+}> {
   const { port } = new URL(f.url);
   return new Promise((resolve, reject) => {
     const req = httpRequest({ host: '127.0.0.1', port, path, method, headers }, (res) => {
       let text = '';
       res.on('data', (c: Buffer) => (text += c.toString('utf8')));
-      res.on('end', () => resolve({ status: res.statusCode ?? 0, body: text, headers: res.headers }));
+      res.on('end', () =>
+        resolve({ status: res.statusCode ?? 0, body: text, headers: res.headers }),
+      );
     });
     req.on('error', reject);
     req.end(body);
@@ -104,7 +118,10 @@ const INIT = JSON.stringify({
     clientInfo: { name: 'raw', version: '0' },
   },
 });
-const MCP_HEADERS = { 'content-type': 'application/json', accept: 'application/json, text/event-stream' };
+const MCP_HEADERS = {
+  'content-type': 'application/json',
+  accept: 'application/json, text/event-stream',
+};
 
 describe('tool list', () => {
   it('lists exactly the agent tools of the contract, knowledge tools included', async () => {
@@ -129,7 +146,12 @@ describe('tool list', () => {
     const humanOnly = loadOperations().filter((o) => o.access === 'human');
     expect(humanOnly.length).toBeGreaterThan(8);
     for (const op of humanOnly) expect(names.has(op.id), op.id).toBe(false);
-    expect([...names].filter((n) => /stance|accept|reject|confirm|save|create$/.test(n) && !TOOLS.some((t) => t.name === n))).toEqual([]);
+    expect(
+      [...names].filter(
+        (n) =>
+          /stance|accept|reject|confirm|save|create$/.test(n) && !TOOLS.some((t) => t.name === n),
+      ),
+    ).toEqual([]);
   });
 
   it('describes each tool with self-contained schemas and honest annotations', async () => {
@@ -156,7 +178,9 @@ describe('tool list', () => {
     const client = await connect('scripted');
     for (const tool of (await client.listTools()).tools) {
       const props = Object.keys((tool.inputSchema.properties ?? {}) as object);
-      expect(props.filter((p) => ['target', 'author', 'agent', 'principal'].includes(p))).toEqual([]);
+      expect(props.filter((p) => ['target', 'author', 'agent', 'principal'].includes(p))).toEqual(
+        [],
+      );
     }
   });
 });
@@ -226,7 +250,11 @@ describe('the knowledge loop', () => {
     const consulted = await ok<{ package: ContextPackage; receipt: KnowledgeReceipt }>(
       client,
       'knowledge_consult',
-      { taskRef: 'task:mcp-1', task: 'Synthetic task: weigh the northern corridor', worldId: f.worldId },
+      {
+        taskRef: 'task:mcp-1',
+        task: 'Synthetic task: weigh the northern corridor',
+        worldId: f.worldId,
+      },
     );
     expect(consulted.receipt.receiptId).toMatch(/^[0-9A-Z]{26}$/);
     expect(consulted.receipt.hash).toMatch(/^sha256:[0-9a-f]{64}$/);
@@ -269,7 +297,11 @@ describe('the knowledge loop', () => {
 describe('proposals: the only write path', () => {
   it('proposal_create, then proposal_list with changedSince follows the human decision', async () => {
     const client = await connect('scripted');
-    const first = await ok<{ proposals: Proposal[]; nextCursor?: string }>(client, 'proposal_list', {});
+    const first = await ok<{ proposals: Proposal[]; nextCursor?: string }>(
+      client,
+      'proposal_list',
+      {},
+    );
     const cursor = first.nextCursor;
 
     const created = await ok<Proposal>(client, 'proposal_create', {
@@ -372,7 +404,10 @@ describe('what an agent cannot do', () => {
   it('cannot reach a human-only route with its token either (403)', async () => {
     const res = await fetch(new URL(`/proposals/${'0'.repeat(26)}/accept`, f.url), {
       method: 'POST',
-      headers: { authorization: `Bearer ${f.tokens['scripted']}`, 'content-type': 'application/json' },
+      headers: {
+        authorization: `Bearer ${f.tokens['scripted']}`,
+        'content-type': 'application/json',
+      },
       body: '{}',
     });
     expect(res.status).toBe(403);
@@ -412,19 +447,28 @@ describe('credentials, Host and Origin', () => {
     expect(host.status).toBe(403);
     expect(JSON.parse(host.body).type).toContain('host-not-allowed');
     // GET (the stream) and DELETE are checked the same way
-    expect((await rawMcp({ ...auth, origin: 'https://evil.example' }, undefined, 'GET')).status).toBe(403);
+    expect(
+      (await rawMcp({ ...auth, origin: 'https://evil.example' }, undefined, 'GET')).status,
+    ).toBe(403);
     expect((await rawMcp({ ...auth, host: 'evil.example' }, undefined, 'DELETE')).status).toBe(403);
   });
 
   it('answers 413 for a body over the limit', async () => {
     const auth = { authorization: `Bearer ${f.tokens['scripted']}` };
-    const big = JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'x', params: { pad: 'a'.repeat(1024 * 1024 + 10) } });
+    const big = JSON.stringify({
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'x',
+      params: { pad: 'a'.repeat(1024 * 1024 + 10) },
+    });
     const res = await rawMcp({ ...MCP_HEADERS, ...auth }, big);
     expect(res.status).toBe(413);
   });
 
   it('a revoked token stops working at once, also inside an open session', async () => {
-    const { token } = await (await import('./agent-registry.js')).addAgent(f.stateDir, {
+    const { token } = await (
+      await import('./agent-registry.js')
+    ).addAgent(f.stateDir, {
       name: 'short-lived',
       target: 'local_model',
     });
@@ -457,17 +501,22 @@ describe('sessions', () => {
     expect(gone.status).toBe(404);
   });
 
-  it("another agent cannot use a session; it looks like an unknown one", async () => {
+  it('another agent cannot use a session; it looks like an unknown one', async () => {
     const init = await rawMcp({ ...MCP_HEADERS, ...auth() }, INIT);
     const sid = String(init.headers['mcp-session-id']);
     const other = { authorization: `Bearer ${f.tokens['cloud-scripted']}` };
     const list = JSON.stringify({ jsonrpc: '2.0', id: 2, method: 'tools/list' });
     const stolen = await rawMcp({ ...MCP_HEADERS, ...other, 'mcp-session-id': sid }, list);
     expect(stolen.status).toBe(404);
-    const unknown = await rawMcp({ ...MCP_HEADERS, ...other, 'mcp-session-id': 'no-such-session' }, list);
+    const unknown = await rawMcp(
+      { ...MCP_HEADERS, ...other, 'mcp-session-id': 'no-such-session' },
+      list,
+    );
     expect(unknown.status).toBe(404);
     expect(stolen.body).toBe(unknown.body);
-    expect((await rawMcp({ ...other, 'mcp-session-id': sid }, undefined, 'DELETE')).status).toBe(404);
+    expect((await rawMcp({ ...other, 'mcp-session-id': sid }, undefined, 'DELETE')).status).toBe(
+      404,
+    );
   });
 
   it('reaches a client over the server-to-client stream (tool list changed)', async () => {
@@ -480,7 +529,6 @@ describe('sessions', () => {
     await f.service.app.mcp.notifyToolListChanged();
     await changed;
   });
-
 });
 
 describe('a cloud_model connection', () => {
@@ -506,7 +554,9 @@ describe('a cloud_model connection', () => {
     const early = await fails(client, 'context_package_get', { worldId: f.worldId, transferId });
     expect(early.problem['status']).toBe(403);
 
-    const transfer = (await (await human('GET', `/disclosure/transfers/${transferId}`)).json()) as DisclosureTransfer;
+    const transfer = (await (
+      await human('GET', `/disclosure/transfers/${transferId}`)
+    ).json()) as DisclosureTransfer;
     expect(transfer.requestedBy).toBe('mcp_connection');
     const confirm = await human('POST', `/disclosure/transfers/${transferId}/confirm`, {
       payloadHash: transfer.payloadHash,

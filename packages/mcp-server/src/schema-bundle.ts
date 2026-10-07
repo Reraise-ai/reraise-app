@@ -15,7 +15,8 @@ export type SchemaTable = Readonly<Record<string, Readonly<Record<string, unknow
 /** Keywords whose value is data, not a schema: a `$ref` inside is not a reference. */
 const DATA_KEYWORDS = new Set(['enum', 'const', 'default', 'examples']);
 
-const isObject = (v: unknown): v is Json => typeof v === 'object' && v !== null && !Array.isArray(v);
+const isObject = (v: unknown): v is Json =>
+  typeof v === 'object' && v !== null && !Array.isArray(v);
 
 interface Target {
   readonly id: string;
@@ -53,6 +54,10 @@ function nodeOf(table: SchemaTable, { id, pointer }: Target): unknown {
   if (node === undefined) throw new Error(`bad pointer ${pointer} in ${id}`);
   return node;
 }
+
+/** The schema without its own `$defs`: the parts that are reachable are pulled in by reference. */
+const withoutDefs = (node: Json): Json =>
+  Object.fromEntries(Object.entries(node).filter(([key]) => key !== '$defs'));
 
 /**
  * Bundle the schema named by `ref` (a schema `$id`, optionally with a `#/pointer`) into one
@@ -99,14 +104,11 @@ export function bundleSchema(table: SchemaTable, ref: string): Json {
 
   const base = nodeOf(table, root);
   if (!isObject(base)) throw new Error(`${ref} is not a schema object`);
-  const { $defs: ownDefs, ...rest } = base as Json;
-  void ownDefs; // reachable parts are pulled in by reference; the rest stays out
-  const bundled = rewrite(rest, root.id) as Json;
+  const bundled = rewrite(withoutDefs(base), root.id) as Json;
   while (queued.length > 0) {
     const target = queued.shift()!;
     const node = nodeOf(table, target);
-    const { $defs: _own, ...body } = (isObject(node) ? node : {}) as Json;
-    defs[nameOf(target)] = isObject(node) ? rewrite(body, target.id) : node;
+    defs[nameOf(target)] = isObject(node) ? rewrite(withoutDefs(node), target.id) : node;
   }
   return {
     $schema: DRAFT,

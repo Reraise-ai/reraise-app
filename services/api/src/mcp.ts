@@ -42,7 +42,8 @@ function rawInputOf(op: Operation, args: Record<string, unknown>) {
   const paths = new Set(op.params.filter((p) => p.in === 'path').map((p) => p.name));
   const params: Record<string, unknown> = {};
   const query: Record<string, unknown> = {};
-  for (const [name, value] of Object.entries(args)) (paths.has(name) ? params : query)[name] = value;
+  for (const [name, value] of Object.entries(args))
+    (paths.has(name) ? params : query)[name] = value;
   return { params, query };
 }
 
