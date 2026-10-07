@@ -70,7 +70,6 @@ describe('accepting writes through the StorageAdapter and keeps the agent as aut
         title: 'Agent claim',
         layer: 'said',
         originSystem: 'Synthetic agent',
-        worlds: [f.worldId],
       },
       lageId: f.ids.lage,
       x: 40,
@@ -276,5 +275,87 @@ describe('what a connection may see of proposals', () => {
     const asLocal = (await f.agent('scripted', 'GET', '/proposals?limit=200')).json()
       .proposals as Proposal[];
     expect(asLocal.map((p) => p.id)).toEqual(expect.arrayContaining([local.id, cloud.id]));
+  });
+});
+
+describe('what an agent may put into a proposed card', () => {
+  const draft = (extra: Record<string, unknown>) => ({
+    format: 2,
+    type: 'claim',
+    title: 'Drafted by an agent',
+    layer: 'said',
+    originSystem: 'Synthetic agent',
+    ...extra,
+  });
+  const create = (name: string, card: unknown) =>
+    f.agent(name, 'POST', '/proposals', { kind: 'create_card', payload: { card } });
+
+  it('rejects an edge drawn by the human or by another agent (400), accepts the agent own edge', async () => {
+    const edge = (by: string) => ({ target: f.ids.evPublic, kind: 'supports', by });
+    for (const by of ['human', 'agent:cloud-scripted', 'unknown']) {
+      const res = await create('scripted', draft({ edges: [edge(by)] }));
+      expectContract('proposal_create', res, 400);
+      expect(res.json().detail).toContain('agent:scripted');
+    }
+    const mixed = await create(
+      'scripted',
+      draft({ edges: [edge('agent:scripted'), edge('human')] }),
+    );
+    expectContract('proposal_create', mixed, 400);
+    const own = await create('scripted', draft({ edges: [edge('agent:scripted')] }));
+    expectContract('proposal_create', own, 201);
+  });
+  it('checks the edges again at accept: a stored human edge is a 409 and the proposal stays pending', async () => {
+    // A proposal stored before the rule existed, or written around the API, must not pass.
+    const stored = await f.service.app.services.localState.createProposal(
+      {
+        kind: 'create_card',
+        payload: {
+          card: draft({
+            title: 'Smuggled edge',
+            edges: [{ target: f.ids.evPublic, kind: 'supports', by: 'human' }],
+          }),
+        },
+      },
+      'agent:scripted',
+    );
+    const res = await accept(stored);
+    expectContract('proposal_accept', res, 409);
+    expect(
+      (await f.adapter.list({ limit: 500 })).items.some((c) => c.title === 'Smuggled edge'),
+    ).toBe(false);
+    const again = await f.human('GET', '/proposals?status=pending&limit=200');
+    expect(again.json().proposals.map((p: Proposal) => p.id)).toContain(stored.id);
+  });
+  it.each(['worlds', 'tags', 'rating', 'class', 'visibility', 'release', 'training'])(
+    'may not set %s (400)',
+    async (field) => {
+      const value: Record<string, unknown> = {
+        worlds: [f.worldId],
+        tags: ['x'],
+        rating: 5,
+        class: 'decision',
+        visibility: 'public',
+        release: 'private',
+        training: false,
+      };
+      const res = await create('scripted', draft({ [field]: value[field] }));
+      expect(res.statusCode).toBe(400);
+      expect(res.json().detail).toContain(field);
+    },
+  );
+  it('a created card joins the worlds of the Lage it is placed on, and no others', async () => {
+    const p = await propose('scripted', 'create_card', {
+      card: draft({ title: 'Placed agent card' }),
+      lageId: f.ids.lage,
+      x: 1,
+      y: 2,
+    });
+    expectContract('proposal_accept', await accept(p), 200);
+    const card = (await f.adapter.list({ limit: 500 })).items.find(
+      (c) => c.title === 'Placed agent card',
+    ) as Card;
+    expect(card.worlds).toEqual([f.worldId]);
+    expect(card.tags).toBeUndefined();
   });
 });

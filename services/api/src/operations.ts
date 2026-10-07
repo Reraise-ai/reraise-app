@@ -23,7 +23,7 @@ import { targetOf, type Principal } from './auth.js';
 import { buildContextPackage } from './context.js';
 import { readLage } from './lage.js';
 import { HttpError } from './problem.js';
-import { applyProposal, forbiddenDraftFields } from './proposals.js';
+import { applyProposal, draftProblem } from './proposals.js';
 import { evaluateRules } from './rules.js';
 import { stanceFor, type Services } from './services.js';
 import { validators } from './contract.js';
@@ -255,10 +255,8 @@ export const handlers: Readonly<Record<string, Handler>> = {
     const input = body as ProposalCreate;
     if (input.kind === 'create_card') {
       const draft = (input.payload as { card: CardDraft }).card;
-      const forbidden = forbiddenDraftFields(draft);
-      if (forbidden.length > 0) {
-        throw new HttpError(400, `an agent may not set ${forbidden.join(', ')} on a card`);
-      }
+      const problem = draftProblem(draft, principal.author);
+      if (problem) throw new HttpError(400, problem);
     }
     return ok(await s.localState.createProposal(input, principal.author), 201);
   },
