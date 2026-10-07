@@ -23,6 +23,7 @@ import { loadOperations, validators, type Operation } from './contract.js';
 import { Disclosures } from './disclosure.js';
 import { GateService } from './gate.js';
 import { handlers } from './operations.js';
+import { ReceiptStore } from './receipts.js';
 import { HttpError, problemOf } from './problem.js';
 import type { Services } from './services.js';
 import { Mutex } from './util.js';
@@ -126,6 +127,7 @@ export async function buildApp(options: AppOptions): Promise<BoardApp> {
     localState: options.localState,
     gate: gateService,
     disclosures: new Disclosures(gateService, options.storage, sessionId, now),
+    receipts: new ReceiptStore(options.localState.stateDir, now),
     writes: new Mutex(),
     now,
   };

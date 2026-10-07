@@ -528,6 +528,142 @@ describe('disclosure transfers', () => {
   });
 });
 
+describe('knowledge loop operations (ADR-0039 to ADR-0042)', () => {
+  const ref = (n: string) => `task:${n}`;
+  const draft = (title: string) => ({
+    format: 2,
+    type: 'claim',
+    title,
+    layer: 'said',
+    originSystem: 'Synthetic agent',
+  });
+  let publicDecision: Card;
+  it('knowledge_consult returns the package and a Knowledge Receipt (agents only)', async () => {
+    const body = { taskRef: ref('a'), task: 'Plan the synthetic route.', worldId: f.worldId };
+    const res = await f.agent('scripted', 'POST', '/knowledge/consult', body);
+    expectContract('knowledge_consult', res, 200);
+    expect(res.json().receipt.result).toBe('cards');
+    expectContract('knowledge_consult', await f.human('POST', '/knowledge/consult', body), 403);
+    expectContract(
+      'knowledge_consult',
+      await f.agent('scripted', 'POST', '/knowledge/consult', { worldId: f.worldId }),
+      400,
+    );
+    expectContract(
+      'knowledge_consult',
+      await f.raw({ method: 'POST', url: '/knowledge/consult', payload: body }),
+      401,
+    );
+  });
+  it('knowledge_write_back records "not needed" or proposes a card', async () => {
+    const notNeeded = await f.agent('scripted', 'POST', '/knowledge/write-back', {
+      taskRef: ref('b'),
+      notNeeded: { reason: 'no_new_knowledge' },
+    });
+    expectContract('knowledge_write_back', notNeeded, 201);
+    const proposed = await f.agent('scripted', 'POST', '/knowledge/write-back', {
+      taskRef: ref('b'),
+      card: draft('Written back'),
+    });
+    expectContract('knowledge_write_back', proposed, 201);
+    expect(proposed.json().proposal.status).toBe('pending');
+    expectContract(
+      'knowledge_write_back',
+      await f.agent('scripted', 'POST', '/knowledge/write-back', { taskRef: ref('b') }),
+      400,
+    );
+    expectContract(
+      'knowledge_write_back',
+      await f.human('POST', '/knowledge/write-back', {
+        taskRef: ref('b'),
+        notNeeded: { reason: 'no_new_knowledge' },
+      }),
+      403,
+    );
+  });
+  it('decision_record proposes a decision card', async () => {
+    const decision = {
+      format: 2,
+      type: 'decision',
+      title: 'Agent decision',
+      sections: sections([f.ids.evPublic]),
+    };
+    const res = await f.agent('scripted', 'POST', '/proposals/decision', { decision });
+    expectContract('decision_record', res, 201);
+    expect(res.json().kind).toBe('create_card');
+    expectContract(
+      'decision_record',
+      await f.agent('scripted', 'POST', '/proposals/decision', {
+        decision: { ...decision, sections: sections(['01ARZ3NDEKTSV4RRFFQ69G5FAV']) },
+      }),
+      400,
+    );
+    expectContract(
+      'decision_record',
+      await f.human('POST', '/proposals/decision', { decision }),
+      403,
+    );
+  });
+  it('decision_outcome proposes the outcome of a visible decision', async () => {
+    const made = await f.human('POST', '/decisions', {
+      format: 2,
+      type: 'decision',
+      title: 'Public decision',
+      sections: sections([f.ids.evPublic]),
+    });
+    await f.adapter.patch(cardOf(made).id, { visibility: 'public' });
+    publicDecision = (await f.adapter.read(cardOf(made).id))!;
+    const body = {
+      decisionId: publicDecision.id,
+      outcome: 'It worked.',
+      expectedContentHash: publicDecision.contentHash,
+    };
+    const res = await f.agent('scripted', 'POST', '/proposals/outcome', body);
+    expectContract('decision_outcome', res, 201);
+    expect(res.json().kind).toBe('record_outcome');
+    expectContract(
+      'decision_outcome',
+      await f.agent('scripted', 'POST', '/proposals/outcome', {
+        ...body,
+        decisionId: '01ARZ3NDEKTSV4RRFFQ69G5FAV',
+      }),
+      404,
+    );
+    expectContract(
+      'decision_outcome',
+      await f.agent('scripted', 'POST', '/proposals/outcome', { ...body, outcome: 'open' }),
+      400,
+    );
+    expectContract('decision_outcome', await f.human('POST', '/proposals/outcome', body), 403);
+  });
+  it('memory_route is open to the session and to agents', async () => {
+    const text = 'We learned that the synthetic route is always faster because of the strait.';
+    for (const res of [
+      await f.human('POST', '/memory/route', { text }),
+      await f.agent('scripted', 'POST', '/memory/route', { text }),
+    ]) {
+      expectContract('memory_route', res, 200);
+      expect(res.json().route).toBe('card_proposal');
+    }
+    expectContract('memory_route', await f.human('POST', '/memory/route', { text: '' }), 400);
+    expectContract(
+      'memory_route',
+      await f.raw({ method: 'POST', url: '/memory/route', payload: { text } }),
+      401,
+    );
+  });
+  it('usage_metrics_get is for the human, with an optional ISO week', async () => {
+    const res = await f.human('GET', '/metrics/usage');
+    expectContract('usage_metrics_get', res, 200);
+    expect(res.json().window.kind).toBe('rolling_7d');
+    expectContract('usage_metrics_get', await f.human('GET', '/metrics/usage?week=2026-W05'), 200);
+    expectContract('usage_metrics_get', await f.human('GET', '/metrics/usage?week=2026-W54'), 400);
+    expectContract('usage_metrics_get', await f.human('GET', '/metrics/usage?week=nope'), 400);
+    expectContract('usage_metrics_get', await f.agent('scripted', 'GET', '/metrics/usage'), 403);
+    expectContract('usage_metrics_get', await f.raw({ method: 'GET', url: '/metrics/usage' }), 401);
+  });
+});
+
 describe('storage errors become problems (ADR-0005)', () => {
   const cases: [StorageErrorCode, number][] = [
     ['not_found', 404],

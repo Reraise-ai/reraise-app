@@ -113,6 +113,8 @@ export async function applyProposal(s: Services, p: Proposal): Promise<void> {
       // Checked again here: the stored payload is what gets written, whatever happened since.
       const problem = draftProblem(card, p.author);
       if (problem) throw new HttpError(409, problem);
+      const used = (card as { sections?: { cardsUsed?: string[] } }).sections?.cardsUsed ?? [];
+      for (const usedId of used) await requireCard(s, usedId, 'a card the decision used');
       const lage = lageId !== undefined ? await requireLage(s, lageId) : undefined;
       const worlds = lage?.worlds;
       const id = await s.storage.create(
@@ -122,6 +124,28 @@ export async function applyProposal(s: Services, p: Proposal): Promise<void> {
       if (lageId !== undefined && x !== undefined && y !== undefined) {
         await writeLageVersion(s, lageId, (l) => withPlacement(l, id, x, y));
       }
+      return;
+    }
+    case 'record_outcome': {
+      // Only the outcome section changes, and only if the decision is still as the agent saw
+      // it (ADR-0039): never release, training, visibility or any other field.
+      const { decisionId, outcome, expectedContentHash } = p.payload as unknown as {
+        decisionId: string;
+        outcome: string;
+        expectedContentHash: string;
+      };
+      const decision = await s.storage.read(decisionId);
+      if (decision?.type !== 'decision' || decision.sections === undefined) {
+        throw new HttpError(409, 'the decision does not exist');
+      }
+      if (decision.contentHash !== expectedContentHash) {
+        throw new HttpError(409, 'the decision changed since the agent read it');
+      }
+      await s.storage.patch(
+        decisionId,
+        { sections: { ...decision.sections, outcome } },
+        { contentHash: decision.contentHash },
+      );
       return;
     }
     case 'comment':

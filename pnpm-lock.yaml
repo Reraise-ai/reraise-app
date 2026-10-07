@@ -207,6 +207,9 @@ importers:
       '@worldbuilder/disclosure-gate':
         specifier: workspace:*
         version: link:../../packages/disclosure-gate
+      '@worldbuilder/knowledge-loop':
+        specifier: workspace:*
+        version: link:../../packages/knowledge-loop
       '@worldbuilder/local-state':
         specifier: workspace:*
         version: link:../../packages/local-state

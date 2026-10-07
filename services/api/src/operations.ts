@@ -21,6 +21,7 @@ import type {
   StanceInput,
 } from '@worldbuilder/core';
 import { targetOf, type Principal } from './auth.js';
+import { knowledgeHandlers } from './knowledge-ops.js';
 import { buildContextPackage } from './context.js';
 import { readLage } from './lage.js';
 import { HttpError } from './problem.js';
@@ -115,19 +116,8 @@ const NOT_PATCHABLE = new Set([
   'signature',
 ]);
 
-const notImplemented =
-  (what: string): Handler =>
-  async () => {
-    throw new HttpError(501, `${what} is not implemented in this build`);
-  };
-
 export const handlers: Readonly<Record<string, Handler>> = {
-  knowledge_consult: notImplemented('knowledge_consult'),
-  knowledge_write_back: notImplemented('knowledge_write_back'),
-  decision_record: notImplemented('decision_record'),
-  decision_outcome: notImplemented('decision_outcome'),
-  memory_route: notImplemented('memory_route'),
-  usage_metrics_get: notImplemented('usage_metrics_get'),
+  ...knowledgeHandlers,
 
   async world_list(s, { principal }) {
     const worlds = await s.storage.listWorlds();

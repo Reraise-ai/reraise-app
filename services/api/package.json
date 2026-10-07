@@ -27,6 +27,7 @@
   "dependencies": {
     "@worldbuilder/core": "workspace:*",
     "@worldbuilder/disclosure-gate": "workspace:*",
+    "@worldbuilder/knowledge-loop": "workspace:*",
     "@worldbuilder/local-state": "workspace:*",
     "@worldbuilder/storage-markdown-files": "workspace:*",
     "ajv": "^8.20.0",
