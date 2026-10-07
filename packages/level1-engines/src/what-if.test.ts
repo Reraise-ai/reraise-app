@@ -2,17 +2,19 @@
 // Copyright The Worldbuilder contributors
 
 import { createFixedLevel1Engine, releaseOf } from '@worldbuilder/conformance';
-import type { Level1Engine } from '@worldbuilder/core';
+import type { Level1Engine, Level1Prediction } from '@worldbuilder/core';
 import { hashJcs } from '@worldbuilder/core';
 import { describe, expect, it, vi } from 'vitest';
 import { createLocalRulesEngine } from './local-rules.js';
 import { ID, card, fixedNow, requestOf } from './test-fixtures.js';
 import {
+  answerProblems,
   assumptionChangedRequest,
   changedMoves,
   currentOnly,
   isStale,
   rerunOnAssumptionChange,
+  stalenessKey,
 } from './what-if.js';
 
 const local = createLocalRulesEngine({ now: fixedNow });
@@ -44,6 +46,29 @@ describe('staleness', () => {
     expect(isStale(undefined, base)).toBe(true);
     expect(currentOnly(p, base)).toBe(p);
     expect(currentOnly(p, changed)).toBeUndefined();
+  });
+});
+
+describe('staleness ignores the trigger', () => {
+  it('undoing an assumption brings the prediction back to non-stale', async () => {
+    const p = await local.predict(base);
+    expect(isStale(p, changed)).toBe(true);
+    // the user undoes the change: the board is the original again, the trigger says what happened
+    const undone = assumptionChangedRequest(base, [ID.assumption]);
+    expect(isStale(p, undone)).toBe(false);
+    expect(isStale(p, { ...base, trigger: { kind: 'manual' } })).toBe(false);
+    expect(stalenessKey(undone)).toBe(stalenessKey(base));
+    expect(stalenessKey(changed)).not.toBe(stalenessKey(base));
+  });
+
+  it('an undo needs no new run', async () => {
+    const p = await local.predict(base);
+    const r = await rerunOnAssumptionChange(
+      local,
+      p,
+      assumptionChangedRequest(base, [ID.assumption]),
+    );
+    expect(r).toMatchObject({ reran: false, stale: false, prediction: p });
   });
 });
 
@@ -132,5 +157,33 @@ describe('changedMoves', () => {
     const p = await local.predict(base);
     expect(changedMoves(undefined, p)).toEqual([]);
     expect(changedMoves({ ...p, players: [] }, p)).toEqual([]);
+  });
+});
+
+describe('the engine answer is validated', () => {
+  const lying = (patch: (p: Level1Prediction) => Level1Prediction): Level1Engine => ({
+    ...local,
+    predict: async (request) => patch(await local.predict(request)),
+  });
+  const rejects = (patch: (p: Level1Prediction) => Level1Prediction, why: RegExp) =>
+    expect(rerunOnAssumptionChange(lying(patch), undefined, changed)).rejects.toThrow(why);
+
+  it('rejects another request hash, Lage, engine, player list and a move outside the options', async () => {
+    await rejects((p) => ({ ...p, requestHash: `sha256:${'0'.repeat(64)}` }), /requestHash/);
+    await rejects((p) => ({ ...p, lageId: ID.stray }), /lageId/);
+    await rejects((p) => ({ ...p, engine: 'someone-else' }), /engine is someone-else/);
+    await rejects((p) => ({ ...p, players: p.players.slice(1) }), /players differ/);
+    await rejects(
+      (p) => ({ ...p, players: [{ ...p.players[0]!, playerCardId: ID.stray }, p.players[1]!] }),
+      /player 0 differs/,
+    );
+    await rejects(
+      (p) => ({ ...p, players: [{ ...p.players[0]!, predictedMove: 'Invade' }, p.players[1]!] }),
+      /not one of the options/,
+    );
+  });
+
+  it('accepts a fitting answer', async () => {
+    expect(answerProblems(local.engine, changed, await local.predict(changed))).toEqual([]);
   });
 });

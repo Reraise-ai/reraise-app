@@ -29,9 +29,11 @@ export type {
 export {
   assumptionChangedRequest,
   changedMoves,
+  answerProblems,
   currentOnly,
   isStale,
   rerunOnAssumptionChange,
+  stalenessKey,
 } from './what-if.js';
 export type { MoveChange, WhatIfResult } from './what-if.js';
 export { buildLevel2Draft } from './escalate.js';

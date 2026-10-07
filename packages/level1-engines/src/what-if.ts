@@ -14,12 +14,50 @@ import type {
 } from '@worldbuilder/core';
 import { hashJcs } from '@worldbuilder/core';
 
-/** True if the prediction does not describe the current request (or there is none). */
+/**
+ * Hash of the request without its trigger: the board's content (question, players, cards). The
+ * trigger says why the engine ran, not what it was asked, so it must not make a prediction stale:
+ * undoing an assumption brings the board, and the prediction, back.
+ */
+export function stalenessKey(request: Level1PredictionRequest): string {
+  const rest: Partial<Level1PredictionRequest> = { ...request };
+  delete rest.trigger;
+  return hashJcs(rest);
+}
+
+/**
+ * True if the prediction does not describe the current board (or there is none). The request is
+ * compared under the prediction's own trigger, so only a change of content makes it stale;
+ * `stalenessKey` is the equivalent trigger-free key.
+ */
 export function isStale(
-  prediction: Pick<Level1Prediction, 'requestHash'> | undefined,
+  prediction: Pick<Level1Prediction, 'requestHash' | 'trigger'> | undefined,
   request: Level1PredictionRequest,
 ): boolean {
-  return !prediction || prediction.requestHash !== hashJcs(request);
+  return (
+    !prediction || prediction.requestHash !== hashJcs({ ...request, trigger: prediction.trigger })
+  );
+}
+
+/** Everything wrong with an engine's answer to a request, as messages; empty when it fits. */
+export function answerProblems(
+  engineId: string,
+  request: Level1PredictionRequest,
+  prediction: Level1Prediction,
+): string[] {
+  const problems: string[] = [];
+  if (prediction.engine !== engineId) problems.push(`engine is ${prediction.engine}`);
+  if (prediction.lageId !== request.lageId) problems.push('lageId differs from the request');
+  if (prediction.requestHash !== hashJcs(request))
+    problems.push('requestHash differs from the request');
+  if (prediction.players.length !== request.players.length) problems.push('players differ');
+  request.players.forEach((asked, i) => {
+    const got = prediction.players[i];
+    if (!got || got.playerCardId !== asked.playerCardId) problems.push(`player ${i} differs`);
+    else if (!asked.moveOptions.includes(got.predictedMove))
+      problems.push(`player ${asked.playerCardId}: the move is not one of the options`);
+  });
+  return problems;
 }
 
 /**
@@ -121,6 +159,8 @@ export async function rerunOnAssumptionChange(
       changes: [],
     };
   const prediction = await engine.predict(request, release);
+  const problems = answerProblems(engine.engine, request, prediction);
+  if (problems.length > 0) throw new Error(`engine answer rejected: ${problems.join('; ')}`);
   return {
     prediction,
     stale: false,

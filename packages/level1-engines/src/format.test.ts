@@ -21,9 +21,11 @@ describe('formatEstimate', () => {
     expect(formatEstimate({ engine: 'e', predictedMove: 'M', confidence: 0 })).toBe(
       'e estimates 0.00 for M',
     );
-    expect(formatEstimate({ engine: 'e', predictedMove: 'M', confidence: 1 })).toBe(
-      'e estimates 1.00 for M',
-    );
+    // never shown as certain
+    for (const confidence of [0.99, 0.995, 1])
+      expect(formatEstimate({ engine: 'e', predictedMove: 'M', confidence })).toBe(
+        'e estimates 0.99 for M',
+      );
   });
 
   it('rounds to two decimals and keeps the line on one line', () => {

@@ -23,7 +23,9 @@ import {
   NAVY_OPTIONS,
   card,
   consortium,
+  assessment,
   fixedNow,
+  insurance,
   navy,
   report,
   requestOf,
@@ -116,12 +118,65 @@ describe('local rules engine: predictions', () => {
     expect(ex.options[1]!.features.dependencyRisk.value).toBe(0);
   });
 
-  it('reads a fired user rule whose action matches an option as the user expectation', () => {
-    const ex = explainLocalRules(requestOf()).players[1]!;
-    expect(ex.firedRuleCardIds).toEqual([ID.rule]);
+  const rerouteRule = (when: Rule['when']) =>
+    card('01M1EV5S00YXKKGEG772AZM7PC', {
+      type: 'rule',
+      rule: { when, then: 'Reroute laden tankers via the Cape of Good Hope' },
+    });
+
+  it('reads a fired rule that names the player as the user expectation for a matching option', () => {
+    const named = rerouteRule([
+      { kind: 'card_on_lage', card: ID.consortium },
+      { kind: 'card_on_lage', card: ID.report },
+    ]);
+    const ex = explainLocalRules(
+      requestOf({ cards: [navy, consortium, report, insurance, assessment, named] }),
+    ).players[1]!;
+    expect(ex.firedRuleCardIds).toEqual([named.id]);
     const reroute = ex.options[0]!;
     expect(reroute.features.rule.value).toBe(1);
-    expect(reroute.features.rule.via).toEqual(expect.arrayContaining([ID.rule, ID.report]));
+    expect(reroute.features.rule.via).toEqual(expect.arrayContaining([named.id, ID.report]));
+    expect(ex.predictedMove).toBe('Reroute via the Cape of Good Hope');
+  });
+
+  it('does not let a rule about the board in general boost any particular player', () => {
+    const ex = explainLocalRules(requestOf()).players[1]!;
+    expect(ex.firedRuleCardIds).toEqual([ID.rule]); // it fired ...
+    expect(ex.options[0]!.features.rule.value).toBe(0); // ... but names neither player
+    expect(ex.options[0]!.features.rule.via).toEqual([]);
+  });
+
+  it('boosts a player whose linked card the rule names', () => {
+    const linkedNavy = card(ID.navy, {
+      ...navy,
+      edges: [{ target: ID.report, kind: 'represents', by: 'human' }],
+    });
+    const r = rerouteRule([{ kind: 'card_on_lage', card: ID.report }]);
+    const mk = (n: Card) =>
+      explainLocalRules(
+        requestOf({
+          players: [
+            {
+              playerCardId: ID.navy,
+              moveOptions: ['Reroute laden tankers via the Cape of Good Hope', 'Wait'],
+            },
+          ],
+          cards: [n, report, r],
+        }),
+      ).players[0]!.options[0]!.features.rule.value;
+    expect(mk(linkedNavy)).toBe(1);
+    expect(mk(navy)).toBe(0);
+  });
+
+  it('names the player card first, then the other cards in request order', async () => {
+    const request = requestOf({
+      players: [{ playerCardId: ID.navy, moveOptions: NAVY_OPTIONS }],
+      cards: [report, insurance, navy],
+    });
+    const p = await engine.predict(request);
+    expect(p.players[0]!.cardIds[0]).toBe(ID.navy);
+    expect(p.players[0]!.cardIds).toEqual([ID.navy, ID.report]);
+    expect(level1PredictionProblems(engine, request, p)).toEqual([]);
   });
 
   it('does not fire a rule when an unless condition holds, a condition fails, or it needs a stance', () => {

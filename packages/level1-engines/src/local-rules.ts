@@ -196,7 +196,7 @@ function holds(cond: RuleCondition, scope: Scope): boolean | undefined {
 
 /** Rule cards of the request that fire on the board, with the on-board cards they name. */
 function firedRules(scope: Scope, request: Level1PredictionRequest) {
-  const fired: { card: Card; then: string; named: string[] }[] = [];
+  const fired: { card: Card; then: string; named: string[]; referenced: Set<string> }[] = [];
   for (const card of request.cards) {
     const rule = card.rule;
     if (!rule) continue;
@@ -206,7 +206,15 @@ function firedRules(scope: Scope, request: Level1PredictionRequest) {
     const named = [...rule.when, ...(rule.unless ?? [])].flatMap((c) =>
       'card' in c && c.card && scope.byId.has(c.card) ? [c.card] : [],
     );
-    fired.push({ card, then: rule.then, named });
+    const referenced = new Set(
+      [...rule.when, ...(rule.unless ?? [])].flatMap((c) => {
+        const ids: string[] = [];
+        if ('card' in c && c.card) ids.push(c.card);
+        if (c.kind === 'edge') ids.push(...[c.from, c.to].flatMap((x) => (x ? [x] : [])));
+        return ids;
+      }),
+    );
+    fired.push({ card, then: rule.then, named, referenced });
   }
   return fired;
 }
@@ -347,12 +355,34 @@ function linked(
   return { value, via: [...via] };
 }
 
+/**
+ * A rule's preferred action boosts a player only if the rule names that player in its conditions,
+ * or names a card that has an edge to or from the player (for example the evidence card that
+ * represents it). A rule about the board in general says nothing about what a particular player
+ * will do.
+ */
+function ruleAppliesTo(
+  f: ReturnType<typeof firedRules>[number],
+  playerId: string,
+  scope: Scope,
+): boolean {
+  if (f.referenced.has(playerId)) return true;
+  return scope.edges.some(
+    (e) =>
+      (e.from === playerId && f.referenced.has(e.to)) ||
+      (e.to === playerId && f.referenced.has(e.from)),
+  );
+}
+
 function ruleFeature(
   option: ReadonlySet<string>,
   fired: ReturnType<typeof firedRules>,
+  playerId: string,
+  scope: Scope,
 ): FeatureValue {
   const via = new Set<string>();
   for (const f of fired) {
+    if (!ruleAppliesTo(f, playerId, scope)) continue;
     if (dice(option, tokens(f.then)) < RULE_MATCH_MIN) continue;
     via.add(f.card.id);
     for (const n of f.named) via.add(n);
@@ -388,7 +418,7 @@ function analysePlayer(
       capability: best(o, player.capabilities, scope, player.id),
       dependencyRisk: dependencyRisk(o, player, scope),
       redLineRisk: { value: 0, via: [] },
-      rule: ruleFeature(o, fired),
+      rule: ruleFeature(o, fired, player.id, scope),
     };
     const hits = redLineHits(move, o, player.redLines, scope, player.id);
     const soft = hits.filter((h) => h.kind === 'soft');
@@ -468,7 +498,11 @@ function analysePlayer(
     allExcluded,
     predictedMove: raw[winner]!.move,
     confidence: round2(confidence),
-    cardIds: request.cards.map((c) => c.id).filter((id) => used.has(id)),
+    // The player card first, then the other cards used in request order.
+    cardIds: [
+      player.id,
+      ...request.cards.map((c) => c.id).filter((id) => id !== player.id && used.has(id)),
+    ],
   };
 }
 
@@ -505,7 +539,7 @@ export interface LocalRulesEngine extends Level1Engine {
  *
  * 1. past moves (behaviour): how much of the player's `moves` history resembles the option;
  * 2. user rules: a fired rule card whose action matches the option reads as the user's own
- *    expectation for it;
+ *    expectation for it, but only for players the rule names (or whose linked cards it names);
  * 3. interests, assumed goals, capabilities and linked cards: lexical alignment with the option;
  * 4. dependencies: a disruptive option that touches something the player depends on is penalised;
  * 5. red lines: an option that matches a red line is removed (or penalised when the match is
