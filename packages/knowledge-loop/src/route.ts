@@ -94,20 +94,38 @@ export const CREDENTIAL_WORDS: readonly string[] = [
   'pin',
   'otp',
 ];
-const KW = `\\b(?:${CREDENTIAL_WORDS.map((w) => w.replace(/ /g, '[ _-]?')).join('|')})\\b`;
-/** A credential word, then up to 40 characters of the same clause, then `:`, `=`, is/are/was. */
+const kwPattern = (words: readonly string[]) =>
+  `\\b(?:${words.map((w) => w.replace(/ /g, '[ _-]?')).join('|')})\\b`;
+const KW = kwPattern(CREDENTIAL_WORDS);
+/** `pin` and `token` alone are too common in prose for the "… is …" form (rules:v3). */
+const KW_PROSE = kwPattern(CREDENTIAL_WORDS.filter((w) => !['pin', 'token', 'tokens'].includes(w)));
+/**
+ * A credential word, then up to 40 characters of the same clause, then `:` or `=`; or a
+ * credential word other than bare `pin`/`token` followed by is/are/was.
+ */
 const CREDENTIAL_ASSIGNED = new RegExp(
-  `${KW}[^\\n.;!?]{0,40}?(?:\\s*[:=]|\\s+(?:is|are|was)\\b)\\s*\\S`,
+  `${KW}[^\\n.;!?]{0,40}?\\s*[:=]\\s*\\S|${KW_PROSE}[^\\n.;!?]{0,40}?\\s+(?:is|are|was)\\b\\s*\\S`,
   'i',
 );
 /** A credential word followed in the same clause by a quoted value. */
 const CREDENTIAL_QUOTED = new RegExp(`${KW}[^\\n.;!?]{0,40}?[\\s:=]["'\u201c\u2018\u00ab]`, 'i');
 const PRIVATE_KEY = /-----BEGIN [A-Z ]*PRIVATE KEY-----/;
 /**
- * Token-like runs (rules:v3): 32 or more base64/base64url characters that hold upper-case and
- * lower-case letters and digits, or at least 8 digits whatever the case; or long hex.
+ * Token-like runs (rules:v3), checked per segment: 32 or more base64/base64url characters that
+ * hold upper-case and lower-case letters and digits, or at least 8 digits whatever the case.
  */
 const TOKEN_RUN = /[A-Za-z0-9+/=_-]{32,}/g;
+/** Canonical UUIDs and `wb:` card URIs are identifiers, not secrets. */
+const UUID = /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi;
+const WB_URI = /\bwb:[0-9a-f-]{36}\/[^\s]+/gi;
+/** ISO dates, also joined into lists (`2026-10-01/2026-10-08`), are dates, not tokens. */
+const ISO_DATE = /\b\d{4}-\d{2}-\d{2}(?:T[\d:.]+Z?)?\b/g;
+/** Raw-text credentials: Slack-style webhooks, JSON Web Tokens, URLs with a password. */
+const RAW_SECRETS = [
+  /\bhooks\.slack\.com\/(?:services|workflows)\/\S+/i,
+  /\beyJ[A-Za-z0-9_-]{8,}\.eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}/,
+  /\b[a-z][a-z0-9+.-]*:\/\/[^\s/:@]+:[^\s/@]+@/i,
+];
 /** Known credential prefixes of common services, at the start of a token. */
 const KNOWN_TOKEN = new RegExp(
   '(?<![A-Za-z0-9])(?:' +
@@ -121,6 +139,7 @@ const KNOWN_TOKEN = new RegExp(
       '(?:AKIA|ASIA)[A-Z0-9]{16}',
       'AIza[A-Za-z0-9_-]{35}',
       'glpat-[A-Za-z0-9_-]{20,}',
+      'npm_[A-Za-z0-9]{30,}',
     ].join('|') +
     ')',
 );
@@ -141,11 +160,40 @@ const wordsRe = (words: readonly string[]) =>
 
 const normalise = (text: string) => text.toLowerCase().replace(/\s+/g, ' ').trim();
 
-function hasTokenRun(text: string): boolean {
-  if (HEX_RUN.test(text) || KNOWN_TOKEN.test(text)) return true;
-  for (const m of text.matchAll(TOKEN_RUN)) {
-    if (/[A-Z]/.test(m[0]) && /[a-z]/.test(m[0]) && /\d/.test(m[0])) return true;
-    if ((m[0].match(/\d/g) ?? []).length >= 8) return true;
+/** A hyphen- or underscore-joined slug of short parts (an article title, a compound word). */
+const isSlug = (s: string) => {
+  const parts = s.split(/[-_]/);
+  return parts.length >= 3 && parts.every((p) => p.length <= 15);
+};
+
+/** Is one segment token-like (rules:v3)? */
+function tokenLikeSegment(segment: string): boolean {
+  for (const m of segment.matchAll(TOKEN_RUN)) {
+    const run = m[0];
+    if (isSlug(run)) continue;
+    if (/[A-Z]/.test(run) && /[a-z]/.test(run) && /\d/.test(run)) return true;
+    if ((run.match(/\d/g) ?? []).length >= 8) return true;
+    // No natural word runs 40 letters and digits without a separator.
+    if (/[A-Za-z0-9]{40,}/.test(run) && /\d/.test(run)) return true;
+  }
+  return false;
+}
+
+/**
+ * Token-like content. Known prefixes, webhooks, JWTs, URLs with a password and long hex runs
+ * are checked on the raw text. The run rules are checked per segment: identifiers (UUIDs,
+ * `wb:` URIs) and ISO dates are removed first, URLs and paths are split on `/ ? & = #`, other
+ * words stay whole (a base64 key may contain `/`).
+ */
+function hasTokenRun(raw: string): boolean {
+  if (KNOWN_TOKEN.test(raw) || RAW_SECRETS.some((re) => re.test(raw))) return true;
+  const text = raw.replace(WB_URI, ' ').replace(UUID, ' ').replace(ISO_DATE, ' ');
+  if (HEX_RUN.test(text)) return true;
+  for (const word of text.split(/\s+/)) {
+    const pathLike =
+      /^(?:[a-z][a-z0-9+.-]*:\/\/|~?\/)/i.test(word) || /^[\w-]+\.[\w.-]+\//.test(word);
+    const segments = pathLike ? word.split(/[/?&=#]/) : [word];
+    if (segments.some(tokenLikeSegment)) return true;
   }
   return false;
 }

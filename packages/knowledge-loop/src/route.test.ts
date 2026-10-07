@@ -170,7 +170,7 @@ const CORPUS: [string, MemoryRouteRequest['kindHint'] | undefined, string, strin
     'ephemeral_ops_fact',
     'personal_data',
   ],
-  ['The one-time pin is 4711 for the vault', 'learning', 'ephemeral_ops_fact', 'secret'],
+  ['The one-time pin: 4711 for the vault', 'learning', 'ephemeral_ops_fact', 'secret'],
   ['Read the three new findings in the inbox', 'unknown', 'ephemeral_ops_fact', 'default'],
   [
     'Meeting moved from 10:30 to the afternoon slot',
@@ -279,6 +279,20 @@ describe('token-like runs and known prefixes (rules:v3)', () => {
     ['a browser API key', `Maps use ${'AI' + 'za'}${tail(35)} always`],
     ['a GitLab token', `CI uses ${'glpat' + '-'}${tail(20)} always`],
     ['a private key block', `${'-----BEGIN RSA ' + 'PRIVATE KEY-----'} always rotate`],
+    [
+      'a Slack webhook',
+      `Lesson: the webhook is https://hooks.${'slack'}.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX always`,
+    ],
+    ['an npm token', `Insight: ${'npm' + '_'}${tail(36)} is the publish key we always use`],
+    [
+      'a JSON Web Token',
+      `Insight: always use ${'eyJ' + 'hbGciOiJIUzI1NiJ9'}.${'eyJ' + 'zdWIiOiIxMjM0NTY3ODkwIn0'}.${tail(43)} for the API`,
+    ],
+    [
+      'a URL with a password',
+      `Lesson: the db url ${'postgres'}://app:${'hunter2'}@db.example.org/app always works`,
+    ],
+    ['a project key with sk-', `Lesson: ${'sk' + '-proj-'}${tail(22)} always works`],
   ])('treats %s as a secret', (_name, text) => {
     const r = routeMemory({ text, kindHint: 'learning' });
     expect([r.route, r.ruleId]).toEqual(['ephemeral_ops_fact', 'secret']);
@@ -293,6 +307,34 @@ describe('token-like runs and known prefixes (rules:v3)', () => {
     ],
     ['a long word compound', 'internationalisation-and-localisation-guidelines always apply here'],
     ['a short sk- word', 'The ski-lift always closes early because of wind'],
+    [
+      'a dated news URL',
+      'Lesson: insurers always reprice within a week, see https://example.org/news/2026/10/05/strait-closure-update-123456',
+    ],
+    [
+      'a wb: card URI',
+      `Lesson: card wb:45aaff12-777f-40e3-a97c-8a592e1ea4f6/${'01M1EQQXC0'}MVA4E2WAPG22HEY0 always shows the pattern`,
+    ],
+    [
+      'a canonical UUID',
+      'Insight: the shipping reports for 2026 always follow the pattern 45aaff12-777f-40e3-a97c-8a592e1ea4f6',
+    ],
+    [
+      'joined dates',
+      'Lesson: the sequence 2026-10-01/2026-10-08/2026-10-15/2026-10-22 always shows weekly repricing',
+    ],
+    [
+      'a mixed-case URL path',
+      'Lesson: the report https://example.org/Reports/2026/Q3-Shipping-Report-Final-Version-With-Annex always lists tanker losses',
+    ],
+    [
+      'pin and token in prose',
+      'Lesson: we always skip the pin when the token count is low because it costs time',
+    ],
+    [
+      'two ULIDs',
+      'Lesson: cards 01M1EQQXC0MVA4E2WAPG22HEY0 and 01M1EMA1R0AH9ZTK3YJK33TNER always conflict because of sources',
+    ],
   ])('keeps %s free of the secret rule', (_name, text) => {
     expect(routeMemory({ text }).ruleId).not.toBe('secret');
   });
