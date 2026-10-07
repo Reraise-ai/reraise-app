@@ -82,7 +82,8 @@ WORLDBUILDER_AGENT_TOKEN_FILE=./planner.token node services/api/dist/cli.js mcp 
 pnpm --filter @worldbuilder/board dev              # the board; paste the session token
 
 # the end-to-end test: builds, then drives the board with Playwright (Chromium)
-# locally set PLAYWRIGHT_BROWSERS_PATH to an existing Chromium; in CI: npx playwright install chromium
+# once: pnpm --filter @worldbuilder/e2e exec playwright install chromium
+#       (or point PLAYWRIGHT_BROWSERS_PATH to an existing Chromium)
 pnpm test:e2e
 ```
 

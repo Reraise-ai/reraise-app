@@ -17,8 +17,9 @@ concurrency:
 # lint:openapi lints the Board API with Redocly; the MCP/OpenAPI parity test and the adapter
 # conformance kit (against the in-memory fake) run inside the test suite. The e2e job runs the M1
 # walking skeleton and the axe check (Playwright, Chromium) on all three operating systems; the
-# browser is installed here and only here (`playwright install` is never run locally, where a
-# preinstalled browser is used). Nothing here is a placeholder that passes without checking something.
+# browser is installed in the e2e job (locally: run `pnpm --filter @worldbuilder/e2e exec
+# playwright install chromium` once, or point PLAYWRIGHT_BROWSERS_PATH to an existing Chromium).
+# Nothing here is a placeholder that passes without checking something.
 
 jobs:
   lint-format:
