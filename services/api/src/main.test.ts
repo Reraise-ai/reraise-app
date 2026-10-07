@@ -280,10 +280,17 @@ describe('worldbuilder usage', () => {
     expect(await main(['serve'], { stderr: sink() })).toBe(2);
     expect(await main(['serve', '--store', dir, '--port', 'abc'], { stderr: sink() })).toBe(2);
   });
-  it('leaves a clear seam for the MCP bridge', async () => {
+  it('runs the MCP bridge command: it needs --stdio and a token, never from argv', async () => {
     const err = sink();
-    expect(await main(['mcp', '--stdio'], { stderr: err })).toBe(1);
-    expect(err.text()).toContain('MCP');
+    expect(await main(['mcp', '--stdio'], { stderr: err, env: {} })).toBe(2);
+    expect(err.text()).toContain('WORLDBUILDER_AGENT_TOKEN_FILE');
+    const err2 = sink();
+    expect(await main(['mcp'], { stderr: err2, env: { WORLDBUILDER_AGENT_TOKEN: 'x' } })).toBe(2);
+    expect(err2.text()).toContain('--stdio');
+    const err3 = sink();
+    expect(await main(['mcp', '--stdio', '--token', 'abc'], { stderr: err3, env: {} })).toBe(2);
+    expect(err3.text()).toContain('not an argument');
+    expect(err3.text()).not.toContain('abc');
   });
   it('fails cleanly when the store cannot be opened', async () => {
     const err = sink();

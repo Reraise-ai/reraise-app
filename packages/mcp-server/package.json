@@ -21,6 +21,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "1.32.1"
+    "@modelcontextprotocol/sdk": "1.32.1",
+    "@worldbuilder/core": "workspace:*",
+    "zod": "4.6.5"
   }
 }

@@ -6,6 +6,7 @@
       "@worldbuilder/core": ["../../packages/core/src/index.ts"],
       "@worldbuilder/disclosure-gate": ["../../packages/disclosure-gate/src/index.ts"],
       "@worldbuilder/knowledge-loop": ["../../packages/knowledge-loop/src/index.ts"],
+      "@worldbuilder/mcp-server": ["../../packages/mcp-server/src/index.ts"],
       "@worldbuilder/local-state": ["../../packages/local-state/src/index.ts"],
       "@worldbuilder/storage-markdown-files": [
         "../../packages/adapters/storage-markdown-files/src/index.ts"

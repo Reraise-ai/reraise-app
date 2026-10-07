@@ -13,6 +13,7 @@ const alias = Object.fromEntries(
     'knowledge-loop',
     'training-export',
     'adapters/storage-markdown-files',
+    'mcp-server',
   ].map((dir) => [
     `@worldbuilder/${dir.replace('adapters/', '')}`,
     fileURLToPath(new URL(`./packages/${dir}/src/index.ts`, import.meta.url)),

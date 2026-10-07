@@ -23,6 +23,7 @@ import { Disclosures } from './disclosure.js';
 import { describeError } from './errors.js';
 import { executeOperation } from './execute.js';
 import { GateService } from './gate.js';
+import { createMcpMount, type McpMount } from './mcp.js';
 import { handlers } from './operations.js';
 import { ReceiptStore } from './receipts.js';
 import { HttpError, problemOf } from './problem.js';
@@ -65,6 +66,8 @@ export interface BoardApp extends FastifyInstance {
   allowPort(port: number): void;
   readonly services: Services;
   readonly gateService: GateService;
+  /** The MCP sessions of the `/mcp` mount (ADR-0029). */
+  readonly mcp: McpMount['sessions'];
 }
 
 const CORS_HEADERS = {
@@ -256,14 +259,46 @@ export async function buildApp(options: AppOptions): Promise<BoardApp> {
   // Liveness for the CLI and supervisors; not part of the contract, no data, Host-checked.
   app.get('/health', async () => ({ status: 'ok' }));
 
-  // MCP seam: the next slice mounts the MCP server at /mcp here. It must use `services` and the
-  // same `authenticate` rules (agent bearer token only), so both front ends share one gate,
-  // one adapter and one proposal list (ADR-0029). Host and Origin are already checked by the
-  // hook above for every path.
+  // MCP over Streamable HTTP at /mcp (ADR-0029): the same process, services and credential rules
+  // as the routes above. Host and Origin are already checked by the hook for every path, the
+  // bearer token by the authentication hook; /mcp takes registered agents only (a human session
+  // token is refused). A session belongs to the agent that opened it. The body limit and the JSON
+  // parser are the ones of every route, so an oversized message is a 413.
+  const mcp = createMcpMount(services, operations, (message, fields) =>
+    app.log.error(fields, message),
+  );
+  app.route({
+    method: ['GET', 'POST', 'DELETE'],
+    url: '/mcp',
+    handler: async (req, reply) => {
+      const principal = req.principal;
+      if (!principal) throw new HttpError(401, 'a credential is required');
+      if (principal.kind !== 'agent') {
+        throw new HttpError(403, 'the MCP endpoint is for registered agents only');
+      }
+      // The SDK transport writes the response itself (also long-lived streams).
+      reply.hijack();
+      try {
+        await mcp.sessions.handle(req.raw, reply.raw, principal, req.body);
+      } catch (error) {
+        req.log.error({ err: { type: (error as Error).name } }, 'mcp request failed');
+        if (!reply.raw.headersSent) {
+          reply.raw
+            .writeHead(500, { 'content-type': 'application/problem+json' })
+            .end(JSON.stringify(problemOf(500)));
+        } else reply.raw.end();
+      }
+    },
+  });
+  // Close the sessions (and their streams) before the server stops accepting connections.
+  app.addHook('preClose', async () => {
+    await mcp.sessions.close();
+  });
 
   app.allowPort = allowPort;
   (app as { services: Services }).services = services;
   (app as { gateService: GateService }).gateService = gateService;
+  (app as { mcp: McpMount['sessions'] }).mcp = mcp.sessions;
   await app.ready();
   return app;
 }
