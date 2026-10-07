@@ -1,0 +1,49 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright The Worldbuilder contributors
+import { describe, expect, it } from 'vitest';
+import { toEdges, toNodes } from './flowMapping.js';
+import { CARDS, makeLage } from './testing/mockApi.js';
+
+const [C1, C2] = CARDS;
+
+describe('Lage to canvas mapping', () => {
+  const lage = makeLage({
+    edges: [{ from: C1!.id!, to: C2!.id!, kind: 'refutes', by: 'agent:scout' }],
+  });
+  const cards = new Map(CARDS.map((c) => [c.id!, c] as const));
+
+  it('places a node per placement at its x and y, carrying the card and the stance', () => {
+    const stance = {
+      cardId: C1!.id!,
+      position: 'believed' as const,
+      weight: 1,
+      updatedAt: 't',
+      history: [],
+    };
+    const nodes = toNodes(lage, cards, new Map([[C1!.id!, stance]]), C2!.id);
+    expect(nodes.map((n) => [n.id, n.position.x, n.position.y, n.selected])).toEqual([
+      [C1!.id, 0, 0, false],
+      [C2!.id, 280, 0, true],
+    ]);
+    expect(nodes[0]!.data.stance).toBe(stance);
+    expect(nodes[1]!.data.stance).toBeUndefined();
+    expect(nodes[0]!.data.card?.title).toBe(C1!.title);
+  });
+
+  it('keeps a placement whose card is not readable, without a card', () => {
+    const nodes = toNodes(lage, new Map(), new Map());
+    expect(nodes).toHaveLength(2);
+    expect(nodes[0]!.data.card).toBeUndefined();
+  });
+
+  it('maps edges with kind and author in data and marks the selected one', () => {
+    const [edge] = toEdges(lage);
+    expect(edge).toMatchObject({
+      source: C1!.id,
+      target: C2!.id,
+      data: { kind: 'refutes', by: 'agent:scout' },
+    });
+    expect(toEdges(lage, edge!.id)[0]!.selected).toBe(true);
+    expect(toEdges(lage, 'other')[0]!.selected).toBe(false);
+  });
+});

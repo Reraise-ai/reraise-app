@@ -1,23 +1,57 @@
 /* SPDX-License-Identifier: AGPL-3.0-or-later */
 /* Copyright The Worldbuilder contributors */
 
-/* Design tokens: the only place where raw colours and font names may appear. */
+/*
+  Design tokens: the only place where raw colours and font names may appear (ADR-0019,
+  checked by `pnpm check:board-tokens`). The brand design system replaces these values; no
+  component changes. Brand defaults: navy, cream, gold (gold = the user), evidenced teal,
+  said blue.
+*/
 :root {
+  /* Palette */
   --wb-color-navy: #0d1722;
+  --wb-color-navy-raised: #15222f;
+  --wb-color-navy-line: #2a3a4a;
   --wb-color-cream: #f1ece2;
+  --wb-color-cream-muted: #b9b4a9;
   --wb-color-gold: #c9a44c;
   --wb-color-evidenced: #4fb3a5;
   --wb-color-said: #7fa3d6;
+  --wb-color-experience: var(--wb-color-cream);
   --wb-color-believed: var(--wb-color-gold);
+  --wb-color-agent: #b48ad6;
+  --wb-color-warning: #e0a458;
+  --wb-color-danger: #e0786b;
 
+  /* Roles */
   --wb-surface: var(--wb-color-navy);
+  --wb-surface-raised: var(--wb-color-navy-raised);
+  --wb-line: var(--wb-color-navy-line);
   --wb-text: var(--wb-color-cream);
+  --wb-text-muted: var(--wb-color-cream-muted);
   --wb-accent: var(--wb-color-gold);
+  --wb-on-accent: var(--wb-color-navy);
+  --wb-focus: var(--wb-color-gold);
+  --wb-warning: var(--wb-color-warning);
+  --wb-danger: var(--wb-color-danger);
+  --wb-edge-supports: var(--wb-color-evidenced);
+  --wb-edge-refutes: var(--wb-color-danger);
 
+  /* Type */
   --wb-font-display: 'Fraunces', Georgia, serif;
   --wb-font-body: 'Inter', system-ui, sans-serif;
+  --wb-font-mono: ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  --wb-text-s: 0.8125rem;
+  --wb-text-m: 0.9375rem;
+  --wb-text-l: 1.25rem;
 
+  /* Space, shape */
   --wb-space-1: 0.5rem;
   --wb-space-2: 1rem;
   --wb-space-3: 2rem;
+  --wb-space-half: 0.25rem;
+  --wb-radius: 2px;
+  --wb-stroke: 1px;
+  --wb-stroke-strong: 3px;
+  --wb-sidebar-width: 26rem;
 }
