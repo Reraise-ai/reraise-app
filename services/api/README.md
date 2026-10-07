@@ -15,27 +15,52 @@ confirmation), [ADR-0032](../../docs/adr/0032-m1-proposal-polling.md) (polling).
 
 ```sh
 worldbuilder serve --store <path-to-store> [--state <dir>] [--port 4310] [--host 127.0.0.1] \
-                   [--allow-origin http://127.0.0.1:5173]
-worldbuilder agent add --name <name> --target local_model|cloud_model [--state <dir>]
+                   [--allow-host <host>]... [--allow-origin http://127.0.0.1:5173]...
+worldbuilder agent add <name> --target local_model|cloud_model [--state <dir>] [--token-file <path>]
 worldbuilder agent list [--state <dir>]
-worldbuilder agent remove --name <name> [--state <dir>]
+worldbuilder agent remove <name> [--state <dir>]
 ```
 
 `serve` opens the store with the markdown-files adapter (tested on a copy of the Hormuz
 example, `src/hormuz.test.ts`) and binds `127.0.0.1` by default, creates a fresh human session token at every start, writes
 it to `<state>/session-token` (owner-only) and prints it once. It refuses to start when the state
 directory lies inside the store or a Git working tree (symbolic links followed) or when
-`agents.json` is invalid or readable by others. On first start it writes a gate rule file that
+`agents.yaml` is invalid or readable by others. On first start it writes a gate rule file that
 allows cards on the screen only; without a rule the gate denies everything, also on the screen.
 Binding another host prints a warning: put your own access control in front.
 
-`agent add` registers one agent connection in `<state>/agents.json` and prints its bearer token
-once; only the SHA-256 of the token is stored. The file is re-read when it changes. Hand-written
-entries may carry a `token` (at least 32 characters) instead of `tokenSha256`; the file must be
-mode 0600 on POSIX. Each connection has a target class: `local_model` or `cloud_model`.
-`agent list` shows names and targets only; `agent remove` revokes a token at once. The whole
-registry format lives in `src/agent-registry.ts`, so it can move to the planned
-`agents.yaml` (ADR-0037) in one place.
+`agent add` registers one agent connection in `<state>/agents.yaml` (schema
+`schemas/agent-connections.schema.json`, ADR-0037) and prints its bearer token once, or writes it to
+an owner-only file with `--token-file` (the agent reads it from `WORLDBUILDER_AGENT_TOKEN_FILE`);
+only the SHA-256 of the token is stored. The file is re-read when it changes and must be mode 0600
+on POSIX. Each connection has a target class: `local_model` or `cloud_model`. `agent list` shows
+name, target and creation time of the active connections, never a token; `agent remove` revokes a
+token at once (the record stays, so a name is never reused for another token). The three agent
+commands resolve the state directory exactly like `serve` (per-OS default or `--state`, never
+inside a store passed with `--store` or a Git working tree, symbolic links followed). The whole
+registry format lives in `src/agent-registry.ts`.
+
+`--allow-host` (repeatable) adds Host header values for a reverse proxy; a bare name gets the service
+port. Binding beyond loopback, or allowing another Host, prints a loud warning: put your own access
+control in front.
+
+## Knowledge loop (ADR-0039 to ADR-0042)
+
+- `knowledge_consult` (agent only) runs the `context_package_get` path with the task as the
+  question and appends a Knowledge Receipt to `<state>/receipt-log.jsonl`. The receipt holds ids,
+  hashes and codes; the task text is hashed with the device key `<state>/receipt-key` (created
+  owner-only on first use) and never stored. The log is opened, and its whole chain verified, before
+  any content is prepared: a broken log answers 503 and nothing is delivered.
+- `knowledge_write_back` records "not needed" with a coded reason (`already_covered` must name cards
+  the agent may know) or creates a `create_card` proposal; both return a Write-back Receipt.
+  `decision_record` and `decision_outcome` create proposals only. Accepting a `record_outcome`
+  proposal patches only `sections.outcome`, and only if the decision still has `expectedContentHash`
+  (409 otherwise, the proposal stays pending).
+- `memory_route` is the pure classifier of ADR-0042 for the session and for agents; it stores nothing.
+- `usage_metrics_get` (human only) derives the metrics from the receipt log, task records in
+  `<state>/tasks`, proposals and decision cards. The atlas lag is reported as unknown (its target is
+  not met): `wb metrics` reads the atlas pages, the service does not yet.
+- Verify receipts with `wb receipts verify <task records> --log <state>/receipt-log.jsonl`.
 
 `worldbuilder mcp --stdio` and the `/mcp` mount belong to the next slice. The seams are
 documented in `src/app.ts` (the hook that already checks Host and Origin for every path) and
@@ -71,8 +96,15 @@ fixed reason code. Denied cards are left out and listed by id and a fixed reason
   from the store at confirm and send time, so any edit changes the hash.
 - `proposal_list` shows a `cloud_model` connection only its own proposals; a `local_model`
   sees all (proposal text may be derived from private cards).
-- `world_list` shows a `cloud_model` connection public worlds only (a world has no gate decision
-  of its own yet).
+- `world_list` shows a `local_model` or `cloud_model` connection only the worlds with at least one
+  card the gate clears for it (for `cloud_model`: clears after a confirmed transfer); a world has no
+  gate decision of its own.
+- `cards_search` of a model target filters after the gate: the text, type and layer filters run
+  over cleared cards only and the answer never lists denied cards, so a query for text in a denied
+  card looks like a query for absent text. Only an explicit id lookup says "no".
+- A context package for a Lage needs the Lage in the requested world and, for a model target, the
+  Lage cleared by the gate; a hidden Lage answers like a missing one (400: the contract declares no
+  404 for this operation).
 
 ## Decisions of this slice that the contract leaves open
 
@@ -82,12 +114,17 @@ fixed reason code. Denied cards are left out and listed by id and a fixed reason
   asked; `comment` is accepted without a store change (no comment store in M1). A change that
   cannot be applied is a 409 and the proposal stays pending. The `note` of accept and reject is
   not stored.
-- An agent card draft may not set `visibility`, `release`, `training` or `class` (400): those
-  stay at the private defaults until the human changes them.
+- An agent card draft may not set `worlds`, `tags`, `rating`, `class`, `visibility`, `release` or
+  `training` (400), and every edge of it must be drawn by the proposing agent (a `human` edge is a
+  400 at create and a 409 at accept). A created card joins the worlds of the Lage it is placed on;
+  the rest stays at the private defaults until the human changes it.
+- Storage failures are typed (`StorageError`): `not_found` 404, `conflict` 409, `invalid` 400,
+  `locked` 503 with `Retry-After`; the detail is fixed wording, never the adapter's message. A
+  proposal whose change the store refuses is a 409 and stays pending.
 - `rules_evaluate` follows the rule card JSON (`card_on_lage`, `card_field`, `tag`, `edge`,
   `stance`). For a non-screen target a rule with a stance condition, a condition on a card the
-  gate does not clear, or a rule card the gate does not clear is omitted and counted in
-  `withheld`. `triggeringCardIds` are filled only for a rule that fired.
+  gate does not clear, an edge condition that matches an edge touching such a card, or a rule card
+  the gate does not clear is omitted and counted in `withheld`. `triggeringCardIds` are filled only for a rule that fired.
 - `decision_save` merges the fields present in the body; the stored content hash must match.
 - Origin roots follow `cites` and `based_on` edges among the cleared cards; a root with a
   `source` is identified by it, otherwise it is its own root and flagged unknown.
@@ -98,3 +135,7 @@ fixed reason code. Denied cards are left out and listed by id and a fixed reason
 - Level-1 and export transfers (`purpose` other than `context_package`) can be previewed and
   confirmed but have no send path yet.
 - No per-agent quota on pending proposals.
+- The atlas lag of `usage_metrics_get` is unknown (see above); task records are read from
+  `<state>/tasks` (files that are not task records count as no task).
+- A `consultReceiptId` passed to `knowledge_write_back` is not checked against the log at write
+  time; the verifier reports a mismatch (`unlinked`).
