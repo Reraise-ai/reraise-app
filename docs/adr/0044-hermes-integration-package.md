@@ -41,7 +41,7 @@ an MCP server from inside a hook (`ctx.call_mcp`, default-deny through
 
 ### Layout and licence
 
-`integrations/hermes/` is Apache-2.0 ([LICENSING.md](../../LICENSING.md)) and contains
+`integrations/hermes/` is Apache-2.0 (see `LICENSING.md` in the repository root) and contains
 `plugins/worldbuilder-knowledge-loop/` (the plugin and its reviewer skill), `config/` (merge
 snippet and a `.env` example with a placeholder), `templates/` (task, hand-off, task record),
 `cron/` (installer and job scripts in sh and PowerShell) and `tests/` (a fake Hermes). It is
