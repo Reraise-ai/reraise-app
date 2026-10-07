@@ -60,6 +60,20 @@ runs anywhere the log file is readable.
   (`ReceiptLogPort`: read all lines, append one line), plus a file port for the service and the
   command line.
 
+### One writer, and a writer that notices outside changes
+
+- The service takes a lock file `<state>/service.lock` (pid, a hash of the host name, a token)
+  before it writes anything in the state directory. A second `worldbuilder serve` on the same
+  state directory refuses to start. A lock whose holder is a dead process on the same host is
+  stale and is taken over; the lock of a live process, or of another host (a shared directory), is
+  never broken. This also protects the session token, the proposals and the gate log.
+- Before each append, and before a consult prepares any content, the writer compares the file with
+  what it last wrote (size, modification time and file id, taken after its own last append). Any
+  difference makes it open the log again with the full chain check: a broken chain answers 503
+  ("Receipt log unavailable") and nothing is delivered or appended; a file that was moved aside
+  starts a fresh chain at `seq` 0. A change that keeps size, time and file id unchanged is not
+  noticed until the next open; the verifier still detects it.
+
 ### Tamper evidence and its limit
 
 The chain detects a changed, inserted, deleted or reordered entry anywhere before the last one,

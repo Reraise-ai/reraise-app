@@ -12,6 +12,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { AGENTS_FILE, AgentRegistry } from './agent-registry.js';
 import { SESSION_TOKEN_FILE, newToken, writePrivateFile } from './auth.js';
+import { acquireStateLock, type StateLock } from './state-lock.js';
 import { buildApp, DEFAULT_PORT, type BoardApp } from './app.js';
 
 export interface ServiceOptions {
@@ -70,7 +71,23 @@ export async function createService(options: ServiceOptions): Promise<Service> {
     }));
   const stateDir = localState.stateDir;
   await mkdir(stateDir, { recursive: true, mode: 0o700 });
+  // One service per state directory: before anything is written there.
+  const lock: StateLock = await acquireStateLock(stateDir);
+  try {
+    return await assemble(options, host, localState, stateDir, lock);
+  } catch (e) {
+    await lock.release();
+    throw e;
+  }
+}
 
+async function assemble(
+  options: ServiceOptions,
+  host: string,
+  localState: LocalStateStore,
+  stateDir: string,
+  lock: StateLock,
+): Promise<Service> {
   if (options.seedDefaultGateRules) {
     try {
       await writeFile(path.join(stateDir, 'gate-rules.yaml'), DEFAULT_GATE_RULES, { flag: 'wx' });
@@ -119,6 +136,7 @@ export async function createService(options: ServiceOptions): Promise<Service> {
     },
     async close() {
       await app.close();
+      await lock.release();
       (options.storage as { close?: () => void }).close?.();
     },
   };

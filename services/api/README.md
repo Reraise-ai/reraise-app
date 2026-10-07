@@ -46,6 +46,8 @@ control in front.
 
 ## Knowledge loop (ADR-0039 to ADR-0042)
 
+One service per state directory: `<state>/service.lock` (ADR-0040); a second `serve` on it refuses to start.
+
 - `knowledge_consult` (agent only) runs the `context_package_get` path with the task as the
   question and appends a Knowledge Receipt to `<state>/receipt-log.jsonl`. The receipt holds ids,
   hashes and codes; the task text is hashed with the device key `<state>/receipt-key` (created

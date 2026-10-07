@@ -7,7 +7,7 @@
 
 import type { ContextPackage, DisclosureTransfer } from '@worldbuilder/core';
 import { GATE_LOG_REASONS } from '@worldbuilder/core';
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createService } from './service.js';
@@ -285,6 +285,8 @@ describe('context package for a cloud_model connection', () => {
     await f.human('POST', `/disclosure/transfers/${t.transferId}/confirm`, {
       payloadHash: t.payloadHash,
     });
+    // The old process is gone in a real restart: drop its lock (the fixture service lives on).
+    await rm(path.join(f.stateDir, 'service.lock'));
     const restarted = await createService({
       storage: f.adapter,
       stateDir: f.stateDir,
@@ -305,7 +307,7 @@ describe('context package for a cloud_model connection', () => {
       headers: { host: HOST_HEADER, 'x-worldbuilder-session': restarted.sessionToken },
     });
     expect(confirm.statusCode).toBe(404);
-    await restarted.app.close();
+    await restarted.close();
   });
   it('a transfer previewed by the board cannot be redeemed by a connection', async () => {
     const preview = await f.human('POST', '/disclosure/transfers', {

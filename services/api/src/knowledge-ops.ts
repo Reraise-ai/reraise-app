@@ -33,6 +33,7 @@ import { buildContextPackage } from './context.js';
 import type { Handler } from './operations.js';
 import { HttpError } from './problem.js';
 import { draftProblem } from './proposals.js';
+import { ReceiptLogError } from './receipts.js';
 import { collect, type Services } from './services.js';
 import { newUlid } from './util.js';
 
@@ -217,7 +218,7 @@ export const knowledgeHandlers: Readonly<Record<string, Handler>> = {
     }
     const chain = await s.receipts.chain();
     if (!chain.ok) {
-      throw new HttpError(503, `the receipt log is broken: ${chain.problems[0]?.message}`);
+      throw new ReceiptLogError(`the receipt log is broken: ${chain.problems[0]?.message}`);
     }
     const records = await readTaskRecords(path.join(s.localState.stateDir, 'tasks'));
     const verified = verifyAgainstChain(records, chain);

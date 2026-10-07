@@ -179,9 +179,11 @@ export async function buildApp(options: AppOptions): Promise<BoardApp> {
     const errorCode = e.code;
     let status = 500;
     let detail: string | undefined;
+    let slug: string | undefined;
     if (e instanceof HttpError) {
       status = e.status;
       detail = e.detail;
+      slug = e.slug;
     } else if (isLocalStateError(e)) {
       const code: string = e.code;
       status =
@@ -194,7 +196,10 @@ export async function buildApp(options: AppOptions): Promise<BoardApp> {
       detail = STORAGE_DETAIL[e.code];
       const reason = (e as { reason?: unknown }).reason;
       if (typeof reason === 'string' && /^[a-z_]{1,40}$/.test(reason)) detail += ` (${reason})`;
-      if (status === 503) reply.header('retry-after', '1');
+      if (status === 503) {
+        reply.header('retry-after', '1');
+        slug = 'store-locked';
+      }
     } else if (errorCode === 'FST_ERR_CTP_BODY_TOO_LARGE') {
       status = 413;
       detail = 'the request body exceeds the size limit';
@@ -208,7 +213,7 @@ export async function buildApp(options: AppOptions): Promise<BoardApp> {
     // Rejected requests are logged without their content (ADR-0026).
     if (status >= 500) req.log.error({ err: { type: e.name, code: errorCode } }, 'request failed');
     else req.log.info({ status, code: errorCode }, 'request rejected');
-    return problem(reply, status, detail);
+    return problem(reply, status, detail, slug);
   });
   app.setNotFoundHandler((_req, reply) => problem(reply, 404, 'no such route'));
 

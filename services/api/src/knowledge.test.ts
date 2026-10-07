@@ -17,7 +17,7 @@ import type {
 } from '@worldbuilder/core';
 import { computeContentHash } from '@worldbuilder/core';
 import { checkChain, splitLogLines, verifyReceipts } from '@worldbuilder/knowledge-loop';
-import { readFile, stat, writeFile } from 'node:fs/promises';
+import { readFile, rename, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { cardOf, expectContract, makeFixture, PRIVATE_TEXT, type Fixture } from './test-helpers.js';
@@ -192,57 +192,116 @@ describe('knowledge_consult', () => {
   });
 });
 
-describe('a broken receipt log', () => {
-  it('refuses consults and write-backs (503) and shows no content, until a human repairs it', async () => {
+describe('a receipt log that is not what the writer last wrote', () => {
+  const ask = (own: Fixture, name = 'scripted') =>
+    own.agent(name, 'POST', '/knowledge/consult', {
+      taskRef: 'task:x',
+      task: 'x',
+      worldId: own.worldId,
+    });
+  const lines = async (own: Fixture) =>
+    splitLogLines(await readFile(path.join(own.stateDir, 'receipt-log.jsonl'), 'utf8'));
+
+  it('damage after a consult: 503 with its own problem type, no content, for every receipt tool and the metrics', async () => {
     const own = await makeFixture();
     try {
-      const ok = await own.agent('scripted', 'POST', '/knowledge/consult', {
-        taskRef: 'task:x',
-        task: 'x',
-        worldId: own.worldId,
-      });
-      expect(ok.statusCode).toBe(200);
+      expect((await ask(own)).statusCode).toBe(200);
       const file = path.join(own.stateDir, 'receipt-log.jsonl');
-      const lines = splitLogLines(await readFile(file, 'utf8'));
-      await writeFile(file, `${lines[0]!.replace('"seq":0', '"seq":7')}\n`, { mode: 0o600 });
-      // the open writer keeps working in this process only until restart; a fresh service refuses
+      const [first] = await lines(own);
+      await writeFile(file, `${first!.replace('"seq":0', '"seq":7')}\n`, { mode: 0o600 });
+      const res = await ask(own);
+      expect(res.statusCode).toBe(503);
+      expect(res.headers['content-type']).toContain('application/problem+json');
+      expect(res.json().title).toBe('Receipt log unavailable');
+      expect(res.json().type).toContain('receipt-log-unavailable');
+      expect(res.body).not.toContain('Synthetic public claim');
+      const wb = await own.agent('scripted', 'POST', '/knowledge/write-back', {
+        taskRef: 'task:y',
+        notNeeded: { reason: 'no_new_knowledge' },
+      });
+      expect(wb.statusCode).toBe(503);
+      expect((await own.human('GET', '/metrics/usage')).statusCode).toBe(503);
+      // the damaged file is left as it is: nothing was appended
+      expect(await readFile(file, 'utf8')).toBe(`${first!.replace('"seq":0', '"seq":7')}\n`);
+    } finally {
+      await own.close();
+    }
+  });
+  it('damage that keeps the first line valid (an appended junk line) is caught as well', async () => {
+    const own = await makeFixture();
+    try {
+      expect((await ask(own)).statusCode).toBe(200);
+      const file = path.join(own.stateDir, 'receipt-log.jsonl');
+      await writeFile(file, `${await readFile(file, 'utf8')}not json\n`, { mode: 0o600 });
+      expect((await ask(own)).statusCode).toBe(503);
+    } finally {
+      await own.close();
+    }
+  });
+  it('moved aside while running: the next receipt starts a valid chain at seq 0', async () => {
+    const own = await makeFixture();
+    try {
+      expect((await ask(own)).statusCode).toBe(200);
+      expect((await ask(own)).statusCode).toBe(200);
+      const file = path.join(own.stateDir, 'receipt-log.jsonl');
+      await rename(file, `${file}.old`);
+      expect((await ask(own)).statusCode).toBe(200);
+      const chain = checkChain(await lines(own));
+      expect(chain.ok).toBe(true);
+      expect(chain.entries).toHaveLength(1);
+      expect(chain.entries[0]!.seq).toBe(0);
+      expect(checkChain(splitLogLines(await readFile(`${file}.old`, 'utf8'))).ok).toBe(true);
+    } finally {
+      await own.close();
+    }
+  });
+  it('a second service on the same state directory refuses to start; after close it may start', async () => {
+    const own = await makeFixture();
+    try {
       const { createService } = await import('./service.js');
-      const second = await createService({
+      await expect(
+        createService({ storage: own.adapter, stateDir: own.stateDir, port: 4310 }),
+      ).rejects.toMatchObject({ code: 'state_locked' });
+      await own.service.close();
+      const again = await createService({
         storage: own.adapter,
         stateDir: own.stateDir,
         port: 4310,
       });
-      try {
-        const res = await second.app.inject({
-          method: 'POST',
-          url: '/knowledge/consult',
-          headers: {
-            host: '127.0.0.1:4310',
-            authorization: `Bearer ${own.tokens['scripted']}`,
-          },
-          payload: { taskRef: 'task:y', task: 'y', worldId: own.worldId },
-        } as never);
-        expect(res.statusCode).toBe(503);
-        expect(res.body).not.toContain('Synthetic public claim');
-        const wb = await second.app.inject({
-          method: 'POST',
-          url: '/knowledge/write-back',
-          headers: {
-            host: '127.0.0.1:4310',
-            authorization: `Bearer ${own.tokens['scripted']}`,
-          },
-          payload: { taskRef: 'task:y', notNeeded: { reason: 'no_new_knowledge' } },
-        } as never);
-        expect(wb.statusCode).toBe(503);
-        const metrics = await second.app.inject({
-          method: 'GET',
-          url: '/metrics/usage',
-          headers: { host: '127.0.0.1:4310', 'x-worldbuilder-session': second.sessionToken },
-        } as never);
-        expect(metrics.statusCode).toBe(503);
-      } finally {
-        await second.app.close();
-      }
+      await again.close();
+    } finally {
+      await own.close();
+    }
+  });
+  it('a lock left by a dead process is taken over; one of a live process is not', async () => {
+    const own = await makeFixture();
+    try {
+      await own.service.close();
+      const { createService } = await import('./service.js');
+      const { createHash } = await import('node:crypto');
+      const { hostname } = await import('node:os');
+      const lockFile = path.join(own.stateDir, 'service.lock');
+      const host = createHash('sha256').update(hostname()).digest('hex').slice(0, 16);
+      const content = (pid: number) =>
+        JSON.stringify({ pid, host, token: 'abc', createdAt: new Date().toISOString() });
+      await writeFile(lockFile, content(2 ** 22 + 12345), { mode: 0o600 }); // no such process
+      const taken = await createService({
+        storage: own.adapter,
+        stateDir: own.stateDir,
+        port: 4310,
+      });
+      await taken.close();
+      await writeFile(lockFile, content(process.pid), { mode: 0o600 }); // alive: this process
+      await expect(
+        createService({ storage: own.adapter, stateDir: own.stateDir, port: 4310 }),
+      ).rejects.toMatchObject({ code: 'state_locked' });
+      await writeFile(
+        lockFile,
+        JSON.stringify({ pid: 1, host: 'other-host', token: 't', createdAt: 'x' }),
+      );
+      await expect(
+        createService({ storage: own.adapter, stateDir: own.stateDir, port: 4310 }),
+      ).rejects.toMatchObject({ code: 'state_locked' });
     } finally {
       await own.close();
     }

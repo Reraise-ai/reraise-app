@@ -17,18 +17,34 @@ import {
   type Receipt,
 } from '@worldbuilder/knowledge-loop';
 import path from 'node:path';
+import { stat } from 'node:fs/promises';
 import { HttpError } from './problem.js';
+import { Mutex } from './util.js';
+
+/** What the file looked like after this writer's last append (or at open). */
+type Signature = string;
+
+/** The receipt log is broken or unreadable: a 503 with its own problem type. */
+export class ReceiptLogError extends HttpError {
+  constructor(detail: string) {
+    super(503, detail, 'receipt-log-unavailable');
+  }
+}
 
 export class ReceiptStore {
   private log: Promise<ReceiptLog> | undefined;
+  private signature: Signature | undefined;
   private key: Promise<Uint8Array> | undefined;
   private readonly port;
+  private readonly file: string;
+  private readonly lock = new Mutex();
 
   constructor(
     private readonly stateDir: string,
     private readonly now: () => Date,
   ) {
-    this.port = fileReceiptLogPort(path.join(stateDir, RECEIPT_LOG_FILE));
+    this.file = path.join(stateDir, RECEIPT_LOG_FILE);
+    this.port = fileReceiptLogPort(this.file);
   }
 
   /** The device receipt key (`<state>/receipt-key`, created owner-only on first use). */
@@ -40,26 +56,50 @@ export class ReceiptStore {
     return this.key;
   }
 
-  /** The writer; throws a 503 problem when the log is broken (repair is a human act). */
-  private open(): Promise<ReceiptLog> {
-    this.log ??= ReceiptLog.open(this.port, this.now).catch((e: unknown) => {
-      this.log = undefined;
-      throw new HttpError(
-        503,
-        `the receipt log cannot be used: ${e instanceof Error ? e.message : 'unreadable'}`,
-      );
-    });
+  private async signatureOfFile(): Promise<Signature> {
+    try {
+      const info = await stat(this.file);
+      return `${info.size}:${info.mtimeMs}:${info.ino}`;
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code === 'ENOENT') return 'missing';
+      throw e;
+    }
+  }
+
+  /**
+   * The writer, valid for the file as it is now. If the file is not what this writer last wrote
+   * (edited, damaged, replaced or moved aside by someone) the writer is opened again, which
+   * verifies the whole chain: a broken log is a 503 and nothing is delivered; a missing file
+   * starts a fresh chain at seq 0 (ADR-0040).
+   */
+  private async current(): Promise<ReceiptLog> {
+    const seen = await this.signatureOfFile();
+    if (this.log !== undefined && this.signature !== seen) this.log = undefined;
+    if (this.log === undefined) {
+      const opened = ReceiptLog.open(this.port, this.now).catch((e: unknown) => {
+        this.log = undefined;
+        throw new ReceiptLogError(
+          `the receipt log cannot be used: ${e instanceof Error ? e.message : 'unreadable'}`,
+        );
+      });
+      this.log = opened;
+      this.signature = seen;
+    }
     return this.log;
   }
 
   /** Make sure receipts can be written, before any content is prepared for the caller. */
   async ready(): Promise<void> {
-    await this.open();
+    await this.lock.run(() => this.current());
     await this.queryKey();
   }
 
   async append(receipt: Receipt): Promise<void> {
-    await (await this.open()).append(receipt);
+    await this.lock.run(async () => {
+      const log = await this.current();
+      await log.append(receipt);
+      this.signature = await this.signatureOfFile();
+    });
   }
 
   /** The current chain check of the log file, for the metrics. */
