@@ -64,10 +64,38 @@ One service per state directory: `<state>/service.lock` (ADR-0040); a second `se
   not met): `wb metrics` reads the atlas pages, the service does not yet.
 - Verify receipts with `wb receipts verify <task records> --log <state>/receipt-log.jsonl`.
 
-`worldbuilder mcp --stdio` and the `/mcp` mount belong to the next slice. The seams are
-documented in `src/app.ts` (the hook that already checks Host and Origin for every path) and
-`src/main.ts`; the MCP tools call `handlers` from `src/operations.ts`, so both front ends end in
-the same code.
+## MCP at `/mcp` and the stdio bridge (ADR-0016, ADR-0029)
+
+The same process serves MCP over Streamable HTTP at `/mcp` (`src/mcp.ts`, the tools and sessions
+come from `@worldbuilder/mcp-server`). A tool call runs `executeOperation` (`src/execute.ts`),
+the function the HTTP route of the same operation runs: argument checks, access rule, handler,
+response check against the contract. So the gate, the cloud confirmation, the proposal list and
+the receipt log are shared by construction, and a failure maps through `describeError`
+(`src/errors.ts`) to the same problem details, delivered as an MCP tool error with that text
+only.
+
+- Credentials: `/mcp` takes a registered agent's bearer token only; the human session token is
+  403 there, an unknown or revoked token is 401 (checked on every request, also inside an open
+  session). Host and Origin are checked like on every route; the body limit and JSON parser are
+  the same (413 above the limit).
+- Sessions: `Mcp-Session-Id`, JSON answers to POST, the GET stream for server-initiated
+  messages. A session belongs to the agent that opened it; another agent's request for it looks
+  like an unknown session (404). At most 16 sessions per agent (the least recently used is
+  closed), idle sessions close after 30 minutes, all close with the service.
+- Tools: exactly the entries of `packages/mcp-server/src/tools.ts`. Startup fails if a tool has
+  no operation or names a human-only one. No human-only operation is listed and calling one by
+  name is a tool error.
+- Target class: the registered connection's class applies. A `cloud_model` connection gets
+  `confirmationRequired` with a `transferId` and no content first, and the confirmed cards only
+  after the human confirmed that transfer (ADR-0031).
+- `worldbuilder mcp --stdio [--url <service URL>]`: the stateless bridge (`bridge.ts` of the MCP
+  package). Token from `WORLDBUILDER_AGENT_TOKEN_FILE` (or `WORLDBUILDER_AGENT_TOKEN`), service
+  URL from `--url` or `WORLDBUILDER_URL` (default `http://127.0.0.1:4310`). It never writes a
+  file, relays `Mcp-Session-Id` and the server stream, and exits 1 with a clear message if the
+  service is not running.
+
+Tests: `src/mcp.test.ts` (official SDK client over a real loopback port), `src/mcp-bridge.test.ts`
+(the bridge as a child process).
 
 ## Request path
 
@@ -132,6 +160,12 @@ fixed reason code. Denied cards are left out and listed by id and a fixed reason
   `source` is identified by it, otherwise it is its own root and flagged unknown.
 
 ## Known gaps
+
+- MCP: no server-initiated notifications for proposals or Lage changes yet (the stream only
+  carries `tools/list_changed`); agents poll `proposal_list` with `changedSince` (ADR-0032).
+  `/mcp` sends no CORS headers: it is for agents, not for browser pages.
+- The bridge does not reconnect after the service restarted (its session is gone; the host
+  restarts it).
 
 - No gate rule fragments from adapters are passed yet (the `StorageAdapter` interface has none).
 - Level-1 and export transfers (`purpose` other than `context_package`) can be previewed and

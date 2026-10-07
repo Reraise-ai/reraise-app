@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- MCP server on the official SDK: the thirteen agent tools with self-contained schemas, served at
+  `/mcp` of the service over Streamable HTTP (agent bearer token, Host and Origin checks, per-agent
+  sessions, `cloud_model` confirmation flow) and through the stateless stdio bridge
+  `worldbuilder mcp --stdio`; every tool runs the operation code of its HTTP route.
 - Knowledge loop (ADR-0039 to ADR-0043): Knowledge and Write-back Receipts, the hash-chained
   receipt log and its fail-closed verifier, usage metrics per agent and week with the owner's
   targets, deterministic memory routing and atlas pages with card links and staleness, in the

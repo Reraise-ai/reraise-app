@@ -18,9 +18,11 @@ automatic, the hand-off fields required, and `wb receipts verify` the only judge
 ::: warning Status
 The plugin, templates and cron scripts are tested against a fake Hermes harness, not against a
 running Hermes: the CI job is defined and the tests pass locally; no CI run has happened yet. The
-service side of the tools `knowledge_consult`, `knowledge_write_back` and `memory_route` is a
-separate slice; until it ships, the plugin reports "no receipt" and the verifier rejects the
-task, which is the intended failure mode. The design is recorded in
+service side of the tools `knowledge_consult`, `knowledge_write_back` and `memory_route` is
+available on `/mcp` (and through `worldbuilder mcp --stdio`), tested with the official MCP
+client (`services/api/src/mcp.test.ts`); the plugin has not run against a real service. If the
+service is down or the agent is not registered, the plugin reports "no receipt" and the verifier
+rejects the task, which is the intended failure mode. The design is recorded in
 [ADR-0044](../adr/0044-hermes-integration-package.md).
 :::
 
