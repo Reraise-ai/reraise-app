@@ -17,7 +17,7 @@ export interface EstimateView {
 
 /** Control characters and line breaks would break the one-line display; collapse them. */
 // eslint-disable-next-line no-control-regex
-const clean = (s: string) => s.replace(/[\u0000-\u001f\u007f]+/g, ' ').trim();
+const clean = (s: string) => s.replace(/[\u0000-\u001f\u007f\s]+/g, ' ').trim();
 
 /**
  * "<engine> estimates 0.82 for <move>": the confidence with two decimals, always with the
