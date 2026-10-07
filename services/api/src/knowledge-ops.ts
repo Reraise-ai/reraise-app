@@ -24,6 +24,7 @@ import {
   parseTaskRecord,
   routeMemory,
   verifyAgainstChain,
+  type Receipt,
 } from '@worldbuilder/knowledge-loop';
 import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -84,6 +85,16 @@ async function readTaskRecords(dir: string): Promise<TaskRecord[]> {
   return records;
 }
 
+/** Append a receipt; any failure is the 503 "Receipt log unavailable", never a bare 500. */
+async function appendReceipt(s: Services, receipt: Receipt): Promise<void> {
+  try {
+    await s.receipts.append(receipt);
+  } catch (e) {
+    if (e instanceof HttpError) throw e;
+    throw new ReceiptLogError('the receipt could not be written');
+  }
+}
+
 export const knowledgeHandlers: Readonly<Record<string, Handler>> = {
   async knowledge_consult(s, { principal, body }) {
     const agent = agentOf(principal);
@@ -109,7 +120,7 @@ export const knowledgeHandlers: Readonly<Record<string, Handler>> = {
       package: pkg,
       at: s.now().toISOString(),
     });
-    await s.receipts.append(receipt);
+    await appendReceipt(s, receipt);
     return ok({ package: pkg, receipt });
   },
 
@@ -127,7 +138,7 @@ export const knowledgeHandlers: Readonly<Record<string, Handler>> = {
     if ('notNeeded' in req && req.notNeeded) {
       await requireCleared(s, agent, req.notNeeded.coveredBy ?? [], 'coveredBy');
       const receipt = createWriteBackReceipt({ ...base, notNeeded: req.notNeeded });
-      await s.receipts.append(receipt);
+      await appendReceipt(s, receipt);
       return ok({ receipt }, 201);
     }
     const card = (req as { card: CardDraft }).card;
@@ -139,7 +150,15 @@ export const knowledgeHandlers: Readonly<Record<string, Handler>> = {
       req.rationale,
     );
     const receipt = createWriteBackReceipt({ ...base, proposalId: proposal.id, draft: card });
-    await s.receipts.append(receipt);
+    try {
+      await appendReceipt(s, receipt);
+    } catch (e) {
+      // No receipt, so the agent has no proof of the write-back: withdraw the proposal rather
+      // than leave one the receipt log knows nothing about. (The schema records every decision
+      // as the human's, so the rejection carries decidedBy "human".)
+      await s.localState.decideProposal(proposal.id, 'rejected').catch(() => undefined);
+      throw e;
+    }
     return ok({ receipt, proposal }, 201);
   },
 

@@ -19,7 +19,7 @@ import { computeContentHash } from '@worldbuilder/core';
 import { checkChain, splitLogLines, verifyReceipts } from '@worldbuilder/knowledge-loop';
 import { readFile, rename, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { cardOf, expectContract, makeFixture, PRIVATE_TEXT, type Fixture } from './test-helpers.js';
 
 let f: Fixture;
@@ -540,5 +540,46 @@ describe('usage_metrics_get', () => {
     expect(target('receipt_coverage_7d')).toMatchObject({ value: null, met: false });
     expect(target('atlas_lag_hours')).toMatchObject({ value: null, met: false });
     expect(JSON.stringify(m)).not.toContain('SECRET-TASK-WORDS');
+  });
+});
+
+describe('when a receipt cannot be written', () => {
+  it('a consult answers 503 without content; a card write-back withdraws its proposal', async () => {
+    const own = await makeFixture();
+    const spy = vi
+      .spyOn(own.service.app.services.receipts, 'append')
+      .mockRejectedValue(new Error('disk full'));
+    try {
+      const consult = await own.agent('scripted', 'POST', '/knowledge/consult', {
+        taskRef: 'task:z',
+        task: 'z',
+        worldId: own.worldId,
+      });
+      expect(consult.statusCode).toBe(503);
+      expect(consult.json().title).toBe('Receipt log unavailable');
+      expect(consult.body).not.toContain('Synthetic public claim');
+      const wb = await own.agent('scripted', 'POST', '/knowledge/write-back', {
+        taskRef: 'task:z',
+        card: draft('Lost write-back'),
+      });
+      expect(wb.statusCode).toBe(503);
+      const all = (await own.human('GET', '/proposals?limit=200')).json().proposals as Proposal[];
+      const mine = all.filter((p) => JSON.stringify(p.payload).includes('Lost write-back'));
+      expect(mine).toHaveLength(1);
+      expect(mine[0]!.status).toBe('rejected');
+      // nothing of it can be accepted any more
+      expect((await own.human('POST', `/proposals/${mine[0]!.id}/accept`, {})).statusCode).toBe(
+        409,
+      );
+      // the "not needed" answer fails the same way
+      const nn = await own.agent('scripted', 'POST', '/knowledge/write-back', {
+        taskRef: 'task:z',
+        notNeeded: { reason: 'no_new_knowledge' },
+      });
+      expect(nn.statusCode).toBe(503);
+    } finally {
+      spy.mockRestore();
+      await own.close();
+    }
   });
 });
