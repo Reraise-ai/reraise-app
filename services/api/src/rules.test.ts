@@ -134,3 +134,56 @@ describe('for a cloud_model', () => {
     expect(res.body).not.toContain('Prefer option');
   });
 });
+
+describe('an edge condition that touches a hidden card', () => {
+  it('is withheld from a model target, not answered from the visible edges, and works on the screen', async () => {
+    const own = await makeFixture();
+    try {
+      const stored = (await own.adapter.read(own.ids.lage))!.lage!;
+      await own.adapter.patch(own.ids.lage, {
+        lage: {
+          ...stored,
+          version: stored.version + 1,
+          cards: [...stored.cards, { id: own.ids.evPrivate, x: 1, y: 1 }],
+          edges: [{ from: own.ids.evPublic, to: own.ids.evPrivate, kind: 'supports', by: 'human' }],
+        },
+      });
+      const anyEdge = own.store.seed(own.store.nextExternalId(), {
+        format: 2,
+        author: 'human',
+        worlds: [own.worldId],
+        type: 'rule',
+        title: 'any supporting edge',
+        visibility: 'public',
+        rule: { when: [{ kind: 'edge', edgeKind: 'supports' }], then: 'x' },
+      });
+      const noEdge = own.store.seed(own.store.nextExternalId(), {
+        format: 2,
+        author: 'human',
+        worlds: [own.worldId],
+        type: 'rule',
+        title: 'any refuting edge',
+        visibility: 'public',
+        rule: { when: [{ kind: 'edge', edgeKind: 'refutes' }], then: 'x' },
+      });
+      const ask = async (who: string) => {
+        const res =
+          who === 'human'
+            ? await own.human('POST', '/rules/evaluate', { lageId: own.ids.lage })
+            : await own.agent(who, 'POST', '/rules/evaluate', { lageId: own.ids.lage });
+        expectContract('rules_evaluate', res, 200);
+        return res.json() as RuleEvaluation;
+      };
+      const screen = await ask('human');
+      expect(resultOf(screen, anyEdge)).toMatchObject({ fired: true });
+      const local = await ask('scripted');
+      expect(resultOf(local, anyEdge)).toBeUndefined();
+      expect(JSON.stringify(local)).not.toContain(own.ids.evPrivate);
+      expect(local.withheld).toBeGreaterThanOrEqual(1);
+      // A kind that matches no edge at all touches nothing hidden: still evaluated.
+      expect(resultOf(local, noEdge)).toMatchObject({ fired: false });
+    } finally {
+      await own.close();
+    }
+  });
+});

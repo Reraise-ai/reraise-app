@@ -54,6 +54,17 @@ function referencedCards(c: RuleCondition): string[] {
   }
 }
 
+/** Does a Lage edge that the condition matches have an end the target may not see? */
+function edgeTouchesHidden(env: Env, c: Extract<RuleCondition, { kind: 'edge' }>): boolean {
+  return env.lage.edges.some(
+    (e) =>
+      e.kind === c.edgeKind &&
+      (c.from === undefined || e.from === c.from) &&
+      (c.to === undefined || e.to === c.to) &&
+      (env.hiddenOnLage.has(e.from) || env.hiddenOnLage.has(e.to)),
+  );
+}
+
 async function evaluateCondition(env: Env, c: RuleCondition): Promise<Outcome> {
   const onLage = new Set(env.lage.cards.map((p) => p.id));
   switch (c.kind) {
@@ -177,6 +188,9 @@ export async function evaluateRules(
     let hidden = (await s.gate.decide(ruleCard, target)).decision !== 'allow';
     for (const c of conditions) {
       if (c.kind === 'stance') hidden = true;
+      // An edge condition that matches an edge touching a card the target may not see would
+      // answer from the visible edges only: the rule is withheld, not evaluated (ADR-0013).
+      if (c.kind === 'edge' && edgeTouchesHidden(env, c)) hidden = true;
       for (const id of referencedCards(c)) {
         if (visible.has(id)) continue;
         const card = await s.storage.read(id);
