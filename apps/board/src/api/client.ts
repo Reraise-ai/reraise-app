@@ -15,6 +15,9 @@ import type {
   DisclosureTransfer,
   Lage,
   LageCreateRequest,
+  Level1PredictRequest,
+  Level1Result,
+  Level1State,
   Problem,
   Proposal,
   ProposalPage,
@@ -86,6 +89,12 @@ export interface BoardClient {
   proposal_reject(proposalId: string, note?: string): Promise<Proposal>;
   disclosure_transfer_preview(body: DisclosurePreviewRequest): Promise<DisclosureTransfer>;
   disclosure_confirm(transferId: string, payloadHash: string): Promise<DisclosureConfirmation>;
+  /** Human-only (ADR-0035, ADR-0045): the engines and the latest estimate of a Lage. */
+  level1_get(lageId: string, explain?: boolean): Promise<Level1State>;
+  /** Human-only: estimate each player's next move; a cloud engine needs the transfer flow. */
+  level1_predict(lageId: string, body: Level1PredictRequest): Promise<Level1Result>;
+  /** Human-only: open a level-2 board analysis for one player of the latest estimate. */
+  level1_escalate(lageId: string, playerCardId: string): Promise<Card>;
   /** Human-only (ADR-0041). Without `week` the rolling 7 days. */
   usage_metrics_get(week?: string): Promise<UsageMetrics>;
 }
@@ -159,6 +168,11 @@ export function createClient(options: ClientOptions): BoardClient {
     disclosure_transfer_preview: (body) => call('POST', '/disclosure/transfers', body),
     disclosure_confirm: (id, payloadHash) =>
       call('POST', `/disclosure/transfers/${enc(id)}/confirm`, { payloadHash }),
+    level1_get: (id, explain) =>
+      call('GET', `/lagen/${enc(id)}/level1${explain ? '?explain=true' : ''}`),
+    level1_predict: (id, body) => call('POST', `/lagen/${enc(id)}/level1`, body),
+    level1_escalate: (id, playerCardId) =>
+      call('POST', `/lagen/${enc(id)}/level1/escalate`, { playerCardId }),
     usage_metrics_get: (week) => call('GET', `/metrics/usage${query({ week })}`),
   };
 }

@@ -312,6 +312,10 @@ label {
   color: var(--wb-color-experience);
 }
 
+.wb-badge[data-kind='stale'] {
+  color: var(--wb-warning);
+}
+
 .wb-badge[data-kind='agent'] {
   color: var(--wb-color-agent);
 }
@@ -398,4 +402,35 @@ label {
 }
 .wb-envelope dd {
   margin: 0 0 var(--wb-space-1);
+}
+
+/* Level 1 panel */
+
+button.wb-link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--wb-accent);
+  text-decoration: underline;
+  text-align: left;
+}
+
+.wb-inline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--wb-space-half) var(--wb-space-1);
+}
+
+.wb-subhead {
+  margin: var(--wb-space-1) 0 var(--wb-space-half);
+  font-size: var(--wb-text-s);
+  color: var(--wb-text-muted);
+  font-weight: normal;
+}
+
+.wb-check {
+  display: block;
 }

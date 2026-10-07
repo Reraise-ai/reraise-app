@@ -14,15 +14,18 @@ interface Props {
   fetchImpl?: typeof fetch;
   storage?: Storage;
   pollIntervalMs?: number;
+  /** For tests: the wait before the local level-1 engine re-runs after an assumption change. */
+  level1DebounceMs?: number;
 }
 
-export function App({ fetchImpl, storage, pollIntervalMs }: Props = {}) {
+export function App({ fetchImpl, storage, pollIntervalMs, level1DebounceMs }: Props = {}) {
   const [session, setSession] = useState<Session | null>(() => loadSession(storage));
   return session ? (
     <Signed
       session={session}
       fetchImpl={fetchImpl}
       pollIntervalMs={pollIntervalMs}
+      level1DebounceMs={level1DebounceMs}
       onSignOut={() => {
         clearSession(storage);
         setSession(null);
@@ -43,6 +46,7 @@ function Signed(props: {
   session: Session;
   fetchImpl: typeof fetch | undefined;
   pollIntervalMs: number | undefined;
+  level1DebounceMs: number | undefined;
   onSignOut(): void;
 }) {
   const { session, fetchImpl, onSignOut } = props;
@@ -97,11 +101,16 @@ function Signed(props: {
         <UsagePanel client={client} />
       ) : openLage ? (
         <Workbench
+          key={openLage}
           client={client}
           lageId={openLage}
           worldId={worldId}
           {...(props.pollIntervalMs !== undefined ? { pollIntervalMs: props.pollIntervalMs } : {})}
+          {...(props.level1DebounceMs !== undefined
+            ? { level1DebounceMs: props.level1DebounceMs }
+            : {})}
           onClose={() => setOpenLage(null)}
+          onOpenLage={setOpenLage}
         />
       ) : (
         <>
