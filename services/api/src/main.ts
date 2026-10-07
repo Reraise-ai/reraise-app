@@ -2,11 +2,12 @@
 // Copyright The Worldbuilder contributors
 //
 // The `worldbuilder` command (ADR-0029), as a function so tests can run it; `cli.ts` is the bin:
-//   worldbuilder serve --store <path> [--state <path>] [--port <n>] [--host <h>] [--allow-origin <o>]
-//   worldbuilder agent add --name <name> --target local_model|cloud_model [--state <path>]
+//   worldbuilder serve --store <path> [--state <path>] [--port <n>] [--host <h>]
+//                      [--allow-host <h>]... [--allow-origin <o>]...
+//   worldbuilder agent add <name> --target local_model|cloud_model [--state <path>]
 //   worldbuilder mcp --stdio            (next slice: the stateless stdio bridge)
 
-import { resolveStateDir } from '@worldbuilder/local-state';
+import { assertStateDirSafe, resolveStateDir } from '@worldbuilder/local-state';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
 import { addAgent, listAgents, removeAgent } from './agent-registry.js';
@@ -18,10 +19,11 @@ import { openMarkdownStore } from './store.js';
 
 const USAGE = `Usage:
   worldbuilder serve --store <path> [--state <path>] [--port <n>] [--host <h>]
-                     [--allow-origin <origin>]...
-  worldbuilder agent add --name <name> --target local_model|cloud_model [--state <path>]
-  worldbuilder agent list [--state <path>]
-  worldbuilder agent remove --name <name> [--state <path>]
+                     [--allow-host <host>]... [--allow-origin <origin>]...
+  worldbuilder agent add <name> --target local_model|cloud_model [--state <path>] [--store <path>]
+  worldbuilder agent list [--state <path>] [--store <path>]
+  worldbuilder agent remove <name> [--state <path>] [--store <path>]
+  (the agent name may also be given as --name <name>)
   worldbuilder mcp --stdio
 `;
 
@@ -44,6 +46,14 @@ function absolute(p: string): string {
   return path.resolve(p);
 }
 
+/** A Host header value as the service compares it: `name` becomes `name:<port>`. */
+function withPort(host: string, port: number): string {
+  const h = host.trim().toLowerCase();
+  if (h === '') throw new UsageError('--allow-host needs a host name');
+  const hasPort = h.startsWith('[') ? /\]:\d+$/.test(h) : /:\d+$/.test(h);
+  return hasPort ? h : `${h}:${port}`;
+}
+
 async function serve(argv: string[], deps: MainDeps): Promise<void> {
   const { values } = parseArgs({
     args: argv,
@@ -52,6 +62,7 @@ async function serve(argv: string[], deps: MainDeps): Promise<void> {
       state: { type: 'string' },
       port: { type: 'string' },
       host: { type: 'string' },
+      'allow-host': { type: 'string', multiple: true },
       'allow-origin': { type: 'string', multiple: true },
     },
     strict: true,
@@ -62,6 +73,7 @@ async function serve(argv: string[], deps: MainDeps): Promise<void> {
     throw new UsageError('--port must be an integer from 1 to 65535');
   }
   const host = values.host ?? '127.0.0.1';
+  const allowedHosts = (values['allow-host'] ?? []).map((h) => withPort(h, port));
   const storeRoot = absolute(values.store);
   const storage = await (deps.openStore ?? openMarkdownStore)(storeRoot);
   const service = await createService({
@@ -70,6 +82,7 @@ async function serve(argv: string[], deps: MainDeps): Promise<void> {
     ...(values.state ? { stateDir: absolute(values.state) } : {}),
     host,
     port,
+    ...(allowedHosts.length > 0 ? { allowedHosts } : {}),
     ...(values['allow-origin'] ? { allowedOrigins: values['allow-origin'] } : {}),
     seedDefaultGateRules: true,
     logger: deps.logger ?? {
@@ -90,8 +103,17 @@ async function serve(argv: string[], deps: MainDeps): Promise<void> {
   out.write(`The Worldbuilder is listening on http://${bound.host}:${bound.port}\n`);
   if (!isLoopback(host)) {
     err.write(
-      'WARNING: the service is not bound to loopback. Put your own access control (VPN, reverse\n' +
-        'proxy with authentication) in front of it.\n',
+      '\n' +
+        '!!! WARNING: the service is bound to a network address, not to loopback. !!!\n' +
+        `Anyone who can reach ${host}:${bound.port} can try to guess tokens and read what the gate\n` +
+        'allows. Put your own access control (VPN, or a reverse proxy with authentication and TLS)\n' +
+        'in front of it, and never expose it to the internet as it is.\n\n',
+    );
+  }
+  if (allowedHosts.length > 0) {
+    err.write(
+      `WARNING: also accepting Host header(s) ${allowedHosts.join(', ')}. A name that points at this\n` +
+        'machine from outside re-opens the door to DNS rebinding; allow only names you control.\n',
     );
   }
   out.write(`State directory:  ${service.stateDir}\n`);
@@ -115,35 +137,51 @@ async function serve(argv: string[], deps: MainDeps): Promise<void> {
 async function agent(argv: string[], deps: MainDeps): Promise<void> {
   const [sub, ...rest] = argv;
   const out = deps.stdout ?? process.stdout;
-  const options = {
-    name: { type: 'string' },
-    target: { type: 'string' },
-    state: { type: 'string' },
-  } as const;
-  const { values } = parseArgs({ args: rest, options, strict: true });
-  const stateDir = values.state ? absolute(values.state) : resolveStateDir();
+  const { values, positionals } = parseArgs({
+    args: rest,
+    options: {
+      name: { type: 'string' },
+      target: { type: 'string' },
+      state: { type: 'string' },
+      store: { type: 'string', multiple: true },
+    },
+    allowPositionals: true,
+    strict: true,
+  });
+  // The same directory rules as `serve` (ADR-0030): the per-OS default or an explicit absolute
+  // path, never inside a store or a Git working tree, symbolic links followed.
+  const stateDir = await assertStateDirSafe(
+    values.state ? absolute(values.state) : resolveStateDir(),
+    { storeRoots: (values.store ?? []).map(absolute) },
+  );
+  const name = values.name ?? positionals[0];
+  if (positionals.length > (values.name === undefined ? 1 : 0)) {
+    throw new UsageError('too many arguments');
+  }
   if (sub === 'list') {
+    if (name !== undefined) throw new UsageError('agent list takes no name');
     const agents = await listAgents(stateDir);
-    for (const a of agents) out.write(`agent:${a.name}\t${a.target}\n`);
-    if (agents.length === 0) out.write('No agent connections registered.\n');
+    for (const a of agents.filter((x) => x.revokedAt === undefined)) {
+      out.write(`agent:${a.name}\t${a.target}\t${a.createdAt}\n`);
+    }
+    if (!agents.some((x) => x.revokedAt === undefined)) {
+      out.write('No agent connections registered.\n');
+    }
     return;
   }
   if (sub === 'remove') {
-    if (!values.name) throw new UsageError('--name is required');
-    await removeAgent(stateDir, values.name);
-    out.write(`Removed agent:${values.name}. Its token no longer works.\n`);
+    if (!name) throw new UsageError('the agent name is required');
+    await removeAgent(stateDir, name);
+    out.write(`Removed agent:${name}. Its token no longer works.\n`);
     return;
   }
   if (sub !== 'add') throw new UsageError('expected: agent add|list|remove');
-  if (!values.name) throw new UsageError('--name is required');
+  if (!name) throw new UsageError('the agent name is required');
   if (values.target !== 'local_model' && values.target !== 'cloud_model') {
     throw new UsageError('--target must be local_model or cloud_model');
   }
-  const { token } = await addAgent(stateDir, {
-    name: values.name,
-    target: values.target as AgentTarget,
-  });
-  out.write(`Registered agent:${values.name} as ${values.target}.\n`);
+  const { token } = await addAgent(stateDir, { name, target: values.target as AgentTarget });
+  out.write(`Registered agent:${name} as ${values.target}.\n`);
   out.write(`Token (shown once; only its hash is stored):\n${token}\n`);
 }
 

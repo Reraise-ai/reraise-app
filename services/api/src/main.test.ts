@@ -102,7 +102,10 @@ describe('worldbuilder agent list and remove', () => {
     });
     const list = sink();
     expect(await main(['agent', 'list', '--state', state], { stdout: list })).toBe(0);
-    expect(list.text()).toBe('agent:a1\tlocal_model\nagent:a2\tcloud_model\n');
+    expect(list.text().split('\n').filter(Boolean)).toMatchObject([
+      expect.stringMatching(/^agent:a1\tlocal_model\t\d{4}-\d\d-\d\dT/),
+      expect.stringMatching(/^agent:a2\tcloud_model\t\d{4}-\d\d-\d\dT/),
+    ]);
     expect(list.text()).not.toContain(token);
     const registry = new AgentRegistry(path.join(state, 'agents.yaml'));
     await registry.loadStrict();
@@ -120,6 +123,70 @@ describe('worldbuilder agent list and remove', () => {
     const empty = sink();
     await main(['agent', 'list', '--state', path.join(dir, 'none')], { stdout: empty });
     expect(empty.text()).toContain('No agent connections');
+  });
+});
+
+describe('worldbuilder agent: state directory and names', () => {
+  it('takes the name as a positional argument (ADR-0037) or with --name, and hides revoked agents', async () => {
+    const state = path.join(dir, 'state');
+    expect(
+      await main(['agent', 'add', 'pos-agent', '--target', 'local_model', '--state', state], {
+        stdout: sink(),
+      }),
+    ).toBe(0);
+    const list = sink();
+    await main(['agent', 'list', '--state', state], { stdout: list });
+    expect(list.text()).toContain('agent:pos-agent');
+    expect(await main(['agent', 'remove', 'pos-agent', '--state', state], { stdout: sink() })).toBe(
+      0,
+    );
+    const after = sink();
+    await main(['agent', 'list', '--state', state], { stdout: after });
+    expect(after.text()).toContain('No agent connections');
+    expect(
+      await main(['agent', 'add', 'a', 'b', '--target', 'local_model', '--state', state], {
+        stderr: sink(),
+      }),
+    ).toBe(2);
+  });
+  it('refuses a state directory inside a Git working tree or a store, like serve', async () => {
+    const repo = path.join(dir, 'repo');
+    await mkdir(path.join(repo, '.git'), { recursive: true });
+    for (const argv of [
+      ['agent', 'add', 'x', '--target', 'local_model', '--state', path.join(repo, 'state')],
+      ['agent', 'list', '--state', path.join(repo, 'state')],
+      ['agent', 'remove', 'x', '--state', path.join(repo, 'state')],
+    ]) {
+      const err = sink();
+      expect(await main(argv, { stderr: err })).toBe(1);
+      expect(err.text()).toContain('Git working tree');
+    }
+    const store = path.join(dir, 'store');
+    await mkdir(store, { recursive: true });
+    const err = sink();
+    expect(
+      await main(['agent', 'list', '--state', path.join(store, 'state'), '--store', store], {
+        stderr: err,
+      }),
+    ).toBe(1);
+    expect(err.text()).toContain('store root');
+  });
+  it('resolves the per-OS default state directory when --state is absent', async () => {
+    const home = path.join(dir, 'xdg');
+    const before = process.env['XDG_STATE_HOME'];
+    process.env['XDG_STATE_HOME'] = home;
+    try {
+      if (process.platform === 'linux') {
+        expect(
+          await main(['agent', 'add', 'dflt', '--target', 'local_model'], { stdout: sink() }),
+        ).toBe(0);
+        const stored = await readFile(path.join(home, 'worldbuilder', 'agents.yaml'), 'utf8');
+        expect(stored).toContain('dflt');
+      }
+    } finally {
+      if (before === undefined) delete process.env['XDG_STATE_HOME'];
+      else process.env['XDG_STATE_HOME'] = before;
+    }
   });
 });
 
@@ -189,6 +256,89 @@ describe('worldbuilder serve', () => {
         },
       });
       expect(foreign.status).toBe(403);
+    } finally {
+      await service?.close();
+    }
+  });
+  it('warns loudly when bound beyond loopback, and --allow-host adds Host names (repeatable)', async () => {
+    const err = sink();
+    const port = await freePort();
+    let service: Service | undefined;
+    const code = await main(
+      [
+        'serve',
+        '--store',
+        path.join(dir, 'store'),
+        '--state',
+        path.join(dir, 'state'),
+        '--port',
+        String(port),
+        '--host',
+        '0.0.0.0',
+        '--allow-host',
+        '127.0.0.1',
+        '--allow-host',
+        `wb.example.test:${port}`,
+      ],
+      {
+        stdout: sink(),
+        stderr: err,
+        logger: false,
+        openStore: async () => new MemoryStorageAdapter(new MemoryStore(crypto.randomUUID())),
+        onServe: (s) => {
+          service = s;
+        },
+      },
+    );
+    try {
+      expect(code).toBe(-1);
+      expect(err.text()).toContain('WARNING: the service is bound to a network address');
+      expect(err.text()).toContain('DNS rebinding');
+      const headers = { 'x-worldbuilder-session': service!.sessionToken };
+      for (const host of [`127.0.0.1:${port}`, `wb.example.test:${port}`]) {
+        const res = await service!.app.inject({
+          method: 'GET',
+          url: '/worlds',
+          headers: { ...headers, host },
+        });
+        expect(res.statusCode).toBe(200);
+      }
+      const other = await service!.app.inject({
+        method: 'GET',
+        url: '/worlds',
+        headers: { ...headers, host: `other.example.test:${port}` },
+      });
+      expect(other.statusCode).toBe(403);
+    } finally {
+      await service?.close();
+    }
+  });
+  it('does not warn on loopback without --allow-host', async () => {
+    const err = sink();
+    const port = await freePort();
+    let service: Service | undefined;
+    await main(
+      [
+        'serve',
+        '--store',
+        path.join(dir, 'store'),
+        '--state',
+        path.join(dir, 'state'),
+        '--port',
+        String(port),
+      ],
+      {
+        stdout: sink(),
+        stderr: err,
+        logger: false,
+        openStore: async () => new MemoryStorageAdapter(new MemoryStore(crypto.randomUUID())),
+        onServe: (s) => {
+          service = s;
+        },
+      },
+    );
+    try {
+      expect(err.text()).toBe('');
     } finally {
       await service?.close();
     }
