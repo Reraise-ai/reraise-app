@@ -26,6 +26,7 @@ Copyright: The Worldbuilder contributors.
 | `apps/board`                                      | AGPL-3.0-or-later |
 | `services/api`                                    | AGPL-3.0-or-later |
 | `packages/mcp-server`                             | AGPL-3.0-or-later |
+| `e2e/` (Playwright tests of the above)            | AGPL-3.0-or-later |
 
 `prototype/` is a frozen early concept and follows the Apache-2.0 tier.
 
