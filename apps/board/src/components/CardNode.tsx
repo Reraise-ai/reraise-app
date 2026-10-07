@@ -44,7 +44,7 @@ export function CardNode({ data, selected }: NodeProps<CardNodeType>) {
       aria-label={`${title}, ${layer === 'unclassified' ? 'unclassified' : LAYER_LABEL[layer]}`}
     >
       <Handle type="target" position={Position.Left} aria-hidden="true" />
-      <h3 className="wb-card-title">{title}</h3>
+      <div className="wb-card-title">{title}</div>
       <div>
         <span className="wb-badge" data-kind={layer} data-testid={`card-layer-${cardId}`}>
           {layer === 'unclassified' ? 'Unclassified' : LAYER_LABEL[layer]}
