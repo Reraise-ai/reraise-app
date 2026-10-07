@@ -1,6 +1,6 @@
 ---
 name: reviewer
-description: "Review agent work against the Worldbuilder knowledge loop: run wb receipts verify and reject work without valid receipts."
+description: 'Review agent work against the Worldbuilder knowledge loop: run wb receipts verify and reject work without valid receipts.'
 version: 0.1.0
 author: The Worldbuilder contributors
 license: Apache-2.0
@@ -55,14 +55,15 @@ by reading it, and you never fix a hand-off by writing a receipt yourself.
 
    Add `--log <path>` if the log is not in the default state directory, and `--head <hash>` if
    you pinned the log head earlier.
+
 4. Decide by the exit code only:
 
-   | Exit code | Decision | What you report |
-   | --- | --- | --- |
-   | 0 | accept the knowledge-loop part | "receipts valid" and the two receipt ids |
-   | 1 | **REJECT** | each failing slot and its code (`missing`, `unknown`, `forged`, `wrong_kind`, `wrong_agent`, `wrong_task`, `stale`, `out_of_window`, `reused`, `unlinked`) |
-   | 2 | **REJECT**, cannot verify | the usage problem (unreadable file, not a task record, no file) |
-   | 3 | **REJECT** and alert the human | the receipt log is broken (tamper evidence); every task fails |
+   | Exit code | Decision                       | What you report                                                                                                                                            |
+   | --------- | ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+   | 0         | accept the knowledge-loop part | "receipts valid" and the two receipt ids                                                                                                                   |
+   | 1         | **REJECT**                     | each failing slot and its code (`missing`, `unknown`, `forged`, `wrong_kind`, `wrong_agent`, `wrong_task`, `stale`, `out_of_window`, `reused`, `unlinked`) |
+   | 2         | **REJECT**, cannot verify      | the usage problem (unreadable file, not a task record, no file)                                                                                            |
+   | 3         | **REJECT** and alert the human | the receipt log is broken (tamper evidence); every task fails                                                                                              |
 
 5. A rejection names what the author must do: consult and write back through the Worldbuilder
    tools for the same `Task ref`, then hand off again with the new receipts. If the consult could

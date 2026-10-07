@@ -119,6 +119,10 @@ Not decided until a concrete installation's storage is known. The integration st
 
 ### Documentation and test agent
 
+- [`docs/how-to/connect-hermes.md`](../how-to/connect-hermes.md): the knowledge-loop integration
+  for Hermes (`integrations/hermes/`): MCP registration with tool search off, a native plugin
+  for consult, hand-off receipts and memory routing, templates and cron jobs
+  ([ADR-0039](0039-knowledge-loop-receipts.md)). Tested in CI against a fake Hermes harness.
 - `docs/how-to/connect-hermes-agent.md`: a generic MCP client configuration for Streamable
   HTTP and for the stdio bridge, token handling, choosing the target class and a first
   proposal. Parts that need the M1 service are marked "available from M1".

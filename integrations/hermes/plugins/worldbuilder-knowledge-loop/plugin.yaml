@@ -21,11 +21,11 @@ config_schema:
     description: Name of the mcp_servers entry that points at the Worldbuilder service.
   world_id:
     type: str
-    default: ""
+    default: ''
     description: ULID of the world the agents consult (required; see docs/how-to/connect-hermes.md).
   lage_id:
     type: str
-    default: ""
+    default: ''
     description: Optional ULID of the Lage (board) to scope the consult to.
   max_context_items:
     type: int
@@ -54,7 +54,7 @@ config_schema:
   memory_on_error:
     type: str
     default: allow
-    description: "allow or block memory writes when the Worldbuilder cannot be reached."
+    description: 'allow or block memory writes when the Worldbuilder cannot be reached.'
   task_ref_prefix:
     type: str
     default: hermes

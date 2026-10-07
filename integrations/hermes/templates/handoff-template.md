@@ -6,16 +6,16 @@
 # that `wb receipts verify` reads directly: save the file in the task records folder. Copy the
 # receipt ids and hashes from the results of knowledge_consult and knowledge_write_back; do not
 # type them from memory and never invent them.
-taskRef: "{{taskRef}}"
-agent: "agent:{{agent}}"
-startedAt: "{{startedAt, RFC 3339 UTC, e.g. 2026-10-05T08:59:00Z}}"
-completedAt: "{{completedAt, RFC 3339 UTC}}"
+taskRef: '{{taskRef}}'
+agent: 'agent:{{agent}}'
+startedAt: '{{startedAt, RFC 3339 UTC, e.g. 2026-10-05T08:59:00Z}}'
+completedAt: '{{completedAt, RFC 3339 UTC}}'
 knowledgeReceipt:
-  receiptId: "{{receiptId of knowledge_consult}}"
-  hash: "{{hash of knowledge_consult, sha256:...}}"
+  receiptId: '{{receiptId of knowledge_consult}}'
+  hash: '{{hash of knowledge_consult, sha256:...}}'
 writeBackReceipt:
-  receiptId: "{{receiptId of knowledge_write_back}}"
-  hash: "{{hash of knowledge_write_back, sha256:...}}"
+  receiptId: '{{receiptId of knowledge_write_back}}'
+  hash: '{{hash of knowledge_write_back, sha256:...}}'
 ---
 
 # Hand-off: {{title}}

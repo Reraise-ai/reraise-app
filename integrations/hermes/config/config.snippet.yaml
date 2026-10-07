@@ -10,10 +10,10 @@
 mcp_servers:
   worldbuilder:
     # Streamable HTTP (the default transport for a server with a url). Change the port if you did.
-    url: "http://127.0.0.1:4310/mcp"
+    url: 'http://127.0.0.1:4310/mcp'
     headers:
       # Resolved from ~/.hermes/.env when the server connects; never write the token here.
-      Authorization: "Bearer ${WORLDBUILDER_AGENT_TOKEN}"
+      Authorization: 'Bearer ${WORLDBUILDER_AGENT_TOKEN}'
     # Optional: narrow the tool surface (glob patterns allowed). With tool search off (below) every
     # tool of every MCP server costs context in every turn, so list only what the agent needs.
     # An orchestrator that consults, writes back and looks things up:
@@ -47,7 +47,7 @@ mcp_servers:
 #    receipt fields in hand-offs do not depend on this, but expect fewer write-backs.
 tools:
   tool_search:
-    enabled: "off"
+    enabled: 'off'
 
 # 3. The plugin (copy plugins/worldbuilder-knowledge-loop to ~/.hermes/plugins/, see the how-to).
 plugins:
@@ -60,7 +60,7 @@ plugins:
         - worldbuilder
       settings:
         # Required: the world agents consult (a ULID from `world_list`).
-        world_id: "<ULID of your world>"
+        world_id: '<ULID of your world>'
         # Optional: scope the consult to one Lage (board).
         # lage_id: "<ULID of the Lage>"
         # Name of the mcp_servers entry above.
