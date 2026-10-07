@@ -66,6 +66,20 @@ function matcherOf(query: Readonly<Record<string, unknown>>): (card: Card) => bo
   };
 }
 
+async function worldHasClearedCard(
+  s: Services,
+  worldId: string,
+  target: 'local_model' | 'cloud_model',
+): Promise<boolean> {
+  let cursor: string | undefined;
+  do {
+    const page = await s.storage.list({ worldId, limit: 200, ...(cursor ? { cursor } : {}) });
+    for (const card of page.items) if (await s.gate.clears(card, target)) return true;
+    cursor = page.nextCursor;
+  } while (cursor !== undefined);
+  return false;
+}
+
 const checkDraft = validators.strict('card.schema.json#/$defs/draft');
 
 function assertDraft(draft: unknown): asserts draft is CardDraft {
@@ -117,13 +131,16 @@ export const handlers: Readonly<Record<string, Handler>> = {
 
   async world_list(s, { principal }) {
     const worlds = await s.storage.listWorlds();
-    // A world has no gate decision of its own yet: a cloud_model connection sees public worlds.
-    return ok({
-      worlds:
-        principal.kind === 'agent' && principal.target === 'cloud_model'
-          ? worlds.filter((w) => w.visibility === 'public')
-          : [...worlds],
-    });
+    const target = targetOf(principal);
+    if (target === 'screen') return ok({ worlds: [...worlds] });
+    // A world has no gate decision of its own: a model target learns of a world only if the
+    // rules clear at least one of its cards for that target (an empty or fully private world
+    // does not exist for it).
+    const visible = [];
+    for (const world of worlds) {
+      if (await worldHasClearedCard(s, world.id, target)) visible.push(world);
+    }
+    return ok({ worlds: visible });
   },
 
   async lage_create(s, { body }) {

@@ -153,6 +153,15 @@ export class GateService {
     return { allowed, denied };
   }
 
+  /**
+   * Would the rules clear this card for the target, now or after the human confirmed a cloud
+   * transfer? Not logged: used only to decide whether a caller may know that a world exists.
+   */
+  async clears(card: Card, target: DisclosureTarget): Promise<boolean> {
+    const d = (await this.current()).decide({ kind: 'card', card }, target);
+    return d.decision === 'allow' || (target === 'cloud_model' && d.confirmationRequired === true);
+  }
+
   /** Log the release of a card inside a confirmed cloud transfer. */
   async logConfirmedRelease(cardIds: readonly string[]): Promise<void> {
     for (const cardId of cardIds) {

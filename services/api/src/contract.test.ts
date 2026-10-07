@@ -50,12 +50,29 @@ describe('world_list', () => {
     expectContract('world_list', res, 200);
     expect(res.json().worlds).toHaveLength(2);
   });
-  it('shows a cloud_model connection only public worlds', async () => {
-    const res = await f.agent('cloud-scripted', 'GET', '/worlds');
-    expectContract('world_list', res, 200);
-    expect(res.json().worlds.map((w: { name: string }) => w.name)).toEqual([
-      'Synthetic public world',
-    ]);
+  it('shows a model connection only worlds with a card the rules clear for it', async () => {
+    // The fixture clears public cards for models; the other world is empty (and so unknown).
+    for (const name of ['scripted', 'cloud-scripted']) {
+      const res = await f.agent(name, 'GET', '/worlds');
+      expectContract('world_list', res, 200);
+      expect(res.json().worlds.map((w: { id: string }) => w.id)).toEqual([f.worldId]);
+    }
+  });
+  it('shows a model connection no world at all while the rules clear no card for it', async () => {
+    const closed = await makeFixture({
+      rules:
+        '# only the screen\nrules:\n  - { id: screen-all, effect: allow, targets: [screen], match: {} }\n',
+    });
+    try {
+      for (const name of ['scripted', 'cloud-scripted']) {
+        const res = await closed.agent(name, 'GET', '/worlds');
+        expectContract('world_list', res, 200);
+        expect(res.json().worlds).toEqual([]);
+      }
+      expect((await closed.human('GET', '/worlds')).json().worlds).toHaveLength(2);
+    } finally {
+      await closed.close();
+    }
   });
   it('answers 401 without a credential', async () => {
     expectContract('world_list', await f.raw({ method: 'GET', url: '/worlds' }), 401);
