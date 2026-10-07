@@ -8,7 +8,7 @@
 import { isPublicSourceUri, personalDataKinds } from '@worldbuilder/core';
 import type { MemoryRouteRequest, MemoryRouteResult } from '@worldbuilder/core';
 
-export const CLASSIFIER = 'rules:v2';
+export const CLASSIFIER = 'rules:v3';
 
 export type Signal = MemoryRouteResult['signals'][number];
 
@@ -71,7 +71,7 @@ export interface RouteOptions {
   };
 }
 
-/** Credential words (rules:v2). */
+/** Credential words (since rules:v2). */
 export const CREDENTIAL_WORDS: readonly string[] = [
   'password',
   'passwords',
@@ -103,8 +103,27 @@ const CREDENTIAL_ASSIGNED = new RegExp(
 /** A credential word followed in the same clause by a quoted value. */
 const CREDENTIAL_QUOTED = new RegExp(`${KW}[^\\n.;!?]{0,40}?[\\s:=]["'\u201c\u2018\u00ab]`, 'i');
 const PRIVATE_KEY = /-----BEGIN [A-Z ]*PRIVATE KEY-----/;
-/** Token-like runs: base64/base64url characters with upper, lower and digits, or long hex. */
+/**
+ * Token-like runs (rules:v3): 32 or more base64/base64url characters that hold upper-case and
+ * lower-case letters and digits, or at least 8 digits whatever the case; or long hex.
+ */
 const TOKEN_RUN = /[A-Za-z0-9+/=_-]{32,}/g;
+/** Known credential prefixes of common services, at the start of a token. */
+const KNOWN_TOKEN = new RegExp(
+  '(?<![A-Za-z0-9])(?:' +
+    [
+      'xox[abprs]-[A-Za-z0-9-]{10,}',
+      'gh[pousr]_[A-Za-z0-9]{20,}',
+      'github_pat_[A-Za-z0-9_]{20,}',
+      'sk_live_[A-Za-z0-9]{16,}',
+      'pk_live_[A-Za-z0-9]{16,}',
+      'sk-[A-Za-z0-9_-]{20,}',
+      '(?:AKIA|ASIA)[A-Z0-9]{16}',
+      'AIza[A-Za-z0-9_-]{35}',
+      'glpat-[A-Za-z0-9_-]{20,}',
+    ].join('|') +
+    ')',
+);
 const HEX_RUN = /(?<![0-9a-f])[0-9a-f]{32,}(?![0-9a-f])/i;
 const URL = /\bhttps?:\/\/[^\s<>"')\]]+/gi;
 const LOCAL_REFERENCE = [
@@ -123,9 +142,10 @@ const wordsRe = (words: readonly string[]) =>
 const normalise = (text: string) => text.toLowerCase().replace(/\s+/g, ' ').trim();
 
 function hasTokenRun(text: string): boolean {
-  if (HEX_RUN.test(text)) return true;
+  if (HEX_RUN.test(text) || KNOWN_TOKEN.test(text)) return true;
   for (const m of text.matchAll(TOKEN_RUN)) {
     if (/[A-Z]/.test(m[0]) && /[a-z]/.test(m[0]) && /\d/.test(m[0])) return true;
+    if ((m[0].match(/\d/g) ?? []).length >= 8) return true;
   }
   return false;
 }
@@ -156,7 +176,7 @@ export function memorySignals(request: MemoryRouteRequest, options: RouteOptions
   return signals;
 }
 
-/** Classify one memory item (ADR-0042, rules `rules:v2`, first match wins). */
+/** Classify one memory item (ADR-0042, rules `rules:v3`, first match wins). */
 export function routeMemory(
   request: MemoryRouteRequest,
   options: RouteOptions = {},

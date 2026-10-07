@@ -41,7 +41,7 @@ id, and testable with a corpus.
   optional `kindHint` (`learning`, `observation`, `preference`, `decision`, `ops`, `unknown`),
   optional `source` (card id or URI).
 - Result (`MemoryRouteResult`): `route` (`card_proposal` or `ephemeral_ops_fact`), `ruleId`,
-  `signals` (signal ids, never the matched words) and `classifier` (`rules:v2`).
+  `signals` (signal ids, never the matched words) and `classifier` (`rules:v3`).
 - `memory_route` stores nothing and creates nothing. For `card_proposal` the caller writes the
   card itself through `knowledge_write_back`; for `ephemeral_ops_fact` it keeps the item where
   it is and, inside a task, may answer the write-back with reason `ephemeral_ops_fact`.
@@ -52,7 +52,7 @@ The text is lower-cased and whitespace is collapsed before matching (word bounda
 
 | Signal | Detected by |
 | --- | --- |
-| `secret_like` | a credential word (`password(s)`, `passwd`, `passphrase(s)`, `secret(s)`, `secret key`, `token(s)`, `api key(s)`, `apikey`, `bearer`, `credential(s)`, `private key`, `ssh key`, `pin`, `otp`) followed in the same clause (up to 40 characters, no `.`, `;`, `!`, `?`) by `:`, `=`, `is`, `are`, `was` or a quoted value; a private key block; a token-like run of 32 or more base64 or base64url characters (`A-Z a-z 0-9 + / = _ -`) that holds upper-case and lower-case letters and digits; or a run of 32 or more hex digits |
+| `secret_like` | a credential word (`password(s)`, `passwd`, `passphrase(s)`, `secret(s)`, `secret key`, `token(s)`, `api key(s)`, `apikey`, `bearer`, `credential(s)`, `private key`, `ssh key`, `pin`, `otp`) followed in the same clause (up to 40 characters, no `.`, `;`, `!`, `?`) by `:`, `=`, `is`, `are`, `was` or a quoted value; a private key block; a token-like run of 32 or more base64 or base64url characters (`A-Z a-z 0-9 + / = _ -`) that holds upper-case and lower-case letters and digits, or at least 8 digits whatever the case; a run of 32 or more hex digits; or a known credential prefix at the start of a token: `xoxa-`, `xoxb-`, `xoxp-`, `xoxr-`, `xoxs-`, `ghp_`, `gho_`, `ghu_`, `ghs_`, `ghr_`, `github_pat_`, `sk-`, `sk_live_`, `pk_live_`, `AKIA`, `ASIA`, `AIza`, `glpat-` (each followed by a token-length tail) |
 | `personal_data` | an e-mail address (any domain), an IBAN (country length and mod-97) or a phone number (`+` and 8 to 15 digits, or 7 to 15 digits after a phone keyword). The patterns live in `packages/core` (`personalDataKinds`) and are shared with the repository's "no real data" check ([ADR-0022](0022-public-hygiene.md)) |
 | `public_source` | an `http(s)` address in the text or in `source` that is a public address (`isPublicSourceUri`, [ADR-0036](0036-conclusions-are-private.md)) |
 | `local_reference` | an absolute or home-relative file path, `localhost`, an IP literal, a `host:port` or `:port` pattern, or `pid <n>` |
@@ -82,10 +82,13 @@ The text is lower-cased and whitespace is collapsed before matching (word bounda
   the human's queue (an owner default, see [owner questions](../owner-questions.md)).
 - The keyword lists are English. An installation may add words per signal (for example in
   another language) through the classifier options; the rule order cannot change.
-- Version: the rules above are `rules:v2`. `rules:v1` (the first version) had no `personal_data`
-  signal, matched a credential only right before its separator, and checked `public_source`
-    before `local_reference`; review found items that leaked through. Any change to signals, words
-  or order is a new version with an ADR (this one records v2), so a corpus result is reproducible.
+- Version: the rules above are `rules:v3`. `rules:v1` had no `personal_data` signal, matched a
+  credential only right before its separator, and checked `public_source` before
+  `local_reference`. `rules:v2` fixed that but missed lower-case tokens and service tokens with
+  known prefixes; `rules:v3` adds the digit rule and the prefixes. Any change to signals, words or
+  order is a new version with an ADR (this one records each version), so a corpus result is
+  reproducible. Tests keep false-positive cases (hyphenated slugs, compound words, words that
+  merely contain a prefix such as `task-` or `ski-`) next to the true positives.
 
 ### Model help (later)
 

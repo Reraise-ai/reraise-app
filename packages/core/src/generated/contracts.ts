@@ -1233,7 +1233,7 @@ export interface MemoryRouteResult {
     | 'short'
   )[];
   /**
-   * rules:v2 for the deterministic rules of ADR-0042; model:<engine> only for a later model-assisted slice.
+   * rules:v3 for the deterministic rules of ADR-0042; model:<engine> only for a later model-assisted slice.
    */
   classifier: string;
 }
