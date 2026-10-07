@@ -10,7 +10,13 @@
 //   }));
 
 import type { CardDraft, CardId, StorageAdapter } from '@worldbuilder/core';
-import { computeContentHash, deriveCardId, isWbUri, parseUri } from '@worldbuilder/core';
+import {
+  computeContentHash,
+  deriveCardId,
+  isStorageError,
+  isWbUri,
+  parseUri,
+} from '@worldbuilder/core';
 import { describe, expect, it } from 'vitest';
 import { schemaValidator } from './validate.js';
 
@@ -288,6 +294,29 @@ export function describeStorageAdapterConformance(
         await expect(adapter.patch(id, patch as never)).rejects.toThrow();
       }
       expect(await raw(id)).toBe(before);
+    });
+
+    it('fails with a typed StorageError (not_found, conflict, invalid)', async () => {
+      const { adapter } = await factory();
+      const codeOf = async (p: Promise<unknown>): Promise<unknown> => {
+        try {
+          await p;
+        } catch (e) {
+          return isStorageError(e) ? e.code : `untyped: ${String(e)}`;
+        }
+        return 'no error';
+      };
+      const unknown = '01ARZ3NDEKTSV4RRFFQ69G5FAV';
+      expect(await codeOf(adapter.patch(unknown, { title: 'x' }))).toBe('not_found');
+      expect(await codeOf(adapter.archive(unknown))).toBe('not_found');
+      expect(await codeOf(adapter.create({ ...draft, source: undefined } as never, 'human'))).toBe(
+        'invalid',
+      );
+      const id = await adapter.create(draft, 'human');
+      expect(await codeOf(adapter.patch(id, { author: 'human' } as never))).toBe('invalid');
+      expect(await codeOf(adapter.patch(id, { title: 'y' }, { contentHash: 'sha256:0' }))).toMatch(
+        /^(conflict|invalid)$/,
+      );
     });
 
     it('reads legacy cards with the legacy defaults', async () => {

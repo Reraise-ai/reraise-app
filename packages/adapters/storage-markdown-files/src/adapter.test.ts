@@ -53,13 +53,13 @@ const fileOf = async (dir: string, id: string): Promise<string> => {
   throw new Error(`no file for ${id}`);
 };
 
-const rejects = async (p: Promise<unknown>, code: MarkdownStoreError['code']) => {
+const rejects = async (p: Promise<unknown>, code: MarkdownStoreError['reason']) => {
   const err = await p.then(
     () => undefined,
     (e: unknown) => e,
   );
   expect(err).toBeInstanceOf(MarkdownStoreError);
-  expect((err as MarkdownStoreError).code).toBe(code);
+  expect((err as MarkdownStoreError).reason).toBe(code);
 };
 
 describe('opening a store', () => {
