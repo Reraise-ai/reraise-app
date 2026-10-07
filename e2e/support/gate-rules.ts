@@ -6,10 +6,12 @@
  *
  * - screen: everything (the board is a screen caller);
  * - local_model: class C cards of the evidence, actors and decisions collections (evidenced or
- *   said, nothing private); a class A card never;
+ *   said, nothing private);
  * - cloud_model: the same cards would be cleared, but a cloud connection gets content only after
- *   the human confirmed that transfer, so nothing reaches a cloud model without confirmation;
- * - deny wins: class A is denied for every model target and for demo.
+ *   the human confirmed that transfer, so nothing reaches a cloud model without confirmation.
+ *
+ * There is deliberately no deny rule for the private class A card: no allow rule matches it, so
+ * the e2e shows default deny (ADR-0012), not a rule written for the occasion.
  */
 export const E2E_GATE_RULES = `rules:
   - id: screen-all
@@ -28,9 +30,4 @@ export const E2E_GATE_RULES = `rules:
     match:
       class: [C]
       collection: [evidence, actors, decisions]
-  - id: never-class-a
-    effect: deny
-    targets: [local_model, cloud_model, demo]
-    match:
-      class: [A]
 `;

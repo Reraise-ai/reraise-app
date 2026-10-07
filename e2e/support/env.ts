@@ -2,7 +2,7 @@
 // Copyright The Worldbuilder contributors
 import { readFileSync } from 'node:fs';
 
-/** What global setup built for this run; tests read it from the file named by WB_E2E_ENV. */
+/** What the stack of a spec file consists of (support/stack.ts). */
 export interface E2eEnv {
   /** Origin of the service (Board API and /mcp). */
   readonly serviceUrl: string;
@@ -31,14 +31,10 @@ export const HORMUZ = {
   privateCardBodyText: 'invented internal cost estimate',
   /** On the Lage already: the wire report (evidenced) and the insurance experience. */
   wireReportId: '01M1E34QM03WVTE8T1RYS3AM18',
+  /** Coastal navy (actors): clear of the board's status strip, so it can be clicked. */
+  navyCardId: '01M1EDEAG082WZ7T7D204BHZDC',
   experienceCardId: '01M1EMA1R0AH9ZTK3YJK33TNER',
 } as const;
-
-export function loadEnv(): E2eEnv {
-  const file = process.env['WB_E2E_ENV'];
-  if (!file) throw new Error('WB_E2E_ENV is not set: global setup did not run.');
-  return JSON.parse(readFileSync(file, 'utf8')) as E2eEnv;
-}
 
 export function readToken(file: string): string {
   return readFileSync(file, 'utf8').trim();

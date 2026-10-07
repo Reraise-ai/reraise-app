@@ -7,18 +7,21 @@
 import { expect, test } from '@playwright/test';
 import { scan } from '../support/a11y.js';
 import { login, openLage } from '../support/board.js';
-import { HORMUZ, loadEnv } from '../support/env.js';
+import { HORMUZ } from '../support/env.js';
+import { useStack } from '../support/stack.js';
 
-const env = loadEnv();
+const getEnv = useStack();
 
 test.describe('axe on the board screens', () => {
   test('login', async ({ page }) => {
+    const env = getEnv();
     await page.goto(env.boardUrl);
     await expect(page.getByTestId('login-form')).toBeVisible();
     await scan(page, 'login');
   });
 
   test('lagen list and usage metrics', async ({ page }) => {
+    const env = getEnv();
     await login(page, env);
     await expect(page.getByTestId(`lage-item-${HORMUZ.lageId}`)).toBeVisible();
     await scan(page, 'lagen list');
@@ -28,6 +31,7 @@ test.describe('axe on the board screens', () => {
   });
 
   test('board with search, edges, proposals and context package', async ({ page }) => {
+    const env = getEnv();
     await login(page, env);
     await openLage(page, HORMUZ.lageId);
     await expect(page.getByTestId(`card-node-${HORMUZ.wireReportId}`)).toBeVisible();

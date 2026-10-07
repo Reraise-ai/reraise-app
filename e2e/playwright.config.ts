@@ -1,16 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright The Worldbuilder contributors
 //
-// Chromium only. Locally the browser is the preinstalled one (PLAYWRIGHT_BROWSERS_PATH); in CI
-// `npx playwright install --with-deps chromium` provides it. One worker: all specs share one
-// service and one store copy, and the walking skeleton changes that store on purpose.
+// Chromium only. The browser comes from `playwright install chromium` (run once, in CI with
+// `--with-deps`) or from an existing Chromium named by PLAYWRIGHT_BROWSERS_PATH. One worker; each
+// spec file starts its own stack (support/stack.ts), so no file sees what another changed.
 import { defineConfig, devices } from '@playwright/test';
 
 const ci = !!process.env['CI'];
 
 export default defineConfig({
   testDir: './tests',
-  globalSetup: './global-setup.ts',
   fullyParallel: false,
   workers: 1,
   retries: 0,
@@ -22,7 +21,6 @@ export default defineConfig({
     : [['list']],
   outputDir: 'test-results',
   use: {
-    ...devices['Desktop Chrome'],
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },

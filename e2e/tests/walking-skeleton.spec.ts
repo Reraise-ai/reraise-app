@@ -11,12 +11,14 @@ import { expect, test } from '@playwright/test';
 import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { scan } from '../support/a11y.js';
-import { connectAgent } from '../support/agent.js';
+import { connectAgent, type ScriptedAgent } from '../support/agent.js';
 import { login, openLage } from '../support/board.js';
-import { HORMUZ, loadEnv } from '../support/env.js';
+import { HORMUZ } from '../support/env.js';
+import { useStack } from '../support/stack.js';
 
-const env = loadEnv();
+const getEnv = useStack();
 const AGENT_CARD_TITLE = 'Insurer bulletin corroborates the wire report';
+const STANCE_NOTE = 'E2E private stance: I doubt the wire agency';
 const INITIAL_VERSION = 3; // examples/hormuz/cards/10-lage-q4-routing.md
 
 interface ConsultResult {
@@ -32,6 +34,7 @@ interface Proposal {
   status: string;
   author: string;
   kind: string;
+  decidedBy?: string;
 }
 
 /** Reads the position block (the JSON fence) of a Lage file. */
@@ -50,7 +53,13 @@ async function readLage(file: string) {
   };
 }
 
+let agent: ScriptedAgent | undefined;
+test.afterEach(async () => {
+  await agent?.close().catch(() => undefined);
+});
+
 test('hormuz walking skeleton', async ({ page }) => {
+  const env = getEnv();
   const lageFile = path.join(env.storeDir, 'cards', '10-lage-q4-routing.md');
   const archiveDir = path.join(env.storeDir, 'cards', '_archive');
 
@@ -84,14 +93,25 @@ test('hormuz walking skeleton', async ({ page }) => {
     await expect(page.getByTestId('board-version')).toHaveText(String(INITIAL_VERSION + 2));
   });
 
-  const agent = await connectAgent(env.serviceUrl, env.agents.local.tokenFile);
+  await test.step('set a private stance through the inspector; it shows on screen only', async () => {
+    await page.getByTestId(`card-node-${HORMUZ.navyCardId}`).click();
+    await expect(page.getByTestId('stance-form')).toBeVisible();
+    await page.getByTestId('stance-position').selectOption('rejected');
+    await page.getByTestId('stance-note').fill(STANCE_NOTE);
+    await page.getByTestId('stance-save').click();
+    await expect(page.getByTestId(`card-stance-${HORMUZ.navyCardId}`)).toContainText('rejected');
+  });
+
+  agent = await connectAgent(env.serviceUrl, env.agents.local.tokenFile);
+  const scripted = agent;
   let proposal!: Proposal;
-  try {
+  let cursor: string | undefined;
+  {
     await test.step('the scripted agent consults the knowledge and gets a receipt', async () => {
-      expect(await agent.listTools()).toEqual(
+      expect(await scripted.listTools()).toEqual(
         expect.arrayContaining(['knowledge_consult', 'proposal_create', 'proposal_list']),
       );
-      const consulted = await agent.call<ConsultResult>('knowledge_consult', {
+      const consulted = await scripted.call<ConsultResult>('knowledge_consult', {
         taskRef: 'e2e:task-1',
         task: 'Check whether the insurance spike is corroborated before the Q4 routing decision',
         worldId: HORMUZ.worldId,
@@ -106,10 +126,23 @@ test('hormuz walking skeleton', async ({ page }) => {
       expect(ids).not.toContain(HORMUZ.privateCardId);
       expect(JSON.stringify(consulted)).not.toContain(HORMUZ.privateCardBodyText);
       expect(JSON.stringify(consulted.receipt)).not.toContain('insurance spike');
+      // The stance is private to the screen: the agent never gets it, nor its note.
+      expect(JSON.stringify(consulted)).not.toContain(STANCE_NOTE);
+      expect(JSON.stringify(consulted)).not.toContain('"stance"');
+    });
+
+    await test.step('the agent reads the board (lage_get) before proposing', async () => {
+      const lage = await scripted.call<{ lage: { cards: { id: string }[] } }>('lage_get', {
+        lageId: HORMUZ.lageId,
+      });
+      expect(lage.lage.cards.map((c) => c.id)).toContain(HORMUZ.wireReportId);
+      const card = await scripted.call('card_get', { cardId: HORMUZ.navyCardId });
+      expect(JSON.stringify([lage, card])).not.toContain(STANCE_NOTE);
+      cursor = (await scripted.call<{ nextCursor?: string }>('proposal_list', {})).nextCursor;
     });
 
     await test.step('the agent proposes a card; nothing counts before the human accepts', async () => {
-      proposal = await agent.call<Proposal>('proposal_create', {
+      proposal = await scripted.call<Proposal>('proposal_create', {
         kind: 'create_card',
         payload: {
           card: {
@@ -131,8 +164,6 @@ test('hormuz walking skeleton', async ({ page }) => {
       const disk = await readFile(lageFile, 'utf8');
       expect(disk).not.toContain(AGENT_CARD_TITLE);
     });
-  } finally {
-    await agent.close();
   }
 
   await test.step('the proposal shows in the board panel with "What will be applied"', async () => {
@@ -147,7 +178,7 @@ test('hormuz walking skeleton', async ({ page }) => {
     const applied = page.getByTestId(`proposal-applied-${proposal.id}`);
     await expect(applied).toContainText('What will be applied');
     await expect(applied).toContainText(AGENT_CARD_TITLE);
-    await expect(page.getByTestId('proposals-count')).toContainText('1');
+    await expect(page.getByTestId('proposals-count')).toHaveText('1 pending');
     await scan(page, 'board with a pending agent proposal');
   });
 
@@ -166,6 +197,15 @@ test('hormuz walking skeleton', async ({ page }) => {
     await expect(page.getByTestId('board-version')).toHaveText(String(INITIAL_VERSION + 3));
   });
 
+  await test.step('the agent polls proposal_list and sees the human decision', async () => {
+    const polled = await scripted.call<{ proposals: Proposal[] }>('proposal_list', {
+      ...(cursor === undefined ? {} : { changedSince: cursor }),
+    });
+    const mine = polled.proposals.find((p) => p.id === proposal.id);
+    expect(mine?.status).toBe('accepted');
+    expect(mine?.decidedBy).toBe('human');
+  });
+
   await test.step('after a reload the placement, the edge and the accepted card persist', async () => {
     await page.reload();
     await expect(page.getByTestId('lage-list')).toBeVisible(); // the session survives the reload
@@ -181,6 +221,7 @@ test('hormuz walking skeleton', async ({ page }) => {
     await expect(
       page.locator('[data-testid^="card-author-"]', { hasText: `agent:${env.agents.local.name}` }),
     ).toHaveCount(1);
+    await expect(page.getByTestId(`card-stance-${HORMUZ.navyCardId}`)).toContainText('rejected');
   });
 
   await test.step('a context package is generated and shown', async () => {
@@ -212,6 +253,12 @@ test('hormuz walking skeleton', async ({ page }) => {
     await expect(page.getByTestId(`context-item-${HORMUZ.wireReportId}`)).toBeVisible();
     await expect(page.getByTestId(`context-item-${HORMUZ.privateCardId}`)).toHaveCount(0);
     await expect(page.getByTestId('context-panel')).not.toContainText(HORMUZ.privateCardBodyText);
+    // Stances never leave the screen: not in the cloud package view, not its note.
+    await expect(
+      page.getByTestId('context-panel').locator('[data-testid^="card-stance-"]'),
+    ).toHaveCount(0);
+    await expect(page.getByTestId('context-panel')).not.toContainText(STANCE_NOTE);
+    await expect(page.getByTestId('context-panel')).not.toContainText('rejected');
   });
 
   await test.step('a cloud agent gets confirmationRequired and no content over MCP', async () => {
@@ -226,6 +273,7 @@ test('hormuz walking skeleton', async ({ page }) => {
       expect(first.package.items).toEqual([]);
       expect(first.package.confirmationRequired?.transferId).toBeTruthy();
       expect(JSON.stringify(first)).not.toContain(HORMUZ.privateCardBodyText);
+      expect(JSON.stringify(first)).not.toContain(STANCE_NOTE);
     } finally {
       await cloud.close();
     }
