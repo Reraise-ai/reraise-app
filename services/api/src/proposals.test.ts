@@ -316,7 +316,7 @@ describe('what an agent may put into a proposed card', () => {
             edges: [{ target: f.ids.evPublic, kind: 'supports', by: 'human' }],
           }),
         },
-      },
+      } as never,
       'agent:scripted',
     );
     const res = await accept(stored);

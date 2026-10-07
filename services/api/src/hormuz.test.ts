@@ -11,6 +11,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { addAgent } from './agent-registry.js';
 import { main } from './main.js';
 import type { Service } from './service.js';
 
@@ -127,6 +128,72 @@ describe('worldbuilder serve on the Hormuz example store', () => {
       expect(reloaded.lage?.cards.find((c) => c.id === loose.id)).toMatchObject({ x: 321, y: 123 });
     } finally {
       await second.service.close();
+    }
+  });
+});
+
+describe('proposals the real adapter refuses', () => {
+  it('a rule card whose body has its own "## Rule" heading cannot be written: accept is 409 and the proposal stays pending', async () => {
+    const { service, call } = await serve();
+    try {
+      // The service re-reads the registry, so an agent registered now is known at once.
+      const { token } = await addAgent(service.stateDir, {
+        name: 'rule-writer',
+        target: 'local_model',
+      });
+      const base = service.app.server.address() as { port: number };
+      const propose = await fetch(`http://127.0.0.1:${base.port}/proposals`, {
+        method: 'POST',
+        headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+        body: JSON.stringify({
+          kind: 'create_card',
+          payload: {
+            card: {
+              format: 2,
+              type: 'rule',
+              title: 'Looks like a rule',
+              rule: {
+                when: [{ kind: 'card_on_lage', card: '01ARZ3NDEKTSV4RRFFQ69G5FAV' }],
+                then: 'Prefer the first option',
+              },
+              body: 'Intro.\n\n## Rule\n\nnot a real rule block',
+            },
+          },
+        }),
+      });
+      expect(propose.status).toBe(201);
+      const proposal = (await propose.json()) as { id: string };
+      const accepted = await call('POST', `/proposals/${proposal.id}/accept`, {});
+      expect(accepted.status).toBe(409);
+      expect(accepted.json['status']).toBe(409);
+      const pending = await call('GET', '/proposals?status=pending&limit=200');
+      expect((pending.json['proposals'] as unknown as { id: string }[]).map((p) => p.id)).toContain(
+        proposal.id,
+      );
+      const found = await call('GET', '/cards?text=Looks%20like%20a%20rule');
+      expect(found.json['cards']).toEqual([]);
+    } finally {
+      await service.close();
+    }
+  });
+});
+
+describe('rule cards of the Hormuz store (a "## Rule" section in the file)', () => {
+  it('rules_evaluate reads them through the real adapter', async () => {
+    const { service, call } = await serve();
+    try {
+      const lagen = await call('GET', '/cards?type=lage');
+      const lageId = (lagen.json['cards'] as unknown as Card[])[0]!.id;
+      const res = await call('POST', '/rules/evaluate', { lageId });
+      expect(res.status).toBe(200);
+      const results = res.json['results'] as unknown as {
+        ruleId: string;
+        rule: { then: string };
+      }[];
+      expect(results.length).toBeGreaterThanOrEqual(2);
+      expect(results.every((r) => typeof r.rule.then === 'string')).toBe(true);
+    } finally {
+      await service.close();
     }
   });
 });

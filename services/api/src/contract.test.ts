@@ -6,7 +6,8 @@
 // type, JSON Schema). The last test fails if an operation of the contract was never called.
 
 import type { Card, DisclosureTransfer, Proposal } from '@worldbuilder/core';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { StorageError, type StorageErrorCode } from '@worldbuilder/core';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { loadOperations } from './contract.js';
 import { cardOf, covered, expectContract, makeFixture, type Fixture } from './test-helpers.js';
 
@@ -507,6 +508,40 @@ describe('disclosure transfers', () => {
       payloadHash: t.payloadHash,
     });
     expectContract('disclosure_confirm', res, 410);
+  });
+});
+
+describe('storage errors become problems (ADR-0005)', () => {
+  const cases: [StorageErrorCode, number][] = [
+    ['not_found', 404],
+    ['conflict', 409],
+    ['invalid', 400],
+    ['locked', 503],
+  ];
+  it.each(cases)('%s is %i, as problem+json without the adapter message', async (code, status) => {
+    const spy = vi
+      .spyOn(f.adapter, 'read')
+      .mockRejectedValue(new StorageError(code, 'SECRET-CARD-TEXT in the message'));
+    try {
+      const res = await f.human('GET', `/cards/${f.ids.evPublic}`);
+      expect(res.statusCode).toBe(status);
+      expect(res.headers['content-type']).toContain('application/problem+json');
+      expect(res.body).not.toContain('SECRET-CARD-TEXT');
+      expect(res.json().status).toBe(status);
+      if (status === 503) expect(res.headers['retry-after']).toBeDefined();
+    } finally {
+      spy.mockRestore();
+    }
+  });
+  it('a failure that is not a StorageError stays a 500 without detail', async () => {
+    const spy = vi.spyOn(f.adapter, 'read').mockRejectedValue(new Error('disk exploded: SECRET'));
+    try {
+      const res = await f.human('GET', `/cards/${f.ids.evPublic}`);
+      expect(res.statusCode).toBe(500);
+      expect(res.body).not.toContain('SECRET');
+    } finally {
+      spy.mockRestore();
+    }
   });
 });
 

@@ -6,6 +6,7 @@
 // response validation and error mapping live in app.ts. The MCP front end of the next slice
 // calls the same handlers (ADR-0029: both front ends end in the same code).
 
+import { isStorageError } from '@worldbuilder/core';
 import type {
   Card,
   CardDraft,
@@ -267,7 +268,13 @@ export const handlers: Readonly<Record<string, Handler>> = {
       const current = await s.localState.getProposal(id);
       if (!current) throw new HttpError(404, 'unknown proposal');
       if (current.status !== 'pending') throw new HttpError(409, 'the proposal is already decided');
-      await applyProposal(s, current);
+      try {
+        await applyProposal(s, current);
+      } catch (e) {
+        // Whatever the store refuses, the human gets a 409 and the proposal stays pending.
+        if (!isStorageError(e)) throw e;
+        throw new HttpError(409, `the change could not be applied: ${e.code}`);
+      }
       return s.localState.decideProposal(id, 'accepted');
     });
     return ok(proposal);

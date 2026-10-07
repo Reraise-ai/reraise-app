@@ -18,6 +18,7 @@ const TITLES: Readonly<Record<number, { slug: string; title: string }>> = {
   413: { slug: 'payload-too-large', title: 'Payload too large' },
   415: { slug: 'unsupported-media-type', title: 'Unsupported media type' },
   500: { slug: 'internal-error', title: 'Internal error' },
+  503: { slug: 'unavailable', title: 'Store unavailable' },
   501: { slug: 'not-implemented', title: 'Not implemented' },
 };
 

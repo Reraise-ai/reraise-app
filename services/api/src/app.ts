@@ -9,7 +9,7 @@
 // they leave, so a schema the service violates (for example stance data in a non-screen
 // package) is a 500 and never reaches the caller.
 
-import type { LocalStateStore, StorageAdapter } from '@worldbuilder/core';
+import { isStorageError, type LocalStateStore, type StorageAdapter } from '@worldbuilder/core';
 import { isLocalStateError } from '@worldbuilder/local-state';
 import Fastify, {
   type FastifyBaseLogger,
@@ -64,6 +64,14 @@ export interface BoardApp extends FastifyInstance {
   readonly services: Services;
   readonly gateService: GateService;
 }
+
+const STORAGE_STATUS = { not_found: 404, conflict: 409, invalid: 400, locked: 503 } as const;
+const STORAGE_DETAIL = {
+  not_found: 'the store has no such card',
+  conflict: 'the store holds a different state than this change was based on',
+  invalid: 'the store rejected the card or the query as invalid',
+  locked: 'the store is busy; try again shortly',
+} as const;
 
 const CORS_HEADERS = {
   'access-control-allow-headers': 'content-type, authorization, x-worldbuilder-session',
@@ -159,6 +167,14 @@ export async function buildApp(options: AppOptions): Promise<BoardApp> {
       status =
         code === 'invalid' ? 400 : code === 'not_found' ? 404 : code === 'conflict' ? 409 : 500;
       detail = status === 500 ? undefined : e.message;
+    } else if (isStorageError(e)) {
+      // The adapter's typed failures (ADR-0005). The detail is fixed wording plus the adapter's
+      // own stable reason code: an adapter message could quote card text, so it is not sent.
+      status = STORAGE_STATUS[e.code];
+      detail = STORAGE_DETAIL[e.code];
+      const reason = (e as { reason?: unknown }).reason;
+      if (typeof reason === 'string' && /^[a-z_]{1,40}$/.test(reason)) detail += ` (${reason})`;
+      if (status === 503) reply.header('retry-after', '1');
     } else if (errorCode === 'FST_ERR_CTP_BODY_TOO_LARGE') {
       status = 413;
       detail = 'the request body exceeds the size limit';
