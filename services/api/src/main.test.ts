@@ -12,7 +12,7 @@ import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { parse } from 'yaml';
 import { AgentRegistry } from './agent-registry.js';
-import { main } from './main.js';
+import { main, normaliseAllowedHost } from './main.js';
 import { createService, DEFAULT_GATE_RULES, type Service } from './service.js';
 
 let dir: string;
@@ -215,6 +215,31 @@ describe('worldbuilder agent: state directory and names', () => {
       if (before === undefined) delete process.env['XDG_STATE_HOME'];
       else process.env['XDG_STATE_HOME'] = before;
     }
+  });
+});
+
+describe('--allow-host values', () => {
+  it('adds the port, brackets a bare IPv6 address and refuses ambiguous forms', () => {
+    expect(normaliseAllowedHost('WB.example.test', 4310)).toBe('wb.example.test:4310');
+    expect(normaliseAllowedHost('wb.example.test:8443', 4310)).toBe('wb.example.test:8443');
+    expect(normaliseAllowedHost('127.0.0.1', 4310)).toBe('127.0.0.1:4310');
+    expect(normaliseAllowedHost('::1', 4310)).toBe('[::1]:4310');
+    expect(normaliseAllowedHost('fd00::5', 4310)).toBe('[fd00::5]:4310');
+    expect(normaliseAllowedHost('[::1]', 4310)).toBe('[::1]:4310');
+    expect(normaliseAllowedHost('[fd00::5]:9000', 4310)).toBe('[fd00::5]:9000');
+    for (const bad of [
+      '',
+      ':80',
+      'name:',
+      'name:abc',
+      'name:70000',
+      'fd00::5:80x',
+      '[::1',
+      '[1.2.3.4]',
+      '[name]:80',
+      'a:b:c',
+    ])
+      expect(() => normaliseAllowedHost(bad, 4310), bad).toThrow(/allow-host|host name/);
   });
 });
 

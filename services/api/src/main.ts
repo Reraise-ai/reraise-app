@@ -8,6 +8,7 @@
 //   worldbuilder mcp --stdio            (next slice: the stateless stdio bridge)
 
 import { assertStateDirSafe, resolveStateDir } from '@worldbuilder/local-state';
+import { isIP } from 'node:net';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
 import { addAgent, listAgents, removeAgent } from './agent-registry.js';
@@ -47,12 +48,29 @@ function absolute(p: string): string {
   return path.resolve(p);
 }
 
-/** A Host header value as the service compares it: `name` becomes `name:<port>`. */
-function withPort(host: string, port: number): string {
+/**
+ * A Host header value as the service compares it: `name` becomes `name:<port>`, a bare IPv6
+ * address is put in brackets (`::1` becomes `[::1]:<port>`), and `[addr]:port`, `name:port` are
+ * kept. Anything else (a lone colon, an unbracketed address with a port, a bad port) is refused.
+ */
+export function normaliseAllowedHost(host: string, port: number): string {
   const h = host.trim().toLowerCase();
+  const bad = () => new UsageError(`--allow-host ${host}: not a host name or address`);
   if (h === '') throw new UsageError('--allow-host needs a host name');
-  const hasPort = h.startsWith('[') ? /\]:\d+$/.test(h) : /:\d+$/.test(h);
-  return hasPort ? h : `${h}:${port}`;
+  const validPort = (p: string) => /^\d{1,5}$/.test(p) && Number(p) >= 1 && Number(p) <= 65535;
+  if (h.startsWith('[')) {
+    const m = /^\[([^\]]+)\](?::(\d+))?$/.exec(h);
+    if (!m || !isIP(m[1]!) || isIP(m[1]!) !== 6) throw bad();
+    if (m[2] !== undefined && !validPort(m[2])) throw bad();
+    return `[${m[1]}]:${m[2] ?? port}`;
+  }
+  if (isIP(h) === 6) return `[${h}]:${port}`;
+  const colons = h.split(':').length - 1;
+  if (colons === 0) return `${h}:${port}`;
+  if (colons > 1) throw bad(); // an IPv6 address with a port must be in brackets
+  const [name, p] = h.split(':') as [string, string];
+  if (name === '' || !validPort(p)) throw bad();
+  return h;
 }
 
 async function serve(argv: string[], deps: MainDeps): Promise<void> {
@@ -74,7 +92,7 @@ async function serve(argv: string[], deps: MainDeps): Promise<void> {
     throw new UsageError('--port must be an integer from 1 to 65535');
   }
   const host = values.host ?? '127.0.0.1';
-  const allowedHosts = (values['allow-host'] ?? []).map((h) => withPort(h, port));
+  const allowedHosts = (values['allow-host'] ?? []).map((h) => normaliseAllowedHost(h, port));
   const storeRoot = absolute(values.store);
   const storage = await (deps.openStore ?? openMarkdownStore)(storeRoot);
   const service = await createService({
