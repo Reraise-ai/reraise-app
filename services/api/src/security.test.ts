@@ -310,6 +310,18 @@ describe('size and format limits', () => {
     });
     expect(res.statusCode).toBe(401);
   });
+  it('answers an over-long path parameter with a 414 problem, without quoting the path, after the Host check', async () => {
+    const url = `/cards/${'a'.repeat(300)}`;
+    const auth = { 'x-worldbuilder-session': f.service.sessionToken };
+    const res = await f.raw({ method: 'GET', url, headers: auth });
+    expect(res.statusCode).toBe(414);
+    expect(res.headers['content-type']).toContain('application/problem+json');
+    expect(res.json().status).toBe(414);
+    expect(res.body).not.toContain('aaaaaaaa');
+    const foreign = await f.raw({ method: 'GET', url, headers: { ...auth, host: 'evil.example' } });
+    expect(foreign.statusCode).toBe(403);
+    expect(foreign.headers['content-type']).toContain('application/problem+json');
+  });
   it('answers 400 for malformed JSON and 415 for another media type', async () => {
     const bad = await f.raw({
       method: 'POST',

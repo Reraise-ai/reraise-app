@@ -135,6 +135,24 @@ export async function buildApp(options: AppOptions): Promise<BoardApp> {
     bodyLimit: options.bodyLimit ?? DEFAULT_BODY_LIMIT,
     // One JSON body per request; no query parsing surprises (arrays and nested keys are errors).
     routerOptions: { maxParamLength: 128 },
+    // The router rejects an over-long path parameter before any hook runs, with a JSON body that
+    // quotes the path. Answer it as a problem, and only to a caller whose Host is allowed.
+    frameworkErrors: (error, req, res) => {
+      const reply = res as unknown as FastifyReply;
+      const host = (req.headers.host ?? '').toLowerCase();
+      if (!hosts.has(host)) {
+        return reply
+          .code(403)
+          .type('application/problem+json')
+          .send(problemOf(403, 'the Host header is not allowed', 'host-not-allowed'));
+      }
+      const tooLong = (error as { code?: string }).code === 'FST_ERR_MAX_PARAM_LENGTH';
+      const status = tooLong ? 414 : 400;
+      return reply
+        .code(status)
+        .type('application/problem+json')
+        .send(problemOf(status, tooLong ? 'the request path is too long' : 'bad request'));
+    },
   }) as unknown as BoardApp;
 
   // Empty JSON bodies are allowed (accept and reject take an optional body); bad JSON is a 400.
