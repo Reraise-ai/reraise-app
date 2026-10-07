@@ -40,6 +40,67 @@ describe('scanText', () => {
     expect(rules('const font = loadFont();')).toEqual([]);
   });
 
+  it('flags named colours in colour properties, not neutral keywords or tokens', () => {
+    expect(rules('color: red;')).toEqual(['named-colour']);
+    expect(rules('background: linear-gradient(to right, navy, white);')).toEqual(['named-colour']);
+    expect(rules('border: 1px solid Gray;')).toEqual(['named-colour']);
+    expect(rules("style={{ backgroundColor: 'tomato' }}")).toEqual(['named-colour']);
+    expect(rules('box-shadow: 0 0 4px black;')).toEqual(['named-colour']);
+    for (const ok of [
+      'color: transparent;',
+      'color: currentColor;',
+      'color: inherit;',
+      'background: none;',
+      'border: 1px solid var(--wb-line);',
+      'color: var(--wb-color-red);',
+      'fill: var(--wb-accent);',
+      'background-image: url(red.png);',
+      'content: "red";',
+    ]) {
+      expect(rules(ok)).toEqual([]);
+    }
+  });
+
+  it('flags colour literals in JSX and SVG attributes', () => {
+    expect(rules('<path fill="red" />')).toEqual(['colour-attribute']);
+    expect(rules("<circle stroke={'navy'} />")).toEqual(['colour-attribute']);
+    expect(rules('<stop stopColor="orange" />')).toEqual(['colour-attribute']);
+    expect(rules('<feFlood floodColor="rgb(0 0 0)" />')).toContain('colour-attribute');
+    expect(rules('<path fill="none" stroke="currentColor" />')).toEqual([]);
+    expect(rules('<path fill="var(--wb-accent)" />')).toEqual([]);
+    expect(rules('<path fill="url(#grad)" />')).toEqual([]);
+  });
+
+  it('flags a font-family attribute', () => {
+    expect(rules('<text fontFamily="Arial">x</text>')).toEqual(['font-family']);
+    expect(rules('<text font-family="serif">x</text>')).toEqual(['font-family']);
+    expect(rules('<text fontFamily="var(--wb-font-body)">x</text>')).toEqual([]);
+  });
+
+  it('flags color-mix with a literal colour, not with tokens only', () => {
+    expect(rules('background: color-mix(in srgb, red 40%, var(--wb-surface));')).toContain(
+      'color-mix',
+    );
+    expect(rules('background: color-mix(in srgb, #fff, #000);')).toContain('color-mix');
+    expect(
+      rules('background: color-mix(in srgb, var(--wb-accent) 40%, var(--wb-surface));'),
+    ).toEqual([]);
+    expect(rules('background: color-mix(in oklab, var(--wb-a), transparent 50%);')).toEqual([]);
+  });
+
+  it('flags a colour in a data URI and a colour built from a # string', () => {
+    expect(rules('background: url("data:image/svg+xml,%3Csvg fill=\'%23c9a44c\'/%3E");')).toContain(
+      'data-uri-colour',
+    );
+    expect(rules("const c = '#' + hex;")).toEqual(['concatenated-hex']);
+    expect(rules('const c = `#${hex}`;')).toEqual(['concatenated-hex']);
+  });
+
+  it('does not take an SVG reference or an anchor for a colour', () => {
+    expect(rules('markerEnd="url(#abc)"')).toEqual([]);
+    expect(rules('<a href="#add">x</a>')).toEqual([]);
+  });
+
   it('reports the line number', () => {
     expect(scanText('a {}\nb { color: #abc }\n')[0]).toMatchObject({ line: 2 });
   });

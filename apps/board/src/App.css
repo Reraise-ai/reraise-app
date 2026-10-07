@@ -204,6 +204,18 @@ label {
   --xy-selection-background-color: transparent;
   --xy-attribution-background-color: var(--wb-surface-raised);
   --xy-selection-border: var(--wb-stroke) dashed var(--wb-accent);
+  --xy-background-pattern-color: var(--wb-line);
+  --xy-node-color: var(--wb-text);
+  --xy-node-border: var(--wb-stroke) solid var(--wb-line);
+  --xy-node-border-selected: var(--wb-stroke-strong) solid var(--wb-accent);
+  --xy-connectionline-stroke-width: var(--wb-stroke-strong);
+  --xy-edge-stroke-width: var(--wb-stroke-strong);
+  --xy-resize-background-color: var(--wb-accent);
+  --xy-minimap-background-color: var(--wb-surface-raised);
+  --xy-minimap-mask-background-color: var(--wb-surface);
+  --xy-minimap-mask-stroke-color: var(--wb-accent);
+  --xy-minimap-node-background-color: var(--wb-line);
+  --xy-minimap-node-stroke-color: var(--wb-text-muted);
   background: var(--wb-surface);
   color: var(--wb-text);
 }
