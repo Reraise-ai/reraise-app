@@ -19,10 +19,7 @@
         ],
         "predictedMove": "Keep night transit restrictions",
         "confidence": 0.58,
-        "cardIds": [
-          "01M1EDEAG082WZ7T7D204BHZDC",
-          "01M1E34QM03WVTE8T1RYS3AM18"
-        ]
+        "cardIds": ["01M1EDEAG082WZ7T7D204BHZDC", "01M1E34QM03WVTE8T1RYS3AM18"]
       },
       {
         "playerCardId": "01M1EGW640BMD0RDT5NGRMFD70",
@@ -33,9 +30,7 @@
         ],
         "predictedMove": "Reroute via the Cape of Good Hope",
         "confidence": 0.33,
-        "cardIds": [
-          "01M1EGW640BMD0RDT5NGRMFD70"
-        ]
+        "cardIds": ["01M1EGW640BMD0RDT5NGRMFD70"]
       }
     ],
     "predictedAt": "2026-09-16T10:12:00.000Z"
