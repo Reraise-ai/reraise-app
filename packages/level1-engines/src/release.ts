@@ -9,9 +9,11 @@ import { computeContentHash } from '@worldbuilder/core';
  * exactly the request's cards object for object (id and content hash), agree with its own
  * confirmation reference, and every object must still hash to its recorded content hash.
  *
- * This is a consistency check, not proof of consent: genuineness comes from the service, which
- * obtains the release from `DisclosureGate.redeem` (single use, bound to the confirmed envelope
- * hash and the session) and hands it straight to the engine (ADR-0031, ADR-0035).
+ * This checks that the release matches the request's cards. Binding to the confirmed envelope
+ * (connector, question, options, output schema) is checked by the engine with
+ * `level1EnvelopeFor`. Neither check proves the release is genuine or unspent: that is the
+ * service's job, which obtains it from `DisclosureGate.redeem` (single use, bound to the confirmed
+ * envelope hash and the session) and hands it straight to the engine (ADR-0031, ADR-0035).
  */
 export function releaseProblem(
   request: Level1PredictionRequest,

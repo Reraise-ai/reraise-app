@@ -38,6 +38,7 @@ export { buildLevel2Draft } from './escalate.js';
 export type { Level2Draft, Level2DraftOptions } from './escalate.js';
 export { formatEstimate, formatEstimates } from './format.js';
 export type { EstimateView } from './format.js';
+export { level1EnvelopeFor, level1OptionLabels, outputSchemaFor } from './envelope.js';
 export { releaseProblem } from './release.js';
 export {
   GENERIC_SYSTEM_ONE_PRESET,
@@ -47,7 +48,6 @@ export {
   createJevAdapter,
   createSystemOneHttpAdapter,
   decideInputFrom,
-  outputSchemaFor,
   renderCard,
 } from './system-one.js';
 export type {

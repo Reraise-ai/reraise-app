@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright The Worldbuilder contributors
 
-import { describeLevel1EngineConformance, releaseOf } from '@worldbuilder/conformance';
-import type { Card } from '@worldbuilder/core';
+import { describeLevel1EngineConformance, releaseOfEnvelope } from '@worldbuilder/conformance';
+import type { Card, DisclosurePreviewEnvelope, Level1PredictionRequest } from '@worldbuilder/core';
+import { computePayloadHash } from '@worldbuilder/core';
 import { describe, expect, it, vi } from 'vitest';
 import {
   GENERIC_SYSTEM_ONE_PRESET,
@@ -12,9 +13,9 @@ import {
   createJevAdapter,
   createSystemOneHttpAdapter,
   decideInputFrom,
-  outputSchemaFor,
   renderCard,
 } from './system-one.js';
+import { level1EnvelopeFor, outputSchemaFor } from './envelope.js';
 import { ID, card, consortium, fixedNow, navy, report, requestOf } from './test-fixtures.js';
 
 const BASE = 'https://decide.example.org/api';
@@ -58,6 +59,13 @@ function fakeService(answer?: (body: Body) => unknown) {
 
 const request = requestOf();
 
+/** The release of a transfer confirmed for the envelope `engine` would send for these cards. */
+const releaseFor = (
+  engine: string,
+  req: Level1PredictionRequest = request,
+  cards: readonly Card[] = req.cards,
+) => releaseOfEnvelope(level1EnvelopeFor(engine, req, cards));
+
 describeLevel1EngineConformance('system one adapter (generic preset, fake service)', () => ({
   engine: createSystemOneHttpAdapter({
     baseUrl: BASE,
@@ -65,14 +73,16 @@ describeLevel1EngineConformance('system one adapter (generic preset, fake servic
     now: fixedNow,
   }),
   request,
+  releaseFor: (r, cards) => releaseFor('system-one', r, cards),
 }));
 describeLevel1EngineConformance('Jev adapter (fake service)', () => ({
   engine: createJevAdapter({ baseUrl: BASE, fetch: fakeService().fetchFn, now: fixedNow }),
   request,
+  releaseFor: (r, cards) => releaseFor('jev', r, cards),
 }));
 
 describe('the adapter sends only what a confirmed release holds', () => {
-  const release = releaseOf(request.cards);
+  const release = releaseFor('jev');
 
   it('declares itself a non-deterministic cloud engine with the preset engine id', () => {
     const a = createJevAdapter({ baseUrl: BASE, fetch: fakeService().fetchFn });
@@ -103,10 +113,10 @@ describe('the adapter sends only what a confirmed release holds', () => {
     await reject(undefined);
     await reject({ cards: request.cards }); // raw cards, not a release
     await reject({ objects: request.cards }); // no confirmation
-    await reject(releaseOf(request.cards.slice(1))); // a card missing
-    await reject(releaseOf([...request.cards].reverse())); // other order is another transfer
+    await reject(releaseFor('jev', request, request.cards.slice(1))); // a card missing
+    await reject(releaseFor('jev', request, [...request.cards].reverse())); // other order is another transfer
     const edited = { ...navy, title: 'Edited after confirmation' } as Card;
-    await reject(releaseOf([edited, ...request.cards.slice(1)])); // content hash differs
+    await reject(releaseFor('jev', request, [edited, ...request.cards.slice(1)])); // content hash differs
     const tampered = structuredClone(release);
     tampered.confirmation.cardIds = [...tampered.confirmation.cardIds].reverse();
     await reject(tampered);
@@ -166,7 +176,7 @@ describe('the adapter sends only what a confirmed release holds', () => {
       class: 'A',
       body: 'Public biography.',
     });
-    const text = renderCard(c);
+    const text = renderCard(c, new Set([c.id]));
     expect(text).toContain('Public biography.');
     expect(text).not.toMatch(/INTJ|secret-tag|class/);
   });
@@ -236,7 +246,7 @@ describe('the adapter sends only what a confirmed release holds', () => {
 });
 
 describe('the adapter treats every answer as untrusted', () => {
-  const release = releaseOf(request.cards);
+  const release = releaseFor('jev');
   const ask = (response: () => Response | Promise<Response>) =>
     createJevAdapter({
       baseUrl: BASE,
@@ -359,11 +369,9 @@ describe('configuration', () => {
   });
 
   it('builds an output schema and decision input from a release', () => {
-    const release = releaseOf([navy, consortium, report]);
-    const input = decideInputFrom(
-      { ...request, players: [request.players[0]!], cards: [navy, consortium, report] },
-      release,
-    );
+    const req = { ...request, players: [request.players[0]!], cards: [navy, consortium, report] };
+    const release = releaseFor('jev', req);
+    const input = decideInputFrom(req, release, level1EnvelopeFor('jev', req, req.cards));
     expect(input.cardIds).toEqual([ID.navy, ID.consortium, ID.report]);
     expect(input.players[0]!.title).toBe(navy.title);
     const schema = outputSchemaFor(input) as { required: string[] };
@@ -391,9 +399,159 @@ describe('configuration', () => {
       return new Response('{}');
     }) as unknown as typeof fetch;
     const a = createSystemOneHttpAdapter({ baseUrl: BASE, fetch: f, preset });
-    const p = await a.predict(request, releaseOf(request.cards));
+    const p = await a.predict(request, releaseFor('acme-decide'));
     expect(a.engine).toBe('acme-decide');
     expect(p.players[0]!.confidence).toBe(0.4);
     expect(calls).toEqual([[`${BASE}/decide/v2`, JSON.stringify({ q: request.question })]]);
+  });
+});
+
+describe('the confirmation is bound to the envelope that is sent', () => {
+  const confirmed = (envelope: DisclosurePreviewEnvelope) => releaseOfEnvelope(envelope);
+  const good = level1EnvelopeFor('jev', request, request.cards);
+
+  it('flattens the move options per player and carries the output schema', () => {
+    expect(good.target).toBe('cloud_model');
+    expect(good.connectorId).toBe('jev');
+    expect(good.request.question).toBe(request.question);
+    expect(good.request.options).toEqual(
+      request.players.flatMap((p) => p.moveOptions.map((m) => `${p.playerCardId}: ${m}`)),
+    );
+    expect(good.request.outputSchema).toEqual(
+      outputSchemaFor({ players: request.players, cardIds: request.cards.map((c) => c.id) }),
+    );
+  });
+
+  it('sends exactly the question, options and output schema of the confirmed envelope', async () => {
+    const svc = fakeService();
+    await createJevAdapter({ baseUrl: BASE, fetch: svc.fetchFn }).predict(request, confirmed(good));
+    const body = svc.calls[0]!.body as unknown as {
+      question: string;
+      options: string[];
+      output_schema: unknown;
+    };
+    expect(body.question).toBe(good.request.question);
+    expect(body.options).toEqual(good.request.options);
+    expect(body.output_schema).toEqual(good.request.outputSchema);
+  });
+
+  it.each([
+    [
+      'another connector',
+      (e: DisclosurePreviewEnvelope) => ({ ...e, connectorId: 'other-engine' }),
+    ],
+    [
+      'another question',
+      (e: DisclosurePreviewEnvelope) => ({
+        ...e,
+        request: { ...e.request, question: 'A different question?' },
+      }),
+    ],
+    [
+      'other options',
+      (e: DisclosurePreviewEnvelope) => ({
+        ...e,
+        request: { ...e.request, options: [...(e.request.options ?? []), 'Extra'] },
+      }),
+    ],
+    [
+      'another output schema',
+      (e: DisclosurePreviewEnvelope) => ({
+        ...e,
+        request: { ...e.request, outputSchema: { type: 'object' } },
+      }),
+    ],
+    ['no request parameters at all', (e: DisclosurePreviewEnvelope) => ({ ...e, request: {} })],
+  ])('refuses a release confirmed for %s', async (_name, change) => {
+    const svc = fakeService();
+    const a = createJevAdapter({ baseUrl: BASE, fetch: svc.fetchFn });
+    await expect(a.predict(request, confirmed(change(good)))).rejects.toMatchObject({
+      code: 'release_required',
+    });
+    expect(svc.fetchFn).not.toHaveBeenCalled();
+  });
+
+  it('refuses a release whose payload hash is that of another envelope', async () => {
+    const svc = fakeService();
+    const release = confirmed(good);
+    release.confirmation.payloadHash = computePayloadHash({ ...good, connectorId: 'x' });
+    await expect(
+      createJevAdapter({ baseUrl: BASE, fetch: svc.fetchFn }).predict(request, release),
+    ).rejects.toMatchObject({ code: 'release_required' });
+    expect(svc.fetchFn).not.toHaveBeenCalled();
+  });
+
+  it('refuses a request whose move options differ from the confirmed ones', async () => {
+    const svc = fakeService();
+    const other = {
+      ...request,
+      players: [
+        { ...request.players[0]!, moveOptions: ['Keep night transit restrictions', 'Other'] },
+        request.players[1]!,
+      ],
+    };
+    await expect(
+      createJevAdapter({ baseUrl: BASE, fetch: svc.fetchFn }).predict(other, confirmed(good)),
+    ).rejects.toMatchObject({ code: 'release_required' });
+    expect(svc.fetchFn).not.toHaveBeenCalled();
+  });
+});
+
+describe('links and response size', () => {
+  it('renders only links to released cards', () => {
+    const c = card(ID.navy, {
+      type: 'organisation',
+      edges: [
+        { target: ID.report, kind: 'supports', by: 'human' },
+        { target: ID.stray, kind: 'relation', by: 'human' },
+      ],
+    });
+    const text = renderCard(c, new Set([ID.navy, ID.report]));
+    expect(text).toContain(`supports -> ${ID.report}`);
+    expect(text).not.toContain(ID.stray);
+    expect(renderCard(c, new Set([ID.navy]))).not.toContain('Links:');
+  });
+
+  const release = releaseFor('jev');
+  const ask = (response: Response) =>
+    createJevAdapter({
+      baseUrl: BASE,
+      fetch: (async () => response) as unknown as typeof fetch,
+    }).predict(request, release);
+
+  it('rejects early on a declared content length and cancels the body', async () => {
+    const cancel = vi.fn();
+    const body = new ReadableStream({ pull: (c) => c.enqueue(new Uint8Array(10)), cancel });
+    const res = new Response(body, { headers: { 'content-length': '5000000' } });
+    await expect(ask(res)).rejects.toMatchObject({ code: 'bad_response' });
+    expect(cancel).toHaveBeenCalled();
+  });
+
+  it('stops reading a body that grows past the cap without a declared length', async () => {
+    const cancel = vi.fn();
+    let pulled = 0;
+    const body = new ReadableStream({
+      pull(c) {
+        pulled += 1;
+        c.enqueue(new Uint8Array(300_000));
+      },
+      cancel,
+    });
+    await expect(ask(new Response(body))).rejects.toMatchObject({ code: 'bad_response' });
+    expect(cancel).toHaveBeenCalled();
+    expect(pulled).toBeLessThan(10);
+  });
+
+  it('cancels the body of an error response without reading it', async () => {
+    const cancel = vi.fn();
+    const body = new ReadableStream({ pull: (c) => c.enqueue(new Uint8Array(10)), cancel });
+    await expect(ask(new Response(body, { status: 500 }))).rejects.toMatchObject({
+      code: 'http_error',
+    });
+    expect(cancel).toHaveBeenCalled();
+  });
+
+  it('accepts an empty body as not JSON', async () => {
+    await expect(ask(new Response(null))).rejects.toMatchObject({ code: 'bad_response' });
   });
 });

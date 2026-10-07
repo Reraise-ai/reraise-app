@@ -9,9 +9,13 @@
 // before use.
 //
 // Rules the adapter enforces:
-// - It predicts only with the `DisclosureRelease` of one confirmed transfer (ADR-0031). The state
-//   it sends is built from the release objects alone, never from raw cards, and only after the
-//   release was checked against the request. Without a matching release nothing is sent.
+// - It predicts only with the `DisclosureRelease` of one confirmed transfer (ADR-0031). Before
+//   anything is sent it recomputes the envelope (`level1EnvelopeFor`: connector, question, flattened
+//   options, output schema, released cards) and requires its hash to equal the confirmed
+//   `payloadHash`; the question, options and output schema it sends are those of that envelope and
+//   the state is built from the release objects alone, never from raw cards. Without a matching
+//   release nothing is sent. Whether the release is genuine and unspent is the service's job
+//   (`DisclosureGate.redeem`), not something an engine can verify.
 // - It sends content fields only: no store identity (uri, externalId), no worlds, tags, class,
 //   visibility, release, training flag or personality type.
 // - It follows no redirects, never logs or echoes the credential or the answer body in errors,
@@ -20,13 +24,15 @@
 
 import type {
   Card,
+  DisclosurePreviewEnvelope,
   DisclosureRelease,
   Level1Engine,
   Level1Prediction,
   Level1PredictionRequest,
   PlayerEntry,
 } from '@worldbuilder/core';
-import { hashJcs } from '@worldbuilder/core';
+import { computePayloadHash, hashJcs } from '@worldbuilder/core';
+import { level1EnvelopeFor } from './envelope.js';
 import { releaseProblem } from './release.js';
 
 export type Level1EngineErrorCode =
@@ -52,6 +58,10 @@ export interface DecidePlayer {
 /** What a preset turns into a wire body: everything comes from the release. */
 export interface DecideInput {
   readonly question: string;
+  /** The flattened options of the confirmed envelope (`<playerCardId>: <move>`). */
+  readonly options: readonly string[];
+  /** The output schema of the confirmed envelope. */
+  readonly outputSchema: Record<string, unknown>;
   readonly players: readonly DecidePlayer[];
   /** The released cards as unstructured text. */
   readonly state: string;
@@ -81,38 +91,13 @@ export interface SystemOneProviderPreset {
 const isRecord = (v: unknown): v is Record<string, unknown> =>
   typeof v === 'object' && v !== null && !Array.isArray(v);
 
-/** JSON Schema of the answer: one object per player, the move an enum of that player's options. */
-export function outputSchemaFor(input: DecideInput): Record<string, unknown> {
-  const properties = Object.fromEntries(
-    input.players.map((p) => [
-      p.playerCardId,
-      {
-        type: 'object',
-        properties: {
-          predictedMove: { type: 'string', enum: [...p.moveOptions] },
-          confidence: { type: 'number', minimum: 0, maximum: 1 },
-          cardIds: { type: 'array', items: { type: 'string', enum: [...input.cardIds] } },
-        },
-        required: ['predictedMove', 'confidence'],
-        additionalProperties: false,
-      },
-    ]),
-  );
-  return {
-    type: 'object',
-    properties,
-    required: input.players.map((p) => p.playerCardId),
-    additionalProperties: false,
-  };
-}
-
 const INSTRUCTION =
   'For each player named in the output schema, predict the single most likely next move ' +
   'out of the allowed moves, using only the state below. Give your own calibrated ' +
   'confidence in [0, 1] and the ids of the cards you used.';
 
 /**
- * The generic `POST /v1/decide` template: `{ instruction, question, state, output_schema }` in,
+ * The generic `POST /v1/decide` template: `{ instruction, question, options, state, output_schema }` in,
  * `{ output: { <playerCardId>: { predictedMove, confidence, cardIds? } }, confidence? }` out. A
  * top-level `confidence` is used for players whose entry has none.
  */
@@ -123,8 +108,9 @@ export const GENERIC_SYSTEM_ONE_PRESET: SystemOneProviderPreset = {
   buildBody: (input) => ({
     instruction: INSTRUCTION,
     question: input.question,
+    options: input.options,
     state: input.state,
-    output_schema: outputSchemaFor(input),
+    output_schema: input.outputSchema,
   }),
   readAnswers(response) {
     const answers = new Map<string, RawAnswer>();
@@ -174,7 +160,7 @@ export interface SystemOneHttpAdapterOptions {
 }
 
 const MAX_BODY_CHARS = 8_000;
-const MAX_RESPONSE_CHARS = 1_000_000;
+const MAX_RESPONSE_BYTES = 1_000_000;
 const ENGINE_ID = /^[a-z0-9][a-z0-9._-]{0,63}$/;
 
 function endpoint(baseUrl: string, path: string): URL {
@@ -197,8 +183,16 @@ const entries = (label: string, list: readonly PlayerEntry[] | undefined) =>
     ? [`${label}: ${list.map((e) => `${e.text} (source: ${e.source})`).join('; ')}`]
     : [];
 
+/** Links to other released cards only: an id outside the transfer is not content of it. */
+function links(card: Card, releasedIds: ReadonlySet<string>): string[] {
+  const kept = (card.edges ?? []).filter((e) => releasedIds.has(e.target));
+  return kept.length > 0
+    ? [`Links: ${kept.map((e) => `${e.kind} -> ${e.target}`).join('; ')}`]
+    : [];
+}
+
 /** One released card as text: content fields only. */
-export function renderCard(card: Card): string {
+export function renderCard(card: Card, releasedIds: ReadonlySet<string>): string {
   const lines = [
     `[card ${card.id}] type: ${card.type}${card.layer ? `, layer: ${card.layer}` : ''}`,
     `Title: ${card.title}`,
@@ -212,28 +206,30 @@ export function renderCard(card: Card): string {
     ...entries('Red lines', card.redLines),
     ...entries('Assumed goals', card.assumedGoals),
     ...(card.rule ? [`User rule: ${JSON.stringify(card.rule)}`] : []),
-    ...(card.edges && card.edges.length > 0
-      ? [`Links: ${card.edges.map((e) => `${e.kind} -> ${e.target}`).join('; ')}`]
-      : []),
+    ...links(card, releasedIds),
   ];
   return lines.join('\n');
 }
 
 /**
- * The decision input, built from a release (never from raw cards). The request supplies only the
- * question, the players and their options.
+ * The decision input, built from a release (never from raw cards) and the confirmed envelope: the
+ * question, options and output schema are the envelope's, the state is the released cards.
  */
 export function decideInputFrom(
   request: Level1PredictionRequest,
   release: DisclosureRelease,
+  envelope: DisclosurePreviewEnvelope,
   maxStateChars = 100_000,
 ): DecideInput {
-  const state = release.objects.map(renderCard).join('\n\n');
+  const ids = new Set(release.objects.map((c) => c.id));
+  const state = release.objects.map((c) => renderCard(c, ids)).join('\n\n');
   if (state.length > maxStateChars)
     throw new Level1EngineError('request_too_large', 'the released cards exceed the state limit');
   const byId = new Map(release.objects.map((c) => [c.id, c] as const));
   return {
-    question: request.question,
+    question: envelope.request.question ?? request.question,
+    options: envelope.request.options ?? [],
+    outputSchema: envelope.request.outputSchema ?? {},
     players: request.players.map((p) => ({
       playerCardId: p.playerCardId,
       title: byId.get(p.playerCardId)?.title ?? p.playerCardId,
@@ -242,6 +238,32 @@ export function decideInputFrom(
     state,
     cardIds: release.objects.map((c) => c.id),
   };
+}
+
+/** Read a response body as text, never holding more than `MAX_RESPONSE_BYTES`. */
+async function readCapped(response: Response): Promise<string> {
+  const tooLarge = () => new Error('too large');
+  const declared = Number(response.headers.get('content-length'));
+  if (Number.isFinite(declared) && declared > MAX_RESPONSE_BYTES) {
+    await response.body?.cancel().catch(() => undefined);
+    throw tooLarge();
+  }
+  if (!response.body) return '';
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let total = 0;
+  let text = '';
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > MAX_RESPONSE_BYTES) {
+      await reader.cancel().catch(() => undefined);
+      throw tooLarge();
+    }
+    text += decoder.decode(value, { stream: true });
+  }
+  return text + decoder.decode();
 }
 
 /** Validate one answer against what was asked; anything unexpected is a bad response. */
@@ -306,7 +328,13 @@ export function createSystemOneHttpAdapter(options: SystemOneHttpAdapterOptions)
           'release_required',
           `cloud engine ${engine}: ${problem ?? 'no confirmed release'}`,
         );
-      const input = decideInputFrom(request, release, options.maxStateChars);
+      const envelope = level1EnvelopeFor(engine, request, release.objects);
+      if (computePayloadHash(envelope) !== release.confirmation.payloadHash)
+        throw new Level1EngineError(
+          'release_required',
+          `cloud engine ${engine}: the confirmation is for another connector, question, options, output schema or card set`,
+        );
+      const input = decideInputFrom(request, release, envelope, options.maxStateChars);
       const key = typeof options.apiKey === 'function' ? await options.apiKey() : options.apiKey;
       let response: Response;
       try {
@@ -325,16 +353,16 @@ export function createSystemOneHttpAdapter(options: SystemOneHttpAdapterOptions)
         // The cause may carry the URL or headers; report only that the call failed.
         throw new Level1EngineError('http_error', `cloud engine ${engine}: the request failed`);
       }
-      if (!response.ok)
+      if (!response.ok) {
+        await response.body?.cancel().catch(() => undefined);
         throw new Level1EngineError(
           'http_error',
           `cloud engine ${engine}: the service answered HTTP ${response.status}`,
         );
+      }
       let json: unknown;
       try {
-        const text = await response.text();
-        if (text.length > MAX_RESPONSE_CHARS) throw new Error('too large');
-        json = JSON.parse(text);
+        json = JSON.parse(await readCapped(response));
       } catch {
         throw new Level1EngineError(
           'bad_response',
