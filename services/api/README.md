@@ -38,7 +38,7 @@ name, target and creation time of the active connections, never a token; `agent 
 token at once (the record stays, so a name is never reused for another token). The three agent
 commands resolve the state directory exactly like `serve` (per-OS default or `--state`, never
 inside a store passed with `--store` or a Git working tree, symbolic links followed). The whole
-registry format lives in `src/agent-registry.ts`.
+registry format lives in `src/agent-registry.ts`. The names `local` and `jev` (any letter case), and the id of any configured level-1 engine, are reserved: both act as `agent:<name>` (ADR-0035, ADR-0037).
 
 `--allow-host` (repeatable) adds Host header values for a reverse proxy; a bare name gets the service
 port. Binding beyond loopback, or allowing another Host, prints a loud warning: put your own access

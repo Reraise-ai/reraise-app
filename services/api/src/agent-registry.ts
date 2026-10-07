@@ -16,6 +16,13 @@ import { validators } from './contract.js';
 export const AGENTS_FILE = 'agents.yaml';
 
 const AGENT_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
+/**
+ * Names that act as `agent:<name>` and must not be taken by a connection because a level-1
+ * engine uses them (ADR-0035, ADR-0037). No engine is configured in this build, so the ids of
+ * the engines the socket names are reserved; configured engine ids are passed to `addAgent`.
+ */
+export const RESERVED_AGENT_NAMES: readonly string[] = ['local', 'jev'];
+
 const HASH_PREFIX = 'sha256:';
 
 /** One stored connection (schema `AgentConnection`). */
@@ -153,8 +160,13 @@ export async function addAgent(
   stateDir: string,
   agent: { name: string; target: AgentTarget },
   now: () => Date = () => new Date(),
+  engineIds: readonly string[] = [],
 ): Promise<{ token: string }> {
   if (!AGENT_NAME.test(agent.name)) throw new Error(`agent name must match ${AGENT_NAME.source}`);
+  const lower = agent.name.toLowerCase();
+  if ([...RESERVED_AGENT_NAMES, ...engineIds].some((id) => id.toLowerCase() === lower)) {
+    throw new Error(`the name ${agent.name} is reserved for a level-1 engine; choose another name`);
+  }
   const existing = await readRecords(stateDir);
   const same = existing.find((r) => r.name === agent.name);
   if (same) {

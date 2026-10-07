@@ -60,7 +60,7 @@ and keeps the product neutral towards any agent system.
   [ADR-0030](0030-local-state-on-the-device.md)). It holds `name`, `target`, `tokenHash`
   (`sha256:<hex>`), `createdAt` and `revokedAt`. The token itself is never stored, logged or
   exported. Names are unique; a name must not equal a level-1 engine id, because both act as
-  `agent:<name>` ([ADR-0035](0035-level1-engine-socket.md)).
+  `agent:<name>` ([ADR-0035](0035-level1-engine-socket.md)). Until engines are configurable, the ids `local` and `jev` are reserved and `agent add` refuses them.
 - Tokens: 256 random bits from a secure source, base64url; compared by hash in constant time.
   An unregistered, revoked or wrong token is rejected before any tool runs.
 - Registration is human-only: no MCP tool and no agent token can register, change or remove a

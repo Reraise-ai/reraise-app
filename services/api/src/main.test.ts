@@ -218,6 +218,35 @@ describe('worldbuilder agent: state directory and names', () => {
   });
 });
 
+describe('reserved agent names', () => {
+  it('refuses a name that a level-1 engine uses, in any letter case', async () => {
+    const { addAgent } = await import('./agent-registry.js');
+    for (const name of ['local', 'jev', 'Jev', 'LOCAL']) {
+      await expect(addAgent(path.join(dir, 'st'), { name, target: 'local_model' })).rejects.toThrow(
+        /reserved for a level-1 engine/,
+      );
+    }
+    await expect(
+      addAgent(path.join(dir, 'st'), { name: 'my-engine', target: 'local_model' }, undefined, [
+        'My-Engine',
+      ]),
+    ).rejects.toThrow(/reserved/);
+    const err = sink();
+    expect(
+      await main(
+        ['agent', 'add', 'jev', '--target', 'cloud_model', '--state', path.join(dir, 'st')],
+        {
+          stderr: err,
+        },
+      ),
+    ).toBe(1);
+    expect(err.text()).toContain('reserved');
+    await expect(
+      addAgent(path.join(dir, 'st'), { name: 'locally', target: 'local_model' }),
+    ).resolves.toHaveProperty('token');
+  });
+});
+
 describe('--allow-host values', () => {
   it('adds the port, brackets a bare IPv6 address and refuses ambiguous forms', () => {
     expect(normaliseAllowedHost('WB.example.test', 4310)).toBe('wb.example.test:4310');
