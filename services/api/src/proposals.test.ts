@@ -359,3 +359,55 @@ describe('what an agent may put into a proposed card', () => {
     expect(card.tags).toBeUndefined();
   });
 });
+
+describe('proposal_create passes the same gate checks as the knowledge tools', () => {
+  const MISSING = '01ARZ3NDEKTSV4RRFFQ69G5FAV';
+  const sections = (cardsUsed: string[]) => ({
+    situation: 's',
+    trigger: 't',
+    conditions: 'c',
+    facts: 'f',
+    priorities: 'p',
+    action: 'a',
+    alternatives: 'al',
+    exclusions: 'e',
+    rationale: 'r',
+    cardsUsed,
+    outcome: 'open',
+  });
+  const post = (name: string, kind: string, payload: unknown) =>
+    f.agent(name, 'POST', '/proposals', { kind, payload });
+
+  it('a decision draft may only use cards the agent may know (a hidden one looks like a missing one)', async () => {
+    const draft = (id: string) => ({
+      card: { format: 2, type: 'decision', title: 'D', sections: sections([id]) },
+    });
+    const hidden = await post('scripted', 'create_card', draft(f.ids.evPrivate));
+    const missing = await post('scripted', 'create_card', draft(MISSING));
+    expect([hidden.statusCode, missing.statusCode]).toEqual([400, 400]);
+    expect(hidden.body.replace(f.ids.evPrivate, 'X')).toBe(missing.body.replace(MISSING, 'X'));
+    expect((await post('scripted', 'create_card', draft(f.ids.evPublic))).statusCode).toBe(201);
+  });
+  it('record_outcome needs a decision the agent may know: hidden and unknown are both 404', async () => {
+    const priv = await f.human('POST', '/decisions', {
+      format: 2,
+      type: 'decision',
+      title: 'Private decision',
+      sections: sections([f.ids.evPublic]),
+    });
+    const card = priv.json() as Card;
+    const body = (id: string) => ({
+      decisionId: id,
+      outcome: 'Done.',
+      expectedContentHash: card.contentHash,
+    });
+    const hidden = await post('scripted', 'record_outcome', body(card.id));
+    const missing = await post('scripted', 'record_outcome', body(MISSING));
+    expect([hidden.statusCode, missing.statusCode]).toEqual([404, 404]);
+    expect(hidden.body).toBe(missing.body);
+    // not a decision at all: the same answer
+    expect((await post('scripted', 'record_outcome', body(f.ids.evPublic))).statusCode).toBe(404);
+    await f.adapter.patch(card.id, { visibility: 'public' });
+    expect((await post('scripted', 'record_outcome', body(card.id))).statusCode).toBe(201);
+  });
+});

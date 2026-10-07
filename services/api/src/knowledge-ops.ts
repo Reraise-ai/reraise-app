@@ -7,7 +7,6 @@
 // proposal that a human accepts, and receipts hold ids, hashes and codes only.
 
 import type {
-  Card,
   CardDraft,
   DecisionOutcomeRequest,
   DecisionRecordRequest,
@@ -28,11 +27,11 @@ import {
 } from '@worldbuilder/knowledge-loop';
 import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
-import { targetOf, type Principal } from './auth.js';
+import type { Principal } from './auth.js';
 import { buildContextPackage } from './context.js';
 import type { Handler } from './operations.js';
 import { HttpError } from './problem.js';
-import { draftProblem } from './proposals.js';
+import { assertAgentProposal, requireCleared } from './agent-checks.js';
 import { ReceiptLogError } from './receipts.js';
 import { collect, type Services } from './services.js';
 import { newUlid } from './util.js';
@@ -44,27 +43,6 @@ function agentOf(p: Principal): Principal & { kind: 'agent' } {
   return p;
 }
 
-/**
- * A card the caller may know about: it exists and the rules clear it for the caller's target
- * (for a cloud_model connection: cleared after a confirmed transfer). Unknown and hidden look
- * alike, so an agent cannot probe ids it may not see.
- */
-async function clearedCard(s: Services, p: Principal, id: string): Promise<Card | undefined> {
-  const card = await s.storage.read(id);
-  return card && (await s.gate.clears(card, targetOf(p))) ? card : undefined;
-}
-
-async function requireCleared(
-  s: Services,
-  p: Principal,
-  ids: readonly string[],
-  what: string,
-): Promise<void> {
-  for (const id of ids) {
-    if (!(await clearedCard(s, p, id))) throw new HttpError(400, `${what}: unknown card ${id}`);
-  }
-}
-
 /** The proposal of a card (a create_card), after the checks every agent draft passes. */
 async function proposeCard(
   s: Services,
@@ -73,8 +51,6 @@ async function proposeCard(
   placement: { lageId?: string; x?: number; y?: number },
   rationale: string | undefined,
 ) {
-  const problem = draftProblem(card, principal.author);
-  if (problem) throw new HttpError(400, problem);
   const input = {
     kind: 'create_card',
     payload: {
@@ -85,6 +61,7 @@ async function proposeCard(
     },
     ...(rationale !== undefined ? { rationale } : {}),
   } as unknown as ProposalCreate;
+  await assertAgentProposal(s, principal, input);
   return s.localState.createProposal(input, principal.author);
 }
 
@@ -172,7 +149,6 @@ export const knowledgeHandlers: Readonly<Record<string, Handler>> = {
     const decision = req.decision as unknown as CardDraft & {
       sections?: { cardsUsed?: string[] };
     };
-    await requireCleared(s, agent, decision.sections?.cardsUsed ?? [], 'cardsUsed');
     const proposal = await proposeCard(
       s,
       agent,
@@ -186,20 +162,17 @@ export const knowledgeHandlers: Readonly<Record<string, Handler>> = {
   async decision_outcome(s, { principal, body }) {
     const agent = agentOf(principal);
     const req = body as DecisionOutcomeRequest;
-    const card = await clearedCard(s, agent, req.decisionId);
-    if (card?.type !== 'decision') throw new HttpError(404, 'unknown decision');
-    const proposal = await s.localState.createProposal(
-      {
-        kind: 'record_outcome',
-        payload: {
-          decisionId: req.decisionId,
-          outcome: req.outcome,
-          expectedContentHash: req.expectedContentHash,
-        },
-        ...(req.rationale !== undefined ? { rationale: req.rationale } : {}),
-      } as ProposalCreate,
-      agent.author,
-    );
+    const input = {
+      kind: 'record_outcome',
+      payload: {
+        decisionId: req.decisionId,
+        outcome: req.outcome,
+        expectedContentHash: req.expectedContentHash,
+      },
+      ...(req.rationale !== undefined ? { rationale: req.rationale } : {}),
+    } as ProposalCreate;
+    await assertAgentProposal(s, agent, input);
+    const proposal = await s.localState.createProposal(input, agent.author);
     return ok(proposal, 201);
   },
 

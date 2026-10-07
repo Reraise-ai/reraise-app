@@ -21,11 +21,12 @@ import type {
   StanceInput,
 } from '@worldbuilder/core';
 import { targetOf, type Principal } from './auth.js';
+import { assertAgentProposal } from './agent-checks.js';
 import { knowledgeHandlers } from './knowledge-ops.js';
 import { buildContextPackage } from './context.js';
 import { readLage } from './lage.js';
 import { HttpError } from './problem.js';
-import { applyProposal, draftProblem } from './proposals.js';
+import { applyProposal } from './proposals.js';
 import { evaluateRules } from './rules.js';
 import { stanceFor, type Services } from './services.js';
 import { validators } from './contract.js';
@@ -261,11 +262,7 @@ export const handlers: Readonly<Record<string, Handler>> = {
   async proposal_create(s, { principal, body }) {
     if (principal.kind !== 'agent') throw new HttpError(403, 'only an agent proposes');
     const input = body as ProposalCreate;
-    if (input.kind === 'create_card') {
-      const draft = (input.payload as { card: CardDraft }).card;
-      const problem = draftProblem(draft, principal.author);
-      if (problem) throw new HttpError(400, problem);
-    }
+    await assertAgentProposal(s, principal, input);
     return ok(await s.localState.createProposal(input, principal.author), 201);
   },
 
