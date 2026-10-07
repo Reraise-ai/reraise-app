@@ -9,8 +9,7 @@
 // they leave, so a schema the service violates (for example stance data in a non-screen
 // package) is a 500 and never reaches the caller.
 
-import { isStorageError, type LocalStateStore, type StorageAdapter } from '@worldbuilder/core';
-import { isLocalStateError } from '@worldbuilder/local-state';
+import type { LocalStateStore, StorageAdapter } from '@worldbuilder/core';
 import Fastify, {
   type FastifyBaseLogger,
   type FastifyInstance,
@@ -19,8 +18,10 @@ import Fastify, {
 } from 'fastify';
 import type { AgentRegistry } from './agent-registry.js';
 import { safeEqual, sha256Hex, type Principal } from './auth.js';
-import { loadOperations, validators, type Operation } from './contract.js';
+import { loadOperations, type Operation } from './contract.js';
 import { Disclosures } from './disclosure.js';
+import { describeError } from './errors.js';
+import { executeOperation } from './execute.js';
 import { GateService } from './gate.js';
 import { handlers } from './operations.js';
 import { ReceiptStore } from './receipts.js';
@@ -65,14 +66,6 @@ export interface BoardApp extends FastifyInstance {
   readonly services: Services;
   readonly gateService: GateService;
 }
-
-const STORAGE_STATUS = { not_found: 404, conflict: 409, invalid: 400, locked: 503 } as const;
-const STORAGE_DETAIL = {
-  not_found: 'the store has no such card',
-  conflict: 'the store holds a different state than this change was based on',
-  invalid: 'the store rejected the card or the query as invalid',
-  locked: 'the store is busy; try again shortly',
-} as const;
 
 const CORS_HEADERS = {
   'access-control-allow-headers': 'content-type, authorization, x-worldbuilder-session',
@@ -175,44 +168,12 @@ export async function buildApp(options: AppOptions): Promise<BoardApp> {
       .send(problemOf(status, detail, slug));
 
   app.setErrorHandler((error, req, reply) => {
-    const e = error as Error & { statusCode?: number; code?: string };
-    const errorCode = e.code;
-    let status = 500;
-    let detail: string | undefined;
-    let slug: string | undefined;
-    if (e instanceof HttpError) {
-      status = e.status;
-      detail = e.detail;
-      slug = e.slug;
-    } else if (isLocalStateError(e)) {
-      const code: string = e.code;
-      status =
-        code === 'invalid' ? 400 : code === 'not_found' ? 404 : code === 'conflict' ? 409 : 500;
-      detail = status === 500 ? undefined : e.message;
-    } else if (isStorageError(e)) {
-      // The adapter's typed failures (ADR-0005). The detail is fixed wording plus the adapter's
-      // own stable reason code: an adapter message could quote card text, so it is not sent.
-      status = STORAGE_STATUS[e.code];
-      detail = STORAGE_DETAIL[e.code];
-      const reason = (e as { reason?: unknown }).reason;
-      if (typeof reason === 'string' && /^[a-z_]{1,40}$/.test(reason)) detail += ` (${reason})`;
-      if (status === 503) {
-        reply.header('retry-after', '1');
-        slug = 'store-locked';
-      }
-    } else if (errorCode === 'FST_ERR_CTP_BODY_TOO_LARGE') {
-      status = 413;
-      detail = 'the request body exceeds the size limit';
-    } else if (errorCode === 'FST_ERR_CTP_INVALID_MEDIA_TYPE') {
-      status = 415;
-      detail = 'the request body must be application/json';
-    } else if (typeof e.statusCode === 'number' && e.statusCode >= 400 && e.statusCode < 500) {
-      status = e.statusCode;
-      detail = 'the request could not be processed';
-    }
+    const { status, detail, slug, retryAfter, code } = describeError(error);
+    if (retryAfter !== undefined) reply.header('retry-after', String(retryAfter));
     // Rejected requests are logged without their content (ADR-0026).
-    if (status >= 500) req.log.error({ err: { type: e.name, code: errorCode } }, 'request failed');
-    else req.log.info({ status, code: errorCode }, 'request rejected');
+    if (status >= 500) {
+      req.log.error({ err: { type: (error as Error).name, code } }, 'request failed');
+    } else req.log.info({ status, code }, 'request rejected');
     return problem(reply, status, detail, slug);
   });
   app.setNotFoundHandler((_req, reply) => problem(reply, 404, 'no such route'));
@@ -267,65 +228,20 @@ export async function buildApp(options: AppOptions): Promise<BoardApp> {
   const run = async (op: Operation, req: FastifyRequest, reply: FastifyReply) => {
     const principal = req.principal;
     if (!principal) throw new HttpError(401, 'a credential is required');
-    if (op.access === 'human' && principal.kind !== 'human') {
-      throw new HttpError(403, 'this operation is for the human session only', 'human-only');
-    }
-    if (op.access === 'agent' && principal.kind !== 'agent') {
-      throw new HttpError(403, 'this operation is for registered agents only');
-    }
-
-    // Parameters: unknown query names are rejected; invalid values are a 400 (or a 404 for an
-    // operation that declares no 400, as the id then simply does not exist).
-    const invalidStatus = op.responses.has(400) ? 400 : 404;
-    const params: Record<string, unknown> = {};
-    const query: Record<string, unknown> = {};
-    const declared = new Set(op.params.filter((p) => p.in === 'query').map((p) => p.name));
-    for (const name of Object.keys((req.query ?? {}) as Record<string, unknown>)) {
-      if (!declared.has(name)) throw new HttpError(400, `unknown query parameter ${name}`);
-    }
-    for (const p of op.params) {
-      const raw =
-        p.in === 'path'
-          ? (req.params as Record<string, unknown>)[p.name]
-          : (req.query as Record<string, unknown>)[p.name];
-      if (raw === undefined) {
-        if (p.required) throw new HttpError(invalidStatus, `missing parameter ${p.name}`);
-        continue;
-      }
-      const checked = validators.coerced(p.schemaRef)(raw);
-      if (!checked.ok) {
-        throw new HttpError(invalidStatus, `invalid parameter ${p.name}: ${checked.message}`);
-      }
-      (p.in === 'path' ? params : query)[p.name] = checked.value;
-    }
-
-    let body: unknown = undefined;
-    if (op.hasBody) {
-      body = req.body;
-      if (body === undefined) {
-        if (op.bodyRequired) throw new HttpError(400, 'a request body is required');
-        body = {};
-      }
-      if (op.bodySchemaRef) {
-        const checked = validators.strict(op.bodySchemaRef)(body);
-        if (!checked.ok) throw new HttpError(400, `invalid request: ${checked.message}`);
-      }
-    }
-
-    const result = await handlers[op.id]!(services, { principal, params, query, body });
-
-    const declaredResponse = op.responses.get(result.status);
-    if (declaredResponse?.schemaRef) {
-      const checked = validators.strict(declaredResponse.schemaRef)(result.body);
-      if (!checked.ok) {
-        // A service bug: never send a body the contract does not allow.
-        req.log.error(
-          { operation: op.id, status: result.status },
-          'response violates the contract',
-        );
-        throw new HttpError(500, 'the response did not match the contract');
-      }
-    }
+    const result = await executeOperation(
+      services,
+      op,
+      principal,
+      {
+        params: req.params as Record<string, unknown>,
+        query: (req.query ?? {}) as Record<string, unknown>,
+        body: req.body,
+      },
+      {
+        onContractViolation: (operation, status) =>
+          req.log.error({ operation, status }, 'response violates the contract'),
+      },
+    );
     return reply.code(result.status).type('application/json').send(result.body);
   };
 
