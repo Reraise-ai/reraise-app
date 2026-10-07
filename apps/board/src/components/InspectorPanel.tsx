@@ -19,13 +19,13 @@ const POSITIONS: StancePosition[] = ['believed', 'rejected', 'undecided'];
  */
 export function InspectorPanel({ card, cardId, stance, onSaveStance }: Props) {
   const [position, setPosition] = useState<StancePosition>('undecided');
-  const [weight, setWeight] = useState(0.5);
+  const [weight, setWeight] = useState(2);
   const [note, setNote] = useState('');
   const [state, setState] = useState<'idle' | 'saving' | 'saved' | { error: string }>('idle');
 
   useEffect(() => {
     setPosition(stance?.position ?? 'undecided');
-    setWeight(stance?.weight ?? 0.5);
+    setWeight(stance?.weight ?? 2);
     setNote(stance?.note ?? '');
   }, [cardId, stance]);
   useEffect(() => setState('idle'), [cardId]);
@@ -94,14 +94,14 @@ export function InspectorPanel({ card, cardId, stance, onSaveStance }: Props) {
             </select>
           </div>
           <div className="wb-field">
-            <label htmlFor="stance-weight">Weight: {weight}</label>
+            <label htmlFor="stance-weight">Weight: {weight} (1 weak, 3 strong)</label>
             <input
               id="stance-weight"
               data-testid="stance-weight"
               type="range"
-              min={0}
-              max={1}
-              step={0.1}
+              min={1}
+              max={3}
+              step={1}
               value={weight}
               onChange={(e) => setWeight(Number(e.target.value))}
             />

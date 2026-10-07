@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- End-to-end test of the M1 walking skeleton (`e2e/`, Playwright with Chromium, `pnpm test:e2e`):
+  the built service and board on loopback ports over a temporary copy of the synthetic Hormuz
+  store, a scripted MCP agent that consults the knowledge and proposes a card, the human accepting
+  it, persistence after a reload, a context package, the disclosure gate withholding the private
+  card from a cloud target, and the files on disk (Lage version archived). axe-core runs on the
+  main board screens. CI job `e2e` on Linux, Windows and macOS (not run yet).
 - Level-1 engines (ADR-0035) in the new package `@worldbuilder/level1-engines`: the deterministic
   local rules engine (`createLocalRulesEngine`, with a per-option basis), the what-if re-run and
   stale-prediction helpers, the level-2 escalation draft, the cloud System One HTTP adapter
@@ -35,3 +41,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   quality scenarios, risks and technical debt, and open decisions.
 - ADR-0029 to ADR-0033: process topology, local state, gate rules and confirmation binding, M1
   proposal polling, and the derived index of the reference adapter.
+
+### Fixed
+
+- Board: the open board has one main landmark and no skipped heading level (found by axe).
+- Board: the canvas fills the board area (it had collapsed to a thin strip, so cards were clipped).
+- Board: the stance weight slider sends an integer from 1 to 3 as the contract requires (it sent
+  0.5 and the service refused it with a 400).

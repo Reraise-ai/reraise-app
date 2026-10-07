@@ -144,13 +144,13 @@ describe('board canvas', () => {
     api.stances.set(C1, {
       cardId: C1,
       position: 'believed',
-      weight: 0.8,
+      weight: 3,
       updatedAt: '2026-10-06T10:00:00.000Z',
       history: [],
     });
     await openLage(api);
     expect((await screen.findByTestId(`card-stance-${C1}`)).textContent).toBe(
-      'You: believed, weight 0.8',
+      'You: believed, weight 3',
     );
     expect(screen.queryByTestId(`card-stance-${C2}`)).toBeNull();
   });
@@ -576,7 +576,7 @@ describe('disclosure', () => {
     api.stances.set(C1, {
       cardId: C1,
       position: 'believed',
-      weight: 0.9,
+      weight: 3,
       updatedAt: 'x',
       history: [],
     });
@@ -621,18 +621,18 @@ describe('stance overlay (human-only stance_save)', () => {
     await userEvent.click(screen.getByTestId('stance-save'));
     await waitFor(() => expect(screen.getByTestId('stance-status').textContent).toMatch(/Saved/));
     expect((await screen.findByTestId(`card-stance-${C1}`)).textContent).toBe(
-      'You: believed, weight 0.5',
+      'You: believed, weight 2',
     );
     const put = api.calls.find((c) => c.method === 'PUT' && c.path.endsWith('/stance'))!;
     expect(put.path).toBe(`/cards/${C1}/stance`);
-    expect(put.body).toEqual({ position: 'believed', weight: 0.5, note: 'matches what I saw' });
+    expect(put.body).toEqual({ position: 'believed', weight: 2, note: 'matches what I saw' });
     // The stance is not part of the Lage that is saved.
     expect(JSON.stringify(lageOf(api))).not.toMatch(/believed/);
 
     first.unmount();
     await openLage(api);
     expect((await screen.findByTestId(`card-stance-${C1}`)).textContent).toBe(
-      'You: believed, weight 0.5',
+      'You: believed, weight 2',
     );
   });
 

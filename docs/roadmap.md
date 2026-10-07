@@ -19,7 +19,7 @@ Until then this page is the plan of record.
 | Milestone | Goal | Status | Done when |
 | --- | --- | --- | --- |
 | **M0** Repository foundation and contracts | Monorepo, tooling, CI, docs, ADRs, contracts as code. No features. | in progress | CI is green, schemas validate the examples, the ADR log is complete, the docs build |
-| **M1** Walking skeleton | Thinnest end-to-end path, everything real, nothing pretty | not started | one Playwright end-to-end test runs the scenario below in CI |
+| **M1** Walking skeleton | Thinnest end-to-end path, everything real, nothing pretty | in progress: the e2e passes locally on Linux; awaiting CI on three operating systems | one Playwright end-to-end test runs the scenario below in CI |
 | **M2+** Vertical slices | One pull request per slice: UI, API, adapter and tests together | not started | per slice, see [below](#m2-vertical-slices) |
 
 ## M0: repository foundation and contracts
