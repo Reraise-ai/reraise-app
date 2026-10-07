@@ -63,6 +63,8 @@ let server: Server;
 let base: string;
 let sessions: McpSessions<string>;
 const seen: Seen[] = [];
+/** While set, the stand-in service refuses to open new sessions (503). */
+let refuseNewSessions = false;
 let workDir: string;
 
 beforeAll(async () => {
@@ -70,13 +72,16 @@ beforeAll(async () => {
   sessions = new McpSessions<string>({
     keyOf: (caller) => caller,
     // a valid answer for the one tool the tests call (the client checks it against the schema)
-    invokeFor: () => async () => ({ status: 200, body: { worlds: [] } }),
+    invoke: async () => ({ status: 200, body: { worlds: [] } }),
     version: '0.0.0',
   });
   server = createServer((req, res) => {
     seen.push({ method: req.method ?? '', path: req.url ?? '', headers: req.headers });
     if (req.url === '/health') return void res.writeHead(200).end('{"status":"ok"}');
     if (req.url !== '/mcp') return void res.writeHead(404).end();
+    if (refuseNewSessions && req.headers['mcp-session-id'] === undefined) {
+      return void res.writeHead(503).end('unavailable');
+    }
     if (req.headers.authorization !== `Bearer ${TOKEN}`) {
       return void res
         .writeHead(401, { 'content-type': 'application/problem+json' })
@@ -198,6 +203,50 @@ describe('the relay', () => {
   });
 });
 
+describe('a session the service dropped', () => {
+  it('is opened again transparently: the host replays nothing and notices nothing', async () => {
+    seen.length = 0;
+    const b = startBridge(base, TOKEN);
+    await b.client.connect(b.transport);
+    await b.client.listTools();
+    const firstId = seen.filter((r) => r.method === 'POST').pop()!.headers['mcp-session-id'];
+
+    await sessions.closeCaller('agent'); // idle expiry, restart: the session is gone
+    const result = await b.client.callTool({ name: 'world_list', arguments: {} });
+    expect(result.structuredContent).toEqual({ worlds: [] });
+
+    const ids = new Set(
+      seen.filter((r) => r.method === 'POST').map((r) => r.headers['mcp-session-id']),
+    );
+    ids.delete(undefined);
+    expect(ids.size).toBe(2);
+    expect(ids.has(firstId)).toBe(true);
+    expect(sessions.size).toBe(1);
+    // and it keeps working on the new session
+    await b.client.listTools();
+    await b.client.close();
+    expect(await b.exit).toBe(0);
+    expect(sessions.size).toBe(0);
+  });
+
+  it('ends with "session expired" and a non-zero exit when it cannot be opened again', async () => {
+    const b = startBridge(base, TOKEN);
+    await b.client.connect(b.transport);
+    await sessions.closeCaller('agent');
+    refuseNewSessions = true;
+    try {
+      await expect(b.client.callTool({ name: 'world_list', arguments: {} })).rejects.toThrow(
+        /session expired/,
+      );
+      expect(await b.exit).toBe(1);
+      expect(b.stderr()).toContain('session expired');
+      expect(b.stderr()).not.toContain(TOKEN);
+    } finally {
+      refuseNewSessions = false;
+    }
+  });
+});
+
 describe('when the service is not running', () => {
   it('says so and exits 1, without starting anything', async () => {
     const stdin = new PassThrough();
@@ -268,10 +317,31 @@ describe('the token', () => {
     expect((await run(['--stdio', 'extra'])).code).toBe(2);
     expect((await run([])).err).toContain('--stdio');
     expect((await run(['--stdio'], { WORLDBUILDER_URL: 'ftp://127.0.0.1' })).code).toBe(1);
+    const remote = await run(['--stdio'], { WORLDBUILDER_URL: 'http://192.0.2.7:4310' });
+    expect(remote.code).toBe(1);
+    expect(remote.err).toContain('https');
+    expect(remote.err).not.toContain(TOKEN);
     expect((await run(['--stdio'], { WORLDBUILDER_URL: 'http://user:pw@127.0.0.1:1' })).code).toBe(
       1,
     );
     expect(() => mcpUrl('not a url')).toThrow();
+    expect(mcpUrl('https://example.org').href).toBe('https://example.org/mcp');
+    for (const ok of [
+      'http://localhost:4310',
+      'http://127.0.0.1:1',
+      'http://127.1.2.3',
+      'http://[::1]:4310',
+    ]) {
+      expect(() => mcpUrl(ok), ok).not.toThrow();
+    }
+    for (const bad of [
+      'http://example.org',
+      'http://192.0.2.7:4310',
+      'http://localhost.example.org',
+      'http://127.0.0.1.example.org',
+    ]) {
+      expect(() => mcpUrl(bad), bad).toThrow(/https/);
+    }
     expect(mcpUrl('http://127.0.0.1:4310/anything').href).toBe('http://127.0.0.1:4310/mcp');
   });
 });

@@ -7,9 +7,9 @@
 // gate, the cloud confirmation, the proposal list and the receipt log are the ones the Board API
 // uses. Failures become MCP tool errors that carry the problem details and nothing else.
 
-import { McpSessions, TOOLS, type ToolInvoker, type ToolOutcome } from '@worldbuilder/mcp-server';
+import { McpSessions, TOOLS, type ToolName, type ToolOutcome } from '@worldbuilder/mcp-server';
 import { readFileSync } from 'node:fs';
-import type { Principal } from './auth.js';
+import { connectionKey, type Principal } from './auth.js';
 import type { Operation } from './contract.js';
 import { describeError } from './errors.js';
 import { executeOperation } from './execute.js';
@@ -22,14 +22,17 @@ const SERVICE_VERSION = (
   }
 ).version;
 
-/** The key of a caller: a session belongs to the agent that opened it. */
+/**
+ * The key a session is bound to: the connection (name, target class and token hash), so a
+ * connection that was reclassified or got another token cannot use a session it opened before.
+ */
 export const principalKey = (p: Principal): string =>
-  p.kind === 'agent' ? `agent:${p.name}` : 'human';
+  p.kind === 'agent' ? connectionKey(p.name, p.target, p.tokenHash) : 'human';
 
 export interface McpMount {
   readonly sessions: McpSessions<Principal>;
   /** Run one tool for a caller; the same code the HTTP route of the operation runs. */
-  invoke(principal: Principal): ToolInvoker;
+  invoke(principal: Principal, tool: ToolName, args: Record<string, unknown>): Promise<ToolOutcome>;
 }
 
 /**
@@ -59,25 +62,29 @@ export function createMcpMount(
     if (op.access === 'human') throw new Error(`MCP tool ${tool.name} is a human-only operation`);
   }
 
-  const invoke =
-    (principal: Principal): ToolInvoker =>
-    async (tool, args): Promise<ToolOutcome> => {
-      const op = byId.get(tool)!;
-      try {
-        const result = await executeOperation(services, op, principal, rawInputOf(op, args), {
-          onContractViolation: (operation, status) =>
-            onError('response violates the contract', { operation, status }),
-        });
-        return { status: result.status, body: result.body };
-      } catch (error) {
-        const { status, detail, slug, code } = describeError(error);
-        if (status >= 500) onError('tool call failed', { tool, status, code });
-        return { status, body: problemOf(status, detail, slug) };
-      }
-    };
+  const invoke = async (
+    principal: Principal,
+    tool: ToolName,
+    args: Record<string, unknown>,
+  ): Promise<ToolOutcome> => {
+    const op = byId.get(tool)!;
+    try {
+      const result = await executeOperation(services, op, principal, rawInputOf(op, args), {
+        onContractViolation: (operation, status) =>
+          onError('response violates the contract', { operation, status }),
+      });
+      return { status: result.status, body: result.body };
+    } catch (error) {
+      const { status, detail, slug, code } = describeError(error);
+      if (status >= 500) onError('tool call failed', { tool, status, code });
+      return { status, body: problemOf(status, detail, slug) };
+    }
+  };
 
+  // The principal passed in is the one of the HTTP request that carries the call (the session
+  // hands over the caller of its latest request), never the one that opened the session.
   const sessions = new McpSessions<Principal>({
-    invokeFor: invoke,
+    invoke,
     keyOf: principalKey,
     version: SERVICE_VERSION,
   });

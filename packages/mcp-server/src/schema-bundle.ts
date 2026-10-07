@@ -67,6 +67,8 @@ export function bundleSchema(table: SchemaTable, ref: string): Json {
   const root = targetOf(ref, ref);
   const defs: Record<string, unknown> = {};
   const queued: Target[] = [];
+  /** The schema each `$defs` name stands for. */
+  const owners = new Map<string, string>();
 
   const rewrite = (node: unknown, from: string): unknown => {
     if (Array.isArray(node)) return node.map((n) => rewrite(n, from));
@@ -76,9 +78,15 @@ export function bundleSchema(table: SchemaTable, ref: string): Json {
       if (key === '$ref' && typeof value === 'string') {
         const target = targetOf(value, from);
         const name = nameOf(target);
-        if (!(name in defs)) {
+        const ownerKey = `${target.id}#${target.pointer}`;
+        const known = owners.get(name);
+        if (known === undefined) {
+          owners.set(name, ownerKey);
           defs[name] = null; // reserved; filled when the queue is drained
           queued.push(target);
+        } else if (known !== ownerKey) {
+          // Two different schemas would share one name and one would silently replace the other.
+          throw new Error(`schema name ${name} is used by ${known} and ${ownerKey}`);
         }
         out[key] = `#/$defs/${name}`;
       } else if (key === '$id' || key === '$schema') {

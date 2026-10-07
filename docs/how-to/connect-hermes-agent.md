@@ -111,7 +111,10 @@ named in `WORLDBUILDER_AGENT_TOKEN_FILE`:
 The bridge never opens your stores, never writes a file and fails with a clear error if the
 service is not running. It talks to `http://127.0.0.1:4310` unless you set `WORLDBUILDER_URL`
 (or pass `--url`) to where `worldbuilder serve` listens. The token is never a command-line
-argument: the bridge refuses `--token`.
+argument: the bridge refuses `--token`. Plain `http://` works for this machine only; for a
+service on another host the URL must be `https://`. If the service forgot the session (idle for
+30 minutes, restarted), the bridge opens a new one by itself and repeats the call; if that fails
+it prints "session expired" and exits non-zero, so the host can restart it.
 
 ## 4. Check the connection
 

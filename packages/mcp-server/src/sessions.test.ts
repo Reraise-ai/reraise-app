@@ -11,11 +11,16 @@ import { McpSessions } from './sessions.js';
 let server: Server;
 let base: string;
 let sessions: McpSessions<string>;
+const called: string[] = [];
 
 async function start(options: { max?: number; idleMs?: number } = {}) {
   sessions = new McpSessions<string>({
-    keyOf: (c) => c,
-    invokeFor: () => async () => ({ status: 200, body: { worlds: [] } }),
+    // a caller is `key|credential-version`: the key is what a session is bound to
+    keyOf: (c) => c.split('|')[0]!,
+    invoke: async (caller) => {
+      called.push(caller);
+      return { status: 200, body: { worlds: [] } };
+    },
     version: '0.0.0',
     ...(options.max !== undefined ? { maxSessionsPerCaller: options.max } : {}),
     ...(options.idleMs !== undefined ? { idleTimeoutMs: options.idleMs } : {}),
@@ -126,7 +131,77 @@ describe('McpSessions', () => {
   });
 });
 
+describe('McpSessions, per request', () => {
+  beforeEach(async () => {
+    called.length = 0;
+    await start({ max: 3 });
+  });
+
+  it('runs a tool call as the caller of the request that carries it', async () => {
+    const s = await open('a|v1');
+    const call = (caller: string) =>
+      fetch(base, {
+        method: 'POST',
+        headers: { ...HEADERS, 'x-caller': caller, 'mcp-session-id': s.id! },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 9,
+          method: 'tools/call',
+          params: { name: 'world_list', arguments: {} },
+        }),
+      }).then((r) => r.status);
+    expect(await call('a|v2')).toBe(200);
+    expect(await call('a|v3')).toBe(200);
+    expect(called).toEqual(['a|v2', 'a|v3']);
+    // another key never reaches the session
+    expect(await call('b|v1')).toBe(404);
+    expect(called).toHaveLength(2);
+  });
+
+  it('never keeps more sessions than the limit when many open at once', async () => {
+    const results = await Promise.all(Array.from({ length: 12 }, () => open('a|v1')));
+    expect(results.every((r) => r.status === 200)).toBe(true);
+    await vi.waitFor(() => expect(sessions.size).toBeLessThanOrEqual(3));
+    expect(sessions.size).toBe(3);
+  });
+
+  it('closes the sessions and the open streams of keys that are not accepted any more', async () => {
+    const a = await open('a|v1');
+    await open('b|v1');
+    const stream = await fetch(base, {
+      method: 'GET',
+      headers: { accept: 'text/event-stream', 'x-caller': 'a|v1', 'mcp-session-id': a.id! },
+    });
+    expect(stream.status).toBe(200);
+    const reading = stream
+      .body!.getReader()
+      .read()
+      .then(
+        (r) => r.done,
+        () => true,
+      );
+    await sessions.retain((key) => key === 'b');
+    expect(await reading).toBe(true); // the stream ended
+    expect(sessions.size).toBe(1);
+  });
+});
+
 describe('idle expiry', () => {
+  it('does not expire a session while a client listens on its stream', async () => {
+    await start({ idleMs: 1500 });
+    const s = await open('a');
+    const stream = await fetch(base, {
+      method: 'GET',
+      headers: { accept: 'text/event-stream', 'x-caller': 'a', 'mcp-session-id': s.id! },
+    });
+    expect(stream.status).toBe(200);
+    await new Promise((r) => setTimeout(r, 4000));
+    expect(sessions.size).toBe(1);
+    await stream.body!.cancel();
+    // once the stream is closed the session ages and expires like any other
+    await vi.waitFor(() => expect(sessions.size).toBe(0), { timeout: 8000, interval: 200 });
+  }, 20000);
+
   it('closes a session that was not used for the idle timeout', async () => {
     await start({ idleMs: 1500 });
     const s = await open('a');
