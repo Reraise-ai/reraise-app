@@ -108,19 +108,46 @@ describe('cards_search and card_get', () => {
     const titles = res.json().cards.map((c: Card) => c.title);
     expect(titles).toContain('Synthetic private note');
   });
-  it('cards_search hides a private card from a local_model and lists it as denied', async () => {
+  it('cards_search hides a private card from a local_model and does not list it as denied', async () => {
     const res = await f.agent('scripted', 'GET', '/cards?text=Synthetic');
     expectContract('cards_search', res, 200);
     const body = res.json();
     expect(body.cards.map((c: Card) => c.id)).not.toContain(f.ids.evPrivate);
-    expect(body.denied.map((d: { cardId: string }) => d.cardId)).toContain(f.ids.evPrivate);
+    expect(body.denied).toBeUndefined();
+    expect(res.body).not.toContain(f.ids.evPrivate);
     expect(res.body).not.toContain('PRIVATE-MARKER-TEXT');
   });
   it('cards_search gives a cloud_model connection no content at all', async () => {
     const res = await f.agent('cloud-scripted', 'GET', '/cards?text=Synthetic');
     expectContract('cards_search', res, 200);
     expect(res.json().cards).toEqual([]);
-    expect(res.json().denied.length).toBeGreaterThan(0);
+    expect(res.json().denied).toBeUndefined();
+  });
+  it('cards_search of a model target answers alike whether or not a denied card matches', async () => {
+    // The private card holds PRIVATE-MARKER-TEXT; a query for it must look exactly like a query
+    // for a text no card holds: no card, no denied entry, no cursor, byte-identical answers.
+    for (const agent of ['scripted', 'cloud-scripted']) {
+      const probe = await f.agent(agent, 'GET', '/cards?text=PRIVATE-MARKER-TEXT');
+      const absent = await f.agent(agent, 'GET', '/cards?text=ABSENT-MARKER-TEXT');
+      expectContract('cards_search', probe, 200);
+      expect(probe.body).toBe(absent.body);
+      expect(probe.json()).toEqual({ cards: [] });
+      // The same holds in one world, and with a type or layer filter.
+      const inWorld = await f.agent(
+        agent,
+        'GET',
+        `/cards?worldId=${f.worldId}&text=PRIVATE-MARKER-TEXT&layer=said&type=claim`,
+      );
+      const inWorldAbsent = await f.agent(
+        agent,
+        'GET',
+        `/cards?worldId=${f.worldId}&text=ABSENT-MARKER-TEXT&layer=said&type=claim`,
+      );
+      expect(inWorld.body).toBe(inWorldAbsent.body);
+    }
+    // Filters still find the cards the target may see.
+    const found = await f.agent('scripted', 'GET', '/cards?text=alpha&type=claim');
+    expect(found.json().cards.map((c: Card) => c.id)).toContain(f.ids.evPublic);
   });
   it('cards_search honours limit and cursor and rejects bad parameters', async () => {
     const first = await f.human('GET', `/cards?worldId=${f.worldId}&limit=2`);

@@ -45,6 +45,26 @@ export type Handler = (s: Services, input: OperationInput) => Promise<OperationR
 const ok = (body: unknown, status = 200): OperationResult => ({ status, body });
 const str = (v: unknown): string => v as string;
 
+const DEFAULT_SEARCH_LIMIT = 50;
+/** Pages looked at for one filtered search of a model target before it answers (maybe empty). */
+const MAX_SEARCH_PAGES = 50;
+
+const fold = (t: string): string => t.normalize('NFKD').replace(/\p{M}/gu, '').toLowerCase();
+
+/** The text, type and layer filters of cards_search as a test over one (already cleared) card. */
+function matcherOf(query: Readonly<Record<string, unknown>>): (card: Card) => boolean {
+  const tokens = fold(query['text'] ? str(query['text']) : '')
+    .split(/\s+/)
+    .filter((t) => t !== '');
+  return (card) => {
+    if (query['type'] && card.type !== query['type']) return false;
+    if (query['layer'] && card.layer !== query['layer']) return false;
+    if (tokens.length === 0) return true;
+    const haystack = fold(`${card.title}\n${card.body ?? ''}\n${(card.tags ?? []).join(' ')}`);
+    return tokens.every((t) => haystack.includes(t));
+  };
+}
+
 const checkDraft = validators.strict('card.schema.json#/$defs/draft');
 
 function assertDraft(draft: unknown): asserts draft is CardDraft {
@@ -145,20 +165,43 @@ export const handlers: Readonly<Record<string, Handler>> = {
   },
 
   async cards_search(s, { principal, query }) {
-    const page = await s.storage.search({
-      ...(query['worldId'] ? { worldId: str(query['worldId']) } : {}),
-      ...(query['text'] ? { text: str(query['text']) } : {}),
-      ...(query['type'] ? { type: str(query['type']) } : {}),
-      ...(query['layer'] ? { layer: query['layer'] as Card['layer'] & string } : {}),
-      ...(query['limit'] !== undefined ? { limit: query['limit'] as number } : {}),
-      ...(query['cursor'] ? { cursor: str(query['cursor']) } : {}),
-    });
-    const { allowed, denied } = await s.gate.filter(page.items, targetOf(principal));
-    return ok({
-      cards: allowed,
-      ...(page.nextCursor !== undefined ? { nextCursor: page.nextCursor } : {}),
-      ...(denied.length > 0 ? { denied } : {}),
-    });
+    const target = targetOf(principal);
+    const limit = (query['limit'] as number | undefined) ?? DEFAULT_SEARCH_LIMIT;
+    if (target === 'screen') {
+      const page = await s.storage.search({
+        ...(query['worldId'] ? { worldId: str(query['worldId']) } : {}),
+        ...(query['text'] ? { text: str(query['text']) } : {}),
+        ...(query['type'] ? { type: str(query['type']) } : {}),
+        ...(query['layer'] ? { layer: query['layer'] as Card['layer'] & string } : {}),
+        limit,
+        ...(query['cursor'] ? { cursor: str(query['cursor']) } : {}),
+      });
+      const { allowed, denied } = await s.gate.filter(page.items, target);
+      return ok({
+        cards: allowed,
+        ...(page.nextCursor !== undefined ? { nextCursor: page.nextCursor } : {}),
+        ...(denied.length > 0 ? { denied } : {}),
+      });
+    }
+    // A model target: the gate comes first and the filters run over the cleared cards only.
+    // Searching the store first would let a match (or a missing match) on a denied card show
+    // in the answer, as a `denied` entry or in the paging, so a caller could probe text it may
+    // not read. The answer never lists denied cards; only an explicit id lookup answers for one.
+    const matches = matcherOf(query);
+    const cards: Card[] = [];
+    let cursor = query['cursor'] ? str(query['cursor']) : undefined;
+    for (let pages = 0; pages < MAX_SEARCH_PAGES; pages++) {
+      const page = await s.storage.list({
+        ...(query['worldId'] ? { worldId: str(query['worldId']) } : {}),
+        limit,
+        ...(cursor ? { cursor } : {}),
+      });
+      const { allowed } = await s.gate.filter(page.items, target);
+      cards.push(...allowed.filter(matches));
+      cursor = page.nextCursor;
+      if (cards.length > 0 || cursor === undefined) break;
+    }
+    return ok({ cards, ...(cursor !== undefined ? { nextCursor: cursor } : {}) });
   },
 
   async card_get(s, { principal, params }) {
