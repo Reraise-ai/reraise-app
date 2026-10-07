@@ -15,8 +15,10 @@ concurrency:
 # validate:schemas compiles every JSON Schema in Ajv strict mode, validates every example
 # and valid fixture, and requires every invalid fixture to fail with its declared error.
 # lint:openapi lints the Board API with Redocly; the MCP/OpenAPI parity test and the adapter
-# conformance kit (against the in-memory fake) run inside the test suite. e2e (Playwright) is
-# added with M1. Nothing here is a placeholder that passes without checking something.
+# conformance kit (against the in-memory fake) run inside the test suite. The e2e job runs the M1
+# walking skeleton and the axe check (Playwright, Chromium) on all three operating systems; the
+# browser is installed here and only here (`playwright install` is never run locally, where a
+# preinstalled browser is used). Nothing here is a placeholder that passes without checking something.
 
 jobs:
   lint-format:
@@ -75,6 +77,39 @@ jobs:
       - run: pnpm check:no-real-data
       - run: pnpm validate:schemas
       - run: pnpm build
+
+  e2e:
+    name: End-to-end walking skeleton and axe (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # From the e2e directory so npx runs the pinned @playwright/test, not the latest release.
+      - name: Install Chromium for the pinned Playwright
+        working-directory: e2e
+        run: npx playwright install --with-deps chromium
+      - name: Build and run the e2e (pnpm test:e2e)
+        run: pnpm test:e2e
+      - name: Upload the Playwright report and traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-report-${{ matrix.os }}
+          path: |
+            e2e/playwright-report
+            e2e/test-results
+          retention-days: 7
+          if-no-files-found: ignore
 
   hermes:
     name: Hermes integration (fake Hermes harness, Python 3.11)
