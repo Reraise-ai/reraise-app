@@ -82,8 +82,13 @@ export function bundleSchema(table: SchemaTable, ref: string): Json {
         out[key] = value;
       } else if (key === 'properties' || key === '$defs' || key === 'patternProperties') {
         // A map of names to schemas: the names are not keywords.
+        // A boolean schema becomes its object form: MCP clients (the SDK among them) accept only
+        // objects as property schemas.
+        const asObject = (v: unknown) => (v === true ? {} : v === false ? { not: {} } : v);
         out[key] = isObject(value)
-          ? Object.fromEntries(Object.entries(value).map(([k, v]) => [k, rewrite(v, from)]))
+          ? Object.fromEntries(
+              Object.entries(value).map(([k, v]) => [k, rewrite(asObject(v), from)]),
+            )
           : value;
       } else {
         out[key] = rewrite(value, from);
