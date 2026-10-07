@@ -5,7 +5,8 @@
 // with self-contained input and output schemas from the contracts and runs every call through
 // an injected `invoke`, which the service implements with the same operation code as the HTTP
 // routes. The server holds no logic of its own: no store, no gate, no identity from tool input.
-// The caller is fixed when the connection is made (the registered agent of the bearer token).
+// Who calls is decided per request by the host of this server (the registered agent of the
+// bearer token of that HTTP request), never by the connection's first request.
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import {

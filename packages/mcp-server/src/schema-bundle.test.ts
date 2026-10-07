@@ -89,6 +89,41 @@ describe('bundleSchema', () => {
   });
 });
 
+describe('bundleSchema names', () => {
+  it('throws when two different schemas would get the same $defs name', () => {
+    const table = {
+      'https://x.invalid/root.schema.json': {
+        $id: 'https://x.invalid/root.schema.json',
+        type: 'object',
+        properties: {
+          a: { $ref: 'https://x.invalid/one/item.schema.json' },
+          b: { $ref: 'https://x.invalid/two/item.schema.json' },
+        },
+      },
+      'https://x.invalid/one/item.schema.json': { type: 'string' },
+      'https://x.invalid/two/item.schema.json': { type: 'number' },
+    };
+    expect(() => bundleSchema(table, 'https://x.invalid/root.schema.json')).toThrow(
+      /schema name item is used by/,
+    );
+  });
+
+  it('accepts the same schema reached by several references', () => {
+    const table = {
+      'https://x.invalid/root.schema.json': {
+        type: 'object',
+        properties: {
+          a: { $ref: 'item.schema.json' },
+          b: { $ref: 'item.schema.json' },
+        },
+      },
+      'https://x.invalid/item.schema.json': { type: 'string' },
+    };
+    const out = bundleSchema(table, 'https://x.invalid/root.schema.json') as { $defs: object };
+    expect(Object.keys(out.$defs)).toEqual(['item']);
+  });
+});
+
 describe('listedTools', () => {
   it('lists every tool of the contract once, with title, annotations and both schemas', () => {
     const tools = listedTools();

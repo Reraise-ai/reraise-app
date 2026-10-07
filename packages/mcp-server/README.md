@@ -8,7 +8,7 @@ The MCP server of The Worldbuilder (AGPL-3.0-or-later): the agent tools of
 - `server.ts`: `createToolServer`, one server per connection. It lists the tools with input and
   output schemas bundled from the contracts (`schema-bundle.ts`: self-contained, no file
   references) and runs every call through an injected `invoke`. It holds no store, no gate and no
-  identity of its own; the caller is fixed when the connection is made.
+  identity of its own; the caller of every call is the one of the HTTP request that carries it.
 - `sessions.ts`: `McpSessions`, Streamable HTTP sessions bound to the agent that opened them,
   with a per-agent limit and idle expiry. It takes Node requests, so any HTTP server can host it.
 - `bridge.ts`: the stateless stdio relay behind `worldbuilder mcp --stdio`.

@@ -11,13 +11,18 @@
 
 import { readFile } from 'node:fs/promises';
 import type { Readable, Writable } from 'node:stream';
-import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import {
+  StreamableHTTPClientTransport,
+  StreamableHTTPError,
+} from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import type { FetchLike } from '@modelcontextprotocol/sdk/shared/transport.js';
 import {
+  isJSONRPCErrorResponse,
   isJSONRPCRequest,
   isJSONRPCResultResponse,
   type JSONRPCMessage,
+  type JSONRPCRequest,
 } from '@modelcontextprotocol/sdk/types.js';
 
 export const DEFAULT_SERVICE_URL = 'http://127.0.0.1:4310';
@@ -74,7 +79,12 @@ export interface BridgeOptions {
   readonly healthTimeoutMs?: number;
 }
 
-/** The `/mcp` URL of a service URL; only http(s) addresses are accepted. */
+const isLoopbackHost = (hostname: string): boolean =>
+  hostname === 'localhost' ||
+  hostname === '[::1]' ||
+  /^127\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname);
+
+/** The `/mcp` URL of a service URL: https, or http to this machine only. */
 export function mcpUrl(base: string): URL {
   let url: URL;
   try {
@@ -87,6 +97,12 @@ export function mcpUrl(base: string): URL {
   }
   if (url.username !== '' || url.password !== '') {
     throw new BridgeError('the service URL must not contain credentials');
+  }
+  if (url.protocol === 'http:' && !isLoopbackHost(url.hostname)) {
+    // The bearer token would cross the network in clear text.
+    throw new BridgeError(
+      'plain http:// is only allowed to this machine (127.0.0.1, ::1, localhost); use https:// for another host',
+    );
   }
   return new URL('/mcp', url);
 }
@@ -126,19 +142,122 @@ export async function runBridge(options: BridgeOptions): Promise<number> {
   }
 
   const stdio = new StdioServerTransport(options.stdin, options.stdout);
-  const http = new StreamableHTTPClientTransport(endpoint, {
-    requestInit: { headers: { authorization: `Bearer ${options.token}` } },
-    fetch: fetchFn,
-  });
 
+  // The host's handshake, kept so that a session the service dropped (idle expiry, a restart,
+  // the connection was revoked and registered again) can be opened again without the host
+  // noticing: the bridge replays initialize and initialized on a fresh connection.
+  let initRequest: JSONRPCRequest | undefined;
+  let initializedNote: JSONRPCMessage | undefined;
   let initializeId: string | number | undefined;
+  let pendingReinit: { id: string; ok: () => void; fail: (e: Error) => void } | undefined;
+  let reinitCount = 0;
+  let reinit: Promise<void> | undefined;
   let warnedAuth = false;
+  let finishNow: (code: number) => void = () => undefined;
+
   const failure = (e: unknown): string => {
     const text = e instanceof Error ? e.message : String(e);
     if (/\b40[13]\b/.test(text)) {
       return 'the service refused the agent token (unknown, revoked or not allowed)';
     }
     return 'the service did not answer this request';
+  };
+
+  const connect = (): StreamableHTTPClientTransport => {
+    const t = new StreamableHTTPClientTransport(endpoint, {
+      requestInit: { headers: { authorization: `Bearer ${options.token}` } },
+      fetch: fetchFn,
+    });
+    t.onclose = () => {
+      if (t === http) finishNow(0);
+    };
+    t.onerror = (e) => {
+      // Stream errors (a dropped GET stream) are reported without content.
+      if (t === http) stderr.write(`worldbuilder mcp: ${failure(e)}\n`);
+    };
+    t.onmessage = (message) => {
+      if (
+        pendingReinit !== undefined &&
+        (isJSONRPCResultResponse(message) || isJSONRPCErrorResponse(message)) &&
+        message.id === pendingReinit.id
+      ) {
+        // The answer to the bridge's own initialize: the host must not see it.
+        if (isJSONRPCResultResponse(message)) {
+          const version = (message.result as { protocolVersion?: unknown }).protocolVersion;
+          if (typeof version === 'string') t.setProtocolVersion(version);
+          pendingReinit.ok();
+        } else pendingReinit.fail(new Error('initialize refused'));
+        return;
+      }
+      if (
+        initializeId !== undefined &&
+        isJSONRPCResultResponse(message) &&
+        message.id === initializeId
+      ) {
+        const version = (message.result as { protocolVersion?: unknown }).protocolVersion;
+        if (typeof version === 'string') t.setProtocolVersion(version);
+        initializeId = undefined;
+      }
+      stdio.send(message).catch((e: Error) => {
+        stderr.write(`worldbuilder mcp: cannot write to stdout: ${e.message}\n`);
+      });
+    };
+    return t;
+  };
+  let http = connect();
+
+  const isSessionGone = (e: unknown, t: StreamableHTTPClientTransport) =>
+    e instanceof StreamableHTTPError && e.code === 404 && t.sessionId !== undefined;
+
+  async function openAgain(): Promise<void> {
+    if (initRequest === undefined) throw new Error('the host never initialized');
+    const old = http;
+    old.onclose = undefined;
+    old.onerror = undefined;
+    old.onmessage = undefined;
+    const fresh = connect();
+    http = fresh;
+    await fresh.start();
+    const id = `wb-reinit-${++reinitCount}`;
+    const answered = new Promise<void>((ok, fail) => {
+      pendingReinit = { id, ok, fail };
+    });
+    try {
+      await fresh.send({ ...initRequest, id });
+      await answered;
+      await fresh.send(initializedNote ?? { jsonrpc: '2.0', method: 'notifications/initialized' });
+    } finally {
+      pendingReinit = undefined;
+    }
+    void old.close().catch(() => undefined);
+  }
+
+  const reinitialise = (stale: StreamableHTTPClientTransport): Promise<void> => {
+    if (reinit !== undefined) return reinit;
+    if (stale !== http) return Promise.resolve(); // another request already did it
+    reinit = openAgain()
+      .catch(() => {
+        throw new SessionExpired();
+      })
+      .finally(() => {
+        reinit = undefined;
+      });
+    return reinit;
+  };
+
+  /** Send one host message; once, transparently, over a fresh session if the old one is gone. */
+  const deliver = async (message: JSONRPCMessage): Promise<void> => {
+    if (reinit !== undefined) await reinit;
+    const t = http;
+    try {
+      await t.send(message);
+    } catch (e) {
+      const isInitialize =
+        isRequest(message) && (message as { method?: string }).method === 'initialize';
+      if (!isSessionGone(e, t) || isInitialize) throw e;
+      await reinitialise(t);
+      await http.send(message);
+    }
   };
 
   const done = new Promise<number>((resolve) => {
@@ -150,52 +269,36 @@ export async function runBridge(options: BridgeOptions): Promise<number> {
         Promise.allSettled([http.close(), stdio.close()]).then(() => resolve(code)),
       );
     };
+    finishNow = finish;
     // The host closed stdin: the session is over. (The SDK's stdio transport does not report the
     // end of its input itself.)
     const input = options.stdin ?? process.stdin;
     input.once('end', () => finish(0));
     input.once('close', () => finish(0));
     stdio.onclose = () => finish(0);
-    http.onclose = () => finish(0);
     stdio.onerror = (e) => stderr.write(`worldbuilder mcp: stdio error: ${e.message}\n`);
-    http.onerror = (e) => {
-      // Stream errors (a dropped GET stream) are reported once per cause, never with content.
-      stderr.write(`worldbuilder mcp: ${failure(e)}\n`);
-    };
-
-    http.onmessage = (message) => {
-      if (
-        initializeId !== undefined &&
-        isJSONRPCResultResponse(message) &&
-        message.id === initializeId
-      ) {
-        const version = (message.result as { protocolVersion?: unknown }).protocolVersion;
-        if (typeof version === 'string') http.setProtocolVersion(version);
-        initializeId = undefined;
-      }
-      stdio.send(message).catch((e: Error) => {
-        stderr.write(`worldbuilder mcp: cannot write to stdout: ${e.message}\n`);
-      });
-    };
 
     stdio.onmessage = (message) => {
       if (isRequest(message) && (message as { method?: string }).method === 'initialize') {
         initializeId = message.id;
+        initRequest = message as JSONRPCRequest;
+      } else if ((message as { method?: string }).method === 'notifications/initialized') {
+        initializedNote = message;
       }
-      http.send(message).catch((e: unknown) => {
-        const reason = failure(e);
+      deliver(message).catch((e: unknown) => {
+        const expired = e instanceof SessionExpired;
+        const reason = expired
+          ? 'session expired: the service no longer knows this session and it could not be opened again; restart the bridge'
+          : failure(e);
         if (!warnedAuth || !/refused the agent token/.test(reason)) {
           stderr.write(`worldbuilder mcp: ${reason}\n`);
         }
         if (/refused the agent token/.test(reason)) warnedAuth = true;
         // A request that cannot be delivered must not leave the host waiting.
-        if (isRequest(message)) {
-          void stdio.send({
-            jsonrpc: '2.0',
-            id: message.id,
-            error: { code: -32000, message: reason },
-          });
-        }
+        const answered = isRequest(message)
+          ? stdio.send({ jsonrpc: '2.0', id: message.id, error: { code: -32000, message: reason } })
+          : Promise.resolve();
+        if (expired) void answered.finally(() => finish(1));
       });
     };
   });
@@ -204,6 +307,9 @@ export async function runBridge(options: BridgeOptions): Promise<number> {
   await stdio.start();
   return done;
 }
+
+/** The service dropped the session and a new one could not be opened. */
+class SessionExpired extends Error {}
 
 export interface BridgeMainIo {
   readonly stdin?: Readable;

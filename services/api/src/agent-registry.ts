@@ -10,7 +10,14 @@ import type { AgentAuthor } from '@worldbuilder/core';
 import { lstat, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { parse, stringify } from 'yaml';
-import { newToken, sha256Hex, writePrivateFile, type AgentTarget, type Principal } from './auth.js';
+import {
+  connectionKey,
+  newToken,
+  sha256Hex,
+  writePrivateFile,
+  type AgentTarget,
+  type Principal,
+} from './auth.js';
 import { validators } from './contract.js';
 
 export const AGENTS_FILE = 'agents.yaml';
@@ -65,6 +72,7 @@ export class AgentRegistry {
   private byHash = new Map<string, AgentRecord>();
   private signature = 'unread';
   private _error: string | undefined;
+  private readonly listeners: ((live: ReadonlySet<string>) => void)[] = [];
 
   constructor(private readonly file: string) {}
 
@@ -75,6 +83,26 @@ export class AgentRegistry {
   /** Names and targets of the active connections, never tokens. */
   get connections(): readonly { name: string; target: AgentTarget }[] {
     return [...this.byHash.values()].map(({ name, target }) => ({ name, target }));
+  }
+
+  /**
+   * Called with the connection keys (`connectionKey`) of the active connections whenever the file
+   * was read again and its content changed, also when it became invalid (then the set is empty).
+   */
+  subscribe(listener: (live: ReadonlySet<string>) => void): void {
+    this.listeners.push(listener);
+  }
+
+  /** Look at the file now (the service does this on a timer, so revocations do not wait for a request). */
+  async poll(): Promise<void> {
+    await this.refresh(false);
+  }
+
+  private publish(): void {
+    const live = new Set(
+      [...this.byHash.values()].map((r) => connectionKey(r.name, r.target, r.tokenHash)),
+    );
+    for (const listener of this.listeners) listener(live);
   }
 
   /** Load now; throws if the file is unsafe or invalid (used at start: refuse to start). */
@@ -89,12 +117,15 @@ export class AgentRegistry {
     } catch (e) {
       if ((e as NodeJS.ErrnoException).code !== 'ENOENT') throw e;
       this.byHash = new Map();
+      const changed = this.signature !== 'missing';
       this.signature = 'missing';
       this._error = undefined;
+      if (changed) this.publish();
       return;
     }
     const signature = `${info.mtimeMs}:${info.size}:${info.ino}`;
     if (signature === this.signature && (this._error === undefined || !strict)) return;
+    const changed = signature !== this.signature;
     try {
       assertSafeFile(info);
       const records = parseAgents(await readFile(this.file, 'utf8'));
@@ -106,10 +137,12 @@ export class AgentRegistry {
       this.byHash = new Map();
       this._error = e instanceof Error ? e.message : String(e);
       this.signature = signature;
+      if (changed) this.publish();
       if (strict) throw e;
       return;
     }
     this.signature = signature;
+    if (changed) this.publish();
   }
 
   /** The agent connection a bearer token belongs to, if it is registered and not revoked. */
@@ -122,6 +155,7 @@ export class AgentRegistry {
       name: record.name,
       author: `agent:${record.name}` as AgentAuthor,
       target: record.target,
+      tokenHash: record.tokenHash,
     };
   }
 }

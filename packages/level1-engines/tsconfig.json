@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "paths": {
+      "@worldbuilder/core": ["../core/src/index.ts"],
+      "@worldbuilder/conformance": ["../conformance/src/index.ts"],
+      "@worldbuilder/storage-markdown-files": ["../adapters/storage-markdown-files/src/index.ts"]
+    }
+  },
+  "include": ["src"]
+}

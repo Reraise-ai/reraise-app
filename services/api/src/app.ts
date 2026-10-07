@@ -45,6 +45,8 @@ export interface AppOptions {
   readonly port?: number;
   /** Extra Host header values to accept (self-hosting behind a reverse proxy). */
   readonly allowedHosts?: readonly string[];
+  /** How often the agent registry file is looked at for revocations (milliseconds). */
+  readonly agentSweepMs?: number;
   /** Origins that may call from a browser, besides the service's own (the board's origin). */
   readonly allowedOrigins?: readonly string[];
   /** Largest accepted request body in bytes; larger bodies get 413. */
@@ -290,8 +292,19 @@ export async function buildApp(options: AppOptions): Promise<BoardApp> {
       }
     },
   });
+  // A revoked, re-tokened or reclassified connection loses its sessions and streams as soon as
+  // the registry notices (it re-reads agents.yaml when the file changes, on a timer too, so a
+  // revocation does not wait for the next request of the agent).
+  options.agents.subscribe((live) => {
+    void mcp.sessions.retain((key) => live.has(key));
+  });
+  const sweep = setInterval(() => {
+    void options.agents.poll().catch(() => undefined);
+  }, options.agentSweepMs ?? 2000);
+  sweep.unref();
   // Close the sessions (and their streams) before the server stops accepting connections.
   app.addHook('preClose', async () => {
+    clearInterval(sweep);
     await mcp.sessions.close();
   });
 

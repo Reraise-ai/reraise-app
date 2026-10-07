@@ -2,22 +2,33 @@
 // Copyright The Worldbuilder contributors
 //
 // MCP sessions over Streamable HTTP (ADR-0029). One session per `Mcp-Session-Id`: its own
-// server and transport, bound to the caller that opened it. A request that names a session of
-// another caller gets the same answer as an unknown session. The class knows nothing about the
-// web framework (it takes Node requests) and nothing about the service: the caller is an opaque
-// value with a stable key, and tool calls go through the injected invoker.
+// server and transport, bound to the key of the caller that opened it. A request that names a
+// session of a caller with another key gets the same answer as an unknown session. Every tool
+// call runs with the caller of the HTTP request that carries it (the session only remembers the
+// latest request's caller, and a request can only reach a session of its own key), so a
+// credential that changed since the session opened never acts through the old session. The class
+// knows nothing about the web framework (it takes Node requests) nor about the service: the
+// caller is an opaque value with a stable key.
 
 import { randomUUID } from 'node:crypto';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
-import { createToolServer, type ToolInvoker } from './server.js';
+import { createToolServer, type ToolOutcome } from './server.js';
+import type { ToolName } from './tools.js';
 
 export interface McpSessionsOptions<Caller> {
-  /** The invoker of one caller's tool calls. */
-  readonly invokeFor: (caller: Caller) => ToolInvoker;
-  /** A stable key of a caller: a session is only ever used by the caller that opened it. */
+  /** Runs one tool call for the caller of the request that carries it. */
+  readonly invoke: (
+    caller: Caller,
+    tool: ToolName,
+    args: Record<string, unknown>,
+  ) => Promise<ToolOutcome>;
+  /**
+   * A stable key of a caller. It must change whenever what the caller may do changes (its
+   * identity, its target class, its credential): a session is only used under the key it opened with.
+   */
   readonly keyOf: (caller: Caller) => string;
   readonly version: string;
   /** Open sessions per caller; the least recently used one is closed to make room. */
@@ -26,11 +37,15 @@ export interface McpSessionsOptions<Caller> {
   readonly idleTimeoutMs?: number;
 }
 
-interface Session {
+interface Session<Caller> {
   readonly key: string;
   readonly server: McpServer;
   readonly transport: StreamableHTTPServerTransport;
+  /** The caller of the latest request on this session; tool calls run as this caller. */
+  caller: Caller;
   lastUsed: number;
+  /** Open server-to-client streams: a session with one is in use. */
+  streams: number;
 }
 
 export const DEFAULT_MAX_SESSIONS_PER_CALLER = 16;
@@ -44,7 +59,7 @@ const rpcError = (res: ServerResponse, status: number, code: number, message: st
 };
 
 export class McpSessions<Caller> {
-  private readonly sessions = new Map<string, Session>();
+  private readonly sessions = new Map<string, Session<Caller>>();
   private readonly max: number;
   private readonly idleMs: number;
   private sweeper: NodeJS.Timeout | undefined;
@@ -89,6 +104,15 @@ export class McpSessions<Caller> {
       return rpcError(res, 404, -32001, 'Session not found');
     }
     session.lastUsed = Date.now();
+    session.caller = caller;
+    if (req.method === 'GET') {
+      // An open stream is activity: the session is not idle while a client listens on it.
+      session.streams++;
+      res.once('close', () => {
+        session.streams--;
+        session.lastUsed = Date.now();
+      });
+    }
     await session.transport.handleRequest(req, res, body);
   }
 
@@ -99,10 +123,11 @@ export class McpSessions<Caller> {
     key: string,
     body: unknown,
   ): Promise<void> {
-    this.evictFor(key);
     this.startSweeper();
+    const holder: { session?: Session<Caller>; caller: Caller } = { caller };
     const server = createToolServer({
-      invoke: this.options.invokeFor(caller),
+      invoke: (tool, args) =>
+        this.options.invoke(holder.session?.caller ?? holder.caller, tool, args),
       version: this.options.version,
     });
     const transport = new StreamableHTTPServerTransport({
@@ -110,7 +135,19 @@ export class McpSessions<Caller> {
       // Plain JSON answers to POST; the GET stream carries server-initiated messages.
       enableJsonResponse: true,
       onsessioninitialized: (sessionId) => {
-        this.sessions.set(sessionId, { key, server, transport, lastUsed: Date.now() });
+        // Make room and insert in one synchronous step, so parallel initializations cannot
+        // all pass the check and exceed the limit.
+        this.evictFor(key);
+        const session: Session<Caller> = {
+          key,
+          server,
+          transport,
+          caller,
+          lastUsed: Date.now(),
+          streams: 0,
+        };
+        holder.session = session;
+        this.sessions.set(sessionId, session);
       },
     });
     transport.onclose = () => {
@@ -133,7 +170,7 @@ export class McpSessions<Caller> {
     for (const s of mine.slice(0, mine.length - this.max + 1)) void this.drop(s);
   }
 
-  private async drop(session: Session): Promise<void> {
+  private async drop(session: Session<Caller>): Promise<void> {
     if (session.transport.sessionId !== undefined) {
       this.sessions.delete(session.transport.sessionId);
     }
@@ -145,7 +182,9 @@ export class McpSessions<Caller> {
     const every = Math.max(1000, Math.min(this.idleMs / 2, 60_000));
     this.sweeper = setInterval(() => {
       const cutoff = Date.now() - this.idleMs;
-      for (const s of [...this.sessions.values()]) if (s.lastUsed < cutoff) void this.drop(s);
+      for (const s of [...this.sessions.values()]) {
+        if (s.streams === 0 && s.lastUsed < cutoff) void this.drop(s);
+      }
     }, every);
     this.sweeper.unref();
   }
@@ -163,6 +202,16 @@ export class McpSessions<Caller> {
   async closeCaller(key: string): Promise<void> {
     await Promise.all(
       [...this.sessions.values()].filter((s) => s.key === key).map((s) => this.drop(s)),
+    );
+  }
+
+  /**
+   * End every session whose key is not accepted any more (a connection that was revoked,
+   * re-tokened or reclassified), with its open streams.
+   */
+  async retain(accept: (key: string) => boolean): Promise<void> {
+    await Promise.all(
+      [...this.sessions.values()].filter((s) => !accept(s.key)).map((s) => this.drop(s)),
     );
   }
 

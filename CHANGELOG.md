@@ -14,6 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   it, persistence after a reload, a context package, the disclosure gate withholding the private
   card from a cloud target, and the files on disk (Lage version archived). axe-core runs on the
   main board screens. CI job `e2e` on Linux, Windows and macOS (not run yet).
+- Level-1 engines (ADR-0035) in the new package `@worldbuilder/level1-engines`: the deterministic
+  local rules engine (`createLocalRulesEngine`, with a per-option basis), the what-if re-run and
+  stale-prediction helpers, the level-2 escalation draft, the cloud System One HTTP adapter
+  template with a Jev preset (release-only, injected `fetch`; the real Jev wire format is
+  unconfirmed) and `formatEstimate` for the board. Service wiring and the board panel follow.
 - MCP server on the official SDK: the thirteen agent tools with self-contained schemas, served at
   `/mcp` of the service over Streamable HTTP (agent bearer token, Host and Origin checks, per-agent
   sessions, `cloud_model` confirmation flow) and through the stateless stdio bridge

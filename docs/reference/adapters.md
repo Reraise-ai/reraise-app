@@ -100,7 +100,213 @@ model or an external decision service (for example Jev) plug in here.
 
 Conformance: `describeLevel1EngineConformance` from `@worldbuilder/conformance` with a harness
 (`engine`, `request`); `level1PredictionProblems` is the same check as a function.
-`createFixedLevel1Engine` is a trivial fake to start from.
+`createFixedLevel1Engine` is a trivial fake to start from. Real engines are in
+[Level-1 engines](#level-1-engines).
+
+## Level-1 engines
+
+Package `@worldbuilder/level1-engines` (Apache-2.0): implementations of the `Level1Engine` socket
+above and the helpers around them. It has no service code, no network code outside the injected
+`fetch` of the cloud adapter, and imports nothing AGPL. The service wiring is another slice (see
+[Service seam](#service-seam)).
+
+| Export | What it is |
+| --- | --- |
+| `createLocalRulesEngine(options?)` | the default engine: `target: local_model`, `deterministic: true`, no network. Adds `explain(request)` |
+| `explainLocalRules(request)` | pure: the per-player, per-option breakdown behind a prediction (the `basis`) |
+| `buildMoveOptions(player, cards, extra?)` | candidate move options for a player: past moves, then the actions of the user's rule cards, then `extra` |
+| `rerunOnAssumptionChange(engine, previous, request, release?)` | what-if re-run; `isStale`, `currentOnly`, `assumptionChangedRequest`, `changedMoves` |
+| `buildLevel2Draft(prediction, request, playerCardId, options?)` | escalation: the body of the human-only `lage_create` |
+| `createSystemOneHttpAdapter(options)` | cloud engine over a generic `POST /v1/decide`; `createJevAdapter` is the Jev preset |
+| `formatEstimate(view)`, `formatEstimates(prediction)` | the board display text |
+
+### Local rules engine
+
+For each player card of the request, and for each of its move options, the engine computes nine
+features in [0, 1] from the request cards only and adds them up with fixed weights
+(`WEIGHTS`, exported):
+
+| Feature | Weight | Meaning |
+| --- | --- | --- |
+| `behaviour` | +1.0 | share of the player's `moves` history that resembles the option (behaviour) |
+| `linkedEvidenced` | +0.5 | an evidenced card linked to the player resembles the option (behaviour) |
+| `interest` | +0.5 | best match with the player's `interests` (statement) |
+| `assumedGoal` | +0.3 | best match with `assumedGoals` (statement, an assumption) |
+| `linkedSaid` | +0.25 | a said card linked to the player resembles the option (statement) |
+| `capability` | +0.25 | best match with `capabilities` (feasibility) |
+| `rule` | +0.5 | a fired rule card of the user whose action matches the option |
+| `dependencyRisk` | -0.75 | a disruptive option (stop, halt, close, cut, delay, ...) that touches a `dependencies` entry or a `depends_on` target |
+| `redLineRisk` | -0.75 | a weak match with a red line (one shared word) |
+
+- **Statements against behaviour.** Behaviour features outweigh statement features. When the best
+  option by behaviour and the best by statements differ, `statementBehaviourDivergence` is set and
+  behaviour decides.
+- **Red lines.** An option that matches a `redLines` entry with at least two content words (60 %
+  of the line's words), or that says it lacks what the line demands ("sail without war-risk
+  cover" against "no sailings without war-risk cover"), is removed. An option that provides what a
+  "without" line demands is not affected. If every option is removed, the engine predicts the
+  highest scoring one at uniform confidence and sets `allExcluded`.
+- **Rules.** A rule card is evaluated against the request cards only (`card_on_lage`,
+  `card_field`, `tag` and `edge`). A rule with a `stance` condition never fires: the engine never
+  receives stances. A fired rule whose `then` matches an option reads as the user's own
+  expectation for that option, but only for a player the rule names in its conditions, or whose
+  linked card the rule names (an edge to or from the player). A rule about the board in general
+  boosts nobody (owner question OQ-20). The rule card and the cards it names count as used for
+  the players it applies to.
+- **Edges.** Only the `edges` stored on the request's cards count today (as dependencies,
+  linked evidence and rule edge conditions). Edges drawn on the Lage (`Lage.edges`) are not part
+  of the request and are not mapped yet: a follow-up of the service slice.
+- **Confidence.** `softmax(score / T)` over the options that stayed, with `T =
+  CONFIDENCE_TEMPERATURE = 0.5`; shrunk linearly towards 1/n when fewer than two kinds of
+  evidence (`ENOUGH_EVIDENCE_KINDS`) were found; at most 0.95; at most 0.8 when an option was
+  removed; rounded to two decimals. It is the engine's own estimate, not a fitted probability
+  (owner question OQ-19).
+- **Ties and no evidence.** Ties go to the earlier move option. No evidence gives the first
+  option at 1/n.
+- **`cardIds`.** The player card always first, then the request cards that contributed to some feature
+  or removal (sources of matched entries that are on the board, linked cards, fired rule cards
+  and the cards their conditions name), in request order. Never a card outside the request.
+- **Limits.** Matching is lexical on content words of English phrases (light stemming, Dice
+  overlap). It has no model of negation or meaning, which is why the breakdown exists.
+
+`explain(request)` returns, per player, `options[]` with `features` (value and `via` card ids),
+`contributions`, `score`, `probability`, `excluded`, `redLineHits`, plus `evidenceKinds`,
+`firedRuleCardIds`, `temperature` and `weights`. The prediction itself stays schema-valid
+(`level1-prediction.schema.json` has no extra fields), so a board that wants the "why" calls
+`explain`.
+
+### What-if re-run
+
+`rerunOnAssumptionChange(engine, previous, request, release?)` needs a request with trigger
+`assumption_changed` (`assumptionChangedRequest(request, ids)` sets it) and returns
+`{ prediction, stale, reran, needsConfirmation, changes }`:
+
+- the previous prediction already has the current request hash: nothing runs;
+- a `local_model` engine runs; `changes` lists the players whose predicted move changed;
+- a `cloud_model` engine runs only with the release of a freshly confirmed transfer; without it
+  nothing is sent, the previous prediction comes back `stale: true` and `needsConfirmation: true`.
+
+`isStale(prediction, request)` is the display rule of ADR-0035: the request hash with the trigger
+left out (`stalenessKey`), so undoing an assumption makes the prediction current again.
+`currentOnly(prediction, request)` drops a late answer. Debouncing (latest wins) is the caller's.
+The helper also validates the engine's answer (`answerProblems`): another engine, Lage, request
+hash or player list, or a move outside the options, is rejected with an error instead of being
+shown.
+
+### Escalation to level 2
+
+`buildLevel2Draft(prediction, request, playerCardId, { seatName?, worlds?, now? })` returns
+`{ create, sourceLageId, playerCardId, engine }`. `create` is a valid body for `lage_create`: the
+question asks for that player's next move (and quotes the source question), the options are the
+move options, the cards the engine used are placed (player card first), the only seat is the
+human. The prediction (move, confidence, hash) is not copied. `sourceLageId` is the link back: the
+service records it, for example as a `based_on` edge of the new Lage card, and the board shows it
+with the engine's name.
+
+### Cloud engines: the System One adapter
+
+`createSystemOneHttpAdapter({ baseUrl, fetch?, apiKey?, engine?, preset?, timeoutMs?, maxStateChars? })`
+returns a `Level1Engine` with `target: cloud_model` and `deterministic: false`.
+
+- **Only a release, bound to the envelope.** `predict(request, release)` first checks that the
+  release is a `DisclosureRelease` holding exactly the request's cards (id and content hash, in
+  order), that its confirmation names the same cards and that every object still hashes to its
+  content hash. Then it recomputes the envelope with `level1EnvelopeFor(engine, request,
+  release.objects)` and requires `computePayloadHash(envelope) === release.confirmation.payloadHash`.
+  Otherwise it throws `Level1EngineError('release_required')` and sends nothing. The body is built
+  from `release.objects` (never from raw cards) and carries exactly the question, options and
+  output schema of that envelope, so a confirmation for another connector, question, options,
+  output schema or card set is worthless. Only links to released cards are sent. Neither check
+  proves that the release is genuine or unspent: that is the service's
+  `DisclosureGate.redeem` (single use, bound to the session).
+- **The envelope.** `level1EnvelopeFor(engine, request, objects)` returns `{ target: 'cloud_model',
+  connectorId: engine, request: { question, options, outputSchema }, objects }`.
+  `DisclosureModelRequest.options` is a flat list, so `options` holds `<playerCardId>: <move>` for
+  every move option of every player, players in request order, and `outputSchema` carries the full
+  per-player structure (the move an enum of that player's options, `cardIds` an enum of the
+  released ids). The service previews this envelope, the user confirms its hash, and the release
+  from `redeem` goes unchanged to the adapter.
+- **Content only.** The state text carries id, type, layer, title, date, source, body, player
+  fields (not `personalityType`), the rule and the links. No `uri`, `externalId`, worlds, tags,
+  class, visibility, release or training flag.
+- **Request template (`generic-decide-v1`, `POST {baseUrl}/v1/decide`).**
+
+  ```json
+  {
+    "instruction": "For each player named in the output schema, predict ...",
+    "question": "Reroute laden tankers around the Cape for Q4?",
+    "state": "[card 01M1E...] type: organisation, layer: said\nTitle: ...",
+    "output_schema": {
+      "type": "object",
+      "properties": {
+        "<playerCardId>": {
+          "type": "object",
+          "properties": {
+            "predictedMove": { "type": "string", "enum": ["Keep ...", "Lift ..."] },
+            "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+            "cardIds": { "type": "array", "items": { "type": "string", "enum": ["<released card id>"] } }
+          },
+          "required": ["predictedMove", "confidence"]
+        }
+      },
+      "required": ["<playerCardId>"]
+    }
+  }
+  ```
+
+  Answer: `{ "output": { "<playerCardId>": { "predictedMove", "confidence", "cardIds?" } },
+  "confidence?": n }`; a top-level `confidence` fills entries without one.
+- **Untrusted answers.** The move must be one of the options, the confidence a number in [0, 1],
+  `cardIds` a list of released ids (the player card is added as the minimum), every requested
+  player must be answered; anything else is `bad_response`. HTTP errors are reported by status
+  only; neither the answer body nor the credential nor a transport error text is ever put into an
+  error. The response is rejected early on a declared `content-length` above 1 MB, otherwise read
+  with a 1 MB byte cap and cancelled when it grows past it; the body of an error response is
+  cancelled unread. Redirects are not followed. `baseUrl` must be https (http only on loopback) and carry no
+  credentials. Tests inject `fetch`; the package never touches the network by itself.
+- **Presets.** A `SystemOneProviderPreset` (`id`, `defaultEngine`, `path`, `buildBody`,
+  `readAnswers`) adapts another wire format; `GENERIC_SYSTEM_ONE_PRESET` and `JEV_PRESET` are
+  built in. **The real Jev wire format is unconfirmed (owner decision OD-4).** `JEV_PRESET` is the
+  generic template under the engine id `jev`; confirm or replace it before pointing the adapter at
+  the real service. Any other "System One" provider can use the same template or a preset of its
+  own.
+
+Run `describeLevel1EngineConformance` against an adapter with an injected fake `fetch` to prove
+it; the package's tests do this for both presets.
+
+### Board display contract
+
+`formatEstimate({ engine, predictedMove, confidence })` returns
+`"<engine> estimates 0.82 for <move>"`: two decimals and never above 0.99 (1.00 would read as
+certainty; display only), always with the engine, newlines and control characters collapsed, a
+confidence outside [0, 1] rejected. `formatEstimates(prediction)` gives one
+line per player. `apps/board` shows exactly this text next to each player card, marks it stale
+when `isStale` is true, offers the cards used (`cardIds`) one click away and an "open as board"
+action that calls `buildLevel2Draft`. It must not word an estimate as an answer or add its own
+verdict. The panel itself is a follow-up for `apps/board`; the board only needs to import the
+formatter.
+
+### Service seam
+
+Not written in this slice. The service (`services/api`) needs to:
+
+1. build the `Level1PredictionRequest` for a Lage: question, players (actor cards with their
+   move options), the canonical cards on the Lage plus the user's applicable rule cards, each
+   after `DisclosureGate.decide` for the engine's target (no stances, no pending proposals). Cards
+   carry their own `edges`; the Lage's drawn edges are not mapped into the request yet (follow-up);
+2. call `engine.predict(request)` for a `local_model` engine. For a `cloud_model` engine, build the
+   envelope with `level1EnvelopeFor(engine.engine, request, gateClearedCards)` and pass exactly
+   that envelope (connector, question, options, output schema, objects) to
+   `DisclosureGate.preview`; show it to the user; after `confirm`, `redeem` and pass the release
+   unchanged to `engine.predict(request, release)`. The adapter refuses any release whose
+   `payloadHash` is not the hash of the envelope it recomputes, so the request used for `preview`
+   and for `predict` must be the same;
+3. keep the latest prediction per Lage in memory, debounce triggers (latest wins) and drop answers
+   with `currentOnly`; use `rerunOnAssumptionChange` for `assumption_changed`;
+4. expose the prediction (and, for the local engine, `explain`) to the board and create the level-2
+   Lage from `buildLevel2Draft` on a human request, recording `sourceLageId`;
+5. register the adapters in the connection settings (`createJevAdapter` needs a base URL and a
+   credential from the user's secret store, never from the repository).
 
 ## DisclosureGate
 

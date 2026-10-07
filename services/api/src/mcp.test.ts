@@ -17,8 +17,11 @@ import type {
 } from '@worldbuilder/core';
 import { MCP_TOOL_NAMES, TOOLS } from '@worldbuilder/mcp-server';
 import { request as httpRequest } from 'node:http';
+import { readFile, writeFile } from 'node:fs/promises';
+import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { removeAgent } from './agent-registry.js';
+import { parse, stringify } from 'yaml';
+import { addAgent, removeAgent } from './agent-registry.js';
 import { loadOperations } from './contract.js';
 import { makeFixture, PRIVATE_TEXT, type Fixture } from './test-helpers.js';
 
@@ -591,4 +594,83 @@ describe('a cloud_model connection', () => {
     expect(first.package.confirmationRequired?.transferId).toBeDefined();
     expect(first.receipt.receiptId).toMatch(/^[0-9A-Z]{26}$/);
   });
+});
+
+describe('a connection that changes while its session is open', () => {
+  const callPackage = (token: string, sid: string) =>
+    rawMcp(
+      { ...MCP_HEADERS, authorization: `Bearer ${token}`, 'mcp-session-id': sid },
+      JSON.stringify({
+        jsonrpc: '2.0',
+        id: 5,
+        method: 'tools/call',
+        params: { name: 'context_package_get', arguments: { worldId: f.worldId } },
+      }),
+    );
+
+  it('reclassified local to cloud: the old session gets no content, a new one needs a confirmation', async () => {
+    const { token } = await addAgent(f.stateDir, { name: 'flip', target: 'local_model' });
+    const auth = { ...MCP_HEADERS, authorization: `Bearer ${token}` };
+    const init = await rawMcp(auth, INIT);
+    const sid = String(init.headers['mcp-session-id']);
+    const before = await callPackage(token, sid);
+    expect(before.status).toBe(200);
+    expect(before.body).toContain('Alpha body.'); // a local_model sees public cards
+
+    // the owner edits agents.yaml by hand: same token, other class
+    const file = path.join(f.stateDir, 'agents.yaml');
+    const doc = parse(await readFile(file, 'utf8')) as {
+      connections: { name: string; target: string }[];
+    };
+    doc.connections.find((c) => c.name === 'flip')!.target = 'cloud_model';
+    await writeFile(file, stringify(doc), { mode: 0o600 });
+
+    const after = await callPackage(token, sid);
+    expect(after.status).toBe(404); // the session of the old classification is gone
+    expect(after.body).not.toContain('Alpha body.');
+
+    // a new connection with the same token is a cloud_model one: no content before the confirmation
+    const client = new Client({ name: 'flip', version: '0' });
+    await client.connect(new StreamableHTTPClientTransport(mcpUrl(), bearer(token)));
+    open.push(client);
+    const pkg = await ok<ContextPackage>(client, 'context_package_get', { worldId: f.worldId });
+    expect(pkg.target).toBe('cloud_model');
+    expect(pkg.items).toEqual([]);
+    expect(pkg.confirmationRequired).toBeDefined();
+  });
+
+  it('revoked: the server stream of its session ends without waiting for another request', async () => {
+    const { token } = await addAgent(f.stateDir, { name: 'doomed', target: 'local_model' });
+    const auth = { ...MCP_HEADERS, authorization: `Bearer ${token}` };
+    const init = await rawMcp(auth, INIT);
+    const sid = String(init.headers['mcp-session-id']);
+    const { port } = new URL(f.url);
+    const ended = new Promise<string>((resolve, reject) => {
+      const req = httpRequest(
+        {
+          host: '127.0.0.1',
+          port,
+          path: '/mcp',
+          method: 'GET',
+          headers: {
+            authorization: `Bearer ${token}`,
+            accept: 'text/event-stream',
+            'mcp-session-id': sid,
+          },
+        },
+        (res) => {
+          expect(res.statusCode).toBe(200);
+          res.on('data', () => undefined);
+          res.on('end', () => resolve('end'));
+          res.on('close', () => resolve('close'));
+          res.on('error', () => resolve('error'));
+        },
+      );
+      req.on('error', reject);
+      req.end();
+    });
+    await new Promise((r) => setTimeout(r, 300)); // the stream is open
+    await removeAgent(f.stateDir, 'doomed');
+    expect(await ended).toMatch(/end|close|error/); // closed by the service, not by us
+  }, 15000);
 });

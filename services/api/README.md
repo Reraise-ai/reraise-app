@@ -79,9 +79,14 @@ only.
   session). Host and Origin are checked like on every route; the body limit and JSON parser are
   the same (413 above the limit).
 - Sessions: `Mcp-Session-Id`, JSON answers to POST, the GET stream for server-initiated
-  messages. A session belongs to the agent that opened it; another agent's request for it looks
-  like an unknown session (404). At most 16 sessions per agent (the least recently used is
-  closed), idle sessions close after 30 minutes, all close with the service.
+  messages. A session is bound to the connection that opened it: name, target class and token
+  hash. A request with another credential, or after the connection was reclassified or got a new
+  token, looks like an unknown session (404). Every tool call runs as the principal of the HTTP
+  request that carries it, never as the one that opened the session. When `agents.yaml` changes
+  (the service looks at it every 2 seconds and on every request) the sessions and open GET
+  streams of revoked, re-tokened or reclassified connections are closed. At most 16 sessions per
+  connection (the least recently used is closed; the check and the insert are one step), a session
+  with no request and no open stream for 30 minutes closes, all close with the service.
 - Tools: exactly the entries of `packages/mcp-server/src/tools.ts`. Startup fails if a tool has
   no operation or names a human-only one. No human-only operation is listed and calling one by
   name is a tool error.
@@ -92,7 +97,13 @@ only.
   package). Token from `WORLDBUILDER_AGENT_TOKEN_FILE` (or `WORLDBUILDER_AGENT_TOKEN`), service
   URL from `--url` or `WORLDBUILDER_URL` (default `http://127.0.0.1:4310`). It never writes a
   file, relays `Mcp-Session-Id` and the server stream, and exits 1 with a clear message if the
-  service is not running.
+  service is not running. Plain `http://` is accepted for this machine only (127.0.0.1, `::1`,
+  `localhost`); any other host needs `https://`, because the bearer token would otherwise cross
+  the network in clear text. If the service answers 404 "session not found" (idle expiry, a restart),
+  the bridge replays the host's `initialize` and `initialized` on a fresh connection with its own
+  request id (the host never sees that answer) and sends the failed message again, once. If the
+  new session cannot be opened it answers the request with an error, prints "session expired" and
+  exits non-zero.
 
 Tests: `src/mcp.test.ts` (official SDK client over a real loopback port), `src/mcp-bridge.test.ts`
 (the bridge as a child process).
@@ -164,8 +175,9 @@ fixed reason code. Denied cards are left out and listed by id and a fixed reason
 - MCP: no server-initiated notifications for proposals or Lage changes yet (the stream only
   carries `tools/list_changed`); agents poll `proposal_list` with `changedSince` (ADR-0032).
   `/mcp` sends no CORS headers: it is for agents, not for browser pages.
-- The bridge does not reconnect after the service restarted (its session is gone; the host
-  restarts it).
+- The bridge re-opens an expired session once per failed message; it does not retry a service
+  that is down, and the host's own state about the old session (for example subscriptions) is not
+  replayed beyond `initialize` and `initialized`.
 
 - No gate rule fragments from adapters are passed yet (the `StorageAdapter` interface has none).
 - Level-1 and export transfers (`purpose` other than `context_package`) can be previewed and

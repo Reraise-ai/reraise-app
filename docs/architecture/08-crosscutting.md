@@ -238,7 +238,7 @@ The system never states a conclusion as its own.
 
 - No meter, no percentage, no aggregate, no "recommended option" field in any contract
   ([ADR-0013](../adr/0013-rules-panel-replaces-barometer.md)).
-- Level 1 predictions are attributed: "`<engine>` estimates 0.71: X" next to each player, with
+- Level 1 predictions are attributed: "`<engine>` estimates 0.71 for X" next to each player, with
   the cards used ([ADR-0015](../adr/0015-two-thinking-levels.md),
   [ADR-0035](../adr/0035-level1-engine-socket.md)).
 - Verbal probabilities are stored as phrase plus ICD 203 band; the UI shows words
