@@ -159,7 +159,12 @@ export async function buildContextPackage(
 
   // Screen and local_model: the cards the rules clear for this target.
   const cards = await scopeCards(s, principal, req, max);
-  const { allowed, denied } = await s.gate.filter(cards, target);
+  const filtered = await s.gate.filter(cards, target);
+  const { allowed } = filtered;
+  // A model target learns nothing of a world with no card cleared for it: it looks exactly like
+  // an unknown world (no count, no ids). A Lage was already checked above.
+  const denied =
+    target !== 'screen' && req.lageId === undefined && allowed.length === 0 ? [] : filtered.denied;
   const items = itemsOf(allowed, () => 'cleared by the gate rules');
   if (target === 'screen') {
     for (const item of items) {
@@ -234,7 +239,13 @@ async function cloudPackage(
   }
 
   // First call: no content. Ask the human to confirm exactly what would be sent.
-  const cards = await scopeCards(s, principal, req, max);
+  let cards = await scopeCards(s, principal, req, max);
+  if (req.lageId === undefined) {
+    // No card of the world cleared for this connection: answer as for an unknown world.
+    const cleared: Card[] = [];
+    for (const card of cards) if (await s.gate.clears(card, 'cloud_model')) cleared.push(card);
+    if (cleared.length === 0) cards = [];
+  }
   const { denied } = await s.gate.filter(cards, 'cloud_model'); // logs; cloud never passes decide
   let transfer: DisclosureTransfer | undefined;
   if (cards.length > 0) {

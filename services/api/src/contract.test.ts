@@ -298,6 +298,36 @@ describe('context_package_get with a Lage', () => {
   });
 });
 
+describe('context_package_get for a world no card of which is cleared for a model', () => {
+  it('looks exactly like an unknown world: no count, no ids', async () => {
+    const closed = await makeFixture({
+      rules: 'rules:\n  - { id: screen-all, effect: allow, targets: [screen], match: {} }\n',
+    });
+    try {
+      const strip = (b: string) => {
+        const rest = JSON.parse(b) as Record<string, unknown>;
+        for (const k of ['id', 'createdAt', 'worldId']) delete rest[k];
+        return rest;
+      };
+      for (const who of ['scripted', 'cloud-scripted']) {
+        const known = await closed.agent(who, 'POST', '/context-packages', {
+          worldId: closed.worldId,
+        });
+        const unknown = await closed.agent(who, 'POST', '/context-packages', {
+          worldId: '01ARZ3NDEKTSV4RRFFQ69G5FAW',
+        });
+        expectContract('context_package_get', known, 200);
+        expect(strip(known.body)).toEqual(strip(unknown.body));
+        expect(known.json().withheld).toBe(0);
+        expect(known.json().denied).toBeUndefined();
+        expect(known.body).not.toContain(closed.ids.evPublic);
+      }
+    } finally {
+      await closed.close();
+    }
+  });
+});
+
 describe('rules_evaluate', () => {
   it('evaluates the rules on a Lage', async () => {
     const res = await f.human('POST', '/rules/evaluate', { lageId: f.ids.lage });
