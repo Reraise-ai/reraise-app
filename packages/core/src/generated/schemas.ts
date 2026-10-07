@@ -286,7 +286,7 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
       level1Result: {
         title: 'Level1Result',
         description:
-          'Answer of level1_predict. `predicted`: the engine ran and `prediction` is the latest for the Lage (an attributed estimate, never a verdict, not a card; ADR-0035, ADR-0036). `confirmation_required`: a cloud engine; `transfer` is the previewed envelope the human must confirm, nothing was sent. `no_players`: no actor card is on the Lage (or none is cleared for the engine), so there is nothing to predict. `superseded`: the board changed while the engine ran, or a later call started; the answer was dropped and nothing is stored (latest wins).',
+          'Answer of level1_predict. `predicted`: the engine ran and `prediction` is the latest for the Lage (an attributed estimate, never a verdict, not a card; ADR-0035, ADR-0036). `confirmation_required`: a cloud engine; `transfer` is the previewed envelope the human must confirm, nothing was sent. `no_players`: no actor card is on the Lage (or none is cleared for the engine), so there is nothing to predict. `superseded`: the board changed while the engine ran, or a later call started; the answer was dropped and nothing is stored (latest wins). `no_players` and `superseded` carry neither a prediction nor a transfer.',
         type: 'object',
         properties: {
           status: {
@@ -297,28 +297,58 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
           prediction: { $ref: 'level1-prediction.schema.json' },
           changes: { type: 'array', items: { $ref: '#/$defs/level1MoveChange' } },
           transfer: { $ref: 'disclosure-decision.schema.json#/$defs/transfer' },
+          skipped: {
+            description:
+              'Cards of the board that were left out of the request because they are not valid cards; each with a fixed reason, never content.',
+            type: 'array',
+            items: { $ref: '#/$defs/level1SkippedCard' },
+          },
         },
         required: ['status', 'engine'],
         additionalProperties: false,
         allOf: [
           {
             if: { properties: { status: { const: 'predicted' } }, required: ['status'] },
-            then: { properties: { prediction: true }, required: ['prediction'] },
+            then: {
+              properties: { prediction: true },
+              required: ['prediction'],
+              not: { properties: { transfer: true }, required: ['transfer'] },
+            },
           },
           {
             if: {
               properties: { status: { const: 'confirmation_required' } },
               required: ['status'],
             },
-            then: { properties: { transfer: true }, required: ['transfer'] },
+            then: {
+              properties: { transfer: true },
+              required: ['transfer'],
+              not: { properties: { prediction: true }, required: ['prediction'] },
+            },
           },
           {
             if: { properties: { status: { const: 'no_players' } }, required: ['status'] },
-            then: { properties: {} },
+            then: {
+              properties: {},
+              not: {
+                anyOf: [
+                  { properties: { prediction: true }, required: ['prediction'] },
+                  { properties: { transfer: true }, required: ['transfer'] },
+                ],
+              },
+            },
           },
           {
             if: { properties: { status: { const: 'superseded' } }, required: ['status'] },
-            then: { properties: {} },
+            then: {
+              properties: {},
+              not: {
+                anyOf: [
+                  { properties: { prediction: true }, required: ['prediction'] },
+                  { properties: { transfer: true }, required: ['transfer'] },
+                ],
+              },
+            },
           },
         ],
       },
@@ -353,6 +383,12 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
               'Breakdown of the local rules engine for the current board: per player, per option, the feature values with the card ids they come from.',
             type: 'object',
           },
+          skipped: {
+            description:
+              'Cards of the board that were left out of the request because they are not valid cards; each with a fixed reason, never content.',
+            type: 'array',
+            items: { $ref: '#/$defs/level1SkippedCard' },
+          },
         },
         required: ['lageId', 'engines'],
         additionalProperties: false,
@@ -365,6 +401,18 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
         type: 'object',
         properties: { playerCardId: { $ref: 'common.schema.json#/$defs/cardId' } },
         required: ['playerCardId'],
+        additionalProperties: false,
+      },
+      level1SkippedCard: {
+        title: 'Level1SkippedCard',
+        description:
+          'A card the engine request left out because the store returned it in a form that is not a valid card.',
+        type: 'object',
+        properties: {
+          cardId: { $ref: 'common.schema.json#/$defs/cardId' },
+          reason: { type: 'string', const: 'not a valid card; left out of the request' },
+        },
+        required: ['cardId', 'reason'],
         additionalProperties: false,
       },
     },

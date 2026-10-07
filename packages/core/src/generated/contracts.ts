@@ -186,7 +186,7 @@ export type Level1EngineId = string;
  */
 export type ConfirmationToken = string;
 /**
- * Answer of level1_predict. `predicted`: the engine ran and `prediction` is the latest for the Lage (an attributed estimate, never a verdict, not a card; ADR-0035, ADR-0036). `confirmation_required`: a cloud engine; `transfer` is the previewed envelope the human must confirm, nothing was sent. `no_players`: no actor card is on the Lage (or none is cleared for the engine), so there is nothing to predict. `superseded`: the board changed while the engine ran, or a later call started; the answer was dropped and nothing is stored (latest wins).
+ * Answer of level1_predict. `predicted`: the engine ran and `prediction` is the latest for the Lage (an attributed estimate, never a verdict, not a card; ADR-0035, ADR-0036). `confirmation_required`: a cloud engine; `transfer` is the previewed envelope the human must confirm, nothing was sent. `no_players`: no actor card is on the Lage (or none is cleared for the engine), so there is nothing to predict. `superseded`: the board changed while the engine ran, or a later call started; the answer was dropped and nothing is stored (latest wins). `no_players` and `superseded` carry neither a prediction nor a transfer.
  */
 export type Level1Result = Level1Result1 & Level1Result2;
 export type Level1Result1 =
@@ -767,6 +767,10 @@ export interface Level1Result2 {
   prediction?: Level1Prediction;
   changes?: Level1MoveChange[];
   transfer?: DisclosureTransfer;
+  /**
+   * Cards of the board that were left out of the request because they are not valid cards; each with a fixed reason, never content.
+   */
+  skipped?: Level1SkippedCard[];
 }
 /**
  * Result of a Level1Engine (ADR-0035): for each player on a Lage, the engine's predicted next move out of a closed set of move options, with the engine's own confidence and the ids of the on-board cards it used. An attributed estimate ('<engine> estimates ...'), never a verdict: it is not a card, does not count as a decision, does not trigger rules, does not enter statistics and is never shared (ADR-0036). `predictedMove` is one of `moveOptions` and every id in `cardIds` names a card of the request (checked by the conformance kit and the cross-check `level1-move`).
@@ -846,6 +850,13 @@ export interface DisclosureModelRequest {
   outputSchema?: Record<string, unknown>;
 }
 /**
+ * A card the engine request left out because the store returned it in a form that is not a valid card.
+ */
+export interface Level1SkippedCard {
+  cardId: CardId;
+  reason: 'not a valid card; left out of the request';
+}
+/**
  * Parameters of the human-only level1_get: the Lage (path) and, on demand, the engine's basis.
  */
 export interface Level1GetRequest {
@@ -867,6 +878,10 @@ export interface Level1State {
    * Breakdown of the local rules engine for the current board: per player, per option, the feature values with the card ids they come from.
    */
   basis?: Record<string, unknown>;
+  /**
+   * Cards of the board that were left out of the request because they are not valid cards; each with a fixed reason, never content.
+   */
+  skipped?: Level1SkippedCard[];
 }
 /**
  * Body of the human-only level1_escalate: open a level-2 board analysis for one player of the Lage's latest prediction (ADR-0035). The new Lage asks for that player's next move, with the engine's move options as its options and the cards the engine used placed on it; the prediction itself is not copied. It is linked to the source Lage with a `based_on` edge.

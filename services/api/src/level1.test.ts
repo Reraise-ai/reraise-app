@@ -818,6 +818,133 @@ describe('escalation to a level-2 board', () => {
   });
 });
 
+describe('escalation inherits the most restrictive clearance', () => {
+  const OPEN_TO_MODELS = `rules:
+  - { id: screen-all, effect: allow, targets: [screen], match: {} }
+  - { id: models-all, effect: allow, targets: [local_model], match: {} }
+`;
+  it('a local model that may not read the player card learns neither its title nor its moves', async () => {
+    const f = await fixture({ rules: OPEN_TO_MODELS });
+    const w = seedWorld(f);
+    // The rules deny the navy card (by id) to models, and nothing else.
+    await writeRules(
+      f,
+      `${OPEN_TO_MODELS}  - { id: hide-navy, effect: deny, targets: [local_model], match: { ids: [${w.navy}] } }\n`,
+    );
+    const made = resultOf(await predict(f, w)).prediction as Level1Prediction;
+    expect(made.players.find((p) => p.playerCardId === w.navy)).toBeDefined();
+    const res = await f.human('POST', url(w, '/escalate'), { playerCardId: w.navy });
+    expectContract('level1_escalate', res, 201);
+    const created = res.json() as Card;
+    // The human sees a neutral board: the wording does not carry the denied card's content.
+    expect(created.title).toBe('Next move of this player');
+    expect(created.lage?.options).toEqual(
+      made.players[0]!.moveOptions.map((_, i) => `Move ${i + 1}`),
+    );
+    expect(created.visibility).toBe('private');
+    // The local model may read the new (private) Lage under these rules, and finds no content.
+    const read = await f.agent('scripted', 'GET', `/lagen/${created.id}`);
+    expect(read.statusCode).toBe(200);
+    expect(read.body).not.toContain('Coastal navy');
+    expect(read.body).not.toContain('Announced night transit');
+    expect(read.body).not.toContain('Show control');
+    const pkg = await f.agent('scripted', 'POST', '/context-packages', {
+      worldId: f.worldId,
+      lageId: created.id,
+    });
+    expect(pkg.body).not.toContain('Coastal navy');
+    expect(pkg.body).not.toContain('Announced night transit');
+  });
+
+  it('keeps the wording when every source clears for the targets the new Lage clears for', async () => {
+    const f = await fixture({ rules: OPEN_TO_MODELS });
+    const w = seedWorld(f);
+    await predict(f, w);
+    const created = (
+      await f.human('POST', url(w, '/escalate'), { playerCardId: w.navy })
+    ).json() as Card;
+    expect(created.title).toBe('Next move of Coastal navy (fictional)');
+    expect(created.lage?.question).toContain('From: Reroute laden tankers');
+  });
+
+  it('takes the most restrictive class of the copied cards and is private', async () => {
+    const f = await fixture({ rules: OPEN_TO_MODELS });
+    const w = seedWorld(f);
+    await f.adapter.patch(w.navy, { class: 'C' });
+    await f.adapter.patch(w.report, { class: 'B' });
+    await predict(f, w);
+    const created = (
+      await f.human('POST', url(w, '/escalate'), { playerCardId: w.navy })
+    ).json() as Card;
+    expect(created.class).toBe('B');
+    expect(created.visibility).toBe('private');
+    await f.adapter.patch(w.report, { class: 'A' });
+    await predict(f, w);
+    const again = (
+      await f.human('POST', url(w, '/escalate'), { playerCardId: w.navy })
+    ).json() as Card;
+    expect(again.class).toBe('A');
+    // A rule that denies class A to models now hides the escalated Lage from them.
+    await writeRules(
+      f,
+      `${OPEN_TO_MODELS}  - { id: no-a, effect: deny, targets: [local_model], match: { class: [A] } }\n`,
+    );
+    expect((await f.agent('scripted', 'GET', `/lagen/${again.id}`)).statusCode).toBe(404);
+  });
+});
+
+describe('robustness of the request', () => {
+  it('leaves out a card that is not a valid card, names its id and does not fail', async () => {
+    const f = await fixture();
+    const w = seedWorld(f);
+    const broken = f.store.seed(f.store.nextExternalId(), {
+      format: 2,
+      author: 'human',
+      worlds: [f.worldId],
+      visibility: 'public',
+      type: 'organisation', // an actor without a collection is not a valid card
+      title: 'Broken actor',
+      layer: 'said',
+      originSystem: 'Synthetic desk',
+      moves: [{ text: 'Do something', source: w.report }],
+    });
+    const lage = (await f.human('GET', `/lagen/${w.lage}`)).json() as Card;
+    await f.human('PUT', `/lagen/${w.lage}`, {
+      ...lage.lage,
+      cards: [...lage.lage!.cards, { id: broken, x: 99, y: 0 }],
+      version: lage.lage!.version + 1,
+    });
+    const res = await predict(f, w);
+    expectContract('level1_predict', res, 200);
+    const out = resultOf(res);
+    expect(out.status).toBe('predicted');
+    expect(out.skipped).toEqual([
+      { cardId: broken, reason: 'not a valid card; left out of the request' },
+    ]);
+    expect(out.prediction?.players.map((p) => p.playerCardId)).not.toContain(broken);
+    const state = (await f.human('GET', url(w))).json() as Level1State;
+    expect(state.skipped?.map((c) => c.cardId)).toEqual([broken]);
+  });
+
+  it('a refused engine does not supersede a run that is still going', async () => {
+    const rec = recordingEngine();
+    const f = await fixture({ level1: { localEngine: rec.engine } });
+    const w = seedWorld(f);
+    rec.hold();
+    const running = predict(f, w);
+    await vi_waitFor(() => rec.requests.length === 1);
+    expectContract('level1_predict', await predict(f, w, { engine: 'jev' }), 409);
+    expectContract('level1_predict', await predict(f, w, { engine: 'nope' }), 404);
+    rec.release();
+    expect(resultOf(await running).status).toBe('predicted');
+  });
+});
+
+async function writeRules(f: Fixture, text: string): Promise<void> {
+  const { writeFile } = await import('node:fs/promises');
+  await writeFile(path.join(f.stateDir, 'gate-rules.yaml'), text);
+}
+
 describe('what never happens', () => {
   it('writes no prediction into a card, the store or the gate log', async () => {
     const f = await fixture();

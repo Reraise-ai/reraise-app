@@ -105,6 +105,7 @@ export function Level1Panel(props: Props) {
   const [basis, setBasis] = useState<Basis | null>(null);
   const [basisFor, setBasisFor] = useState<Set<string>>(new Set());
   const [basisNote, setBasisNote] = useState<string | null>(null);
+  const [skipped, setSkipped] = useState<string[]>([]);
   const [analysis, setAnalysis] = useState<{ id: string; title: string } | null>(null);
 
   const alive = useRef(true);
@@ -130,6 +131,7 @@ export function Level1Panel(props: Props) {
       setEngines(state.engines);
       setPrediction(state.prediction);
       setStale(state.prediction !== undefined && state.stale === true);
+      setSkipped((state.skipped ?? []).map((c) => c.cardId));
     } catch (e) {
       if (alive.current) setError(describeError(e));
     }
@@ -173,6 +175,7 @@ export function Level1Panel(props: Props) {
         });
         // Latest wins: an answer to an older call is dropped (the service does the same).
         if (!alive.current || seq !== runSeq.current) return;
+        setSkipped((res.skipped ?? []).map((c) => c.cardId));
         if (res.status === 'predicted' && res.prediction) {
           setPrediction(res.prediction as Level1Prediction);
           setStale(false);
@@ -395,6 +398,13 @@ export function Level1Panel(props: Props) {
         )}
       </div>
 
+      {skipped.length > 0 && (
+        <p className="wb-muted" role="note" data-testid="level1-skipped">
+          Left out of the request because the store gave them in a form that is not a valid card:{' '}
+          {skipped.map((id) => titleOf(id)).join(', ')}.
+        </p>
+      )}
+
       {preview && (
         <div data-testid="level1-preview">
           <p className="wb-warning" role="note">
@@ -576,7 +586,7 @@ function BasisView(props: {
         <thead>
           <tr>
             <th scope="col">Move</th>
-            <th scope="col">Share</th>
+            <th scope="col">Share (0 to 1)</th>
             <th scope="col">Based on</th>
           </tr>
         </thead>
@@ -587,7 +597,7 @@ function BasisView(props: {
                 {o.move}
                 {o.excluded && <span className="wb-muted"> (removed: crosses a red line)</span>}
               </th>
-              <td>{Math.round(o.probability * 100)} %</td>
+              <td>{o.probability.toFixed(2)}</td>
               <td>
                 {Object.entries(o.features)
                   .filter(([, f]) => f.value > 0)

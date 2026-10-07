@@ -180,6 +180,39 @@ describe('Level 1 panel: estimates', () => {
   });
 });
 
+describe('Level 1 panel: cards left out', () => {
+  it('lists the cards the service left out of the request and shows the basis on the 0 to 1 scale', async () => {
+    const api = mock();
+    const real = api.fetch;
+    const fetchImpl = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const res = await real(input, init);
+      if (init?.method === 'POST' && String(input).endsWith('/level1')) {
+        const body = (await res.json()) as object;
+        return new Response(
+          JSON.stringify({
+            ...body,
+            skipped: [{ cardId: ORG_B, reason: 'not a valid card; left out of the request' }],
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        );
+      }
+      return res;
+    }) as typeof fetch;
+    saveSession({ baseUrl: BASE, token: TOKEN });
+    render(<App fetchImpl={fetchImpl} pollIntervalMs={30} level1DebounceMs={DEBOUNCE} />);
+    await userEvent.click(await screen.findByTestId(`lage-open-${LAGE_ID}`));
+    await waitFor(() =>
+      expect((screen.getByTestId('level1-run') as HTMLButtonElement).disabled).toBe(false),
+    );
+    await userEvent.click(screen.getByTestId('level1-run'));
+    expect((await screen.findByTestId('level1-skipped')).textContent).toMatch(/Tanker consortium/);
+    await userEvent.click(await screen.findByTestId(`level1-basis-toggle-${ORG_A}`));
+    const row = await screen.findByTestId(`level1-basis-option-${ORG_A}-0`);
+    expect(row.textContent).toMatch(/0\.58/);
+    expect(row.textContent).not.toMatch(/%/);
+  });
+});
+
 describe('Level 1 panel: what-if and stale', () => {
   it('runs the local engine again after an assumption changed, and shows what moved', async () => {
     const api = mock();

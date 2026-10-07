@@ -159,7 +159,7 @@ export class Level1EngineRegistry {
     const out: Level1EngineInfo[] = [
       {
         engine: this.local.engine,
-        label: 'Local rules engine',
+        label: 'Local rules engine (runs in this process; nothing leaves it)',
         target: 'local_model',
         deterministic: this.local.deterministic,
         available: true,

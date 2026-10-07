@@ -20,6 +20,7 @@ import type {
   Level1Result,
   Level1State,
   Level1Trigger,
+  DisclosureTarget,
 } from '@worldbuilder/core';
 import { computePayloadHash } from '@worldbuilder/core';
 import {
@@ -35,6 +36,7 @@ import {
   type MoveChange,
 } from '@worldbuilder/level1-engines';
 import { validators } from './contract.js';
+import { newUlid } from './util.js';
 import type { Level1EngineRegistry } from './level1-engines.js';
 import { readLage } from './lage.js';
 import { HttpError } from './problem.js';
@@ -49,6 +51,7 @@ export const MAX_KEPT_PREDICTIONS = 200;
 
 const checkRequest = validators.strict('level1-prediction.schema.json#/$defs/request');
 const checkDraft = validators.strict('card.schema.json#/$defs/draft');
+const checkCard = validators.strict('card.schema.json');
 
 /** Which gate target clears the cards of a request. */
 type Mode = 'screen' | 'cloud_model';
@@ -59,7 +62,16 @@ interface Built {
   readonly cards: Card[];
   /** Undefined when the Lage has no player. */
   readonly request: Level1PredictionRequest | undefined;
+  /** Cards left out because the store gave them in a form that is not a valid card. */
+  readonly skipped: SkippedCard[];
 }
+
+type SkippedCard = { cardId: string; reason: typeof SKIPPED_REASON };
+const SKIPPED_REASON = 'not a valid card; left out of the request' as const;
+/** Targets of models: what a new Lage card is compared on when it copies content (H1). */
+const MODEL_TARGETS = ['local_model', 'cloud_model'] as const;
+/** Sensitivity classes, most restrictive first (ADR-0023: class A is the most sensitive). */
+const CLASS_ORDER = ['A', 'B', 'C'] as const;
 
 interface Kept {
   readonly prediction: Level1Prediction;
@@ -120,9 +132,15 @@ export class Level1Service {
     const lage = await readLage(this.s, lageId);
     if (!lage) throw new HttpError(404, 'unknown Lage');
     const placed: Card[] = [];
+    const skipped: SkippedCard[] = [];
+    const usable = (card: Card): boolean => {
+      if (checkCard(card).ok) return true;
+      skipped.push({ cardId: card.id, reason: SKIPPED_REASON });
+      return false;
+    };
     for (const p of lage.lage.cards) {
       const card = await this.s.storage.read(p.id);
-      if (!card) continue;
+      if (!card || !usable(card)) continue;
       if (card.type === 'assumption') {
         const stance = await stanceFor(this.s, card.id);
         if (stance?.position === 'rejected') continue; // the stance itself never leaves
@@ -132,11 +150,13 @@ export class Level1Service {
     const onLage = new Set(placed.map((c) => c.id));
     const candidates = [
       ...placed,
-      ...(await this.ruleCards(lage)).filter((c) => !onLage.has(c.id)).slice(0, MAX_RULE_CARDS),
+      ...(await this.ruleCards(lage))
+        .filter((c) => !onLage.has(c.id) && usable(c))
+        .slice(0, MAX_RULE_CARDS),
     ];
     const cards = await this.clearedFor(candidates, mode, log);
     const players = cards.filter((c) => onLage.has(c.id) && PLAYER_TYPES.has(c.type));
-    if (players.length === 0) return { lage, cards, request: undefined };
+    if (players.length === 0) return { lage, cards, request: undefined, skipped };
 
     const assumptions = new Set(cards.filter((c) => c.type === 'assumption').map((c) => c.id));
     const kept =
@@ -161,7 +181,7 @@ export class Level1Service {
     };
     const checked = checkRequest(request);
     if (!checked.ok) throw new HttpError(500, 'the Lage could not be turned into a valid request');
-    return { lage, cards, request };
+    return { lage, cards, request, skipped };
   }
 
   // ---- reading -------------------------------------------------------------------------------
@@ -176,12 +196,30 @@ export class Level1Service {
     }
   }
 
+  /** Number a call of this Lage; the numbers are pruned like the kept predictions. */
+  private begin(lageId: string): number {
+    const call = ++this.counter;
+    this.newest.delete(lageId);
+    this.newest.set(lageId, call);
+    while (this.newest.size > MAX_KEPT_PREDICTIONS) {
+      const oldest = this.newest.keys().next().value;
+      if (oldest === undefined) break;
+      this.newest.delete(oldest);
+    }
+    return call;
+  }
+
   async state(lageId: string, explain: boolean): Promise<Level1State> {
     if (!(await readLage(this.s, lageId))) throw new HttpError(404, 'unknown Lage');
     const engines = await this.registry.list();
     const kept = this.latest.get(lageId);
     if (!kept) return { lageId, engines };
-    const { request } = await this.build(lageId, kept.mode, kept.prediction.trigger, false);
+    const { request, skipped } = await this.build(
+      lageId,
+      kept.mode,
+      kept.prediction.trigger,
+      false,
+    );
     const stale = request === undefined || isStale(kept.prediction, request);
     let basis: Record<string, unknown> | undefined;
     if (explain && !stale && request !== undefined && kept.mode === 'screen') {
@@ -196,6 +234,7 @@ export class Level1Service {
       prediction: kept.prediction,
       stale,
       ...(basis !== undefined ? { basis } : {}),
+      ...skippedOf(skipped),
     };
   }
 
@@ -203,16 +242,15 @@ export class Level1Service {
 
   async predict(lageId: string, body: Level1PredictRequest): Promise<Level1Result> {
     const builtIn = this.registry.resolveBuiltIn(body.engine);
-    const call = ++this.counter;
-    this.newest.set(lageId, call);
-    if (builtIn) return this.predictLocal(lageId, builtIn, body, call);
+    if (builtIn) return this.predictLocal(lageId, builtIn, body, this.begin(lageId));
 
     const found = await this.registry.resolve(body.engine);
     if (found.kind === 'unknown') throw new HttpError(404, 'unknown engine');
     if (found.kind === 'unavailable') {
       throw new HttpError(409, `the engine is not available: ${found.reason}`);
     }
-    return this.predictCloud(lageId, found.engine, body, call);
+    // Only a call that will really run takes a number: a refused one must not supersede a run.
+    return this.predictCloud(lageId, found.engine, body, this.begin(lageId));
   }
 
   private async predictLocal(
@@ -221,8 +259,8 @@ export class Level1Service {
     body: Level1PredictRequest,
     call: number,
   ): Promise<Level1Result> {
-    const { request } = await this.build(lageId, 'screen', body.trigger, true);
-    if (!request) return { status: 'no_players', engine: engine.engine };
+    const { request, skipped } = await this.build(lageId, 'screen', body.trigger, true);
+    if (!request) return { status: 'no_players', engine: engine.engine, ...skippedOf(skipped) };
     // Only this engine's own earlier answer can stand in for a re-run (never a cloud estimate).
     const held = this.latest.get(lageId)?.prediction;
     const previous = held?.engine === engine.engine ? held : undefined;
@@ -244,7 +282,7 @@ export class Level1Service {
     } catch {
       throw new HttpError(500, 'the local engine failed');
     }
-    return this.finish(lageId, engine, 'screen', prediction, changes, call);
+    return this.finish(lageId, engine, 'screen', prediction, changes, call, skipped);
   }
 
   private async predictCloud(
@@ -253,8 +291,8 @@ export class Level1Service {
     body: Level1PredictRequest,
     call: number,
   ): Promise<Level1Result> {
-    const { request, cards } = await this.build(lageId, 'cloud_model', body.trigger, true);
-    if (!request) return { status: 'no_players', engine: engine.engine };
+    const { request, cards, skipped } = await this.build(lageId, 'cloud_model', body.trigger, true);
+    if (!request) return { status: 'no_players', engine: engine.engine, ...skippedOf(skipped) };
     const envelope = level1EnvelopeFor(engine.engine, request, cards);
 
     if (body.transferId === undefined) {
@@ -268,7 +306,12 @@ export class Level1Service {
       if (!transfer) {
         throw new HttpError(403, 'the gate rules clear no card of this Lage for a cloud engine');
       }
-      return { status: 'confirmation_required', engine: engine.engine, transfer };
+      return {
+        status: 'confirmation_required',
+        engine: engine.engine,
+        transfer,
+        ...skippedOf(skipped),
+      };
     }
 
     const transfer = this.s.disclosures.get(body.transferId);
@@ -306,6 +349,7 @@ export class Level1Service {
       prediction,
       [...changedMoves(previous, prediction)],
       call,
+      skipped,
     );
   }
 
@@ -317,6 +361,7 @@ export class Level1Service {
     prediction: Level1Prediction,
     changes: readonly MoveChange[],
     call: number,
+    skipped: readonly SkippedCard[],
   ): Promise<Level1Result> {
     const superseded: Level1Result = { status: 'superseded', engine: engine.engine };
     if (this.newest.get(lageId) !== call) return superseded;
@@ -329,6 +374,7 @@ export class Level1Service {
       engine: engine.engine,
       prediction,
       ...(changes.length > 0 ? { changes: [...changes] } : {}),
+      ...skippedOf(skipped),
     };
   }
 
@@ -348,12 +394,49 @@ export class Level1Service {
       now: this.s.now,
       ...(lage.worlds ? { worlds: lage.worlds } : {}),
     });
+    const placedIds = new Set(draft.create.lage.cards.map((c) => c.id));
+    const copied = [lage, ...request.cards.filter((c) => placedIds.has(c.id))];
+    // The new Lage inherits the most restrictive clearance of what it copies (ADR-0045): its class
+    // is the most restrictive class among the copied cards and it is private.
+    const cls = CLASS_ORDER.find((c) => copied.some((x) => x.class === c));
+    const candidate = {
+      ...lage,
+      id: newUlid(),
+      visibility: 'private',
+      ...(cls ? { class: cls } : { class: undefined }),
+    } as Card;
+    // Text is copied from a card only if that card clears for every model target the new Lage
+    // card would clear for; otherwise the wording is neutral.
+    const targets: DisclosureTarget[] = [];
+    for (const t of MODEL_TARGETS) if (await this.s.gate.clears(candidate, t)) targets.push(t);
+    const clearsAll = async (card: Card): Promise<boolean> => {
+      for (const t of targets) if (!(await this.s.gate.clears(card, t))) return false;
+      return true;
+    };
+    const player = request.cards.find((c) => c.id === playerCardId);
+    const playerOk = player !== undefined && (await clearsAll(player));
+    const lageOk = await clearsAll(lage);
+    let movesOk = playerOk;
+    for (const c of request.cards)
+      if (c.rule !== undefined && !(await clearsAll(c))) movesOk = false;
+    const name = playerOk ? player.title : 'this player';
+    const options = movesOk
+      ? [...draft.create.lage.options]
+      : draft.create.lage.options.map((_, i) => `Move ${i + 1}`);
     const card = {
       format: 2,
       type: 'lage',
-      title: draft.create.title,
+      title: `Next move of ${name}`,
       ...(draft.create.worlds ? { worlds: draft.create.worlds } : {}),
-      lage: draft.create.lage,
+      visibility: 'private',
+      ...(cls ? { class: cls } : {}),
+      lage: {
+        ...draft.create.lage,
+        question: `What is the most likely next move of ${name}?${
+          lageOk ? ` (From: ${request.question})` : ''
+        }`,
+        options,
+      },
       edges: [{ target: draft.sourceLageId, kind: 'based_on', by: 'human' }],
     };
     const checked = checkDraft(card);
@@ -364,6 +447,9 @@ export class Level1Service {
     return created;
   }
 }
+
+const skippedOf = (skipped: readonly SkippedCard[]) =>
+  skipped.length > 0 ? { skipped: [...skipped] } : {};
 
 /** Map an engine failure to a problem with fixed wording (no answer text, credential or address). */
 function cloudFailure(e: unknown): HttpError {

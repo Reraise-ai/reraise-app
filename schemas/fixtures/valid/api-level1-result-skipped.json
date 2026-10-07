@@ -1,0 +1,15 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/api.schema.json#/$defs/level1Result",
+  "description": "A predicted result with an unusable card left out lists it by id.",
+  "data": {
+    "status": "no_players",
+    "engine": "local-rules",
+    "skipped": [
+      {
+        "cardId": "01M1EDEAG082WZ7T7D204BHZDC",
+        "reason": "not a valid card; left out of the request"
+      }
+    ]
+  }
+}

@@ -82,9 +82,11 @@ lists them among the human-only operations).
 - Cloud engines are configured in `<state>/level1-engines.yaml` (`schemas/level1-engines.schema.json`);
   there is none by default and the file does not exist until the user creates it. An entry has an
   id, a preset (`generic` or `jev`), an https base URL, `enabled` and optionally the path of an
-  owner-only credential file; no credential is stored in the file. An invalid file, a credential
-  file readable by others, or an id that is `local`, `local-rules` or a registered agent name
-  means no cloud engine is available and the reason is shown (fail closed).
+  owner-only credential file; no credential is stored in the file. An invalid file disables every
+  cloud engine and the reason is shown. Otherwise only the affected entry is unavailable: one that
+  is disabled, has a credential file readable by others or not readable, has the id `local`,
+  `local-rules` or the name of a registered agent connection, or has a base URL the adapter
+  refuses (fail closed, with fixed wording as the reason).
 - The Jev preset is listed as `jev`, unavailable ("not configured"), until the file has an enabled
   entry for it. Its wire format stays unconfirmed (owner decision OD-4).
 - First call, no `transferId`: the service builds the request, the envelope
@@ -100,6 +102,21 @@ lists them among the human-only operations).
   answer text, the credential and the address never appear in an error, the log or the gate log.
 - There is no automatic cloud re-run: a changed board makes the prediction stale and the board
   offers a new preview.
+
+### Escalation inherits the most restrictive clearance
+
+The new Lage copies content from other cards: the player's title, the move texts, the question of
+the source Lage, and the ids of the cards used. So it must not become a way to read what the gate
+would deny (decision of the review, 2026-10-07):
+
+- The new Lage card is private and its `class` is the most restrictive class (A before B before C)
+  among the source Lage and the cards placed on it.
+- The player's title, the move texts and the source question are copied only if the card they come
+  from (the player card; the player card and every rule card of the request for the moves; the
+  source Lage for the question) clears, for every model target (`local_model`, `cloud_model`) for
+  which the new Lage card itself would clear. Otherwise the wording is neutral: "this player",
+  "Move 1" to "Move n", no source question. The placed cards are only ids; each stays gated on its
+  own.
 
 ### What the service keeps
 

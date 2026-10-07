@@ -66,6 +66,10 @@ several.
   is removed and replaced by `level1-prediction.schema.json`; the cross-check `level1-choice`
   of [ADR-0028](0028-json-schema-contract-conventions.md) is replaced by `level1-move` and
   `level1-players`. This is a breaking change inside `v0`, which ADR-0028 allows with an ADR.
+- Amended 2026-10-07 ([ADR-0045](0045-level1-service-seam.md)): the built-in deterministic local
+  engine runs inside the service process and sends nothing, so its request is cleared as the
+  screen, not as `local_model`; a `cloud_model` engine is unchanged. An engine that runs
+  elsewhere, even on the same machine, would be cleared as `local_model`.
 - Jev is one adapter implementing `Level1Engine` with target `cloud_model`. Its wire format
   (`POST /v1/decide` with an output schema) stays inside the adapter: the adapter builds the
   output schema from the request (`predictedMove` as the enum of `moveOptions`, `confidence`,
