@@ -1,86 +1,52 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright The Worldbuilder contributors
 //
-// The registry of agent connections (ADR-0026): one small module, so that the storage format
-// can change in one place. Today: `<state>/agents.json`, owner-only, hash-only on creation.
-// Planned: `<state>/agents.yaml` validated by schemas/agent-connections.schema.json (ADR-0037);
-// replace `parseAgents`, `serializeAgents` and `AGENTS_FILE` and keep the exports below.
+// The registry of agent connections (ADR-0026, ADR-0037): `<state>/agents.yaml`, owner-only,
+// validated against schemas/agent-connections.schema.json. It stores the SHA-256 of each bearer
+// token, never the token. Removing a connection revokes it (`revokedAt`); the record stays so a
+// name is never reused for another token.
 
 import type { AgentAuthor } from '@worldbuilder/core';
 import { lstat, readFile } from 'node:fs/promises';
 import path from 'node:path';
+import { parse, stringify } from 'yaml';
 import { newToken, sha256Hex, writePrivateFile, type AgentTarget, type Principal } from './auth.js';
+import { validators } from './contract.js';
 
-export const AGENTS_FILE = 'agents.json';
+export const AGENTS_FILE = 'agents.yaml';
 
 const AGENT_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
-const MIN_TOKEN_LENGTH = 32;
+const HASH_PREFIX = 'sha256:';
 
-interface AgentRecord {
+/** One stored connection (schema `AgentConnection`). */
+export interface AgentRecord {
   readonly name: string;
   readonly target: AgentTarget;
-  readonly tokenSha256: string;
+  readonly tokenHash: string;
+  readonly createdAt: string;
+  readonly revokedAt?: string;
 }
 
-/** Parse and validate the contents of `agents.json`. Throws with a reason on any problem. */
+const checkRegistry = validators.strict('agent-connections.schema.json');
+
+/** Parse and validate the contents of `agents.yaml`. Throws with a reason on any problem. */
 export function parseAgents(text: string): AgentRecord[] {
   let data: unknown;
   try {
-    data = JSON.parse(text);
+    data = parse(text);
   } catch {
-    throw new Error('agents.json is not valid JSON');
+    throw new Error('agents.yaml is not valid YAML');
   }
-  const list = (data as { agents?: unknown } | null)?.agents;
-  if (
-    typeof data !== 'object' ||
-    data === null ||
-    Array.isArray(data) ||
-    Object.keys(data).some((k) => k !== 'agents') ||
-    !Array.isArray(list)
-  ) {
-    throw new Error('agents.json must be an object with an "agents" array');
-  }
-  const records: AgentRecord[] = [];
-  for (const [i, raw] of list.entries()) {
-    const entry = raw as Record<string, unknown> | null;
-    const where = `agents[${i}]`;
-    if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) {
-      throw new Error(`${where} must be an object`);
-    }
-    const unknownKeys = Object.keys(entry).filter(
-      (k) => !['name', 'target', 'token', 'tokenSha256'].includes(k),
-    );
-    if (unknownKeys.length > 0) throw new Error(`${where} has unknown fields`);
-    const { name, target, token, tokenSha256 } = entry;
-    if (typeof name !== 'string' || !AGENT_NAME.test(name)) {
-      throw new Error(`${where}.name must match ${AGENT_NAME.source}`);
-    }
-    if (target !== 'local_model' && target !== 'cloud_model') {
-      throw new Error(`${where}.target must be local_model or cloud_model`);
-    }
-    if ((token === undefined) === (tokenSha256 === undefined)) {
-      throw new Error(`${where} needs exactly one of token and tokenSha256`);
-    }
-    let hash: string;
-    if (token !== undefined) {
-      if (typeof token !== 'string' || token.length < MIN_TOKEN_LENGTH) {
-        throw new Error(
-          `${where}.token must be a string of at least ${MIN_TOKEN_LENGTH} characters`,
-        );
-      }
-      hash = sha256Hex(token);
-    } else {
-      if (typeof tokenSha256 !== 'string' || !/^[0-9a-f]{64}$/.test(tokenSha256)) {
-        throw new Error(`${where}.tokenSha256 must be 64 lower-case hex characters`);
-      }
-      hash = tokenSha256;
-    }
-    records.push({ name, target, tokenSha256: hash });
-  }
+  if (data === null || data === undefined) data = { connections: [] }; // an empty file
+  const checked = checkRegistry(data);
+  if (!checked.ok) throw new Error(`agents.yaml is invalid: ${checked.message}`);
+  const records = (data as { connections: AgentRecord[] }).connections;
   const names = new Set(records.map((r) => r.name));
-  const hashes = new Set(records.map((r) => r.tokenSha256));
   if (names.size !== records.length) throw new Error('agent names must be unique');
-  if (hashes.size !== records.length) throw new Error('agent tokens must be unique');
+  const active = records.filter((r) => r.revokedAt === undefined);
+  if (new Set(active.map((r) => r.tokenHash)).size !== active.length) {
+    throw new Error('agent tokens must be unique');
+  }
   return records;
 }
 
@@ -99,7 +65,7 @@ export class AgentRegistry {
     return this._error;
   }
 
-  /** Names and targets, never tokens. */
+  /** Names and targets of the active connections, never tokens. */
   get connections(): readonly { name: string; target: AgentTarget }[] {
     return [...this.byHash.values()].map(({ name, target }) => ({ name, target }));
   }
@@ -123,12 +89,11 @@ export class AgentRegistry {
     const signature = `${info.mtimeMs}:${info.size}:${info.ino}`;
     if (signature === this.signature && (this._error === undefined || !strict)) return;
     try {
-      if (!info.isFile()) throw new Error('agents.json must be a regular file, not a link');
-      if (process.platform !== 'win32' && (info.mode & 0o077) !== 0) {
-        throw new Error('agents.json must not be readable by group or others (chmod 600)');
-      }
+      assertSafeFile(info);
       const records = parseAgents(await readFile(this.file, 'utf8'));
-      this.byHash = new Map(records.map((r) => [r.tokenSha256, r]));
+      this.byHash = new Map(
+        records.filter((r) => r.revokedAt === undefined).map((r) => [r.tokenHash, r]),
+      );
       this._error = undefined;
     } catch (e) {
       this.byHash = new Map();
@@ -140,10 +105,10 @@ export class AgentRegistry {
     this.signature = signature;
   }
 
-  /** The agent connection a bearer token belongs to, if it is registered. */
+  /** The agent connection a bearer token belongs to, if it is registered and not revoked. */
   async lookup(token: string): Promise<Principal | undefined> {
     await this.refresh(false);
-    const record = this.byHash.get(sha256Hex(token));
+    const record = this.byHash.get(`${HASH_PREFIX}${sha256Hex(token)}`);
     if (!record) return undefined;
     return {
       kind: 'agent',
@@ -154,57 +119,88 @@ export class AgentRegistry {
   }
 }
 
-/** The stored form of the registry. */
-function serializeAgents(records: readonly AgentRecord[]): string {
-  return `${JSON.stringify({ agents: records }, null, 2)}\n`;
+function assertSafeFile(info: { isFile(): boolean; mode: number }): void {
+  if (!info.isFile()) throw new Error('agents.yaml must be a regular file, not a link');
+  if (process.platform !== 'win32' && (info.mode & 0o077) !== 0) {
+    throw new Error('agents.yaml must not be readable by group or others (chmod 600)');
+  }
 }
 
 async function readRecords(stateDir: string): Promise<AgentRecord[]> {
+  const file = path.join(stateDir, AGENTS_FILE);
+  let info;
   try {
-    return parseAgents(await readFile(path.join(stateDir, AGENTS_FILE), 'utf8'));
+    info = await lstat(file);
   } catch (e) {
     if ((e as NodeJS.ErrnoException).code !== 'ENOENT') throw e;
     return [];
   }
+  assertSafeFile(info);
+  return parseAgents(await readFile(file, 'utf8'));
 }
 
 const writeRecords = (stateDir: string, records: readonly AgentRecord[]) =>
-  writePrivateFile(path.join(stateDir, AGENTS_FILE), serializeAgents(records));
+  writePrivateFile(
+    path.join(stateDir, AGENTS_FILE),
+    `# Agent connections (ADR-0037). Written by "worldbuilder agent"; holds token hashes only.\n${stringify({ connections: records })}`,
+  );
 
 /**
  * Register a new agent connection and return its token, which is shown to the user once; only
- * its hash is stored. Fails if the name is taken or the existing file is invalid.
+ * its hash is stored. Fails if the name was ever used or the existing file is invalid.
  */
 export async function addAgent(
   stateDir: string,
   agent: { name: string; target: AgentTarget },
+  now: () => Date = () => new Date(),
 ): Promise<{ token: string }> {
-  const existing = await readRecords(stateDir);
   if (!AGENT_NAME.test(agent.name)) throw new Error(`agent name must match ${AGENT_NAME.source}`);
-  if (existing.some((r) => r.name === agent.name)) {
-    throw new Error(`an agent named ${agent.name} is already registered`);
+  const existing = await readRecords(stateDir);
+  const same = existing.find((r) => r.name === agent.name);
+  if (same) {
+    throw new Error(
+      same.revokedAt === undefined
+        ? `an agent named ${agent.name} is already registered`
+        : `the name ${agent.name} belonged to a revoked agent; choose another name`,
+    );
   }
   const token = newToken();
   await writeRecords(stateDir, [
     ...existing,
-    { name: agent.name, target: agent.target, tokenSha256: sha256Hex(token) },
+    {
+      name: agent.name,
+      target: agent.target,
+      tokenHash: `${HASH_PREFIX}${sha256Hex(token)}`,
+      createdAt: now().toISOString(),
+    },
   ]);
   return { token };
 }
 
-/** Names and targets of the registered connections; never tokens. */
+/** Name, target class, creation time and revocation of every connection; never tokens. */
 export async function listAgents(
   stateDir: string,
-): Promise<{ name: string; target: AgentTarget }[]> {
-  return (await readRecords(stateDir)).map(({ name, target }) => ({ name, target }));
+): Promise<{ name: string; target: AgentTarget; createdAt: string; revokedAt?: string }[]> {
+  return (await readRecords(stateDir)).map(({ name, target, createdAt, revokedAt }) => ({
+    name,
+    target,
+    createdAt,
+    ...(revokedAt !== undefined ? { revokedAt } : {}),
+  }));
 }
 
-/** Remove a connection; its token stops working at once (the running service re-reads the file). */
-export async function removeAgent(stateDir: string, name: string): Promise<void> {
+/** Revoke a connection; its token stops working at once (the running service re-reads the file). */
+export async function removeAgent(
+  stateDir: string,
+  name: string,
+  now: () => Date = () => new Date(),
+): Promise<void> {
   const existing = await readRecords(stateDir);
-  if (!existing.some((r) => r.name === name)) throw new Error(`no agent named ${name}`);
+  if (!existing.some((r) => r.name === name && r.revokedAt === undefined)) {
+    throw new Error(`no active agent named ${name}`);
+  }
   await writeRecords(
     stateDir,
-    existing.filter((r) => r.name !== name),
+    existing.map((r) => (r.name === name ? { ...r, revokedAt: now().toISOString() } : r)),
   );
 }

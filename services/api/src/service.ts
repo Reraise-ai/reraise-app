@@ -85,7 +85,7 @@ export async function createService(options: ServiceOptions): Promise<Service> {
 
   const agentsFile = path.join(stateDir, AGENTS_FILE);
   const agents = new AgentRegistry(agentsFile);
-  await agents.loadStrict(); // an unsafe or invalid agents.json refuses the start
+  await agents.loadStrict(); // an unsafe or invalid agents.yaml refuses the start
 
   const app = await buildApp({
     storage: options.storage,

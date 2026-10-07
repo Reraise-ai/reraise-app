@@ -51,6 +51,7 @@ const HUMAN_ONLY: { id: string; method: string; url: string; payload?: unknown }
   { id: 'proposal_reject', method: 'POST', url: `/proposals/${ULID}/reject`, payload: {} },
   { id: 'decision_create', method: 'POST', url: '/decisions', payload: {} },
   { id: 'decision_save', method: 'PUT', url: `/decisions/${ULID}`, payload: {} },
+  { id: 'usage_metrics_get', method: 'GET', url: '/metrics/usage' },
   { id: 'disclosure_transfer_preview', method: 'POST', url: '/disclosure/transfers', payload: {} },
   { id: 'disclosure_transfer_get', method: 'GET', url: `/disclosure/transfers/${ULID}` },
   {
@@ -404,18 +405,18 @@ describe('session token and start-up', () => {
     ).rejects.toMatchObject({ code: 'unsafe_state_dir' });
     await rm(dir, { recursive: true, force: true });
   });
-  it('refuses to start with an invalid or world-readable agents.json', async () => {
+  it('refuses to start with an invalid or world-readable agents.yaml', async () => {
     const dir = await mkdtemp(path.join(tmpdir(), 'wb-api-agents-'));
     const state = path.join(dir, 'state');
     await mkdir(state, { recursive: true, mode: 0o700 });
     const storage = new MemoryStorageAdapter(new MemoryStore(crypto.randomUUID()));
-    const file = path.join(state, 'agents.json');
-    await writeFile(file, '{"agents":[{"name":"x","target":"everyone","token":"short"}]}', {
+    const file = path.join(state, 'agents.yaml');
+    await writeFile(file, 'connections:\n  - { name: x, target: everyone, token: short }\n', {
       mode: 0o600,
     });
     await expect(createService({ storage, stateDir: state, port: PORT })).rejects.toThrow(/target/);
     if (process.platform !== 'win32') {
-      await writeFile(file, '{"agents":[]}');
+      await writeFile(file, 'connections: []\n');
       await chmod(file, 0o644);
       await expect(createService({ storage, stateDir: state, port: PORT })).rejects.toThrow(
         /chmod 600/,
@@ -436,11 +437,11 @@ describe('agent registry', () => {
     });
     expect(ok.statusCode).toBe(200);
     expect(f.service.agents.connections.map((c) => c.name)).toContain('late');
-    const file = path.join(f.stateDir, 'agents.json');
-    await writeFile(file, 'not json', { mode: 0o600 });
+    const file = path.join(f.stateDir, 'agents.yaml');
+    await writeFile(file, 'connections: [ {', { mode: 0o600 });
     const broken = await f.agent('scripted', 'GET', '/worlds');
     expect(broken.statusCode).toBe(401);
-    expect(f.service.agents.error).toMatch(/JSON/);
+    expect(f.service.agents.error).toMatch(/YAML/);
     expect(f.service.agents.connections).toEqual([]);
   });
 });

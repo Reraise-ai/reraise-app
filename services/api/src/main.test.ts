@@ -10,6 +10,7 @@ import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { parse } from 'yaml';
 import { AgentRegistry } from './agent-registry.js';
 import { main } from './main.js';
 import { createService, DEFAULT_GATE_RULES, type Service } from './service.js';
@@ -46,10 +47,10 @@ describe('worldbuilder agent add', () => {
     expect(code).toBe(0);
     const token = out.text().trim().split('\n').pop()!;
     expect(token.length).toBeGreaterThanOrEqual(43);
-    const file = path.join(state, 'agents.json');
+    const file = path.join(state, 'agents.yaml');
     const stored = await readFile(file, 'utf8');
     expect(stored).not.toContain(token);
-    expect(JSON.parse(stored).agents[0]).toMatchObject({ name: 'hermes-a', target: 'cloud_model' });
+    expect(parse(stored).connections[0]).toMatchObject({ name: 'hermes-a', target: 'cloud_model' });
     if (process.platform !== 'win32') expect((await stat(file)).mode & 0o777).toBe(0o600);
     const registry = new AgentRegistry(file);
     await registry.loadStrict();
@@ -103,7 +104,7 @@ describe('worldbuilder agent list and remove', () => {
     expect(await main(['agent', 'list', '--state', state], { stdout: list })).toBe(0);
     expect(list.text()).toBe('agent:a1\tlocal_model\nagent:a2\tcloud_model\n');
     expect(list.text()).not.toContain(token);
-    const registry = new AgentRegistry(path.join(state, 'agents.json'));
+    const registry = new AgentRegistry(path.join(state, 'agents.yaml'));
     await registry.loadStrict();
     await expect(registry.lookup(token)).resolves.toMatchObject({ name: 'a1' });
     expect(
@@ -114,7 +115,7 @@ describe('worldbuilder agent list and remove', () => {
     expect(await main(['agent', 'remove', '--name', 'a1', '--state', state], { stderr: err })).toBe(
       1,
     );
-    expect(err.text()).toContain('no agent named a1');
+    expect(err.text()).toContain('no active agent named a1');
     expect(await main(['agent', 'remove', '--state', state], { stderr: sink() })).toBe(2);
     const empty = sink();
     await main(['agent', 'list', '--state', path.join(dir, 'none')], { stdout: empty });
