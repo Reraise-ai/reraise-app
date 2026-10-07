@@ -8,6 +8,7 @@
 
 import type {
   Card,
+  CardDraft,
   DisclosureTransfer,
   Level1Engine,
   Level1Prediction,
@@ -18,7 +19,7 @@ import type {
 import { createLocalRulesEngine, type LocalRulesEngine } from '@worldbuilder/level1-engines';
 import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { expectContract, FIXTURE_RULES, makeFixture, type Fixture } from './test-helpers.js';
 
 const ENGINES_YAML = `engines:
@@ -890,6 +891,36 @@ describe('escalation inherits the most restrictive clearance', () => {
       `${OPEN_TO_MODELS}  - { id: no-a, effect: deny, targets: [local_model], match: { class: [A] } }\n`,
     );
     expect((await f.agent('scripted', 'GET', `/lagen/${again.id}`)).statusCode).toBe(404);
+  });
+});
+
+describe('escalation checks what the store wrote', () => {
+  it('refuses a card the store wrote with a weaker class than computed', async () => {
+    const f = await fixture({ rules: FIXTURE_RULES });
+    const w = seedWorld(f);
+    await f.adapter.patch(w.navy, { class: 'A' });
+    await predict(f, w);
+    const create = f.adapter.create.bind(f.adapter);
+    const spy = vi.spyOn(f.adapter, 'create').mockImplementation(async (draft, author) => {
+      const { class: _dropped, ...weaker } = draft as CardDraft & { class?: string };
+      return create(weaker as CardDraft, author);
+    });
+    const res = await f.human('POST', url(w, '/escalate'), { playerCardId: w.navy });
+    expect(spy).toHaveBeenCalled();
+    expect(res.statusCode).toBe(500);
+    expect(res.body).toContain('weaker clearance');
+  });
+
+  it('refuses a card the store wrote as visible', async () => {
+    const f = await fixture({ rules: FIXTURE_RULES });
+    const w = seedWorld(f);
+    await predict(f, w);
+    const create = f.adapter.create.bind(f.adapter);
+    vi.spyOn(f.adapter, 'create').mockImplementation(async (draft, author) =>
+      create({ ...draft, visibility: 'public' } as CardDraft, author),
+    );
+    const res = await f.human('POST', url(w, '/escalate'), { playerCardId: w.navy });
+    expect(res.statusCode).toBe(500);
   });
 });
 
