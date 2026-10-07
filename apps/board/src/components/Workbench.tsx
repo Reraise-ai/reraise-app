@@ -229,7 +229,7 @@ export function Workbench({
 
   return (
     <div className="wb-workbench" data-testid="workbench">
-      <div className="wb-canvas-wrap">
+      <main className="wb-canvas-wrap" aria-label="Board">
         <div className="wb-status" data-testid="board-status">
           <button type="button" onClick={onClose} data-testid="board-close">
             Lagen
@@ -263,7 +263,7 @@ export function Workbench({
             setSelectedEdgeKey(edgeKey);
           }}
         />
-      </div>
+      </main>
       <aside className="wb-sidebar" aria-label="Board tools">
         <ProposalsPanel
           proposals={proposals}

@@ -573,6 +573,10 @@ export function createMockApi(initial: { lage?: Lage; cards?: Card[] } = {}): Mo
       if (method === 'PUT') {
         const prev = api.stances.get(cid);
         const input = body as { position: Stance['position']; weight: number; note?: string };
+        // The contract (stance.schema.json): an integer from 1 to 3.
+        if (!Number.isInteger(input.weight) || input.weight < 1 || input.weight > 3) {
+          return problem(400, 'invalid request: /weight must be an integer from 1 to 3');
+        }
         const stance: Stance = {
           cardId: cid,
           ...input,

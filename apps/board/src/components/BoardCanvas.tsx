@@ -63,7 +63,7 @@ function Canvas(props: Props) {
 
   return (
     <div
-      className="wb-canvas-wrap"
+      className="wb-canvas-wrap wb-canvas-fill"
       data-testid="board-canvas"
       role="region"
       aria-label="Board canvas"

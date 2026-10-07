@@ -11,8 +11,8 @@ export const AGPL = 'AGPL-3.0-or-later';
 export const COPYRIGHT = 'Copyright The Worldbuilder contributors';
 
 /** Directories (relative, posix) licensed AGPL. Everything else is Apache-2.0. */
-export const AGPL_DIRS = ['apps/board', 'services/api', 'packages/mcp-server'];
-export const SCAN_ROOTS = ['apps', 'services', 'packages', 'scripts'];
+export const AGPL_DIRS = ['apps/board', 'services/api', 'packages/mcp-server', 'e2e'];
+export const SCAN_ROOTS = ['apps', 'services', 'packages', 'scripts', 'e2e'];
 /** Directories whose non-commentable files are covered by REUSE.toml. */
 export const DATA_ROOTS = [...SCAN_ROOTS, 'schemas', 'examples', 'docs', 'prototype'];
 export const EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.mjs', '.cjs', '.css', '.html']);
@@ -92,7 +92,7 @@ export function reuseLicenseFor(annotations, relPosix) {
 }
 
 function* packageDirs(repoRoot) {
-  for (const root of ['apps', 'services', 'packages']) {
+  for (const root of ['apps', 'services', 'packages', 'e2e']) {
     const abs = path.join(repoRoot, root);
     if (!existsSync(abs)) continue;
     for (const f of walk(abs)) {

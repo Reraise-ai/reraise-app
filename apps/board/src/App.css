@@ -168,6 +168,11 @@ label {
   min-height: 0;
 }
 
+.wb-canvas-fill {
+  /* The canvas fills the board area; without a height React Flow collapsed to a thin strip. */
+  height: 100%;
+}
+
 .wb-sidebar {
   overflow-y: auto;
   border-left: var(--wb-stroke) solid var(--wb-line);
@@ -287,6 +292,7 @@ label {
 
 .wb-card-title {
   font-family: var(--wb-font-display);
+  font-weight: 600;
   margin: 0 0 var(--wb-space-half);
   font-size: var(--wb-text-m);
 }

@@ -11,6 +11,6 @@ SPDX-FileCopyrightText = "The Worldbuilder contributors"
 SPDX-License-Identifier = "Apache-2.0"
 
 [[annotations]]
-path = ["apps/board/**", "services/api/**", "packages/mcp-server/**"]
+path = ["apps/board/**", "services/api/**", "packages/mcp-server/**", "e2e/**"]
 SPDX-FileCopyrightText = "The Worldbuilder contributors"
 SPDX-License-Identifier = "AGPL-3.0-or-later"

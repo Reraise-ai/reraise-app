@@ -19,13 +19,15 @@ propose. A human decides.
 
 ## Status
 
-**M0 in progress.** This repository currently contains the foundations: licensing,
-community files, tooling and package skeletons. There is no usable product yet, and no
-feature is claimed here that is not backed by an automated test.
+**M1 in progress: the end-to-end test passes locally; awaiting CI on three operating systems.**
+The board, the Board API, the `markdown-files` adapter and the MCP server work together on the
+synthetic Hormuz world (`pnpm test:e2e`, Playwright). It has run on Linux only, on a developer
+machine; CI has not run it yet, so nothing is released and no version is tagged. No feature is
+claimed here that is not backed by an automated test.
 
 ## What and why
 
-Design principles (see ADRs, implementation from M1). None of these is implemented yet:
+Design principles (see ADRs). The first slice of them is implemented and tested locally (M1, see Status):
 
 - **Files are the truth.** Worlds are Markdown with YAML front matter; any database is derived.
 - **Provenance is explicit.** Evidence, hearsay and experience are never mixed.
@@ -57,7 +59,7 @@ See [LICENSING.md](LICENSING.md) for which licence applies where.
 ## Quickstart
 
 Run the service on the synthetic Hormuz world and connect an agent over MCP. The board UI is
-available too; the end-to-end browser test is still to come, and nothing here has run in CI yet.
+available too; the end-to-end browser test (`pnpm test:e2e`) passes locally on Linux, and nothing here has run in CI yet.
 
 ```sh
 corepack enable
@@ -78,6 +80,11 @@ node services/api/dist/cli.js agent add planner --target local_model --token-fil
 WORLDBUILDER_AGENT_TOKEN_FILE=./planner.token node services/api/dist/cli.js mcp --stdio
 
 pnpm --filter @worldbuilder/board dev              # the board; paste the session token
+
+# the end-to-end test: builds, then drives the board with Playwright (Chromium)
+# once: pnpm --filter @worldbuilder/e2e exec playwright install chromium
+#       (or point PLAYWRIGHT_BROWSERS_PATH to an existing Chromium)
+pnpm test:e2e
 ```
 
 A fresh installation lets the gate show cards on your own screen only, so an agent sees no

@@ -29,7 +29,8 @@
     "check:generated": "node scripts/generate-types.mjs --check",
     "lint:openapi": "node scripts/lint-openapi.mjs",
     "check:licence-imports": "node scripts/check-licence-imports.mjs",
-    "test:hermes": "node scripts/test-hermes.mjs"
+    "test:hermes": "node scripts/test-hermes.mjs",
+    "test:e2e": "pnpm build && pnpm --filter @worldbuilder/e2e test"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
