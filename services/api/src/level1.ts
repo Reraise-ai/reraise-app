@@ -223,7 +223,9 @@ export class Level1Service {
   ): Promise<Level1Result> {
     const { request } = await this.build(lageId, 'screen', body.trigger, true);
     if (!request) return { status: 'no_players', engine: engine.engine };
-    const previous = this.latest.get(lageId)?.prediction;
+    // Only this engine's own earlier answer can stand in for a re-run (never a cloud estimate).
+    const held = this.latest.get(lageId)?.prediction;
+    const previous = held?.engine === engine.engine ? held : undefined;
     let prediction: Level1Prediction | undefined;
     let changes: MoveChange[] = [];
     try {

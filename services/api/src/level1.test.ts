@@ -677,6 +677,24 @@ describe('cloud engines', () => {
     expect(stub.calls).toHaveLength(1);
   });
 
+  it('a what-if run of the local engine never returns the estimate of a cloud engine', async () => {
+    const { f, w } = await cloud();
+    const transfer = (resultOf(await preview(f, w)) as unknown as { transfer: DisclosureTransfer })
+      .transfer;
+    const token = await confirm(f, transfer);
+    await f.human('POST', url(w), {
+      engine: 'scripted-cloud',
+      trigger: manual,
+      transferId: transfer.transferId,
+      confirmationToken: token,
+    });
+    const local = resultOf(
+      await predict(f, w, { trigger: { kind: 'assumption_changed', cardIds: [w.assumption] } }),
+    );
+    expect(local.prediction?.engine).toBe('local-rules');
+    expect(local.engine).toBe('local-rules');
+  });
+
   it('reports an engine failure with fixed wording, never the answer or the credential', async () => {
     const stub = cloudStub({ status: 500, body: `${KEY} ${PRIVATE_NOTE}` });
     const { f, w } = await cloud(ENGINES_YAML, stub);
