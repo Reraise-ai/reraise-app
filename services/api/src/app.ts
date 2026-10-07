@@ -23,6 +23,8 @@ import { Disclosures } from './disclosure.js';
 import { describeError } from './errors.js';
 import { executeOperation } from './execute.js';
 import { GateService } from './gate.js';
+import { Level1EngineRegistry, type Level1EngineRegistryOptions } from './level1-engines.js';
+import { Level1Service } from './level1.js';
 import { createMcpMount, type McpMount } from './mcp.js';
 import { handlers } from './operations.js';
 import { ReceiptStore } from './receipts.js';
@@ -52,6 +54,8 @@ export interface AppOptions {
   /** Largest accepted request body in bytes; larger bodies get 413. */
   readonly bodyLimit?: number;
   readonly syntheticStores?: readonly string[];
+  /** Level 1: an injected `fetch` for cloud engines and a replacement local engine (tests). */
+  readonly level1?: Pick<Level1EngineRegistryOptions, 'fetch' | 'localEngine'>;
   readonly logger?: FastifyBaseLogger | boolean | object;
   readonly now?: () => Date;
 }
@@ -120,7 +124,18 @@ export async function buildApp(options: AppOptions): Promise<BoardApp> {
     now,
   });
   const sessionId = sha256Hex(options.sessionToken).slice(0, 32);
+  const level1 = new Level1Service(
+    () => services,
+    new Level1EngineRegistry({
+      stateDir: options.localState.stateDir,
+      agentNames: () => options.agents.connections.map((c) => c.name),
+      ...(options.level1?.fetch ? { fetch: options.level1.fetch } : {}),
+      ...(options.level1?.localEngine ? { localEngine: options.level1.localEngine } : {}),
+      now,
+    }),
+  );
   const services: Services = {
+    level1,
     storage: options.storage,
     localState: options.localState,
     gate: gateService,

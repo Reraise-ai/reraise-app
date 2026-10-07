@@ -19,6 +19,7 @@ import { BoardCanvas } from './BoardCanvas.js';
 import { DisclosurePanel } from './DisclosurePanel.js';
 import { EdgePanel } from './EdgePanel.js';
 import { InspectorPanel } from './InspectorPanel.js';
+import { Level1Panel } from './Level1Panel.js';
 import { ProposalsPanel } from './ProposalsPanel.js';
 import { SearchPanel } from './SearchPanel.js';
 
@@ -27,7 +28,11 @@ interface Props {
   lageId: string;
   worldId: string | undefined;
   pollIntervalMs?: number;
+  /** Wait before the local level-1 engine runs again after an assumption changed (ms). */
+  level1DebounceMs?: number;
   onClose(): void;
+  /** Open another Lage, for example the board analysis made from a level-1 estimate. */
+  onOpenLage?(lageId: string): void;
 }
 
 interface Loaded {
@@ -38,7 +43,15 @@ interface Loaded {
 }
 
 /** One open Lage: canvas, search, edges, proposals, disclosure and the stance overlay. */
-export function Workbench({ client, lageId, worldId, pollIntervalMs, onClose }: Props) {
+export function Workbench({
+  client,
+  lageId,
+  worldId,
+  pollIntervalMs,
+  level1DebounceMs,
+  onClose,
+  onOpenLage,
+}: Props) {
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [message, setMessage] = useState<{ kind: 'info' | 'error'; text: string } | null>(null);
   const [proposals, setProposals] = useState<Proposal[]>([]);
@@ -302,6 +315,19 @@ export function Workbench({ client, lageId, worldId, pollIntervalMs, onClose }: 
           cardId={selectedCardId}
           stance={selectedCardId ? loaded.stances.get(selectedCardId) : undefined}
           onSaveStance={saveStance}
+        />
+        <Level1Panel
+          client={client}
+          lageId={lageId}
+          lage={lage}
+          cards={loaded.cards}
+          stances={loaded.stances}
+          onFocusCard={(id) => {
+            setSelectedEdgeKey(null);
+            setSelectedCardId(id);
+          }}
+          onOpenLage={(id) => onOpenLage?.(id)}
+          {...(level1DebounceMs !== undefined ? { debounceMs: level1DebounceMs } : {})}
         />
         <DisclosurePanel
           client={client}

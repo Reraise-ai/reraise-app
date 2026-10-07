@@ -28,6 +28,7 @@
     "@worldbuilder/core": "workspace:*",
     "@worldbuilder/disclosure-gate": "workspace:*",
     "@worldbuilder/knowledge-loop": "workspace:*",
+    "@worldbuilder/level1-engines": "workspace:*",
     "@worldbuilder/local-state": "workspace:*",
     "@worldbuilder/mcp-server": "workspace:*",
     "@worldbuilder/storage-markdown-files": "workspace:*",

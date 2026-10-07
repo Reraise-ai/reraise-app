@@ -1,0 +1,8 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/api.schema.json#/$defs/level1EscalateRequest",
+  "description": "Escalate one player.",
+  "data": {
+    "playerCardId": "01M1EDEAG082WZ7T7D204BHZDC"
+  }
+}

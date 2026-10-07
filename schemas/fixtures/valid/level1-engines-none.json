@@ -1,0 +1,6 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/level1-engines.schema.json",
+  "description": "No cloud engine: the default.",
+  "data": { "engines": [] }
+}

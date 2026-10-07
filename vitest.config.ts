@@ -37,6 +37,13 @@ export default defineConfig({
         },
       },
       {
+        resolve: {
+          alias: {
+            '@worldbuilder/level1-engines/format': fileURLToPath(
+              new URL('./packages/level1-engines/src/format.ts', import.meta.url),
+            ),
+          },
+        },
         test: {
           name: 'board',
           environment: 'jsdom',

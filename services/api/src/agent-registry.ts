@@ -26,9 +26,10 @@ const AGENT_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 /**
  * Names that act as `agent:<name>` and must not be taken by a connection because a level-1
  * engine uses them (ADR-0035, ADR-0037). No engine is configured in this build, so the ids of
- * the engines the socket names are reserved; configured engine ids are passed to `addAgent`.
+ * the built-in engine and the engines the socket names are reserved; the ids configured in
+ * `level1-engines.yaml` are passed to `addAgent` (`configuredEngineIds`).
  */
-export const RESERVED_AGENT_NAMES: readonly string[] = ['local', 'jev'];
+export const RESERVED_AGENT_NAMES: readonly string[] = ['local', 'local-rules', 'jev'];
 
 const HASH_PREFIX = 'sha256:';
 

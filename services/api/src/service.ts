@@ -13,7 +13,7 @@ import path from 'node:path';
 import { AGENTS_FILE, AgentRegistry } from './agent-registry.js';
 import { SESSION_TOKEN_FILE, newToken, writePrivateFile } from './auth.js';
 import { acquireStateLock, type StateLock } from './state-lock.js';
-import { buildApp, DEFAULT_PORT, type BoardApp } from './app.js';
+import { buildApp, DEFAULT_PORT, type AppOptions, type BoardApp } from './app.js';
 
 export interface ServiceOptions {
   readonly storage: StorageAdapter;
@@ -30,6 +30,8 @@ export interface ServiceOptions {
   readonly allowedOrigins?: readonly string[];
   readonly bodyLimit?: number;
   readonly syntheticStores?: readonly string[];
+  /** Level 1 test seams: an injected `fetch` for cloud engines, a replacement local engine. */
+  readonly level1?: AppOptions['level1'];
   /** Write a rule file that allows every card on the screen if none exists (the CLI does). */
   readonly seedDefaultGateRules?: boolean;
   readonly logger?: boolean | object;
@@ -115,6 +117,7 @@ async function assemble(
     ...(options.allowedOrigins ? { allowedOrigins: options.allowedOrigins } : {}),
     ...(options.bodyLimit !== undefined ? { bodyLimit: options.bodyLimit } : {}),
     ...(options.syntheticStores ? { syntheticStores: options.syntheticStores } : {}),
+    ...(options.level1 ? { level1: options.level1 } : {}),
     ...(options.logger !== undefined ? { logger: options.logger } : {}),
     ...(options.now ? { now: options.now } : {}),
   });

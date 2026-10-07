@@ -1,0 +1,13 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/api.schema.json#/$defs/level1EscalateRequest",
+  "description": "The prediction is never copied into the new board: the request names only the player.",
+  "expect": {
+    "keyword": "additionalProperties",
+    "instancePath": ""
+  },
+  "data": {
+    "playerCardId": "01M1EDEAG082WZ7T7D204BHZDC",
+    "predictedMove": "Lift the restrictions"
+  }
+}

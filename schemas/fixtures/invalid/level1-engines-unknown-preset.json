@@ -1,0 +1,16 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/level1-engines.schema.json",
+  "description": "Only the built-in presets exist.",
+  "expect": { "keyword": "enum", "instancePath": "/engines/0/preset" },
+  "data": {
+    "engines": [
+      {
+        "id": "other",
+        "preset": "custom",
+        "baseUrl": "https://engine.example.invalid/",
+        "enabled": true
+      }
+    ]
+  }
+}

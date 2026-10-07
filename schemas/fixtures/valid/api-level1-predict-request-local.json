@@ -1,0 +1,12 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/api.schema.json#/$defs/level1PredictRequest",
+  "description": "Run the built-in engine after the user changed an assumption.",
+  "data": {
+    "engine": "local",
+    "trigger": {
+      "kind": "assumption_changed",
+      "cardIds": ["01M1E34QM03WVTE8T1RYS3AM18"]
+    }
+  }
+}

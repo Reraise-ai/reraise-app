@@ -21,6 +21,7 @@
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
     "@worldbuilder/core": "workspace:*",
+    "@worldbuilder/level1-engines": "workspace:*",
     "vite": "^8.3.2"
   }
 }

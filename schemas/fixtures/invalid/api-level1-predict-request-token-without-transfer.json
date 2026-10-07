@@ -1,0 +1,16 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/api.schema.json#/$defs/level1PredictRequest",
+  "description": "A confirmation token without the transfer it belongs to.",
+  "expect": {
+    "keyword": "dependentRequired",
+    "instancePath": ""
+  },
+  "data": {
+    "engine": "scripted-cloud",
+    "trigger": {
+      "kind": "manual"
+    },
+    "confirmationToken": "Zm9vYmFyYmF6cXV4MTIzNDU2Nzg"
+  }
+}

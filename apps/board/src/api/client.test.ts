@@ -62,6 +62,26 @@ describe('board client', () => {
     expect(api.calls[8]!.path).toBe(`/proposals?lageId=${LAGE_ID}&changedSince=5&limit=200`);
   });
 
+  it('maps the level-1 operations to their paths and bodies', async () => {
+    const { api, client } = setup();
+    const trigger = { kind: 'manual' } as const;
+    await expect(client.level1_get(LAGE_ID)).resolves.toMatchObject({ lageId: LAGE_ID });
+    await client.level1_get(LAGE_ID, true);
+    await client.level1_predict(LAGE_ID, { engine: 'local', trigger });
+    await client
+      .level1_escalate(LAGE_ID, CARDS[0]!.id!)
+      .catch((e: unknown) => expect((e as ApiError).status).toBe(409));
+    expect(api.calls.map((c) => `${c.method} ${c.path}`)).toEqual([
+      `GET /lagen/${LAGE_ID}/level1`,
+      `GET /lagen/${LAGE_ID}/level1?explain=true`,
+      `POST /lagen/${LAGE_ID}/level1`,
+      `POST /lagen/${LAGE_ID}/level1/escalate`,
+    ]);
+    expect(api.calls[2]!.body).toEqual({ engine: 'local', trigger });
+    expect(api.calls[3]!.body).toEqual({ playerCardId: CARDS[0]!.id });
+    expect(api.calls.every((c) => c.headers['x-worldbuilder-session'] === TOKEN)).toBe(true);
+  });
+
   it('decides proposals through the human-only endpoints', async () => {
     const { api, client } = setup();
     const p = api.addProposal({

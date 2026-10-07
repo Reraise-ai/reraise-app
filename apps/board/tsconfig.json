@@ -9,7 +9,8 @@
     "declaration": false,
     "types": ["vite/client"],
     "paths": {
-      "@worldbuilder/core": ["../../packages/core/src/generated/contracts.ts"]
+      "@worldbuilder/core": ["../../packages/core/src/generated/contracts.ts"],
+      "@worldbuilder/level1-engines/format": ["../../packages/level1-engines/src/format.ts"]
     }
   },
   "include": ["src", "vite.config.ts"]

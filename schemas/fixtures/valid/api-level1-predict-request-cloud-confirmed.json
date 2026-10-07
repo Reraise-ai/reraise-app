@@ -1,0 +1,13 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/api.schema.json#/$defs/level1PredictRequest",
+  "description": "The second call of the cloud flow: the confirmed transfer and its single-use token.",
+  "data": {
+    "engine": "scripted-cloud",
+    "trigger": {
+      "kind": "manual"
+    },
+    "transferId": "01M1F9X3R0B8N3TQ1ZK7M2D5HE",
+    "confirmationToken": "Zm9vYmFyYmF6cXV4MTIzNDU2Nzg"
+  }
+}

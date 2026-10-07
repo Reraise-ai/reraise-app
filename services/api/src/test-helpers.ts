@@ -13,7 +13,7 @@ import path from 'node:path';
 import { addAgent } from './agent-registry.js';
 import type { AgentTarget } from './auth.js';
 import { loadOperations, Validators } from './contract.js';
-import { createService, type Service } from './service.js';
+import { createService, type Service, type ServiceOptions } from './service.js';
 import { newUlid } from './util.js';
 
 export const PORT = 4310;
@@ -70,6 +70,10 @@ export interface FixtureOptions {
   /** Listen on a free loopback port (real HTTP, for the MCP tests); `url` is set then. */
   readonly listen?: boolean;
   readonly now?: () => Date;
+  /** Level-1 seams: an injected `fetch` for cloud engines, a replacement local engine. */
+  readonly level1?: ServiceOptions['level1'];
+  /** Files written into the state directory before the start (owner-only, for example keys). */
+  readonly stateFiles?: Readonly<Record<string, string>>;
 }
 
 export async function makeFixture(options: FixtureOptions = {}): Promise<Fixture> {
@@ -157,6 +161,9 @@ export async function makeFixture(options: FixtureOptions = {}): Promise<Fixture
   if (options.rules !== null) {
     await writeFile(path.join(stateDir, 'gate-rules.yaml'), options.rules ?? FIXTURE_RULES);
   }
+  for (const [name, text] of Object.entries(options.stateFiles ?? {})) {
+    await writeFile(path.join(stateDir, name), text, { mode: 0o600 });
+  }
   const tokens: Record<string, string> = {};
   const agents = options.agents ?? { scripted: 'local_model', 'cloud-scripted': 'cloud_model' };
   for (const [name, target] of Object.entries(agents)) {
@@ -169,6 +176,7 @@ export async function makeFixture(options: FixtureOptions = {}): Promise<Fixture
     port: options.listen ? 0 : PORT,
     ...(options.bodyLimit !== undefined ? { bodyLimit: options.bodyLimit } : {}),
     ...(options.now ? { now: options.now } : {}),
+    ...(options.level1 ? { level1: options.level1 } : {}),
   });
   const bound = options.listen ? await service.listen() : undefined;
   const raw: Fixture['raw'] = (opts) =>
