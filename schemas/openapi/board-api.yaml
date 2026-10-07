@@ -147,6 +147,147 @@ paths:
         '413':
           $ref: '#/components/responses/TooLarge'
 
+  /lagen/{lageId}/level1:
+    parameters:
+      - name: lageId
+        in: path
+        required: true
+        schema:
+          $ref: '../api.schema.json#/$defs/level1GetRequest/properties/lageId'
+    get:
+      operationId: level1_get
+      summary: Level 1 on a Lage, the engines and the latest estimate
+      description: >-
+        Human-only. Lists the engines on offer (the built-in local engine, configured cloud
+        engines, and presets that are listed but not configured) and the latest prediction kept
+        in memory for this Lage, with `stale: true` when the board changed since it was made
+        (ADR-0035). `explain=true` adds the basis of the local engine for the current board.
+        The prediction is an attributed estimate, not a card, and is never written to a store.
+        No side effects.
+      tags: [human-only]
+      x-human-only: true
+      security:
+        - sessionToken: []
+      parameters:
+        - name: explain
+          in: query
+          schema:
+            $ref: '../api.schema.json#/$defs/level1GetRequest/properties/explain'
+      responses:
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '200':
+          description: The Level 1 state of the Lage.
+          content:
+            application/json:
+              schema:
+                $ref: '../api.schema.json#/$defs/level1State'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/HumanOnly'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      operationId: level1_predict
+      summary: Estimate each player's next move
+      description: >-
+        Human-only, and not an MCP tool (ADR-0035, ADR-0011: a prediction is the human's own
+        request). Builds the request from the cards on the Lage (actor cards are the players,
+        the user's rule cards that apply to it are added), each cleared by the disclosure gate,
+        never a stance or a pending proposal; an assumption card the user rejected is left out.
+        The built-in `local` engine runs in this process and is cleared as the screen. A cloud
+        engine follows the transfer flow of ADR-0031: the first call (no `transferId`) answers
+        `confirmation_required` with the previewed envelope and sends nothing; after
+        `disclosure_confirm` the call is repeated with the `transferId` and the single-use
+        `confirmationToken` and the engine receives exactly the confirmed objects; any change
+        of the board or the question since the preview is a 409 and needs a new preview. A late
+        answer for a board that has changed is dropped (`superseded`). The latest prediction
+        per Lage is kept in memory only.
+      tags: [human-only]
+      x-human-only: true
+      security:
+        - sessionToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../api.schema.json#/$defs/level1PredictRequest'
+      responses:
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '200':
+          description: The result of the call.
+          content:
+            application/json:
+              schema:
+                $ref: '../api.schema.json#/$defs/level1Result'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/HumanOnly'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '413':
+          $ref: '#/components/responses/TooLarge'
+        '502':
+          $ref: '#/components/responses/BadGateway'
+
+  /lagen/{lageId}/level1/escalate:
+    parameters:
+      - name: lageId
+        in: path
+        required: true
+        schema:
+          $ref: '../api.schema.json#/$defs/level1GetRequest/properties/lageId'
+    post:
+      operationId: level1_escalate
+      summary: Open a level-2 board analysis for one player
+      description: >-
+        Human-only, and not an MCP tool. Creates a new Lage card from the latest prediction of
+        this Lage for one player (ADR-0035): the question asks for that player's next move, the
+        options are the move options, the cards the engine used are placed, the user is the only
+        seat, and the new card has a `based_on` edge to the source Lage. Nothing of the
+        prediction (move, confidence) is copied. 409 when there is no prediction or it is stale.
+      tags: [human-only]
+      x-human-only: true
+      security:
+        - sessionToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../api.schema.json#/$defs/level1EscalateRequest'
+      responses:
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '201':
+          description: The new Lage card.
+          content:
+            application/json:
+              schema:
+                $ref: '../card.schema.json'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/HumanOnly'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '413':
+          $ref: '#/components/responses/TooLarge'
+
   /cards:
     get:
       operationId: cards_search
@@ -974,6 +1115,15 @@ components:
           description: Seconds to wait; present for a locked store.
           schema:
             type: string
+      content:
+        application/problem+json:
+          schema:
+            $ref: '../api.schema.json#/$defs/problem'
+    BadGateway:
+      description: >-
+        A cloud level-1 engine failed or answered something that does not fit the request (a
+        move outside the options, a card it was not sent). Fixed wording only: never the
+        engine's answer text, its credential or its address.
       content:
         application/problem+json:
           schema:

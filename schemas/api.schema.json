@@ -271,6 +271,211 @@
         }
       },
       "additionalProperties": false
+    },
+    "level1PredictRequest": {
+      "title": "Level1PredictRequest",
+      "description": "Body of the human-only level1_predict (ADR-0035, ADR-0044): run one engine on a Lage. `engine` is `local` (the built-in deterministic engine) or the id of a configured cloud engine. A cloud engine needs the transfer flow: the first call (without `transferId`) answers `confirmation_required` with the previewed envelope; after the human confirmed it (`disclosure_confirm`) the call is repeated with the `transferId` and the single-use `confirmationToken`, and only then is anything sent. `trigger` says why the engine runs; an `assumption_changed` trigger names the changed assumption cards (the service keeps those that are assumption cards of the request, and records `manual` if none is).",
+      "type": "object",
+      "properties": {
+        "engine": {
+          "description": "`local` or a configured cloud engine id.",
+          "$ref": "level1-prediction.schema.json#/$defs/engineId"
+        },
+        "trigger": {
+          "$ref": "level1-prediction.schema.json#/$defs/trigger"
+        },
+        "transferId": {
+          "$ref": "common.schema.json#/$defs/ulid"
+        },
+        "confirmationToken": {
+          "$ref": "disclosure-decision.schema.json#/$defs/confirmationToken"
+        }
+      },
+      "required": ["engine", "trigger"],
+      "additionalProperties": false,
+      "dependentRequired": {
+        "transferId": ["confirmationToken"],
+        "confirmationToken": ["transferId"]
+      }
+    },
+    "level1EngineInfo": {
+      "title": "Level1EngineInfo",
+      "description": "One engine the board may offer: the built-in local engine, a configured cloud engine, or a preset that is listed but not configured (`available: false` with the reason). A cloud engine always needs a per-transfer confirmation and never re-runs by itself.",
+      "type": "object",
+      "properties": {
+        "engine": {
+          "$ref": "level1-prediction.schema.json#/$defs/engineId"
+        },
+        "label": {
+          "$ref": "common.schema.json#/$defs/text"
+        },
+        "target": {
+          "type": "string",
+          "enum": ["local_model", "cloud_model"]
+        },
+        "deterministic": {
+          "type": "boolean"
+        },
+        "available": {
+          "type": "boolean"
+        },
+        "reason": {
+          "description": "Why the engine cannot be used; fixed wording, never a credential or an address.",
+          "$ref": "common.schema.json#/$defs/text"
+        }
+      },
+      "required": ["engine", "target", "deterministic", "available"],
+      "additionalProperties": false
+    },
+    "level1MoveChange": {
+      "title": "Level1MoveChange",
+      "description": "A player whose predicted move differs from the previous prediction (for highlighting).",
+      "type": "object",
+      "properties": {
+        "playerCardId": {
+          "$ref": "common.schema.json#/$defs/cardId"
+        },
+        "from": {
+          "$ref": "common.schema.json#/$defs/text"
+        },
+        "to": {
+          "$ref": "common.schema.json#/$defs/text"
+        },
+        "confidenceFrom": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "confidenceTo": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "required": ["playerCardId", "from", "to", "confidenceFrom", "confidenceTo"],
+      "additionalProperties": false
+    },
+    "level1Result": {
+      "title": "Level1Result",
+      "description": "Answer of level1_predict. `predicted`: the engine ran and `prediction` is the latest for the Lage (an attributed estimate, never a verdict, not a card; ADR-0035, ADR-0036). `confirmation_required`: a cloud engine; `transfer` is the previewed envelope the human must confirm, nothing was sent. `no_players`: no actor card is on the Lage (or none is cleared for the engine), so there is nothing to predict. `superseded`: the board changed while the engine ran, or a later call started; the answer was dropped and nothing is stored (latest wins).",
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["predicted", "confirmation_required", "no_players", "superseded"]
+        },
+        "engine": {
+          "$ref": "level1-prediction.schema.json#/$defs/engineId"
+        },
+        "prediction": {
+          "$ref": "level1-prediction.schema.json"
+        },
+        "changes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/level1MoveChange"
+          }
+        },
+        "transfer": {
+          "$ref": "disclosure-decision.schema.json#/$defs/transfer"
+        }
+      },
+      "required": ["status", "engine"],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "predicted"
+              }
+            },
+            "required": ["status"]
+          },
+          "then": {
+            "properties": {
+              "prediction": true
+            },
+            "required": ["prediction"]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "confirmation_required"
+              }
+            },
+            "required": ["status"]
+          },
+          "then": {
+            "properties": {
+              "transfer": true
+            },
+            "required": ["transfer"]
+          }
+        }
+      ]
+    },
+    "level1GetRequest": {
+      "title": "Level1GetRequest",
+      "description": "Parameters of the human-only level1_get: the Lage (path) and, on demand, the engine's basis.",
+      "type": "object",
+      "properties": {
+        "lageId": {
+          "$ref": "common.schema.json#/$defs/cardId"
+        },
+        "explain": {
+          "description": "Also return the basis of the local engine for the current board (the per-option breakdown behind its estimate). Ignored for a cloud engine, which gives none.",
+          "type": "boolean"
+        }
+      },
+      "required": ["lageId"],
+      "additionalProperties": false
+    },
+    "level1State": {
+      "title": "Level1State",
+      "description": "Answer of level1_get: the engines on offer and the latest prediction kept in memory for the Lage, with `stale: true` when the board changed since it was made (compared without the trigger, so undoing a change makes it current again; ADR-0035). `basis` is present only on request and only for the local engine; it is the engine's own breakdown, not a card.",
+      "type": "object",
+      "properties": {
+        "lageId": {
+          "$ref": "common.schema.json#/$defs/cardId"
+        },
+        "engines": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/level1EngineInfo"
+          }
+        },
+        "prediction": {
+          "$ref": "level1-prediction.schema.json"
+        },
+        "stale": {
+          "type": "boolean"
+        },
+        "basis": {
+          "description": "Breakdown of the local rules engine for the current board: per player, per option, the feature values with the card ids they come from.",
+          "type": "object"
+        }
+      },
+      "required": ["lageId", "engines"],
+      "additionalProperties": false,
+      "dependentRequired": {
+        "prediction": ["stale"],
+        "basis": ["prediction"]
+      }
+    },
+    "level1EscalateRequest": {
+      "title": "Level1EscalateRequest",
+      "description": "Body of the human-only level1_escalate: open a level-2 board analysis for one player of the Lage's latest prediction (ADR-0035). The new Lage asks for that player's next move, with the engine's move options as its options and the cards the engine used placed on it; the prediction itself is not copied. It is linked to the source Lage with a `based_on` edge.",
+      "type": "object",
+      "properties": {
+        "playerCardId": {
+          "$ref": "common.schema.json#/$defs/cardId"
+        }
+      },
+      "required": ["playerCardId"],
+      "additionalProperties": false
     }
   }
 }

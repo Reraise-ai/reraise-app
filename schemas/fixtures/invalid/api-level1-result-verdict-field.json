@@ -1,0 +1,14 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/api.schema.json#/$defs/level1Result",
+  "description": "There is no verdict or recommendation field.",
+  "expect": {
+    "keyword": "additionalProperties",
+    "instancePath": ""
+  },
+  "data": {
+    "status": "no_players",
+    "engine": "local-rules",
+    "verdict": "Lift the restrictions"
+  }
+}

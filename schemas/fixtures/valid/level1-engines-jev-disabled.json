@@ -1,0 +1,24 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/level1-engines.schema.json",
+  "description": "A Jev entry that is listed but not enabled, and a generic engine with a credential file.",
+  "data": {
+    "engines": [
+      {
+        "id": "jev",
+        "preset": "jev",
+        "baseUrl": "https://decide.example.invalid/",
+        "enabled": false
+      },
+      {
+        "id": "scripted-cloud",
+        "preset": "generic",
+        "baseUrl": "https://engine.example.invalid/",
+        "enabled": true,
+        "apiKeyFile": "level1-scripted.key",
+        "label": "Scripted cloud engine",
+        "timeoutMs": 20000
+      }
+    ]
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/level1-engines.schema.json",
+  "description": "A credential is never stored in the registry, only the path of a file that holds it.",
+  "expect": { "keyword": "additionalProperties", "instancePath": "/engines/0" },
+  "data": {
+    "engines": [
+      {
+        "id": "scripted-cloud",
+        "preset": "generic",
+        "baseUrl": "https://engine.example.invalid/",
+        "enabled": true,
+        "apiKey": "not-a-real-key"
+      }
+    ]
+  }
+}

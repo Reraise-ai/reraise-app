@@ -31,6 +31,7 @@ names, not addresses, and nothing fetches them. `v0` is the pre-release contract
 | `prediction.schema.json`             | estimate: phrase and ICD 203 band                                            | 0010             |
 | `disclosure-decision.schema.json`    | gate decision, transfer preview and payload hash, confirmation, share bundle | 0012, 0031, 0036 |
 | `level1-prediction.schema.json`      | level-1 request and per-player prediction                                    | 0035             |
+| `level1-engines.schema.json`         | registry of cloud level-1 engines in the state directory                     | 0035, 0045       |
 | `context-package.schema.json`        | context package for a target                                                 | 0012, 0016       |
 | `training-export-record.schema.json` | one JSONL decision trace                                                     | 0017             |
 | `finding.schema.json`                | a finding of a source connector                                              | 0014             |

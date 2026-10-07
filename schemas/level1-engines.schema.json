@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldbuilder.invalid/schemas/v0/level1-engines.schema.json",
+  "title": "Level1Engines",
+  "description": "The registry of cloud level-1 engines in the per-user state directory, <state>/level1-engines.yaml (ADR-0030, ADR-0035, ADR-0044). There is none by default. The built-in local engine needs no entry. Each entry names an engine id, the wire preset of the System One adapter and the https base URL; the credential is never stored here, only the path of an owner-only file that holds it. Nothing is sent to an engine without a hash-bound confirmation of that transfer (ADR-0031). Local state: never sent, exported or shared.",
+  "type": "object",
+  "properties": {
+    "engines": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/engine"
+      }
+    }
+  },
+  "required": ["engines"],
+  "additionalProperties": false,
+  "$defs": {
+    "engine": {
+      "title": "Level1EngineConfig",
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "The engine id, as in a prediction and as the proposal author agent:<id>. `local`, `local-rules` and the name of a registered agent connection are not allowed.",
+          "$ref": "level1-prediction.schema.json#/$defs/engineId"
+        },
+        "preset": {
+          "description": "The wire format of the adapter. `jev` is the Jev preset, whose wire format is unconfirmed (owner decision OD-4); `generic` is the generic POST /v1/decide template.",
+          "type": "string",
+          "enum": ["generic", "jev"]
+        },
+        "baseUrl": {
+          "description": "https base URL of the service (http only on a loopback address), without credentials.",
+          "type": "string",
+          "format": "uri",
+          "maxLength": 2048
+        },
+        "enabled": {
+          "description": "A listed engine that is not enabled is shown as unavailable and never called.",
+          "type": "boolean"
+        },
+        "apiKeyFile": {
+          "description": "Path of an owner-only file (mode 0600 on POSIX) that holds the bearer credential; relative paths are resolved against the state directory. Omit for a service without a credential.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024
+        },
+        "label": {
+          "description": "Display name for the board.",
+          "$ref": "common.schema.json#/$defs/text"
+        },
+        "timeoutMs": {
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 120000
+        }
+      },
+      "required": ["id", "preset", "baseUrl", "enabled"],
+      "additionalProperties": false
+    }
+  }
+}

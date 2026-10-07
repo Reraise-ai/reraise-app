@@ -1,0 +1,9 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/api.schema.json#/$defs/level1Result",
+  "description": "No actor card on the Lage.",
+  "data": {
+    "status": "no_players",
+    "engine": "local-rules"
+  }
+}

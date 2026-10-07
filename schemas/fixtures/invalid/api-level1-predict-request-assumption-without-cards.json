@@ -1,0 +1,15 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/api.schema.json#/$defs/level1PredictRequest",
+  "description": "An assumption change names the changed cards.",
+  "expect": {
+    "keyword": "required",
+    "instancePath": "/trigger"
+  },
+  "data": {
+    "engine": "local",
+    "trigger": {
+      "kind": "assumption_changed"
+    }
+  }
+}

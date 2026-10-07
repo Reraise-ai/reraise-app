@@ -1,0 +1,8 @@
+# Redocly lint ignores. Each entry needs a reason.
+#
+# The level-1 engine request is the in-process contract of the Level1Engine socket and of the
+# transfer envelope (ADR-0035, ADR-0031), not an HTTP body: the board sends a
+# Level1PredictRequest and the service builds the engine request from the cards itself.
+schemas/level1-prediction.schema.json:
+  no-unused-components:
+    - '#/$defs/request'

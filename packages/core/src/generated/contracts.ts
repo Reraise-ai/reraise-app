@@ -178,6 +178,37 @@ export type DecisionDraft = CardDraft & {
  */
 export type IsoWeek = string;
 /**
+ * Engine id, e.g. local-rules, a local model, or an external decision service. Shown as '<engine> estimates ...' and used as the proposal author agent:<engine>.
+ */
+export type Level1EngineId = string;
+/**
+ * Opaque single-use token, base64url of at least 16 random bytes (128 bits).
+ */
+export type ConfirmationToken = string;
+/**
+ * Answer of level1_predict. `predicted`: the engine ran and `prediction` is the latest for the Lage (an attributed estimate, never a verdict, not a card; ADR-0035, ADR-0036). `confirmation_required`: a cloud engine; `transfer` is the previewed envelope the human must confirm, nothing was sent. `no_players`: no actor card is on the Lage (or none is cleared for the engine), so there is nothing to predict. `superseded`: the board changed while the engine ran, or a later call started; the answer was dropped and nothing is stored (latest wins).
+ */
+export type Level1Result = Level1Result1 & Level1Result2;
+export type Level1Result1 =
+  | {
+      status: 'predicted';
+      prediction: unknown;
+    }
+  | {
+      status: 'confirmation_required';
+      transfer: unknown;
+    };
+/**
+ * The closed set of moves a player can make next: the enum of the engine's output schema for that player.
+ *
+ * @minItems 2
+ */
+export type Level1MoveOptions = Text[];
+/**
+ * sha256:<lower-case hex> over the RFC 8785 (JCS) serialisation of the preview envelope (ADR-0031, ADR-0034).
+ */
+export type PayloadHash = string;
+/**
  * A lower-case RFC 9562 UUID.
  */
 export type Uuid = string;
@@ -217,14 +248,6 @@ export type JcsHash = string;
  */
 export type StanceWeight = number;
 /**
- * sha256:<lower-case hex> over the RFC 8785 (JCS) serialisation of the preview envelope (ADR-0031, ADR-0034).
- */
-export type PayloadHash = string;
-/**
- * Opaque single-use token, base64url of at least 16 random bytes (128 bits).
- */
-export type ConfirmationToken = string;
-/**
  * A decision card: a format-2 card of type decision with exactly eleven non-empty sections (ADR-0017). Saving one is a human-only operation (ADR-0016).
  */
 export type Decision = Card & {
@@ -253,16 +276,6 @@ export type Finding1 =
   | {
       originSystem: unknown;
     };
-/**
- * Engine id, e.g. local-rules, a local model, or an external decision service. Shown as '<engine> estimates ...' and used as the proposal author agent:<engine>.
- */
-export type Level1EngineId = string;
-/**
- * The closed set of moves a player can make next: the enum of the engine's output schema for that player.
- *
- * @minItems 2
- */
-export type Level1MoveOptions = Text[];
 /**
  * Input of proposal_create. Contains no author, id or status; the server sets them.
  */
@@ -703,6 +716,159 @@ export interface UsageMetricsRequest {
   week?: IsoWeek;
 }
 /**
+ * Body of the human-only level1_predict (ADR-0035, ADR-0044): run one engine on a Lage. `engine` is `local` (the built-in deterministic engine) or the id of a configured cloud engine. A cloud engine needs the transfer flow: the first call (without `transferId`) answers `confirmation_required` with the previewed envelope; after the human confirmed it (`disclosure_confirm`) the call is repeated with the `transferId` and the single-use `confirmationToken`, and only then is anything sent. `trigger` says why the engine runs; an `assumption_changed` trigger names the changed assumption cards (the service keeps those that are assumption cards of the request, and records `manual` if none is).
+ */
+export interface Level1PredictRequest {
+  engine: Level1EngineId;
+  trigger: Level1Trigger;
+  transferId?: Ulid;
+  confirmationToken?: ConfirmationToken;
+}
+/**
+ * Why the engine ran. `assumption_changed`: the user placed, removed or edited an assumption card on the Lage (the what-if re-run; `cardIds` names the changed assumption cards). `lage_opened`: the Lage was opened. `manual`: the user asked.
+ */
+export interface Level1Trigger {
+  kind: 'lage_opened' | 'assumption_changed' | 'manual';
+  /**
+   * @minItems 1
+   */
+  cardIds?: CardId[];
+}
+/**
+ * One engine the board may offer: the built-in local engine, a configured cloud engine, or a preset that is listed but not configured (`available: false` with the reason). A cloud engine always needs a per-transfer confirmation and never re-runs by itself.
+ */
+export interface Level1EngineInfo {
+  engine: Level1EngineId;
+  label?: Text;
+  target: 'local_model' | 'cloud_model';
+  deterministic: boolean;
+  available: boolean;
+  reason?: Text;
+}
+/**
+ * A player whose predicted move differs from the previous prediction (for highlighting).
+ */
+export interface Level1MoveChange {
+  playerCardId: CardId;
+  from: Text;
+  to: Text;
+  confidenceFrom: number;
+  confidenceTo: number;
+}
+export interface Level1Result2 {
+  status: 'predicted' | 'confirmation_required' | 'no_players' | 'superseded';
+  engine: Level1EngineId;
+  prediction?: Level1Prediction;
+  changes?: Level1MoveChange[];
+  transfer?: DisclosureTransfer;
+}
+/**
+ * Result of a Level1Engine (ADR-0035): for each player on a Lage, the engine's predicted next move out of a closed set of move options, with the engine's own confidence and the ids of the on-board cards it used. An attributed estimate ('<engine> estimates ...'), never a verdict: it is not a card, does not count as a decision, does not trigger rules, does not enter statistics and is never shared (ADR-0036). `predictedMove` is one of `moveOptions` and every id in `cardIds` names a card of the request (checked by the conformance kit and the cross-check `level1-move`).
+ */
+export interface Level1Prediction {
+  engine: Level1EngineId;
+  lageId: CardId;
+  trigger: Level1Trigger;
+  /**
+   * sha256:<hex> over the RFC 8785 serialisation of the request (ADR-0034). The board shows a prediction only while its request hash equals the hash of the current request; otherwise it is stale.
+   */
+  requestHash: string;
+  /**
+   * @minItems 1
+   */
+  players: Level1PlayerPrediction[];
+  predictedAt: DateTime;
+}
+/**
+ * The engine's estimate for one player: the predicted move (one of moveOptions), the engine's calibrated confidence for it, and the ids of the on-board cards it used (at least the player card).
+ */
+export interface Level1PlayerPrediction {
+  playerCardId: CardId;
+  moveOptions: Level1MoveOptions;
+  predictedMove: Text;
+  /**
+   * The engine's own calibrated confidence for predictedMove, shown attributed to the engine. Not an ICD 203 estimate by a source (ADR-0010).
+   */
+  confidence: number;
+  /**
+   * Ids of the request cards the engine used.
+   *
+   * @minItems 1
+   */
+  cardIds: CardId[];
+}
+/**
+ * A previewed cloud_model transfer awaiting the user's confirmation (ADR-0012, ADR-0031). The record lives in memory on the service, expires 5 minutes after the preview, and is void after a restart. `cardIds` lists the ids of the objects in the envelope; `payloadHash` must be echoed by the confirmation.
+ */
+export interface DisclosureTransfer {
+  transferId: Ulid;
+  purpose: 'context_package' | 'level1' | 'export';
+  /**
+   * @minItems 1
+   */
+  cardIds: CardId[];
+  payloadHash: PayloadHash;
+  preview: DisclosurePreviewEnvelope;
+  createdAt: DateTime;
+  expiresAt: DateTime;
+  /**
+   * Who will send: the board session (token flow) or a registered MCP connection (released to that connection only).
+   */
+  requestedBy: 'board' | 'mcp_connection';
+}
+/**
+ * Exactly what would leave the device: the target, the connector, the request parameters and the canonical objects after the gate decision. The payload hash covers this envelope.
+ */
+export interface DisclosurePreviewEnvelope {
+  target: 'cloud_model';
+  connectorId: string;
+  request: DisclosureModelRequest;
+  /**
+   * @minItems 1
+   */
+  objects: Card[];
+}
+/**
+ * The request parameters that go to the model with the objects.
+ */
+export interface DisclosureModelRequest {
+  question?: Text;
+  options?: Text[];
+  /**
+   * JSON Schema the answer must follow (level 1).
+   */
+  outputSchema?: Record<string, unknown>;
+}
+/**
+ * Parameters of the human-only level1_get: the Lage (path) and, on demand, the engine's basis.
+ */
+export interface Level1GetRequest {
+  lageId: CardId;
+  /**
+   * Also return the basis of the local engine for the current board (the per-option breakdown behind its estimate). Ignored for a cloud engine, which gives none.
+   */
+  explain?: boolean;
+}
+/**
+ * Answer of level1_get: the engines on offer and the latest prediction kept in memory for the Lage, with `stale: true` when the board changed since it was made (compared without the trigger, so undoing a change makes it current again; ADR-0035). `basis` is present only on request and only for the local engine; it is the engine's own breakdown, not a card.
+ */
+export interface Level1State {
+  lageId: CardId;
+  engines: Level1EngineInfo[];
+  prediction?: Level1Prediction;
+  stale?: boolean;
+  /**
+   * Breakdown of the local rules engine for the current board: per player, per option, the feature values with the card ids they come from.
+   */
+  basis?: Record<string, unknown>;
+}
+/**
+ * Body of the human-only level1_escalate: open a level-2 board analysis for one player of the Lage's latest prediction (ADR-0035). The new Lage asks for that player's next move, with the engine's move options as its options and the cards the engine used placed on it; the prediction itself is not copied. It is linked to the source Lage with a `based_on` edge.
+ */
+export interface Level1EscalateRequest {
+  playerCardId: CardId;
+}
+/**
  * What a model or agent receives about the active world (ADR-0016, ADR-0024 item 34). Built after the disclosure gate: every item is gate-cleared for `target`; denied cards are omitted and only counted in `withheld`. Layers are never merged into a score. Only accepted content appears as items; pending proposals are listed separately. Stance data appears only for target screen; a cloud_model package carries content only with a confirmed, consumed transfer token.
  */
 export interface ContextPackage {
@@ -877,48 +1043,6 @@ export interface DisclosureDecision {
 export interface DisclosureSubject {
   kind: 'card' | 'stance';
   cardId: CardId;
-}
-/**
- * A previewed cloud_model transfer awaiting the user's confirmation (ADR-0012, ADR-0031). The record lives in memory on the service, expires 5 minutes after the preview, and is void after a restart. `cardIds` lists the ids of the objects in the envelope; `payloadHash` must be echoed by the confirmation.
- */
-export interface DisclosureTransfer {
-  transferId: Ulid;
-  purpose: 'context_package' | 'level1' | 'export';
-  /**
-   * @minItems 1
-   */
-  cardIds: CardId[];
-  payloadHash: PayloadHash;
-  preview: DisclosurePreviewEnvelope;
-  createdAt: DateTime;
-  expiresAt: DateTime;
-  /**
-   * Who will send: the board session (token flow) or a registered MCP connection (released to that connection only).
-   */
-  requestedBy: 'board' | 'mcp_connection';
-}
-/**
- * Exactly what would leave the device: the target, the connector, the request parameters and the canonical objects after the gate decision. The payload hash covers this envelope.
- */
-export interface DisclosurePreviewEnvelope {
-  target: 'cloud_model';
-  connectorId: string;
-  request: DisclosureModelRequest;
-  /**
-   * @minItems 1
-   */
-  objects: Card[];
-}
-/**
- * The request parameters that go to the model with the objects.
- */
-export interface DisclosureModelRequest {
-  question?: Text;
-  options?: Text[];
-  /**
-   * JSON Schema the answer must follow (level 1).
-   */
-  outputSchema?: Record<string, unknown>;
 }
 /**
  * Body of the human-only confirm operation (the transferId is in the path). The service rejects a payloadHash that differs from the stored one or from the hash of the current envelope, and a second confirmation (409), and an expired transfer (410).
@@ -1139,49 +1263,31 @@ export interface KnowledgeConsultResult {
   receipt: KnowledgeReceipt;
 }
 /**
- * Result of a Level1Engine (ADR-0035): for each player on a Lage, the engine's predicted next move out of a closed set of move options, with the engine's own confidence and the ids of the on-board cards it used. An attributed estimate ('<engine> estimates ...'), never a verdict: it is not a card, does not count as a decision, does not trigger rules, does not enter statistics and is never shared (ADR-0036). `predictedMove` is one of `moveOptions` and every id in `cardIds` names a card of the request (checked by the conformance kit and the cross-check `level1-move`).
+ * The registry of cloud level-1 engines in the per-user state directory, <state>/level1-engines.yaml (ADR-0030, ADR-0035, ADR-0044). There is none by default. The built-in local engine needs no entry. Each entry names an engine id, the wire preset of the System One adapter and the https base URL; the credential is never stored here, only the path of an owner-only file that holds it. Nothing is sent to an engine without a hash-bound confirmation of that transfer (ADR-0031). Local state: never sent, exported or shared.
  */
-export interface Level1Prediction {
-  engine: Level1EngineId;
-  lageId: CardId;
-  trigger: Level1Trigger;
-  /**
-   * sha256:<hex> over the RFC 8785 serialisation of the request (ADR-0034). The board shows a prediction only while its request hash equals the hash of the current request; otherwise it is stale.
-   */
-  requestHash: string;
-  /**
-   * @minItems 1
-   */
-  players: Level1PlayerPrediction[];
-  predictedAt: DateTime;
+export interface Level1Engines {
+  engines: Level1EngineConfig[];
 }
-/**
- * Why the engine ran. `assumption_changed`: the user placed, removed or edited an assumption card on the Lage (the what-if re-run; `cardIds` names the changed assumption cards). `lage_opened`: the Lage was opened. `manual`: the user asked.
- */
-export interface Level1Trigger {
-  kind: 'lage_opened' | 'assumption_changed' | 'manual';
+export interface Level1EngineConfig {
+  id: Level1EngineId;
   /**
-   * @minItems 1
+   * The wire format of the adapter. `jev` is the Jev preset, whose wire format is unconfirmed (owner decision OD-4); `generic` is the generic POST /v1/decide template.
    */
-  cardIds?: CardId[];
-}
-/**
- * The engine's estimate for one player: the predicted move (one of moveOptions), the engine's calibrated confidence for it, and the ids of the on-board cards it used (at least the player card).
- */
-export interface Level1PlayerPrediction {
-  playerCardId: CardId;
-  moveOptions: Level1MoveOptions;
-  predictedMove: Text;
+  preset: 'generic' | 'jev';
   /**
-   * The engine's own calibrated confidence for predictedMove, shown attributed to the engine. Not an ICD 203 estimate by a source (ADR-0010).
+   * https base URL of the service (http only on a loopback address), without credentials.
    */
-  confidence: number;
+  baseUrl: string;
   /**
-   * Ids of the request cards the engine used.
-   *
-   * @minItems 1
+   * A listed engine that is not enabled is shown as unavailable and never called.
    */
-  cardIds: CardId[];
+  enabled: boolean;
+  /**
+   * Path of an owner-only file (mode 0600 on POSIX) that holds the bearer credential; relative paths are resolved against the state directory. Omit for a service without a credential.
+   */
+  apiKeyFile?: string;
+  label?: Text;
+  timeoutMs?: number;
 }
 /**
  * One player to predict: an actor card on the Lage and its move options.
