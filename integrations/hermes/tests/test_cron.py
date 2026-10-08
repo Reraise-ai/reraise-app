@@ -628,3 +628,21 @@ def test_the_pending_limit_is_configurable(env: Env) -> None:
     _outbox(env, 30)
     env.write_conf(WB_PENDING_MAX_AGE_HOURS="48")
     assert env.run("wb-nightly-validate.sh").returncode == 0
+
+
+def test_validate_reports_a_fresh_blocked_entry_without_failing(env: Env) -> None:
+    entries = _outbox(env, 2)
+    pending = Path(env.settings["WB_PENDING_FILE"])
+    entries[0]["status"] = "blocked_too_long"
+    pending.write_text(json.dumps(entries[0]) + "\n", encoding="utf-8")
+    result = env.run("wb-nightly-validate.sh")
+    assert result.returncode == 0 and "0 pending, 1 blocked" in result.stdout and "too_long" in result.stdout
+
+
+def test_validate_reports_a_damaged_entry_with_exit_2(env: Env) -> None:
+    entries = _outbox(env, 2)
+    pending = Path(env.settings["WB_PENDING_FILE"])
+    del entries[0]["agent"]
+    pending.write_text(json.dumps(entries[0]) + "\n", encoding="utf-8")
+    result = env.run("wb-nightly-validate.sh")
+    assert result.returncode == 2 and entries[0]["outboxId"] in result.stdout

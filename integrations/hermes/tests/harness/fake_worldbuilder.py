@@ -275,7 +275,11 @@ class FakeWorldbuilder(FakeMcpTransport):
         self._check_request("api.schema.json#/$defs/proposalListRequest", arguments)
         status = arguments.get("status")
         found = [p for p in self.proposals if status is None or p["status"] == status]
-        return {"proposals": found}
+        # Like the real store: pages of `limit`, and a nextCursor on every page (also the last one).
+        start = int(arguments.get("cursor", "0")) if str(arguments.get("cursor", "0")).isdigit() else 0
+        limit = arguments.get("limit", 50)
+        page = found[start : start + limit]
+        return {"proposals": page, "nextCursor": str(start + len(page))}
 
     # --- memory_route (stand-in for the ordered rules of ADR-0042) ---------------------------
 

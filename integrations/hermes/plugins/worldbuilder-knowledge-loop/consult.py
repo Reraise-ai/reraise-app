@@ -9,6 +9,7 @@ appended to the user message of that turn, never to the system prompt
 
 from __future__ import annotations
 
+import logging
 import re
 from typing import Any
 
@@ -22,7 +23,9 @@ from .session import (
     explicit_task_ref,
     message_text,
 )
-from .settings import ULID_RE, Settings
+from .settings import ULID_RE, Settings, hook_budget
+
+logger = logging.getLogger(__name__)
 
 HASH_RE = re.compile(r"^sha256:[0-9a-f]{64}$")
 _RESULTS = ("cards", "nothing_found", "confirmation_required")
@@ -139,12 +142,19 @@ def make_pre_llm_call(
         with store.session_lock(key):
             return _turn(key, user_message, is_first_turn)
 
-    def _flush(state: TaskState) -> None:
-        if flusher is None or not flusher.has_open():
+    def _flush(state: TaskState, deadline: Deadline) -> None:
+        """Offer the queued memory writes with what is left of this turn's budget. A failure here must
+        never change the consult result."""
+        if flusher is None:
             return
-        text = flusher.flush(Deadline(15.0)).notice()
-        if text:
-            state.notices.append(text)
+        try:
+            if not flusher.has_open():
+                return
+            text = flusher.flush(deadline).notice()
+            if text:
+                state.notices.append(text)
+        except Exception as exc:
+            logger.warning("worldbuilder-knowledge-loop: flush failed (%s)", type(exc).__name__)
 
     def _with_notices(state: TaskState, context: str | None) -> dict[str, str] | None:
         notices, state.notices = state.notices, []
@@ -152,6 +162,7 @@ def make_pre_llm_call(
         return {"context": "\n\n".join(parts)} if parts else None
 
     def _turn(key: str, user_message: Any, is_first_turn: bool) -> dict[str, str] | None:
+        deadline = Deadline(hook_budget())  # one budget per turn, shared by the consult and the flush
         text = message_text(user_message)
         named = explicit_task_ref(text)
         state = store.get(key)
@@ -164,7 +175,7 @@ def make_pre_llm_call(
             )
             store.put(key, state)
         elif not state.needs_consult:
-            _flush(state)  # the service was reachable at the consult; offer what was queued since
+            _flush(state, deadline)  # the service was reachable at the consult; offer what was queued since
             return _with_notices(state, None)  # consulted already: no reminders, only pending notices
         # Otherwise the last consult failed or waits for a cloud confirmation: ask again.
 
@@ -178,7 +189,7 @@ def make_pre_llm_call(
         if state.consult is not None and state.consult.transfer_id:
             arguments["transferId"] = state.consult.transfer_id
         try:
-            data = client.call("knowledge_consult", arguments)
+            data = client.call("knowledge_consult", arguments, deadline)
             info, package = parse_consult(data, state.task_ref)
         except WorldbuilderError as exc:
             state.consult = None
@@ -187,7 +198,7 @@ def make_pre_llm_call(
         state.failure = None
         previous = state.consult
         state.consult = info
-        _flush(state)  # the Worldbuilder answered: offer every queued memory write now
+        _flush(state, deadline)  # the Worldbuilder answered: offer every queued memory write now
         if info.result == "confirmation_required" and previous is not None and previous.result == info.result:
             return _with_notices(
                 state,

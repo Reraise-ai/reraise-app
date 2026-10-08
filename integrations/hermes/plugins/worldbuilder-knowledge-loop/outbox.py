@@ -7,8 +7,11 @@
 mode 0600 in a 0700 folder. The content of a memory write stays on this device in this file only.
 An entry is ``pending`` (not yet offered), ``submitting`` (a proposal call was started, the outcome
 unknown), ``done`` (offered as a card proposal; a tombstone without content), ``blocked_secret``
-(the classifier found it secret-like: never sent, surfaced every night) or ``dismissed`` (the owner
-dealt with a blocked entry; a tombstone without content).
+(the classifier found it secret-like), ``blocked_sensitive`` (personal data or a local reference),
+``blocked_too_long`` (over the 4000 characters ``memory_route`` accepts; never classified) -- all
+three are never sent and surfaced every night --, ``fault`` (an entry that lacks required keys; the
+original status is kept as ``faultWas``) or ``dismissed`` (the owner dealt with a blocked entry; a
+tombstone without content). Tombstones are never compacted away yet (follow-up).
 
 Standard library only, no relative imports: the plugin imports it, and the nightly job runs it
 as a script (``python outbox.py check``) without Hermes, without the Worldbuilder and without ``wb``.
@@ -25,6 +28,7 @@ import contextlib
 import hashlib
 import json
 import os
+import re
 import secrets
 import sys
 import tempfile
@@ -47,6 +51,10 @@ FILE_NAME = "pending-write-back.jsonl"
 MARKER_TAG = "pending-write-back"
 MAX_AGE_HOURS = 24.0
 OPEN_STATUSES = ("pending", "submitting")
+BLOCKED_STATUSES = ("blocked_secret", "blocked_sensitive", "blocked_too_long")
+KNOWN_STATUSES = (*OPEN_STATUSES, "done", *BLOCKED_STATUSES, "dismissed")
+_REQUIRED = ("outboxId", "agent", "taskRef", "createdAt", "contentHash", "status")
+_ULID = re.compile(r"^[0-7][0-9A-HJKMNP-TV-Z]{25}$")
 _CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
 _PROCESS_LOCK = threading.RLock()
 
@@ -54,6 +62,14 @@ _PROCESS_LOCK = threading.RLock()
 def default_path() -> str:
     home = os.environ.get("HERMES_HOME") or os.path.join(os.path.expanduser("~"), ".hermes")
     return os.path.join(home, "worldbuilder", FILE_NAME)
+
+
+def tighten_dir(folder: str) -> None:
+    """Mode 0700 for a folder that holds memory text, also when it already existed with wider rights.
+    POSIX only: on Windows the folder keeps the access rights it inherits (no ACL tightening here)."""
+    if os.name == "posix":
+        with contextlib.suppress(OSError):
+            os.chmod(folder, 0o700)
 
 
 def new_outbox_id(now_ms: int | None = None) -> str:
@@ -82,6 +98,25 @@ def _parse_time(value: Any) -> datetime | None:
         return None
 
 
+def _validated(entry: dict[str, Any]) -> dict[str, Any]:
+    """The entry itself when it has every required key of its status, else a ``fault`` copy that keeps
+    the rest (a hand-edited or damaged line must neither crash a flush nor vanish)."""
+    if entry.get("status") == "fault":
+        return entry  # already marked (by an earlier read that rewrote the file)
+    problems = [k for k in _REQUIRED if not isinstance(entry.get(k), str) or not entry.get(k)]
+    if entry.get("status") not in KNOWN_STATUSES:
+        problems.append("status")
+    elif entry["status"] in (*OPEN_STATUSES, *BLOCKED_STATUSES) and not (
+        isinstance(entry.get("content"), str) and entry["content"].strip()
+    ):
+        problems.append("content")
+    if not _ULID.match(str(entry.get("outboxId", ""))):
+        problems.append("outboxId")
+    if not problems:
+        return entry
+    return {**entry, "status": "fault", "faultWas": str(entry.get("status")), "faultKeys": sorted(set(problems))}
+
+
 class Outbox:
     def __init__(self, path: str | None = None) -> None:
         self.path = path or default_path()
@@ -91,6 +126,7 @@ class Outbox:
     def _ensure_dir(self) -> None:
         folder = os.path.dirname(self.path) or "."
         os.makedirs(folder, mode=0o700, exist_ok=True)
+        tighten_dir(folder)
 
     @contextlib.contextmanager
     def _locked(self) -> Iterator[None]:
@@ -113,6 +149,38 @@ class Outbox:
                         msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
                 os.close(fd)
 
+    @contextlib.contextmanager
+    def flush_lock(self) -> Iterator[bool]:
+        """A non-blocking exclusive lock on ``<outbox>.flush`` for the whole of a flush, shared by every
+        process (two Hermes processes, a gateway and a cron agent). Yields False when another flush
+        holds it, and also when locking is not possible at all: skipping a flush is the safe failure,
+        a second flush could create a second proposal."""
+        fd = -1
+        got = False
+        try:
+            self._ensure_dir()
+            fd = os.open(self.path + ".flush", os.O_RDWR | os.O_CREAT, 0o600)
+            if fcntl is not None:
+                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                got = True
+            elif msvcrt is not None:  # pragma: no cover - Windows
+                os.lseek(fd, 0, os.SEEK_SET)
+                msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
+                got = True
+        except OSError:
+            got = False
+        try:
+            yield got
+        finally:
+            if fd >= 0:
+                with contextlib.suppress(OSError):
+                    if got and fcntl is not None:
+                        fcntl.flock(fd, fcntl.LOCK_UN)
+                    elif got and msvcrt is not None:  # pragma: no cover - Windows
+                        os.lseek(fd, 0, os.SEEK_SET)
+                        msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
+                os.close(fd)
+
     def _read_raw(self) -> tuple[list[dict[str, Any]], list[str]]:
         """(entries, unreadable lines). A missing file is an empty outbox."""
         try:
@@ -131,7 +199,7 @@ class Outbox:
                 bad.append(line)
                 continue
             if isinstance(value, dict) and isinstance(value.get("outboxId"), str) and value.get("status"):
-                entries.append(value)
+                entries.append(_validated(value))
             else:
                 bad.append(line)
         return entries, bad
@@ -160,7 +228,9 @@ class Outbox:
 
     # --- the operations -----------------------------------------------------------------------
 
-    def append(self, agent: str, task_ref: str, content: str, now: datetime | None = None) -> dict[str, Any]:
+    def append(
+        self, agent: str, task_ref: str, content: str, now: datetime | None = None, status: str = "pending"
+    ) -> dict[str, Any]:
         """Queue one memory write. Raises OSError when it cannot be made durable."""
         entry = {
             "v": 1,
@@ -169,7 +239,7 @@ class Outbox:
             "taskRef": task_ref,
             "createdAt": _stamp(now),
             "contentHash": content_hash(content),
-            "status": "pending",
+            "status": status,
             "content": content,
         }
         line = (json.dumps(entry, separators=(",", ":"), ensure_ascii=False) + "\n").encode("utf-8")
@@ -221,6 +291,10 @@ class Outbox:
     def mark_blocked_secret(self, outbox_id: str, rule_id: str) -> bool:
         return self.update(outbox_id, status="blocked_secret", ruleId=rule_id)
 
+    def mark_blocked(self, outbox_id: str, status: str, rule_id: str) -> bool:
+        assert status in BLOCKED_STATUSES
+        return self.update(outbox_id, status=status, ruleId=rule_id)
+
     def dismiss(self, outbox_id: str) -> bool:
         return self.update(outbox_id, status="dismissed", content=None)
 
@@ -230,7 +304,8 @@ class Outbox:
         moment = now or datetime.now(UTC)
         entries = self.entries()
         pending = [e for e in entries if e["status"] in OPEN_STATUSES]
-        blocked = [e for e in entries if e["status"] == "blocked_secret"]
+        blocked = [e for e in entries if e["status"] in BLOCKED_STATUSES]
+        faulty = [e for e in entries if e["status"] == "fault"]
 
         def age_hours(entry: dict[str, Any]) -> float:
             created = _parse_time(entry.get("createdAt"))
@@ -241,9 +316,11 @@ class Outbox:
         return {
             "pending": [e["outboxId"] for e in pending],
             "blocked": [e["outboxId"] for e in blocked],
+            "blockedReasons": {e["outboxId"]: e["status"].removeprefix("blocked_") for e in blocked},
+            "faultEntries": [e["outboxId"] for e in faulty],
             "stale": [e["outboxId"] for e in stale],
             "oldestAgeHours": max((age_hours(e) for e in pending + blocked), default=0.0),
-            "faults": self.faults(),
+            "faults": self.faults() + len(faulty),
         }
 
 
@@ -252,8 +329,7 @@ def render_report(summary: dict[str, Any], max_age_hours: float) -> str:
     lines = []
     if summary["pending"] or summary["blocked"]:
         lines.append(
-            f"Worldbuilder pending write-back: {len(summary['pending'])} pending, "
-            f"{len(summary['blocked'])} blocked as secret-like."
+            f"Worldbuilder pending write-back: {len(summary['pending'])} pending, {len(summary['blocked'])} blocked."
         )
     if summary["pending"]:
         lines.append(
@@ -262,8 +338,9 @@ def render_report(summary: dict[str, Any], max_age_hours: float) -> str:
         )
     if summary["blocked"]:
         lines.append(
-            "blocked as secret-like (never sent; review them in the outbox file and dismiss with "
-            "`outbox.py dismiss <id>`): " + ", ".join(summary["blocked"])
+            "blocked (secret-like, sensitive or too long: never sent; review them in the outbox file and "
+            "dismiss with `outbox.py dismiss <id>`): "
+            + ", ".join(f"{i} ({summary['blockedReasons'].get(i, '?')})" for i in summary["blocked"])
         )
     if summary["stale"]:
         lines.append(
@@ -272,7 +349,8 @@ def render_report(summary: dict[str, Any], max_age_hours: float) -> str:
             "since, or its flush keeps failing."
         )
     if summary["faults"]:
-        lines.append(f"{summary['faults']} unreadable line(s) in the outbox file: it must be repaired by hand.")
+        extra = f" (entries: {', '.join(summary['faultEntries'])})" if summary["faultEntries"] else ""
+        lines.append(f"{summary['faults']} unreadable or incomplete line(s) in the outbox file{extra}: repair by hand.")
     return "\n".join(lines)
 
 
@@ -307,7 +385,7 @@ def main(argv: list[str]) -> int:
                 print("usage: outbox.py dismiss <outboxId>", file=sys.stderr)
                 return 2
             entry = next((e for e in outbox.entries() if e["outboxId"] == rest[1]), None)
-            if entry is None or entry["status"] != "blocked_secret":
+            if entry is None or entry["status"] not in BLOCKED_STATUSES:
                 print("outbox.py: no blocked entry with that id", file=sys.stderr)
                 return 2
             outbox.dismiss(rest[1])

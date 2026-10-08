@@ -124,8 +124,9 @@ These defaults are decisions with a safer alternative; they are recorded in
   prefixed `[pending write-back <id>]` and it is recorded in an owner-only file
   (`$HERMES_HOME/worldbuilder/pending-write-back.jsonl`, mode 0600, content stays on the device).
   As soon as the plugin reaches the Worldbuilder again (a consult, a routed memory write) every entry
-  is offered as a private card proposal tagged `pending-write-back`; entries that look secret-like are
-  never sent but marked `blocked_secret` and reported (review them in the file, then
+  is offered as a private card proposal tagged `pending-write-back`; entries that look secret-like, hold personal
+  data or a local address (`blocked_secret`, `blocked_sensitive`) or are over 4000 characters
+  (`blocked_too_long`: the write still goes ahead, marked) are never sent but reported (review them in the file, then
   `python outbox.py dismiss <id>`). `block` stops the memory write instead; the old value `allow` is
   treated as `queue` with a deprecation notice in the log. The nightly validation prints the count of
   pending and blocked entries and exits 4 when one is older than 24 h; the watchdog speaks too
@@ -135,8 +136,8 @@ These defaults are decisions with a safer alternative; they are recorded in
   entries as `pendingWriteBack`; `wb receipts verify` reports them without failing the record.
   Known limits: the memory keeps the marker text after the flush; every queued entry is proposed,
   including ones the router would call ephemeral; a live write-back whose answer was lost can leave
-  two proposals for one lesson; items over 4000 characters are not routed; a blocked secret keeps its
-  text in the owner-only file until you dismiss it; an agent that never runs again leaves entries
+  two proposals for one lesson; a blocked entry keeps its
+  text in the owner-only file until you dismiss it; the memory targets `user` and `route_memory: false` are out of scope (never sent, never queued), and Windows folders keep their inherited access rights; an agent that never runs again leaves entries
   pending and the nightly job stays red after 24 h.
 - `gate_kanban_complete: true`: `kanban_complete` without the receipts in `metadata` is blocked.
 - `require_receipt_for_delegation: false`: delegation is not blocked while the parent has no

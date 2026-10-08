@@ -55,6 +55,9 @@ function Test-WbPending {
     if (-not (Test-Path -LiteralPath $Wb.WB_OUTBOX_CLI -PathType Leaf)) {
         return @{ Code = 2; Out = "Worldbuilder pending write-back: $($Wb.WB_PENDING_FILE) exists but the checker $($Wb.WB_OUTBOX_CLI) is missing (set WB_OUTBOX_CLI)." }
     }
+    if (-not (Get-Command $Wb.WB_PYTHON -ErrorAction SilentlyContinue)) {
+        return @{ Code = 2; Out = "Worldbuilder pending write-back: $($Wb.WB_PYTHON) is not available to run the checker (set WB_PYTHON)." }
+    }
     $previous = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
     try {

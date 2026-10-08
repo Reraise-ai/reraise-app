@@ -5,8 +5,11 @@
 Runs whenever the plugin has just reached the Worldbuilder (a successful consult, a successful
 memory routing). For each entry, oldest first:
 
-1. ``memory_route`` classifies the text. A secret-like text is never sent: the entry becomes
-   ``blocked_secret``. If the classifier cannot be reached, the flush stops (nothing unclassified is sent).
+1. ``memory_route`` classifies the text. Text that is secret-like, personal data or a local reference
+   (rule ids ``secret``, ``personal_data``, ``local_reference``, or the same signals) is never sent: the
+   entry becomes ``blocked_secret`` or ``blocked_sensitive``. If the classifier cannot be reached, the
+   flush stops (nothing unclassified is sent). Over-long entries are held as ``blocked_too_long`` when
+   they are queued and never reach this code.
 2. The entry is marked ``submitting`` *before* the proposal call. ``knowledge_write_back`` has no
    idempotency key, so the card carries the tags ``pending-write-back`` and ``outbox:<id>``; when
    an earlier attempt died with an unknown outcome, the proposals are searched for that tag first
@@ -15,6 +18,9 @@ memory routing). For each entry, oldest first:
    proposal id and the write-back receipt id, and its content is removed (a tombstone).
 
 Entries with the same content in one flush are offered once; the others are marked done with the same proposal.
+
+A flush holds an exclusive, non-blocking lock on ``<outbox>.flush`` (``Outbox.flush_lock``), so two
+processes never flush at once; the loser skips. One flush shares the deadline of the hook that started it.
 """
 
 from __future__ import annotations
@@ -34,7 +40,14 @@ logger = logging.getLogger(__name__)
 
 MAX_PER_FLUSH = 25
 RETRY_AFTER_FAILURE = 60.0  # seconds before another flush is tried after one that could not reach the service
+MAX_TEXT = 4000  # schemas/memory-route.schema.json#/$defs/request
+MIN_BUDGET = 3.0  # seconds of the turn's deadline that must be left to start a flush
 _LIST_PAGES = 10
+_LIST_LIMIT = 200
+_SECRET_RULES = ("secret",)
+_SECRET_SIGNALS = ("secret_like",)
+_SENSITIVE_RULES = ("personal_data", "local_reference")
+_SENSITIVE_SIGNALS = ("personal_data", "local_reference")
 
 
 @dataclass
@@ -78,6 +91,7 @@ class Flusher:
             return False
 
     def flush(self, deadline: Deadline | None = None, force: bool = False) -> FlushResult:
+        """Offer the open entries within ``deadline`` (the turn's, shared with the caller's own calls)."""
         result = FlushResult()
         if not self._running.acquire(blocking=False):
             result.stopped = "another flush is running"
@@ -86,8 +100,16 @@ class Flusher:
             if not force and time.monotonic() < self._not_before:
                 result.stopped = "backing off after a failed flush"
                 return result
+            budget = deadline or Deadline(20.0)
+            if budget.remaining() < MIN_BUDGET:
+                result.stopped = "no time left in this turn"
+                return result
             try:
-                return self._run(result, deadline or Deadline(20.0))
+                with self._outbox.flush_lock() as got:
+                    if not got:
+                        result.stopped = "another process is flushing"
+                        return result
+                    return self._run(result, budget)
             except OSError as exc:
                 logger.warning("worldbuilder-knowledge-loop: cannot use the outbox (%s)", type(exc).__name__)
                 result.stopped = "outbox unreadable"
@@ -108,11 +130,17 @@ class Flusher:
             try:
                 self._one(entry, offered, result, deadline)
             except WorldbuilderError as exc:
-                self._not_before = time.monotonic() + RETRY_AFTER_FAILURE
+                if exc.kind != "deadline":
+                    self._not_before = time.monotonic() + RETRY_AFTER_FAILURE
                 result.stopped = exc.kind
                 # ids and kinds only, never the text
                 logger.warning("worldbuilder-knowledge-loop: flush stopped (%s)", exc.kind)
                 break
+            except Exception as exc:  # one damaged entry must not stop the others
+                logger.warning(
+                    "worldbuilder-knowledge-loop: entry %s skipped (%s)", entry.get("outboxId", "?"), type(exc).__name__
+                )
+                result.stopped = "entry error"
         result.remaining = len([e for e in self._outbox.entries() if e["status"] in ("pending", "submitting")])
         return result
 
@@ -127,8 +155,7 @@ class Flusher:
         content = entry.get("content")
         if not isinstance(content, str) or not content.strip():
             # An open entry without content cannot be offered: surface it instead of dropping it.
-            self._outbox.mark_blocked_secret(outbox_id, "no_content")
-            result.blocked.append(outbox_id)
+            self._outbox.update(outbox_id, status="fault", faultWas=entry["status"], faultKeys=["content"])
             return
         digest = entry.get("contentHash", "")
         if digest in offered:
@@ -137,9 +164,19 @@ class Flusher:
             result.proposed.append(outbox_id)
             return
 
-        routed = self._client.call("memory_route", {"text": content[:4000]}, deadline)
-        if routed.get("ruleId") == "secret" or "secret_like" in (routed.get("signals") or []):
-            self._outbox.mark_blocked_secret(outbox_id, "secret")
+        if len(content) > MAX_TEXT:  # only a hand-edited entry can be here: never partially classify it
+            self._outbox.mark_blocked(outbox_id, "blocked_too_long", "too_long")
+            result.blocked.append(outbox_id)
+            return
+        routed = self._client.call("memory_route", {"text": content}, deadline)
+        rule = str(routed.get("ruleId", ""))
+        signals = routed.get("signals") or []
+        if rule in _SECRET_RULES or any(x in signals for x in _SECRET_SIGNALS):
+            self._outbox.mark_blocked(outbox_id, "blocked_secret", rule or "secret_like")
+            result.blocked.append(outbox_id)
+            return
+        if rule in _SENSITIVE_RULES or any(x in signals for x in _SENSITIVE_SIGNALS):
+            self._outbox.mark_blocked(outbox_id, "blocked_sensitive", rule or "sensitive")
             result.blocked.append(outbox_id)
             return
 
@@ -186,7 +223,7 @@ class Flusher:
         for status in ("pending", "accepted", "rejected"):
             cursor: str | None = None
             for _ in range(_LIST_PAGES):
-                request: dict[str, Any] = {"status": status, "limit": 200}
+                request: dict[str, Any] = {"status": status, "limit": _LIST_LIMIT}
                 if cursor:
                     request["cursor"] = cursor
                 page = self._client.call("proposal_list", request, deadline)
@@ -195,7 +232,9 @@ class Flusher:
                     card = payload.get("card") if isinstance(payload, dict) else None
                     if isinstance(card, dict) and tag in (card.get("tags") or []):
                         return str(proposal["id"])
+                listed = page.get("proposals") or []
                 cursor = page.get("nextCursor")
-                if not cursor:
+                # The real store gives a nextCursor on every page; an empty or short page is the end.
+                if not cursor or len(listed) < _LIST_LIMIT:
                     break
         return None

@@ -27,7 +27,8 @@ automatically once the Worldbuilder is reachable again. Nothing may bypass the l
 - Content must not leave the device except through the normal, gated proposal path
   ([ADR-0036](0036-conclusions-are-private.md), [ADR-0042](0042-memory-route-classification.md)):
   secret-like text is never sent.
-- The service contracts stay as they are (`schemas/` is unchanged by this decision).
+- The service contracts stay as they are: no tool and no request or result schema changes; the only
+  contract change is one optional field of the task record (below).
 - A flush may be retried after a crash and must not create two proposals for one entry.
 
 ## Considered Options
@@ -68,7 +69,12 @@ in this file only. If the entry cannot be made durable, the memory write is bloc
 bypass the loop silently.
 
 Statuses: `pending`, `submitting`, `done` (tombstone without content, with the proposal id and the
-write-back receipt id), `blocked_secret`, `dismissed` (tombstone).
+write-back receipt id), `blocked_secret`, `blocked_sensitive`, `blocked_too_long`, `fault`, `dismissed`
+(tombstone). Every entry is checked for its required keys when the file is read; an entry that lacks
+one becomes `fault` (the original status stays in `faultWas`), is reported every night and never stops
+the flush of the others. The folder is set to 0700 and the file to 0600 also when they existed with wider
+rights; on Windows the plugin does not change access rights (no ACL tightening), they stay as inherited.
+Tombstones are not yet compacted away (follow-up).
 
 ### Flush
 
@@ -77,10 +83,11 @@ Whenever the plugin has just reached the Worldbuilder (a successful `knowledge_c
 hook) it offers every open entry, oldest first, at most 25 and within a time budget, with a
 back-off of 60 s after a failed flush:
 
-1. `memory_route` classifies the text. A secret-like text (`ruleId: secret` or signal
-   `secret_like`) is never sent; the entry becomes `blocked_secret`, is reported in the next
-   turn and every night, and stays until the owner reviews it (`outbox.py dismiss <id>` removes
-   its content). If the classifier cannot be reached, the flush stops: nothing unclassified is sent.
+1. `memory_route` classifies the text. A secret-like text (`ruleId: secret` or signal `secret_like`)
+   becomes `blocked_secret`; personal data and local references (`ruleId` or signal `personal_data`,
+   `local_reference`) become `blocked_sensitive` with the rule id. They are never sent, are reported in the
+   next turn and every night, and stay until the owner reviews them (`outbox.py dismiss <id>` removes the
+   content). If the classifier cannot be reached, the flush stops: nothing unclassified is sent.
 2. The entry is set to `submitting`, then `knowledge_write_back` creates a private card proposal
    (author is the connection, `release: private`, `training: false`) tagged `pending-write-back`
    and `outbox:<outboxId>`.
@@ -90,6 +97,26 @@ Every queued entry is offered, including those `memory_route` would call ephemer
 facts when the service is reachable. The owner said "every such entry"; during the outage nobody
 could classify it, and the human decides on the board. (A later change may send non-secret ephemeral entries as
 `notNeeded: ephemeral_ops_fact` write-backs instead; that needs the owner.)
+
+### Over-long items
+
+`memory_route` accepts at most 4000 characters. A longer `add` or `replace` item never bypasses the loop,
+reachable or not: the write goes ahead with the marker, the entry is recorded as `blocked_too_long`
+(never sent, never partly classified) and reported every night like the other blocked entries. If it
+cannot be recorded, the write is blocked.
+
+### Scope
+
+The `memory` target `user` (the user's profile) and `route_memory: false` are out of scope, as in
+[ADR-0044](0044-hermes-integration-package.md): they are never sent and never queued.
+
+### Cross-process and time
+
+A flush holds a non-blocking exclusive lock on `<outbox>.flush` for its whole run; a second flusher in
+any process skips (also when locking is impossible: skipping is the safe failure). A turn has one
+deadline derived from `plugins.hook_callback_timeout` minus a margin; the consult and the flush share it,
+a flush starts only with at least 3 s left, and a flush that fails or raises never changes the consult
+result or the memory decision (it is logged).
 
 ### Idempotency
 
@@ -115,7 +142,8 @@ one flush are offered once and share the proposal.
 
 - Good, because an outage can no longer hide knowledge; every entry ends as a proposal, a visible
   blocked secret, or an alert.
-- Good, because the Worldbuilder service, the MCP tools and the schemas are unchanged.
+- Good, because the Worldbuilder service and the MCP tools are unchanged; the one schema addition
+  (`pendingWriteBack` in the task record) is optional and backwards compatible.
 - Bad, because the memory keeps the `[pending write-back ...]` text after the flush (the plugin
   cannot rewrite memory afterwards); the agent may tidy it.
 - Bad, because a flush needs the plugin to run inside Hermes: the cron script can report but not
@@ -129,18 +157,17 @@ one flush are offered once and share the proposal.
   entries of the task that are still open. `wb receipts verify` reports them (`PENDING` lines, and
   `pendingWriteBack` in `--json`); they never make a record invalid. This is a backwards compatible
   addition to `schemas/`, agreed by the CTO on 2026-10-08.
-- Neutral: items longer than 4000 characters are not routed today and stay in memory unchanged
-  (unchanged from ADR-0044).
 
 ### Known limits (accepted)
 
 - The cron job reports but cannot flush; only the plugin inside Hermes flushes. An agent that never
   runs again leaves entries pending; the nightly job stays red (exit 4) after 24 h.
-- Every queued entry is proposed, including ones the router would call ephemeral when reachable.
+- Every queued entry is proposed (except the blocked ones), including ones the router would call
+  ephemeral when reachable.
 - The `[pending write-back ...]` text stays in the agent's memory after the flush.
 - A lost answer of a live `knowledge_write_back` can lead to a second proposal for the same lesson.
-- Items over 4000 characters are not routed and stay in memory unchanged.
-- A `blocked_secret` entry keeps its text in the owner-only file until the owner dismisses it.
+- A blocked entry (secret-like, sensitive, too long) keeps its text in the owner-only file until the
+  owner dismisses it.
 
 ### Confirmation
 

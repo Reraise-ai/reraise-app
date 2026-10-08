@@ -78,16 +78,17 @@ def register(ctx: Any) -> None:
         if tool_name != "memory":
             return None
         session_id, task_id = str(kwargs.get("session_id") or ""), str(kwargs.get("task_id") or "")
+        progress: dict[str, Any] = {}
         try:
             with store.session_lock(store.key(session_id, task_id)):
-                return memory_policy(args, session_id, task_id)
+                return memory_policy(args, session_id, task_id, progress)
         except Exception as exc:
             logger.exception("worldbuilder-knowledge-loop: memory routing failed")
             if settings.memory_on_error == "block":
                 return {"action": "block", "message": f"memory write blocked: routing failed ({type(exc).__name__})"}
             # queue: the write goes through, marked and recorded; if even that fails, it is blocked
             try:
-                return memory_policy.enqueue_after_error(args, session_id, task_id, type(exc).__name__)  # type: ignore[attr-defined]
+                return memory_policy.enqueue_after_error(args, session_id, task_id, type(exc).__name__, progress)  # type: ignore[attr-defined]
             except Exception:
                 logger.exception("worldbuilder-knowledge-loop: cannot queue a pending write-back")
                 return {"action": "block", "message": "memory write blocked: not routed and not recorded"}

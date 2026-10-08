@@ -360,3 +360,307 @@ def test_a_queue_made_outside_any_task_still_lets_the_next_turn_consult(make_wor
     wb.reachable = True
     context = hermes.pre_llm_call(user_message="summarise tankers", session_id="job", is_first_turn=False) or ""
     assert "Knowledge receipt" in context and len(wb.proposals) == 1
+
+
+# --- review round: sensitive, empty batch, over-long, faults, locking, deadlines ---------------------------------
+
+EMAIL = "Contact the analyst at jane.roe@example.org about the tanker lessons learned always."
+PRIVATE_IP = "Lesson learned: the relay at 192.168.4.17 always drops packets because of the switch."
+LONG = ("Lesson learned: premiums tend to double. " * 120)[:4500]
+
+
+def real_classifier_needed() -> None:
+    from harness.fake_worldbuilder import REAL_CLASSIFIER
+
+    if not REAL_CLASSIFIER:
+        pytest.skip("needs node and a built packages/knowledge-loop")
+
+
+@pytest.mark.parametrize("text,rule", [(EMAIL, "personal_data"), (PRIVATE_IP, "local_reference")])
+def test_personal_data_and_local_references_are_held_not_sent(make_world, text, rule) -> None:  # type: ignore[no-untyped-def]
+    real_classifier_needed()
+    wb, hermes = make_world()
+    wb.reachable = False
+    hermes.pre_tool_call("memory", memory(action="add", content=text))
+    reconnect(wb, hermes)
+    assert wb.proposals == [] and "knowledge_write_back" not in wb.tools_called()
+    (entry,) = entries(hermes)
+    assert entry["status"] == "blocked_sensitive" and entry["ruleId"] == rule
+
+
+def test_a_secret_signal_alone_blocks_even_when_the_rule_id_is_another(make_world) -> None:  # type: ignore[no-untyped-def]
+    wb, hermes = make_world()
+    wb._tool_memory_route = lambda a: {  # type: ignore[method-assign]
+        "route": "card_proposal",
+        "ruleId": "durable_statement",
+        "signals": ["secret_like", "durable"],
+        "classifier": "rules:v4",
+    }
+    wb.reachable = False
+    hermes.pre_tool_call("memory", memory(action="add", content=LESSON))
+    reconnect(wb, hermes)
+    assert wb.proposals == [] and entries(hermes)[0]["status"] == "blocked_secret"
+
+
+@pytest.mark.parametrize("signal", ["personal_data", "local_reference"])
+def test_a_sensitive_signal_alone_blocks(make_world, signal) -> None:  # type: ignore[no-untyped-def]
+    wb, hermes = make_world()
+    wb._tool_memory_route = lambda a: {  # type: ignore[method-assign]
+        "route": "card_proposal",
+        "ruleId": "durable_statement",
+        "signals": [signal],
+        "classifier": "rules:v4",
+    }
+    wb.reachable = False
+    hermes.pre_tool_call("memory", memory(action="add", content=LESSON))
+    reconnect(wb, hermes)
+    assert wb.proposals == [] and entries(hermes)[0]["status"] == "blocked_sensitive"
+
+
+def test_an_empty_operations_list_is_no_batch(make_world) -> None:  # type: ignore[no-untyped-def]
+    wb, hermes = make_world()
+    wb.reachable = False
+    decision = hermes.pre_tool_call("memory", memory(action="add", content=LESSON, operations=[]))
+    assert decision.modified and decision.args["content"].startswith(MARKER) and decision.args["operations"] == []
+    assert len(entries(hermes)) == 1
+    # reachable: a lesson is proposed, not waved through
+    wb.reachable = True
+    assert hermes.pre_tool_call("memory", memory(action="add", content=OTHER, operations=[])).blocked
+
+
+def test_the_error_fallback_also_treats_an_empty_list_as_no_batch(make_world, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    wb, hermes = make_world()
+
+    def boom(self, tool, arguments, deadline=None):  # type: ignore[no-untyped-def]
+        raise RuntimeError("bug")
+
+    monkeypatch.setattr(plugin_module("client").WorldbuilderClient, "call", boom)
+    decision = hermes.pre_tool_call("memory", memory(action="add", content=LESSON, operations=[]))
+    assert decision.modified and decision.args["content"].startswith(MARKER)
+
+
+@pytest.mark.parametrize("reachable", [True, False])
+def test_over_long_items_are_marked_held_and_never_sent(make_world, reachable) -> None:  # type: ignore[no-untyped-def]
+    wb, hermes = make_world()
+    wb.reachable = reachable
+    decision = hermes.pre_tool_call("memory", memory(action="add", content=LONG))
+    assert not decision.blocked and decision.modified and decision.args["content"].startswith(MARKER)
+    (entry,) = entries(hermes)
+    assert entry["status"] == "blocked_too_long" and entry["content"] == LONG
+    assert decision.args["content"] == f"{MARKER}{entry['outboxId']}] {LONG}"
+    assert wb.calls == [] and wb.proposals == []
+    wb.reachable = True
+    reconnect(wb, hermes)  # a flush never touches it and never classifies a part of it
+    assert wb.proposals == [] and "memory_route" not in wb.tools_called()
+    assert entries(hermes)[0]["status"] == "blocked_too_long"
+
+
+def test_a_batch_with_a_long_item_marks_it_and_still_routes_the_others(make_world) -> None:  # type: ignore[no-untyped-def]
+    wb, hermes = make_world()
+    ops = [{"action": "add", "content": LONG}, {"action": "add", "content": LESSON}]
+    decision = hermes.pre_tool_call("memory", memory(operations=ops))
+    assert decision.modified and len(decision.args["operations"]) == 1
+    assert decision.args["operations"][0]["content"].startswith(MARKER) and len(wb.proposals) == 1
+
+
+def test_a_held_item_in_a_blocked_write_leaves_no_entry(make_world) -> None:  # type: ignore[no-untyped-def]
+    wb, hermes = make_world(settings={"memory_on_error": "block"})
+    wb.reachable = False
+    decision = hermes.pre_tool_call(
+        "memory", memory(operations=[{"action": "add", "content": LONG}, {"action": "add", "content": LESSON}])
+    )
+    assert decision.blocked
+    assert all(e["status"] == "dismissed" and "content" not in e for e in entries(hermes))
+
+
+def test_a_damaged_entry_becomes_a_fault_and_the_others_are_still_flushed(make_world) -> None:  # type: ignore[no-untyped-def]
+    wb, hermes = make_world()
+    wb.reachable = False
+    hermes.pre_tool_call("memory", memory(action="add", content=LESSON))
+    hermes.pre_tool_call("memory", memory(action="add", content=OTHER))
+    lines = hermes.pending_file.read_text(encoding="utf-8").splitlines()
+    broken = json.loads(lines[0])
+    del broken["taskRef"]
+    hermes.pending_file.write_text("\n".join([json.dumps(broken), lines[1]]) + "\n", encoding="utf-8")
+    reconnect(wb, hermes)
+    states = {e["outboxId"]: e for e in entries(hermes)}
+    assert states[broken["outboxId"]]["status"] == "fault" and states[broken["outboxId"]]["faultWas"] == "pending"
+    assert [p["payload"]["card"]["body"] for p in wb.proposals] == [OTHER]
+    outbox = plugin_module("outbox")
+    assert outbox.main(["check", "--file", str(hermes.pending_file)]) == 2
+
+
+def test_a_flush_that_raises_never_changes_the_consult(make_world, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    wb, hermes = make_world()
+    wb.reachable = False
+    hermes.pre_tool_call("memory", memory(action="add", content=LESSON))
+
+    def boom(self, deadline=None, force=False):  # type: ignore[no-untyped-def]
+        raise RuntimeError("flush bug")
+
+    monkeypatch.setattr(plugin_module("flush").Flusher, "flush", boom)
+    wb.reachable = True
+    context = hermes.pre_llm_call(user_message="Task ref: TASK-X\ntankers", is_first_turn=True) or ""
+    assert "Knowledge receipt:" in context and "FAILED" not in context
+
+
+def test_a_flush_that_raises_never_changes_the_memory_decision(make_world, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    wb, hermes = make_world()
+    wb.reachable = False
+    hermes.pre_tool_call("memory", memory(action="add", content=LESSON))
+
+    def boom(self, deadline=None, force=False):  # type: ignore[no-untyped-def]
+        raise RuntimeError("flush bug")
+
+    monkeypatch.setattr(plugin_module("flush").Flusher, "flush", boom)
+    wb.reachable = True
+    ops = "Restarted the gateway today because of a timeout; retry worked."
+    args = memory(action="add", content=ops)
+    decision = hermes.pre_tool_call("memory", args)
+    assert not decision.blocked and not decision.modified and decision.args == args
+    assert len(entries(hermes)) == 1  # nothing queued twice
+
+
+def test_a_non_worldbuilder_error_in_the_policy_still_queues_and_marks(make_world, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    wb, hermes = make_world()
+
+    def boom(self, tool, arguments, deadline=None):  # type: ignore[no-untyped-def]
+        raise RuntimeError("bug")
+
+    monkeypatch.setattr(plugin_module("client").WorldbuilderClient, "call", boom)
+    decision = hermes.pre_tool_call("memory", memory(action="add", content=LESSON))
+    (entry,) = entries(hermes)
+    assert decision.modified and decision.args["content"] == f"{MARKER}{entry['outboxId']}] {LESSON}"
+
+
+def test_if_the_fallback_cannot_record_either_the_write_is_blocked(make_world, monkeypatch, tmp_path) -> None:  # type: ignore[no-untyped-def]
+    blocker = tmp_path / "blocker"
+    blocker.write_text("x")
+    wb, hermes = make_world(settings={"pending_file": str(blocker / "p.jsonl")})
+
+    def boom(self, tool, arguments, deadline=None):  # type: ignore[no-untyped-def]
+        raise RuntimeError("bug")
+
+    monkeypatch.setattr(plugin_module("client").WorldbuilderClient, "call", boom)
+    decision = hermes.pre_tool_call("memory", memory(action="add", content=LESSON))
+    assert decision.blocked and "could not be recorded" in (decision.message or "")
+
+
+def test_the_fallback_does_not_queue_items_already_proposed_in_the_same_call(make_world, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    wb, hermes = make_world()
+    real = plugin_module("client").WorldbuilderClient.call
+    seen = {"routes": 0}
+
+    def flaky(self, tool, arguments, deadline=None):  # type: ignore[no-untyped-def]
+        if tool == "memory_route":
+            seen["routes"] += 1
+            if seen["routes"] == 2:
+                raise RuntimeError("bug")
+        return real(self, tool, arguments, deadline)
+
+    monkeypatch.setattr(plugin_module("client").WorldbuilderClient, "call", flaky)
+    decision = hermes.pre_tool_call(
+        "memory", memory(operations=[{"action": "add", "content": LESSON}, {"action": "add", "content": OTHER}])
+    )
+    assert len(wb.proposals) == 1
+    assert [e["content"] for e in entries(hermes)] == [OTHER]  # not the proposed LESSON
+    assert [op["content"] for op in decision.args["operations"]] == [
+        f"{MARKER}{entries(hermes)[0]['outboxId']}] {OTHER}"
+    ]
+
+
+def test_two_flushers_create_one_proposal(make_world) -> None:  # type: ignore[no-untyped-def]
+    import threading
+
+    wb, hermes = make_world()
+    wb.reachable = False
+    hermes.pre_tool_call("memory", memory(action="add", content=LESSON))
+    wb.reachable = True
+    entered, release = threading.Event(), threading.Event()
+    original = wb._tool_knowledge_write_back
+
+    def slow(arguments):  # type: ignore[no-untyped-def]
+        entered.set()
+        assert release.wait(10)
+        return original(arguments)
+
+    wb._tool_knowledge_write_back = slow  # type: ignore[method-assign]
+    first, second = hermes_flusher(hermes), hermes_flusher(hermes)  # two instances: two processes
+    worker = threading.Thread(target=lambda: first.flush(force=True))
+    worker.start()
+    assert entered.wait(10)
+    skipped = second.flush(force=True)
+    release.set()
+    worker.join(10)
+    assert skipped.stopped == "another process is flushing" and skipped.proposed == []
+    assert len(wb.proposals) == 1 and entries(hermes)[0]["status"] == "done"
+
+
+def test_the_consult_and_the_flush_share_one_deadline(make_world, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    wb, hermes = make_world()
+    wb.reachable = False
+    hermes.pre_tool_call("memory", memory(action="add", content=LESSON))
+    wb.reachable = True
+    seen: list[float] = []
+    real = plugin_module("flush").Flusher.flush
+
+    def spy(self, deadline=None, force=False):  # type: ignore[no-untyped-def]
+        seen.append(deadline.remaining())
+        return real(self, deadline, force)
+
+    monkeypatch.setattr(plugin_module("flush").Flusher, "flush", spy)
+    monkeypatch.setattr(plugin_module("consult"), "hook_budget", lambda: 12.0)
+    hermes.pre_llm_call(user_message="Task ref: TASK-D\ntankers", is_first_turn=True)
+    assert len(seen) == 1 and 0 < seen[0] <= 12.0  # what is left of the turn's 12 s, not a fresh budget
+
+
+def test_with_no_time_left_in_the_turn_the_flush_waits_and_the_consult_stands(make_world, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    wb, hermes = make_world()
+    wb.reachable = False
+    hermes.pre_tool_call("memory", memory(action="add", content=LESSON))
+    wb.reachable = True
+    monkeypatch.setattr(plugin_module("consult"), "hook_budget", lambda: 2.0)
+    context = hermes.pre_llm_call(user_message="Task ref: TASK-E\ntankers", is_first_turn=True) or ""
+    assert "Knowledge receipt:" in context and wb.proposals == [] and entries(hermes)[0]["status"] == "pending"
+
+
+def test_a_lost_answer_is_found_on_a_later_page_of_the_proposal_list(make_world, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    wb, hermes = make_world()
+    monkeypatch.setattr(plugin_module("flush"), "_LIST_LIMIT", 2)
+    for n in range(5):  # unrelated proposals in front of ours
+        wb.proposals.append(
+            {"id": wb.ulid(), "author": wb.agent, "status": "pending", "payload": {"card": {"tags": [f"x{n}"]}}}
+        )
+    wb.reachable = False
+    hermes.pre_tool_call("memory", memory(action="add", content=LESSON))
+    wb.reachable = True
+    wb.drop_response.append("knowledge_write_back")
+    hermes.pre_llm_call(user_message="Task ref: TASK-P\ntankers", is_first_turn=True)
+    assert len(wb.proposals) == 6
+    hermes_flusher(hermes).flush(force=True)
+    assert len(wb.proposals) == 6 and entries(hermes)[0]["status"] == "done"
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX permissions")
+def test_loose_existing_files_and_folders_are_tightened(make_world, tmp_path) -> None:  # type: ignore[no-untyped-def]
+    wb, hermes = make_world()
+    folder = hermes.pending_file.parent
+    folder.mkdir(parents=True)
+    folder.chmod(0o755)
+    hermes.pending_file.write_text("")
+    hermes.pending_file.chmod(0o666)
+    wb.reachable = False
+    hermes.pre_tool_call("memory", memory(action="add", content=LESSON))
+    assert stat.S_IMODE(hermes.pending_file.stat().st_mode) == 0o600
+    assert stat.S_IMODE(folder.stat().st_mode) == 0o700
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX permissions")
+def test_the_task_record_folders_are_owner_only(make_world, tmp_path) -> None:  # type: ignore[no-untyped-def]
+    home = tmp_path / "home" / "worldbuilder"
+    (home / "task-records").mkdir(parents=True)
+    home.chmod(0o755)
+    wb, hermes = make_world(settings={"task_records_dir": str(home / "task-records")})
+    hermes.pre_llm_call(user_message="Task ref: TASK-F\ntankers", is_first_turn=True)
+    hermes.on_session_end()
+    assert stat.S_IMODE(home.stat().st_mode) == 0o700 and stat.S_IMODE((home / "task-records").stat().st_mode) == 0o700

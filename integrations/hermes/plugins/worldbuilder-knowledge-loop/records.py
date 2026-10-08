@@ -28,7 +28,7 @@ import tempfile
 from typing import Any
 
 from .consult import HASH_RE
-from .outbox import Outbox
+from .outbox import Outbox, tighten_dir
 from .session import SessionStore, TaskState, utc_now
 from .settings import ULID_RE, Settings, default_task_records_dir
 
@@ -64,6 +64,9 @@ def write_record(settings: Settings, state: TaskState, outbox: Outbox | None = N
     name = re.sub(r"[^A-Za-z0-9._-]", "_", state.task_ref) + ".json"
     try:
         os.makedirs(directory, exist_ok=True)
+        tighten_dir(directory)  # task records name tasks and receipts: owner-only, like the outbox next to them
+        if os.path.basename(os.path.dirname(os.path.abspath(directory))) == "worldbuilder":
+            tighten_dir(os.path.dirname(os.path.abspath(directory)))
         fd, tmp = tempfile.mkstemp(dir=directory, prefix=".tmp-", suffix=".json")
         with os.fdopen(fd, "w", encoding="utf-8") as handle:
             json.dump(build_record(state, settings.agent, open_ids(outbox, state)), handle, indent=2)
