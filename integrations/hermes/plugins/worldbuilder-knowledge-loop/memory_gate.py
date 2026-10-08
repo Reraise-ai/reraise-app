@@ -95,6 +95,8 @@ def make_memory_policy(
         state: TaskState,
         known: bool,
         why: str,
+        session_id: str,
+        task_id: str,
     ) -> dict[str, Any]:
         """Let the write through, marked and recorded (``memory_on_error: queue``)."""
         ids: dict[int, str] = {}
@@ -106,6 +108,7 @@ def make_memory_policy(
             logger.error("worldbuilder-knowledge-loop: cannot record a pending write-back (%s)", type(exc).__name__)
             return block_message(f"{why}, and the pending write-back could not be recorded ({type(exc).__name__})")
         state.queued.extend(ids.values())
+        store.put(store.key(session_id, task_id), state)  # the session end lists them in the task record
         notice = (
             f"Worldbuilder: {len(ids)} memory write(s) were saved to your memory but are marked "
             f"'pending write-back' ({', '.join(ids.values())}): the Worldbuilder was not reachable ({why}). "
@@ -183,7 +186,17 @@ def make_memory_policy(
                     )
                 return block_message(f"{failure.kind}: {failure.message}")
             undecided = [(i, t) for i, t in candidates if i not in routed_away and i not in ephemeral]
-            return queue(args, batch, undecided, routed_away, state, known_state is not None, f"{failure.kind}")
+            return queue(
+                args,
+                batch,
+                undecided,
+                routed_away,
+                state,
+                known_state is not None,
+                f"{failure.kind}",
+                session_id,
+                task_id,
+            )
         if routed_away:
             state.write_back = _last_receipt(routed_away)
             store.put(key, state)
@@ -234,7 +247,7 @@ def make_memory_policy(
         key = store.key(session_id, task_id)
         known = store.get(key)
         state = known or TaskState(task_ref=derive_task_ref("memory", key))
-        return queue(args, batch, undecided, {}, state, known is not None, why)
+        return queue(args, batch, undecided, {}, state, known is not None, why, session_id, task_id)
 
     def _apply(
         batch: list[Any] | None,

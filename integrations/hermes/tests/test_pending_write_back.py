@@ -335,3 +335,28 @@ def test_a_turn_of_an_already_consulted_task_flushes_what_was_queued_since(make_
     wb.reachable = True
     notice = hermes.pre_llm_call(user_message="next", is_first_turn=False) or ""
     assert len(wb.proposals) == 1 and "offered as private card proposals" in notice
+
+
+def test_the_task_record_lists_pending_entries_and_stays_valid(make_world, tmp_path) -> None:  # type: ignore[no-untyped-def]
+    folder = tmp_path / "records"
+    wb, hermes = make_world(settings={"task_records_dir": str(folder)})
+    wb.reachable = False
+    hermes.pre_llm_call(user_message="Task ref: TASK-REC\ntankers", is_first_turn=True)
+    hermes.pre_tool_call("memory", memory(action="add", content=LESSON))
+    hermes.on_session_end()
+    record = json.loads((folder / "TASK-REC.json").read_text(encoding="utf-8"))
+    assert_valid("task-record.schema.json", record)
+    assert record["pendingWriteBack"] == [entries(hermes)[0]["outboxId"]]
+    # once flushed, a later record no longer lists it
+    reconnect(wb, hermes, "TASK-REC")
+    hermes.on_session_end()
+    assert "pendingWriteBack" not in json.loads((folder / "TASK-REC.json").read_text(encoding="utf-8"))
+
+
+def test_a_queue_made_outside_any_task_still_lets_the_next_turn_consult(make_world) -> None:  # type: ignore[no-untyped-def]
+    wb, hermes = make_world()
+    wb.reachable = False
+    hermes.pre_tool_call("memory", memory(action="add", content=LESSON), session_id="job")
+    wb.reachable = True
+    context = hermes.pre_llm_call(user_message="summarise tankers", session_id="job", is_first_turn=False) or ""
+    assert "Knowledge receipt" in context and len(wb.proposals) == 1

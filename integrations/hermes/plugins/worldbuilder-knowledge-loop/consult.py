@@ -170,7 +170,7 @@ def make_pre_llm_call(
 
         arguments: dict[str, Any] = {
             "taskRef": state.task_ref,
-            "task": state.task_text,
+            "task": state.task_text or text.strip() or "(no task text)",
             "worldId": settings.world_id,
         }
         if settings.lage_id:

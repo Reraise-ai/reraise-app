@@ -124,12 +124,23 @@ one flush are offered once and share the proposal.
 - Bad, because if `knowledge_write_back` succeeded but the answer was lost during the live memory
   routing (not the flush), the same lesson can be queued and offered again; the human sees two
   proposals and rejects one.
-- Bad, because the task-record schema ([ADR-0040](0040-receipt-log-and-verifier.md)) has no field
-  for pending entries, so the task record cannot note them. Known gap: this needs a schema change
-  (an optional `pendingWriteBack` list of outbox ids) decided separately; until then the outbox
-  entries carry the `taskRef` and the session end logs the count.
+- Neutral: the task-record schema ([ADR-0040](0040-receipt-log-and-verifier.md)) gets an optional
+  `pendingWriteBack` (outbox ids, ULIDs, at most 100). The plugin writes it at the session end for
+  entries of the task that are still open. `wb receipts verify` reports them (`PENDING` lines, and
+  `pendingWriteBack` in `--json`); they never make a record invalid. This is a backwards compatible
+  addition to `schemas/`, agreed by the CTO on 2026-10-08.
 - Neutral: items longer than 4000 characters are not routed today and stay in memory unchanged
   (unchanged from ADR-0044).
+
+### Known limits (accepted)
+
+- The cron job reports but cannot flush; only the plugin inside Hermes flushes. An agent that never
+  runs again leaves entries pending; the nightly job stays red (exit 4) after 24 h.
+- Every queued entry is proposed, including ones the router would call ephemeral when reachable.
+- The `[pending write-back ...]` text stays in the agent's memory after the flush.
+- A lost answer of a live `knowledge_write_back` can lead to a second proposal for the same lesson.
+- Items over 4000 characters are not routed and stay in memory unchanged.
+- A `blocked_secret` entry keeps its text in the owner-only file until the owner dismisses it.
 
 ### Confirmation
 

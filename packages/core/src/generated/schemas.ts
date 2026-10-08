@@ -2854,6 +2854,14 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
       completedAt: { $ref: 'common.schema.json#/$defs/dateTime' },
       knowledgeReceipt: { $ref: '#/$defs/receiptRef' },
       writeBackReceipt: { $ref: '#/$defs/receiptRef' },
+      pendingWriteBack: {
+        description:
+          'Outbox ids of memory writes this task made while the Worldbuilder was unreachable and that were not yet offered as card proposals (ADR-0046). They are reported by the verifier and never make a record invalid.',
+        type: 'array',
+        items: { $ref: 'common.schema.json#/$defs/ulid' },
+        uniqueItems: true,
+        maxItems: 100,
+      },
     },
     required: ['taskRef', 'agent', 'completedAt'],
     additionalProperties: false,

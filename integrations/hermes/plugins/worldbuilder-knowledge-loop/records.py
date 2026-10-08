@@ -39,7 +39,7 @@ def records_dir(settings: Settings) -> str:
     return settings.task_records_dir or default_task_records_dir()
 
 
-def build_record(state: TaskState, agent: str) -> dict[str, Any]:
+def build_record(state: TaskState, agent: str, pending: list[str] | None = None) -> dict[str, Any]:
     record: dict[str, Any] = {
         "taskRef": state.task_ref,
         "agent": agent,
@@ -52,10 +52,12 @@ def build_record(state: TaskState, agent: str) -> dict[str, Any]:
         record["knowledgeReceipt"] = dict(state.model_consult)
     if state.write_back is not None:
         record["writeBackReceipt"] = dict(state.write_back)
+    if pending:
+        record["pendingWriteBack"] = pending[:100]  # outbox ids of memory writes not yet offered (ADR-0046)
     return record
 
 
-def write_record(settings: Settings, state: TaskState) -> str | None:
+def write_record(settings: Settings, state: TaskState, outbox: Outbox | None = None) -> str | None:
     """Write (replace) the record of a task; returns the path, or None when it could not be written
     (logged, never raised: an observer hook must not break the agent)."""
     directory = records_dir(settings)
@@ -64,7 +66,7 @@ def write_record(settings: Settings, state: TaskState) -> str | None:
         os.makedirs(directory, exist_ok=True)
         fd, tmp = tempfile.mkstemp(dir=directory, prefix=".tmp-", suffix=".json")
         with os.fdopen(fd, "w", encoding="utf-8") as handle:
-            json.dump(build_record(state, settings.agent), handle, indent=2)
+            json.dump(build_record(state, settings.agent, open_ids(outbox, state)), handle, indent=2)
             handle.write("\n")
         path = os.path.join(directory, name)
         os.replace(tmp, path)
@@ -123,17 +125,18 @@ def make_post_tool_call(settings: Settings, store: SessionStore):
     return post_tool_call
 
 
-def _note_pending(outbox: Outbox | None, state: TaskState) -> None:
-    """Memory writes of this task that are still not offered as proposals. The task-record schema has
-    no field for them (ADR-0046, known gap), so the session end says so in the log; the outbox entries
-    carry the task reference and the nightly check reports them."""
+def open_ids(outbox: Outbox | None, state: TaskState) -> list[str]:
+    """Outbox ids of this task's memory writes that are still not offered as proposals."""
     if outbox is None or not state.queued:
-        return
+        return []
     try:
-        open_ids = {e["outboxId"] for e in outbox.entries() if e["status"] in ("pending", "submitting")}
+        open_set = {e["outboxId"] for e in outbox.entries() if e["status"] in ("pending", "submitting")}
     except OSError:
-        return
-    left = [i for i in state.queued if i in open_ids]
+        return []
+    return [i for i in state.queued if i in open_set]
+
+
+def _note_pending(left: list[str], state: TaskState) -> None:
     if left:
         logger.warning(
             "worldbuilder-knowledge-loop: task %s ends with %d pending write-back entr%s (%s)",
@@ -152,13 +155,13 @@ def make_session_end(settings: Settings, store: SessionStore, outbox: Outbox | N
         with store.session_lock(key):
             state = store.get(key)
             if state is not None:
-                write_record(settings, state)
-                _note_pending(outbox, state)
+                write_record(settings, state, outbox)
+                _note_pending(open_ids(outbox, state), state)
 
     return on_session_end
 
 
-def make_kanban_completed(settings: Settings, store: SessionStore):
+def make_kanban_completed(settings: Settings, store: SessionStore, outbox: Outbox | None = None):
     def kanban_task_completed(task_id: str = "", **kwargs: Any) -> None:
         # The worker process runs one kanban task: its session is the one whose key is the task id,
         # else the most recently used one.
@@ -167,6 +170,6 @@ def make_kanban_completed(settings: Settings, store: SessionStore):
         if not match and states:
             match = [states[-1][1]]
         for state in match:
-            write_record(settings, state)
+            write_record(settings, state, outbox)
 
     return kanban_task_completed

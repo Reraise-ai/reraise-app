@@ -97,7 +97,7 @@ def register(ctx: Any) -> None:
     ctx.register_hook("pre_tool_call", pre_tool_call_memory)
     ctx.register_hook("post_tool_call", make_post_tool_call(settings, store))
     ctx.register_hook("on_session_end", make_session_end(settings, store, outbox))
-    ctx.register_hook("kanban_task_completed", make_kanban_completed(settings, store))
+    ctx.register_hook("kanban_task_completed", make_kanban_completed(settings, store, outbox))
     ctx.register_system_prompt_section(SECTION_ID, rule_text(settings.server), position="after_memory")
 
     register_skill = getattr(ctx, "register_skill", None)

@@ -131,8 +131,13 @@ These defaults are decisions with a safer alternative; they are recorded in
   pending and blocked entries and exits 4 when one is older than 24 h; the watchdog speaks too
   (`WB_PENDING_FILE`, `WB_OUTBOX_CLI`, `WB_PYTHON` and `WB_PENDING_MAX_AGE_HOURS` in
   `worldbuilder-loop.conf`; the checker is `outbox.py` inside the installed plugin). The cron job
-  reports but cannot flush: flushing happens inside Hermes. The memory keeps the marker text after
-  the flush.
+  reports but cannot flush: flushing happens inside Hermes. The task record lists the task's open
+  entries as `pendingWriteBack`; `wb receipts verify` reports them without failing the record.
+  Known limits: the memory keeps the marker text after the flush; every queued entry is proposed,
+  including ones the router would call ephemeral; a live write-back whose answer was lost can leave
+  two proposals for one lesson; items over 4000 characters are not routed; a blocked secret keeps its
+  text in the owner-only file until you dismiss it; an agent that never runs again leaves entries
+  pending and the nightly job stays red after 24 h.
 - `gate_kanban_complete: true`: `kanban_complete` without the receipts in `metadata` is blocked.
 - `require_receipt_for_delegation: false`: delegation is not blocked while the parent has no
   receipt; the child must still return its own receipts.

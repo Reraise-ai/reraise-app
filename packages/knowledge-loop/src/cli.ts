@@ -193,6 +193,9 @@ async function receiptsVerify(args: readonly string[], io: CliIo): Promise<numbe
             problems: chain.problems,
           },
           tasks: report.tasks,
+          pendingWriteBack: tasks
+            .filter((t) => (t.pendingWriteBack?.length ?? 0) > 0)
+            .map((t) => ({ taskRef: t.taskRef, outboxIds: t.pendingWriteBack })),
         },
         null,
         2,
@@ -206,6 +209,13 @@ async function receiptsVerify(args: readonly string[], io: CliIo): Promise<numbe
           ? `ok    ${t.taskRef} ${t.agent}\n`
           : `FAIL  ${t.taskRef} ${t.agent}: ${t.problems.map((p) => `${p.slot} ${p.code}`).join(', ')}\n`,
       );
+    }
+    for (const t of tasks) {
+      if (t.pendingWriteBack?.length) {
+        io.stdout(
+          `PENDING ${t.taskRef}: ${t.pendingWriteBack.length} memory write(s) not yet offered as card proposals (ADR-0046): ${t.pendingWriteBack.join(', ')}\n`,
+        );
+      }
     }
     const failed = report.tasks.filter((t) => !t.ok).length;
     io.stdout(
