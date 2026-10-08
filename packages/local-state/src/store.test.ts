@@ -438,6 +438,14 @@ describe('review hardening', () => {
     });
   });
 
+  it('rethrows non-validation I/O errors from listStances and damagedFiles', async () => {
+    const { stateDir, store } = await open();
+    // A directory in place of a stance file makes readFile fail with EISDIR (not "invalid").
+    await mkdir(path.join(stateDir, 'stances', `${CARD_B}.json`), { recursive: true });
+    await expect(store.listStances()).rejects.toMatchObject({ code: 'EISDIR' });
+    await expect(store.damagedFiles()).rejects.toMatchObject({ code: 'EISDIR' });
+  });
+
   it('reports no damage on a clean state', async () => {
     const { store } = await open();
     await store.createProposal(place(), AGENT);

@@ -187,7 +187,97 @@ describe('create', () => {
   });
 });
 
+const stealLock = (dir: string) =>
+  writeFile(
+    path.join(dir, '.worldbuilder', 'write.lock'),
+    JSON.stringify({ token: 'thief', pid: process.pid, host: 'x', createdAt: Date.now() }),
+  );
+
+describe('lock re-check before writing', () => {
+  it('create writes no file when the lock was taken over', async () => {
+    const dir = await copyHormuz();
+    const adapter = await openStore(dir);
+    const names = async () => (await readdir(path.join(dir, 'cards'))).sort();
+    const before = await names();
+    const sync = (adapter as unknown as { sync: () => Promise<void> }).sync.bind(adapter);
+    vi.spyOn(adapter as unknown as { sync: () => Promise<void> }, 'sync').mockImplementationOnce(
+      async () => {
+        await stealLock(dir);
+        await sync();
+      },
+    );
+    await rejects(adapter.create(claim({ title: 'Never written' }), 'human'), 'locked');
+    expect(await names()).toEqual(before);
+  });
+
+  it('a Lage patch with the lock already lost makes no version copy at all', async () => {
+    const dir = await copyHormuz();
+    const adapter = await openStore(dir);
+    const lage = (await adapter.read(LAGE))!.lage!;
+    const internals = adapter as unknown as {
+      sync: () => Promise<void>;
+      archiveCopy: (...a: unknown[]) => Promise<string>;
+    };
+    const sync = internals.sync.bind(adapter);
+    vi.spyOn(internals, 'sync').mockImplementationOnce(async () => {
+      await stealLock(dir);
+      await sync();
+    });
+    const copy = vi.spyOn(internals, 'archiveCopy');
+    await rejects(
+      adapter.patch(LAGE, { lage: { ...lage, question: 'Changed?', version: lage.version + 1 } }),
+      'locked',
+    );
+    expect(copy).not.toHaveBeenCalled();
+  });
+
+  it('a Lage patch whose lock is lost while the version copy is made leaves the card and no copy', async () => {
+    const dir = await copyHormuz();
+    const adapter = await openStore(dir);
+    const file = await fileOf(dir, LAGE);
+    const before = await readFile(file, 'utf8');
+    const lage = (await adapter.read(LAGE))!.lage!;
+    const internals = adapter as unknown as {
+      archiveCopy: (...a: unknown[]) => Promise<string>;
+    };
+    const copy = internals.archiveCopy.bind(adapter);
+    // The first check passes; the lock is lost only after the version copy was written.
+    vi.spyOn(internals, 'archiveCopy').mockImplementationOnce(async (...args) => {
+      const written = await copy(...args);
+      await stealLock(dir);
+      return written;
+    });
+    await rejects(
+      adapter.patch(LAGE, { lage: { ...lage, question: 'Changed?', version: lage.version + 1 } }),
+      'locked',
+    );
+    expect(await readFile(file, 'utf8')).toBe(before);
+    const archiveDir = path.join(path.dirname(file), '_archive');
+    expect(await readdir(archiveDir).catch(() => [])).toEqual([]);
+  });
+});
+
 describe('patch', () => {
+  it('aborts without writing when the store lock was taken over before the rename', async () => {
+    const dir = await copyHormuz();
+    const adapter = await openStore(dir);
+    const file = await fileOf(dir, WIRE);
+    const before = await readFile(file, 'utf8');
+    const sync = (adapter as unknown as { sync: () => Promise<void> }).sync.bind(adapter);
+    // Simulate a stale-lock breaker replacing the lock after we acquired it.
+    vi.spyOn(adapter as unknown as { sync: () => Promise<void> }, 'sync').mockImplementationOnce(
+      async () => {
+        await writeFile(
+          path.join(dir, '.worldbuilder', 'write.lock'),
+          JSON.stringify({ token: 'thief', pid: process.pid, host: 'x', createdAt: Date.now() }),
+        );
+        await sync();
+      },
+    );
+    await rejects(adapter.patch(WIRE, { title: 'Should not land' }), 'locked');
+    expect(await readFile(file, 'utf8')).toBe(before);
+  });
+
   it('keeps comments, order, foreign fields and quoting while changing several fields', async () => {
     const dir = await copyHormuz({ cards: false });
     const adapter = await openStore(dir);

@@ -28,6 +28,13 @@ SECRETS = {
     "live payment key": f"Payments use {'sk' + '_live_'}{TAIL[:24]} always",
     "github token": f"Always push with {'ghp' + '_'}{TAIL}{TAIL[:6]} from CI",
     "json web token": f"The session cookie is {JWT_LIKE}, so always check expiry",
+    "hyphenated mixed parts": "Always use the code a1b2c3-d4e5f6-g7h8i9 for the vault",
+    "uuid after a credential word": "The API token is "
+    + "-".join(["123e4567", "e89b", "42d3", "a456", "426614174000"])
+    + ", always",
+    "uuid after Passwort": "Merke: Passwort "
+    + "-".join(["123e4567", "e89b", "42d3", "a456", "426614174000"])
+    + " immer nutzen",
     "url with password": f"Always connect with postgres://admin:{TOKEN_LIKE[:12]}@db.example.org/app",
 }
 

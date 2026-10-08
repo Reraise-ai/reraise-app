@@ -46,7 +46,7 @@ import {
 import { MarkdownStoreError } from './errors.js';
 import { parseFrontMatter } from './frontmatter.js';
 import { writeAtomic } from './atomic.js';
-import { acquireLock, type LockOptions } from './lock.js';
+import { acquireLock, type HeldLock, type LockOptions } from './lock.js';
 import { describeErrors, schemaValidator } from './validate.js';
 import { mintUlid } from './ulid.js';
 
@@ -146,6 +146,7 @@ export class MarkdownFilesAdapter implements StorageAdapter {
 
   private readonly cardsDir: string;
   private readonly lockPath: string;
+  private heldLock: HeldLock | undefined;
   private readonly entries = new Map<string, Entry>();
   private readonly byId = new Map<string, Entry>();
   private readonly archived = new Map<string, ArchiveEntry>();
@@ -343,6 +344,7 @@ export class MarkdownFilesAdapter implements StorageAdapter {
       const abs = this.abs(rel);
       if (await exists(abs)) throw new MarkdownStoreError('conflict', `${rel} already exists`);
       await mkdir(path.dirname(abs), { recursive: true });
+      await this.assertLockHeld();
       await writeAtomic(abs, text);
       await this.sync();
       return id;
@@ -419,7 +421,15 @@ export class MarkdownFilesAdapter implements StorageAdapter {
         }
       }
       if (next === text) return;
-      if (patch.lage) await this.archiveCopy(entry.path, text, storedVersion);
+      await this.assertLockHeld();
+      const copy = patch.lage ? await this.archiveCopy(entry.path, text, storedVersion) : undefined;
+      try {
+        await this.assertLockHeld();
+      } catch (err) {
+        // Remove the version copy made just now (our own new file) so nothing is left behind.
+        if (copy) await unlink(copy).catch(() => undefined);
+        throw err;
+      }
       await writeAtomic(abs, next);
       await this.sync();
     });
@@ -512,7 +522,7 @@ export class MarkdownFilesAdapter implements StorageAdapter {
     rel: string,
     text: string,
     preferred: number | undefined,
-  ): Promise<void> {
+  ): Promise<string> {
     const abs = this.abs(rel);
     const dir = path.join(path.dirname(abs), ARCHIVE_DIR);
     const stem = path.basename(rel, '.md');
@@ -525,17 +535,35 @@ export class MarkdownFilesAdapter implements StorageAdapter {
     });
     const n =
       preferred !== undefined && !taken.includes(preferred) ? preferred : Math.max(0, ...taken) + 1;
-    await writeAtomic(path.join(dir, `${stem}.v${n}.md`), text);
+    const file = path.join(dir, `${stem}.v${n}.md`);
+    await writeAtomic(file, text);
+    return file;
+  }
+
+  /**
+   * Re-check, just before a rename over a card, that the lock is still ours. If a stale-lock
+   * breaker took it (e.g. this process stalled past the stale limit), another writer may be
+   * active, so abort without writing.
+   */
+  private async assertLockHeld(): Promise<void> {
+    if (this.heldLock && !(await this.heldLock.stillHeld())) {
+      throw new MarkdownStoreError(
+        'locked',
+        'the store lock was lost during the write; nothing was written',
+      );
+    }
   }
 
   /** Serialise writes in this process, then across processes with the lock file. */
   private write<T>(fn: () => Promise<T>): Promise<T> {
     const run = this.writeChain.then(async () => {
       const held = await acquireLock(this.lockPath, this.options.lock);
+      this.heldLock = held;
       try {
         await this.sync(); // see what other writers did before deciding anything
         return await fn();
       } finally {
+        this.heldLock = undefined;
         await held.release();
       }
     });

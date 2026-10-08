@@ -4,8 +4,8 @@
 // File port of the receipt log (ADR-0040): the service and the wb command line use it; the
 // log logic itself stays pure.
 
-import { randomBytes } from 'node:crypto';
-import { appendFile, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { randomBytes, randomUUID } from 'node:crypto';
+import { appendFile, link, mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { ReceiptLogPort } from './log.js';
 import { splitLogLines } from './log.js';
@@ -35,16 +35,22 @@ export function fileReceiptLogPort(file: string): ReceiptLogPort {
 
 /**
  * The device receipt key: 32 random bytes in `<state>/receipt-key`, created owner-only on first
- * use (exclusive create, so two starts cannot write different keys). It keys the query hash of
- * Knowledge Receipts and never leaves the device.
+ * use. The key is written completely to a temporary file and then hard-linked into place, which
+ * fails with EEXIST if another start was faster: a reader never sees a half-written key, and two
+ * starts cannot end up with different keys. It keys the query hash of Knowledge Receipts and
+ * never leaves the device.
  */
 export async function loadOrCreateReceiptKey(stateDir: string): Promise<Uint8Array> {
   const file = path.join(stateDir, RECEIPT_KEY_FILE);
+  await mkdir(stateDir, { recursive: true, mode: 0o700 });
+  const tmp = `${file}.${randomUUID()}.tmp`;
   try {
-    await mkdir(stateDir, { recursive: true, mode: 0o700 });
-    await writeFile(file, randomBytes(RECEIPT_KEY_BYTES), { flag: 'wx', mode: 0o600 });
+    await writeFile(tmp, randomBytes(RECEIPT_KEY_BYTES), { flag: 'wx', mode: 0o600 });
+    await link(tmp, file);
   } catch (e) {
     if ((e as NodeJS.ErrnoException).code !== 'EEXIST') throw e;
+  } finally {
+    await unlink(tmp).catch(() => undefined);
   }
   const key = new Uint8Array(await readFile(file));
   if (key.length < RECEIPT_KEY_BYTES)

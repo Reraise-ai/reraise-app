@@ -29,6 +29,8 @@ interface LockFileContent {
 
 /** A held lock; release it exactly once. */
 export interface HeldLock {
+  /** True while the lock file still carries our token (a stale-lock breaker may have taken it). */
+  stillHeld(): Promise<boolean>;
   release(): Promise<void>;
 }
 
@@ -100,6 +102,8 @@ export async function acquireLock(lockPath: string, options: LockOptions = {}): 
         await handle.close();
       }
       return {
+        stillHeld: async () =>
+          parseLock(await readFile(lockPath, 'utf8').catch(() => ''))?.token === token,
         release: async () => {
           // Remove only our own lock: a stale-lock breaker may have replaced it.
           const current = parseLock(await readFile(lockPath, 'utf8').catch(() => ''));

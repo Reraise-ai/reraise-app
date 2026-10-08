@@ -8,7 +8,7 @@
 import { isPublicSourceUri, personalDataKinds } from '@worldbuilder/core';
 import type { MemoryRouteRequest, MemoryRouteResult } from '@worldbuilder/core';
 
-export const CLASSIFIER = 'rules:v3';
+export const CLASSIFIER = 'rules:v4';
 
 export type Signal = MemoryRouteResult['signals'][number];
 
@@ -109,6 +109,34 @@ const CREDENTIAL_ASSIGNED = new RegExp(
 );
 /** A credential word followed in the same clause by a quoted value. */
 const CREDENTIAL_QUOTED = new RegExp(`${KW}[^\\n.;!?]{0,40}?[\\s:=]["'\u201c\u2018\u00ab]`, 'i');
+/**
+ * A UUID within a few words after a credential word (rules:v4): a credential that happens to be
+ * shaped like an identifier. Includes bare `key` and the German `Passwort` / `Schlüssel`
+ * (also `Schluessel`). Longer credential words also count as the end of a compound
+ * (`Zugangsschlüssel`, `apitoken`); the short ones (`pin`, `otp`, `key`) must stand alone. A
+ * UUID inside a `wb:` URI is an identifier. The window may cross a full stop (safe side).
+ */
+const UUID_CREDENTIAL_WORDS = [
+  ...CREDENTIAL_WORDS,
+  'key',
+  'keys',
+  'passwort',
+  'kennwort',
+  'schlüssel',
+  'schluessel',
+];
+const UUID_STANDALONE = new Set(['pin', 'otp', 'key', 'keys']);
+const uuidWords = (standalone: boolean) =>
+  UUID_CREDENTIAL_WORDS.filter((w) => UUID_STANDALONE.has(w) === standalone)
+    .map((w) => w.replace(/ /g, '[ _-]?'))
+    .join('|');
+const UUID_SEP = '[\\s:=,.()"\'\u201c\u201e-]';
+const UUID_AFTER_CREDENTIAL = new RegExp(
+  `(?:(?:${uuidWords(false)})|(?<![\\p{L}\\p{N}])(?:${uuidWords(true)}))(?![\\p{L}\\p{N}])` +
+    `(?:${UUID_SEP}+[\\p{L}\\p{N}]+){0,4}?${UUID_SEP}+(?<!wb:)` +
+    '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?![0-9a-f-])',
+  'iu',
+);
 const PRIVATE_KEY = /-----BEGIN [A-Z ]*PRIVATE KEY-----/;
 /**
  * Token-like runs (rules:v3), checked per segment: 32 or more base64/base64url characters that
@@ -166,14 +194,32 @@ const isSlug = (s: string) => {
   return parts.length >= 3 && parts.every((p) => p.length <= 15);
 };
 
+/**
+ * A hyphen- or underscore-joined token of short mixed parts (rules:v4): at least 8 digits overall
+ * and at least two parts that mix letters and digits; with only two parts, both must mix
+ * (`a1b2c3d4-e5f6g7h8`, `a1b2-c3d4-...`).
+ * Natural slugs and dates have no such parts.
+ */
+function isMixedPartToken(segment: string): boolean {
+  for (const m of segment.matchAll(/[A-Za-z0-9]+(?:[-_][A-Za-z0-9]+)+/g)) {
+    const parts = m[0].split(/[-_]/);
+    const digits = (m[0].match(/\d/g) ?? []).length;
+    const mixed = parts.filter((p) => /\d/.test(p) && /[A-Za-z]/.test(p)).length;
+    if (digits >= 8 && mixed >= 2 && (parts.length >= 3 || mixed === parts.length)) return true;
+  }
+  return false;
+}
+
 /** Is one segment token-like (rules:v3)? */
 function tokenLikeSegment(segment: string): boolean {
+  if (isMixedPartToken(segment)) return true;
   for (const m of segment.matchAll(TOKEN_RUN)) {
     const run = m[0];
     if (isSlug(run)) continue;
     if (/[A-Z]/.test(run) && /[a-z]/.test(run) && /\d/.test(run)) return true;
     if ((run.match(/\d/g) ?? []).length >= 8) return true;
-    // No natural word runs 40 letters and digits without a separator.
+    // No natural word runs 40 letters and digits without a separator. A long compound with a
+    // digit is flagged too: the safe side (a capitalised or lower-case German compound with a digit).
     if (/[A-Za-z0-9]{40,}/.test(run) && /\d/.test(run)) return true;
   }
   return false;
@@ -186,6 +232,7 @@ function tokenLikeSegment(segment: string): boolean {
  * words stay whole (a base64 key may contain `/`).
  */
 function hasTokenRun(raw: string): boolean {
+  if (UUID_AFTER_CREDENTIAL.test(raw)) return true;
   if (KNOWN_TOKEN.test(raw) || RAW_SECRETS.some((re) => re.test(raw))) return true;
   const text = raw.replace(WB_URI, ' ').replace(UUID, ' ').replace(ISO_DATE, ' ');
   if (HEX_RUN.test(text)) return true;
@@ -224,7 +271,7 @@ export function memorySignals(request: MemoryRouteRequest, options: RouteOptions
   return signals;
 }
 
-/** Classify one memory item (ADR-0042, rules `rules:v3`, first match wins). */
+/** Classify one memory item (ADR-0042, rules `rules:v4`, first match wins). */
 export function routeMemory(
   request: MemoryRouteRequest,
   options: RouteOptions = {},

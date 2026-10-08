@@ -125,6 +125,17 @@ describe('write lock', () => {
   });
 });
 
+describe('stillHeld', () => {
+  it('is true for the holder and false once another token owns the lock file', async () => {
+    const lock = await lockIn();
+    const held = await acquireLock(lock);
+    expect(await held.stillHeld()).toBe(true);
+    await writeFile(lock, fileOf({ token: 'other' }));
+    expect(await held.stillHeld()).toBe(false);
+    await held.release();
+  });
+});
+
 describe('isStale', () => {
   it('judges age and holder', () => {
     const now = Date.now();

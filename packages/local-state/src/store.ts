@@ -20,7 +20,7 @@ import type {
 } from '@worldbuilder/core';
 import { chmod, lstat, mkdir, readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
-import { localStateError } from './errors.js';
+import { isLocalStateError, localStateError } from './errors.js';
 import { type FsOps, Mutex, atomicWriteFile, defaultFsOps } from './fs-util.js';
 import { DEFAULT_GATE_LOG_KEEP, GateLog, type GateLogOptions } from './gate-log.js';
 import { loadGateRulesFile } from './gate-rules.js';
@@ -35,6 +35,14 @@ export interface LocalStateOptions extends ResolveStateDirOptions {
   readonly now?: () => Date;
   readonly randomBytes?: (n: number) => Uint8Array;
   readonly fsOps?: FsOps;
+}
+
+/** Only an "invalid" (parse/validation) error means a damaged file; I/O errors must surface. */
+function rethrowUnlessInvalid<T>(onInvalid: () => T): (e: unknown) => T {
+  return (e) => {
+    if (isLocalStateError(e) && e.code === 'invalid') return onInvalid();
+    throw e;
+  };
 }
 
 const ULID_FILE = /^[0-7][0-9A-HJKMNP-TV-Z]{25}\.json$/;
@@ -207,7 +215,11 @@ class FileLocalStateStore implements LocalStateStore {
     ).flatMap((r) => (r.damaged ? [r.damaged] : []));
     const stances: string[] = [];
     for (const n of await this.listDir(this.stancesDir)) {
-      await this.readStanceFile(path.join(this.stancesDir, n)).catch(() => void stances.push(n));
+      await this.readStanceFile(path.join(this.stancesDir, n)).catch(
+        rethrowUnlessInvalid(() => {
+          stances.push(n);
+        }),
+      );
     }
     return { proposals: proposals.sort(), stances: stances.sort() };
   }
@@ -334,7 +346,9 @@ class FileLocalStateStore implements LocalStateStore {
   async listStances(): Promise<Stance[]> {
     const all = await Promise.all(
       (await this.listDir(this.stancesDir)).map((n) =>
-        this.readStanceFile(path.join(this.stancesDir, n)).catch(() => undefined),
+        this.readStanceFile(path.join(this.stancesDir, n)).catch(
+          rethrowUnlessInvalid(() => undefined),
+        ),
       ),
     );
     return all.filter((s): s is Stance => s !== undefined);
