@@ -29,6 +29,9 @@ if ($null -eq $lag) { $alerts += 'atlas: no pages, or the lag cannot be determin
 elseif ([double]$lag -gt $max) { $alerts += "atlas: out of date for $lag h (limit $max h) - run wb digest" }
 if (-not $m.totals.cardsAccepted) { $alerts += "cards: no agent card accepted in the last 7 days ($([int]$m.totals.cardsProposed) proposed)" }
 
+$pending = Test-WbPending
+if ($pending.Code -ne 0) { $alerts += "pending write-back: $($pending.Out)" }
+
 if ($alerts.Count -eq 0) { exit 0 }
 Write-Output ("Worldbuilder knowledge loop needs attention:`n" + ($alerts -join "`n"))
 exit 0

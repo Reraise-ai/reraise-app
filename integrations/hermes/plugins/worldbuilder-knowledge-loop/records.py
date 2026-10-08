@@ -28,6 +28,7 @@ import tempfile
 from typing import Any
 
 from .consult import HASH_RE
+from .outbox import Outbox
 from .session import SessionStore, TaskState, utc_now
 from .settings import ULID_RE, Settings, default_task_records_dir
 
@@ -122,7 +123,28 @@ def make_post_tool_call(settings: Settings, store: SessionStore):
     return post_tool_call
 
 
-def make_session_end(settings: Settings, store: SessionStore):
+def _note_pending(outbox: Outbox | None, state: TaskState) -> None:
+    """Memory writes of this task that are still not offered as proposals. The task-record schema has
+    no field for them (ADR-0046, known gap), so the session end says so in the log; the outbox entries
+    carry the task reference and the nightly check reports them."""
+    if outbox is None or not state.queued:
+        return
+    try:
+        open_ids = {e["outboxId"] for e in outbox.entries() if e["status"] in ("pending", "submitting")}
+    except OSError:
+        return
+    left = [i for i in state.queued if i in open_ids]
+    if left:
+        logger.warning(
+            "worldbuilder-knowledge-loop: task %s ends with %d pending write-back entr%s (%s)",
+            state.task_ref,
+            len(left),
+            "y" if len(left) == 1 else "ies",
+            ", ".join(left),
+        )
+
+
+def make_session_end(settings: Settings, store: SessionStore, outbox: Outbox | None = None):
     def on_session_end(session_id: str = "", completed: bool = True, **kwargs: Any) -> None:
         if completed is False:
             return  # no final answer: nothing was handed off
@@ -131,6 +153,7 @@ def make_session_end(settings: Settings, store: SessionStore):
             state = store.get(key)
             if state is not None:
                 write_record(settings, state)
+                _note_pending(outbox, state)
 
     return on_session_end
 

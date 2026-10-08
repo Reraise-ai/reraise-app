@@ -95,6 +95,7 @@ class TaskState:
     model_consult: dict[str, str] | None = None  # a consult receipt the model obtained itself
     started_at: str = field(default_factory=lambda: utc_now())
     notices: list[str] = field(default_factory=list)  # told to the model on its next turn, once
+    queued: list[str] = field(default_factory=list)  # outbox ids of memory writes queued in this task
 
     @property
     def needs_consult(self) -> bool:

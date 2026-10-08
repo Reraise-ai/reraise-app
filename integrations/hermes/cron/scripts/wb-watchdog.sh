@@ -7,6 +7,8 @@
 #     or there is no atlas at all (lag unknown counts as a failure, ADR-0041);
 #   - no agent card was accepted in the last 7 days (the message says how many were proposed, so
 #     "agents write nothing" and "nobody reviews" can be told apart).
+#   - memory writes queued while the Worldbuilder was unreachable (pending write-back, ADR-0046) have
+#     been waiting for more than WB_PENDING_MAX_AGE_HOURS (default 24) without being offered as proposals.
 # Silent when healthy. Exit code: 0 done (alerts, if any, are the output), non-zero when wb or the
 # JSON reader fails: a broken watchdog must not look like a healthy loop.
 . "$(dirname "$0")/wb-env.sh"
@@ -43,6 +45,12 @@ js='let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{
 if ! alerts=$(printf '%s' "$json" | node -e "$js" "$WB_MAX_ATLAS_LAG_HOURS" 2>&1); then
   printf 'Worldbuilder watchdog: cannot read the metrics: %s\n' "$alerts"
   exit 2
+fi
+wb_pending_check
+if [ "$wb_pending_code" -ne 0 ]; then
+  [ -n "$alerts" ] && alerts="$alerts
+"
+  alerts="${alerts}pending write-back: $wb_pending_out"
 fi
 [ -z "$alerts" ] && exit 0
 printf 'Worldbuilder knowledge loop needs attention:\n%s\n' "$alerts"

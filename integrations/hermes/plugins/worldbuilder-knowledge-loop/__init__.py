@@ -31,8 +31,10 @@ from typing import Any
 
 from .client import WorldbuilderClient
 from .consult import make_pre_llm_call
+from .flush import Flusher
 from .handoff import make_delegate_policy, make_kanban_policy
 from .memory_gate import make_memory_policy
+from .outbox import Outbox, default_path
 from .prompt import SECTION_ID, rule_text
 from .records import make_kanban_completed, make_post_tool_call, make_session_end
 from .session import SessionStore
@@ -55,7 +57,9 @@ def register(ctx: Any) -> None:
 
     delegate_policy = make_delegate_policy(settings, store)
     kanban_policy = make_kanban_policy(settings)
-    memory_policy = make_memory_policy(client, settings, store)
+    outbox = Outbox(settings.pending_file or default_path())
+    flusher = Flusher(client, settings, outbox)
+    memory_policy = make_memory_policy(client, settings, store, outbox, flusher)
 
     def pre_tool_call_handoff(**kwargs: Any) -> dict[str, Any] | None:
         tool_name, args = _tool_name_args(kwargs)
@@ -81,13 +85,18 @@ def register(ctx: Any) -> None:
             logger.exception("worldbuilder-knowledge-loop: memory routing failed")
             if settings.memory_on_error == "block":
                 return {"action": "block", "message": f"memory write blocked: routing failed ({type(exc).__name__})"}
-            return None
+            # queue: the write goes through, marked and recorded; if even that fails, it is blocked
+            try:
+                return memory_policy.enqueue_after_error(args, session_id, task_id, type(exc).__name__)  # type: ignore[attr-defined]
+            except Exception:
+                logger.exception("worldbuilder-knowledge-loop: cannot queue a pending write-back")
+                return {"action": "block", "message": "memory write blocked: not routed and not recorded"}
 
-    ctx.register_hook("pre_llm_call", make_pre_llm_call(client, settings, store))
+    ctx.register_hook("pre_llm_call", make_pre_llm_call(client, settings, store, flusher))
     ctx.register_hook("pre_tool_call", pre_tool_call_handoff)
     ctx.register_hook("pre_tool_call", pre_tool_call_memory)
     ctx.register_hook("post_tool_call", make_post_tool_call(settings, store))
-    ctx.register_hook("on_session_end", make_session_end(settings, store))
+    ctx.register_hook("on_session_end", make_session_end(settings, store, outbox))
     ctx.register_hook("kanban_task_completed", make_kanban_completed(settings, store))
     ctx.register_system_prompt_section(SECTION_ID, rule_text(settings.server), position="after_memory")
 

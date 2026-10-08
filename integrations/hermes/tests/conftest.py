@@ -31,7 +31,8 @@ def make_world(tmp_path: Path) -> Callable[..., World]:
     ) -> World:
         counter["n"] += 1
         wb = FakeWorldbuilder(tmp_path / f"state{counter['n']}", target=target)
-        merged = {"world_id": WORLD_ID, **(settings or {})}
+        pending = tmp_path / f"pending{counter['n']}" / "pending-write-back.jsonl"
+        merged = {"world_id": WORLD_ID, "pending_file": str(pending), **(settings or {})}
         hermes = FakeHermes(
             PLUGIN_DIR,
             settings=merged,
@@ -40,6 +41,7 @@ def make_world(tmp_path: Path) -> Callable[..., World]:
             structured_content=structured_content,
             connection_failure=connection_failure,
         ).load()
+        hermes.pending_file = pending  # type: ignore[attr-defined]
         return wb, hermes
 
     return build

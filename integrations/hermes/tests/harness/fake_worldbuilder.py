@@ -93,6 +93,7 @@ class FakeWorldbuilder(FakeMcpTransport):
         self.pending_transfer: str | None = None
         self.transfer_confirmed = False
         self.reachable = True
+        self.drop_response: list[str] = []  # tools whose next result is lost on the way back (the call took effect)
         package = fixture("context-package-screen-with-stance")
         self.cards = [
             {"card": item["card"], "provenance": item["provenance"], "gate": item["gate"]} for item in package["items"]
@@ -126,6 +127,9 @@ class FakeWorldbuilder(FakeMcpTransport):
         if method is None:
             raise McpToolError(f"tool not implemented in the fake responder: {tool}")
         result = method(arguments)
+        if tool in self.drop_response:
+            self.drop_response.remove(tool)
+            raise ConnectionError("connection reset after the request was handled")
         return json.dumps(result), result
 
     def tools_called(self) -> list[str]:
@@ -262,6 +266,14 @@ class FakeWorldbuilder(FakeMcpTransport):
         assert_valid("write-back-receipt.schema.json#/$defs/result", result)
         self._append_log(receipt)
         return result
+
+    # --- proposal_list ---------------------------------------------------------------------------
+
+    def _tool_proposal_list(self, arguments: dict[str, Any]) -> dict[str, Any]:
+        self._check_request("api.schema.json#/$defs/proposalListRequest", arguments)
+        status = arguments.get("status")
+        found = [p for p in self.proposals if status is None or p["status"] == status]
+        return {"proposals": found}
 
     # --- memory_route (stand-in for the ordered rules of ADR-0042) ---------------------------
 
