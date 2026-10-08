@@ -72,7 +72,7 @@ What it does:
 | `pre_llm_call` | On the first turn of a session, and when the turn names another task with a line `Task ref: <id>`, it calls `knowledge_consult` and injects the summary and the Knowledge Receipt id. A task change is recognised only by that explicit line. Server unreachable: an explicit notice and "no receipt"; it never pretends. |
 | `pre_tool_call` on `delegate_task` | Adds an `output_schema` that requires `knowledgeReceipt`, `writeBackReceipt` and `cardWritten` (`{proposalId}`, `{cardId}` or `{notNeededBecause}`), and starts every child goal with the child's own `Task ref:` line. A spawn whose shape it cannot read is blocked; optionally blocks delegation without a consult. |
 | `pre_tool_call` on `kanban_complete` | Blocks a hand-off whose metadata lacks the receipts and `cardWritten`. |
-| `pre_tool_call` on `memory` | `memory_route`: a durable lesson becomes a private card proposal through `knowledge_write_back` and the memory write is blocked; an ephemeral operations fact is allowed. |
+| `pre_tool_call` on `memory` | `memory_route`: a durable lesson becomes a private card proposal through `knowledge_write_back` and the memory write is blocked; an ephemeral operations fact is allowed. Worldbuilder unreachable: the write goes ahead marked `[pending write-back <id>]` and is queued for a later proposal (`memory_on_error`, below). |
 | `on_session_end`, `kanban_task_completed` | Write one task record (JSON) per task into `settings.task_records_dir` (default `$HERMES_HOME/worldbuilder/task-records`), with the receipts the plugin knows. A task that never consulted still gets a record, without a receipt, so the nightly validation rejects it. |
 | `post_tool_call` | Notes receipts of `knowledge_consult` and `knowledge_write_back` calls the model made itself, for the task record. |
 | system prompt section | A short rule: consult first, hand off with receipts, lessons are cards. |
@@ -117,10 +117,22 @@ Check with `hermes cron list` and `hermes cron doctor`.
 ## Defaults and known limits
 
 These defaults are decisions with a safer alternative; they are recorded in
-[OQ-16 to OQ-18](../owner-questions.md) and in ADR-0044.
+[OQ-17, OQ-18](../owner-questions.md) and in ADR-0044; the memory fallback is ADR-0046.
 
-- `memory_on_error: allow`: when the Worldbuilder cannot be reached the memory write goes ahead
-  (nothing is lost); set `block` to stop it instead.
+- `memory_on_error: queue` (owner decision 2026-10-08, [ADR-0046](../adr/0046-pending-write-back-outbox.md)):
+  when the Worldbuilder cannot be reached the memory write still goes ahead, but its text is
+  prefixed `[pending write-back <id>]` and it is recorded in an owner-only file
+  (`$HERMES_HOME/worldbuilder/pending-write-back.jsonl`, mode 0600, content stays on the device).
+  As soon as the plugin reaches the Worldbuilder again (a consult, a routed memory write) every entry
+  is offered as a private card proposal tagged `pending-write-back`; entries that look secret-like are
+  never sent but marked `blocked_secret` and reported (review them in the file, then
+  `python outbox.py dismiss <id>`). `block` stops the memory write instead; the old value `allow` is
+  treated as `queue` with a deprecation notice in the log. The nightly validation prints the count of
+  pending and blocked entries and exits 4 when one is older than 24 h; the watchdog speaks too
+  (`WB_PENDING_FILE`, `WB_OUTBOX_CLI`, `WB_PYTHON` and `WB_PENDING_MAX_AGE_HOURS` in
+  `worldbuilder-loop.conf`; the checker is `outbox.py` inside the installed plugin). The cron job
+  reports but cannot flush: flushing happens inside Hermes. The memory keeps the marker text after
+  the flush.
 - `gate_kanban_complete: true`: `kanban_complete` without the receipts in `metadata` is blocked.
 - `require_receipt_for_delegation: false`: delegation is not blocked while the parent has no
   receipt; the child must still return its own receipts.
