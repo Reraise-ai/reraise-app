@@ -180,6 +180,9 @@ the milestone in which the criterion is first expected to be demonstrated.
 
 Items to address targeting M1 (not started):
 
+- **write-lock re-check narrows the race, it does not close it** - The markdown-files adapter re-checks its lock token before the rename in create and patch, but a lock can still be lost between the check and the rename. `archive()` is not re-checked.
+- **memory_route flags long compounds with digits** - A 40+ letter/digit run with any digit (also a capitalised or lower-case German compound) is treated as a secret: the safe side, documented in ADR-0042.
+
 - **gate: expired transfer/token returns `unknown` (409) instead of `expired` (410) because pruning runs first** - The gate's pruning step runs before classifying tokens, causing expired tokens to report as unknown. This needs reordering so expired is identified before pruning.
 
 - **validate-schemas: cross-check canonical URI (`buildUri(parseUri(uri)) === uri`) and id/externalId consistency for fixtures** - Schema fixtures should validate that URI parsing and building round-trip correctly, and that id and externalId fields remain consistent.

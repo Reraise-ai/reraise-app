@@ -422,8 +422,14 @@ export class MarkdownFilesAdapter implements StorageAdapter {
       }
       if (next === text) return;
       await this.assertLockHeld();
-      if (patch.lage) await this.archiveCopy(entry.path, text, storedVersion);
-      await this.assertLockHeld();
+      const copy = patch.lage ? await this.archiveCopy(entry.path, text, storedVersion) : undefined;
+      try {
+        await this.assertLockHeld();
+      } catch (err) {
+        // Remove the version copy made just now (our own new file) so nothing is left behind.
+        if (copy) await unlink(copy).catch(() => undefined);
+        throw err;
+      }
       await writeAtomic(abs, next);
       await this.sync();
     });
@@ -516,7 +522,7 @@ export class MarkdownFilesAdapter implements StorageAdapter {
     rel: string,
     text: string,
     preferred: number | undefined,
-  ): Promise<void> {
+  ): Promise<string> {
     const abs = this.abs(rel);
     const dir = path.join(path.dirname(abs), ARCHIVE_DIR);
     const stem = path.basename(rel, '.md');
@@ -529,7 +535,9 @@ export class MarkdownFilesAdapter implements StorageAdapter {
     });
     const n =
       preferred !== undefined && !taken.includes(preferred) ? preferred : Math.max(0, ...taken) + 1;
-    await writeAtomic(path.join(dir, `${stem}.v${n}.md`), text);
+    const file = path.join(dir, `${stem}.v${n}.md`);
+    await writeAtomic(file, text);
+    return file;
   }
 
   /**

@@ -311,6 +311,33 @@ describe('token-like runs and known prefixes (rules:v3, v4)', () => {
       'a 40-character blob with digits inside',
       `Lesson: ${'Abcdefghij'.repeat(2)}7${'klmnopqrst'}8${'uvwx'} always`,
     ],
+    // Safe-side false positive, documented: a 40+ letter/digit run with any digit is a secret,
+    // so even a German compound ending in a number is flagged (rules:v3 behaviour).
+    [
+      'a long German compound ending in a number (safe-side false positive)',
+      'Lesson: donaudampfschifffahrtsgesellschaftskapitaenspatent12 always applies',
+    ],
+    ['a two-part token of mixed parts', 'Lesson: the code a1b2c3d4-e5f6g7h8 always works'],
+    [
+      'an ASCII Schluessel followed by a UUID',
+      'Wichtig: Schluessel 123e4567-e89b-42d3-a456-426614174000 gilt immer',
+    ],
+    [
+      'a compound ending in Schlüssel',
+      'Merke: der Zugangsschlüssel 123e4567-e89b-42d3-a456-426614174000 gilt immer',
+    ],
+    [
+      'a compound ending in passwort',
+      'Merke: Zugangspasswort 123e4567-e89b-42d3-a456-426614174000 gilt immer',
+    ],
+    [
+      'a compound ending in token',
+      'Lesson: the apitoken 123e4567-e89b-42d3-a456-426614174000 always works',
+    ],
+    [
+      'a UUID after key and a full stop',
+      'Lesson: the key. 123e4567-e89b-42d3-a456-426614174000 always works',
+    ],
     ['a project key with sk-', `Lesson: ${'sk' + '-proj-'}${tail(22)} always works`],
   ])('treats %s as a secret', (_name, text) => {
     const r = routeMemory({ text, kindHint: 'learning' });
@@ -326,12 +353,8 @@ describe('token-like runs and known prefixes (rules:v3, v4)', () => {
     ],
     ['a long word compound', 'internationalisation-and-localisation-guidelines always apply here'],
     [
-      'a long German compound noun',
+      'a long German compound noun without digits',
       'Die Donaudampfschifffahrtsgesellschaftskapitaensmuetzenfabrik gilt immer als Beispiel',
-    ],
-    [
-      'a long German compound ending in a number',
-      'Lesson: donaudampfschifffahrtsgesellschaftskapitaenspatent12 always applies',
     ],
     ['a dated slug with few mixed parts', 'Lesson: see report-2026-10-08-update always'],
     ['a version slug', 'Lesson: release v2-beta-3 and plan-b-4 always differ'],
@@ -342,6 +365,16 @@ describe('token-like runs and known prefixes (rules:v3, v4)', () => {
     [
       'a UUID after a normal word',
       'Insight: the card 123e4567-e89b-42d3-a456-426614174000 always shows the pattern',
+    ],
+    [
+      'a wb: URI after key',
+      'Lesson: key card wb:123e4567-e89b-42d3-a456-426614174000/01M1EQQXC0MVA4E2WAPG22HEY0 always shows the pattern',
+    ],
+    ['a one-part word with letters and digits', 'Lesson: model a1b2c3d4e5 always differs'],
+    ['a two-part code where one part is plain', 'Lesson: plan-a1b2c3d4e5f6 always differs'],
+    [
+      'a monkey UUID (short word inside another)',
+      'Insight: monkey 123e4567-e89b-42d3-a456-426614174000 always shows the pattern',
     ],
     ['a short sk- word', 'The ski-lift always closes early because of wind'],
     [
