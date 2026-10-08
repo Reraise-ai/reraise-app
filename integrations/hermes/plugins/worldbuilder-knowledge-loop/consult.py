@@ -9,10 +9,12 @@ appended to the user message of that turn, never to the system prompt
 
 from __future__ import annotations
 
+import logging
 import re
 from typing import Any
 
-from .client import WorldbuilderClient, WorldbuilderError, bounded
+from .client import Deadline, WorldbuilderClient, WorldbuilderError, bounded
+from .flush import Flusher
 from .session import (
     ConsultInfo,
     SessionStore,
@@ -21,7 +23,9 @@ from .session import (
     explicit_task_ref,
     message_text,
 )
-from .settings import ULID_RE, Settings
+from .settings import ULID_RE, Settings, hook_budget
+
+logger = logging.getLogger(__name__)
 
 HASH_RE = re.compile(r"^sha256:[0-9a-f]{64}$")
 _RESULTS = ("cards", "nothing_found", "confirmation_required")
@@ -125,7 +129,9 @@ def failure_context(task_ref: str, reason: str) -> str:
     )
 
 
-def make_pre_llm_call(client: WorldbuilderClient, settings: Settings, store: SessionStore):
+def make_pre_llm_call(
+    client: WorldbuilderClient, settings: Settings, store: SessionStore, flusher: Flusher | None = None
+):
     def pre_llm_call(
         session_id: str = "",
         user_message: Any = "",
@@ -136,12 +142,27 @@ def make_pre_llm_call(client: WorldbuilderClient, settings: Settings, store: Ses
         with store.session_lock(key):
             return _turn(key, user_message, is_first_turn)
 
+    def _flush(state: TaskState, deadline: Deadline) -> None:
+        """Offer the queued memory writes with what is left of this turn's budget. A failure here must
+        never change the consult result."""
+        if flusher is None:
+            return
+        try:
+            if not flusher.has_open():
+                return
+            text = flusher.flush(deadline).notice()
+            if text:
+                state.notices.append(text)
+        except Exception as exc:
+            logger.warning("worldbuilder-knowledge-loop: flush failed (%s)", type(exc).__name__)
+
     def _with_notices(state: TaskState, context: str | None) -> dict[str, str] | None:
         notices, state.notices = state.notices, []
         parts = [*notices, *([context] if context else [])]
         return {"context": "\n\n".join(parts)} if parts else None
 
     def _turn(key: str, user_message: Any, is_first_turn: bool) -> dict[str, str] | None:
+        deadline = Deadline(hook_budget())  # one budget per turn, shared by the consult and the flush
         text = message_text(user_message)
         named = explicit_task_ref(text)
         state = store.get(key)
@@ -154,12 +175,13 @@ def make_pre_llm_call(client: WorldbuilderClient, settings: Settings, store: Ses
             )
             store.put(key, state)
         elif not state.needs_consult:
+            _flush(state, deadline)  # the service was reachable at the consult; offer what was queued since
             return _with_notices(state, None)  # consulted already: no reminders, only pending notices
         # Otherwise the last consult failed or waits for a cloud confirmation: ask again.
 
         arguments: dict[str, Any] = {
             "taskRef": state.task_ref,
-            "task": state.task_text,
+            "task": state.task_text or text.strip() or "(no task text)",
             "worldId": settings.world_id,
         }
         if settings.lage_id:
@@ -167,7 +189,7 @@ def make_pre_llm_call(client: WorldbuilderClient, settings: Settings, store: Ses
         if state.consult is not None and state.consult.transfer_id:
             arguments["transferId"] = state.consult.transfer_id
         try:
-            data = client.call("knowledge_consult", arguments)
+            data = client.call("knowledge_consult", arguments, deadline)
             info, package = parse_consult(data, state.task_ref)
         except WorldbuilderError as exc:
             state.consult = None
@@ -176,6 +198,7 @@ def make_pre_llm_call(client: WorldbuilderClient, settings: Settings, store: Ses
         state.failure = None
         previous = state.consult
         state.consult = info
+        _flush(state, deadline)  # the Worldbuilder answered: offer every queued memory write now
         if info.result == "confirmation_required" and previous is not None and previous.result == info.result:
             return _with_notices(
                 state,

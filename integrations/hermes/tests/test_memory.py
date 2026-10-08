@@ -130,12 +130,12 @@ def test_route_memory_can_be_switched_off(make_world) -> None:  # type: ignore[n
 # --- when the Worldbuilder cannot be reached ------------------------------------------------------
 
 
-def test_unreachable_service_allows_the_memory_write_by_default(make_world) -> None:  # type: ignore[no-untyped-def]
+def test_unreachable_service_queues_the_memory_write_by_default(make_world) -> None:  # type: ignore[no-untyped-def]
     wb, hermes = make_world()
     wb.reachable = False
-    args = memory(action="add", content=LESSON)
-    decision = hermes.pre_tool_call("memory", args)
-    assert not decision.blocked and decision.args == args  # nothing is lost
+    decision = hermes.pre_tool_call("memory", memory(action="add", content=LESSON))
+    assert not decision.blocked and decision.modified  # the write goes ahead, marked (test_pending_write_back.py)
+    assert decision.args["content"].endswith(LESSON) and decision.args["content"].startswith("[pending write-back ")
 
 
 def test_unreachable_service_can_block_the_memory_write(make_world) -> None:  # type: ignore[no-untyped-def]
@@ -155,7 +155,7 @@ def test_a_failed_write_back_after_a_card_route_follows_the_same_policy(make_wor
         raise McpToolError("proposal queue full")
 
     wb._tool_knowledge_write_back = fail  # type: ignore[method-assign]
-    assert not hermes.pre_tool_call("memory", memory(action="add", content=LESSON)).blocked  # allow
+    assert not hermes.pre_tool_call("memory", memory(action="add", content=LESSON)).blocked  # queue
     wb._tool_knowledge_write_back = original  # type: ignore[method-assign]
     assert hermes.pre_tool_call("memory", memory(action="add", content=LESSON)).blocked  # routed now
 

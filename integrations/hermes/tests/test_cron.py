@@ -542,3 +542,107 @@ def test_scripts_are_executable_posix_sh() -> None:
             assert path.stat().st_mode & stat.S_IXUSR, f"{path.name} is not executable"
         code = [ln for ln in path.read_text().splitlines() if not ln.lstrip().startswith("#")]
         assert not [ln for ln in code if "[[" in ln or re.match(r"\s*local\s", ln)], f"{path.name}: bashism"
+
+
+# --- pending write-back outbox (ADR-0046) -----------------------------------------------------------------
+
+OUTBOX_CLI = CRON.parent / "plugins" / "worldbuilder-knowledge-loop" / "outbox.py"
+
+
+def _outbox(env: Env, *ages_hours: float) -> list[dict[str, str]]:
+    """Queue one entry per age in the env's outbox, through the same code the plugin uses."""
+    pending = env.tmp / "outbox" / "pending-write-back.jsonl"
+    env.settings.update(WB_PENDING_FILE=str(pending), WB_OUTBOX_CLI=str(OUTBOX_CLI), WB_PYTHON=sys.executable)
+    env.write_conf()
+    code = (
+        "import sys, importlib.util, datetime as d\n"
+        "spec = importlib.util.spec_from_file_location('outbox', sys.argv[1]); m = importlib.util.module_from_spec(spec)\n"
+        "sys.modules['outbox'] = m; spec.loader.exec_module(m)\n"
+        "box = m.Outbox(sys.argv[2])\n"
+        "for hours in sys.argv[3:]:\n"
+        "    box.append('agent:x', 'T-1', 'a memory ' + hours, now=d.datetime.now(d.UTC) - d.timedelta(hours=float(hours)))\n"
+    )
+    done = subprocess.run(
+        [sys.executable, "-I", "-c", code, str(OUTBOX_CLI), str(pending), *[str(a) for a in ages_hours]],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert done.returncode == 0, done.stderr
+    return [json.loads(line) for line in pending.read_text(encoding="utf-8").splitlines()]
+
+
+def test_validate_reports_pending_entries_and_exits_non_zero_when_one_is_stale(env: Env) -> None:
+    _outbox(env, 30, 2)
+    result = env.run("wb-nightly-validate.sh")
+    assert result.returncode == 4
+    assert "2 pending, 0 blocked" in result.stdout and "older than 24 h" in result.stdout
+    assert "a memory" not in result.stdout  # ids and counts only, never the text
+
+
+def test_validate_reports_fresh_pending_entries_without_failing(env: Env) -> None:
+    _outbox(env, 3)
+    result = env.run("wb-nightly-validate.sh")
+    assert result.returncode == 0 and "1 pending, 0 blocked" in result.stdout
+
+
+def test_validate_counts_blocked_secret_entries(env: Env) -> None:
+    entries = _outbox(env, 30)
+    pending = Path(env.settings["WB_PENDING_FILE"])
+    entries[0]["status"] = "blocked_secret"
+    pending.write_text(json.dumps(entries[0]) + "\n", encoding="utf-8")
+    result = env.run("wb-nightly-validate.sh")
+    assert result.returncode == 4 and "0 pending, 1 blocked" in result.stdout and "secret-like" in result.stdout
+
+
+def test_validate_is_silent_with_an_empty_or_missing_outbox(env: Env) -> None:
+    env.write_conf(WB_PENDING_FILE=str(env.tmp / "nowhere.jsonl"))
+    assert (env.run("wb-nightly-validate.sh").returncode, env.run("wb-nightly-validate.sh").stdout) == (0, "")
+
+
+def test_validate_keeps_the_receipt_exit_code_when_both_fail(env: Env) -> None:
+    _outbox(env, 30)
+    _record(env, "t.md", 1)
+    result = env.run("wb-nightly-validate.sh", stdout="TASK-1: knowledge: missing", exit="1")
+    assert result.returncode == 1
+    assert "NO VALID RECEIPTS" in result.stdout and "1 pending, 0 blocked" in result.stdout
+
+
+def test_a_broken_outbox_check_is_not_silence(env: Env) -> None:
+    _outbox(env, 3)
+    env.write_conf(WB_OUTBOX_CLI=str(env.tmp / "missing.py"))
+    result = env.run("wb-nightly-validate.sh")
+    assert result.returncode == 2 and "checker" in result.stdout and "missing" in result.stdout
+
+
+def test_watchdog_speaks_only_when_pending_entries_are_older_than_a_day(env: Env) -> None:
+    healthy = metrics_json(1, 6)
+    _outbox(env, 3)
+    assert env.run("wb-watchdog.sh", stdout=healthy).stdout == ""
+    _outbox(env, 30)
+    result = env.run("wb-watchdog.sh", stdout=healthy)
+    assert result.returncode == 0 and "pending write-back" in result.stdout and "older than 24 h" in result.stdout
+
+
+def test_the_pending_limit_is_configurable(env: Env) -> None:
+    _outbox(env, 30)
+    env.write_conf(WB_PENDING_MAX_AGE_HOURS="48")
+    assert env.run("wb-nightly-validate.sh").returncode == 0
+
+
+def test_validate_reports_a_fresh_blocked_entry_without_failing(env: Env) -> None:
+    entries = _outbox(env, 2)
+    pending = Path(env.settings["WB_PENDING_FILE"])
+    entries[0]["status"] = "blocked_too_long"
+    pending.write_text(json.dumps(entries[0]) + "\n", encoding="utf-8")
+    result = env.run("wb-nightly-validate.sh")
+    assert result.returncode == 0 and "0 pending, 1 blocked" in result.stdout and "too_long" in result.stdout
+
+
+def test_validate_reports_a_damaged_entry_with_exit_2(env: Env) -> None:
+    entries = _outbox(env, 2)
+    pending = Path(env.settings["WB_PENDING_FILE"])
+    del entries[0]["agent"]
+    pending.write_text(json.dumps(entries[0]) + "\n", encoding="utf-8")
+    result = env.run("wb-nightly-validate.sh")
+    assert result.returncode == 2 and entries[0]["outboxId"] in result.stdout

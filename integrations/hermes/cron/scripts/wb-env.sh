@@ -19,6 +19,11 @@ WB_ATLAS_DIR="${WB_ATLAS_DIR:-}"
 WB_GATE_RULES="${WB_GATE_RULES:-}"
 WB_TASK_LOOKBACK_HOURS="${WB_TASK_LOOKBACK_HOURS:-24}"
 WB_MAX_ATLAS_LAG_HOURS="${WB_MAX_ATLAS_LAG_HOURS:-72}"
+# Pending write-back outbox (ADR-0046): the file, the checker the plugin ships (stdlib Python), and the limit.
+WB_PENDING_FILE="${WB_PENDING_FILE:-}"
+WB_OUTBOX_CLI="${WB_OUTBOX_CLI:-}"
+WB_PYTHON="${WB_PYTHON:-python3}"
+WB_PENDING_MAX_AGE_HOURS="${WB_PENDING_MAX_AGE_HOURS:-24}"
 
 if [ -f "$wb_conf" ]; then
   cr=$(printf '\r')
@@ -29,7 +34,7 @@ if [ -f "$wb_conf" ]; then
     esac
     wb_value=${wb_value%"$cr"}
     case "$wb_key" in
-      WB_BIN | WB_STATE_DIR | WB_STORE | WB_TASKS_DIR | WB_ATLAS_DIR | WB_GATE_RULES | WB_TASK_LOOKBACK_HOURS | WB_MAX_ATLAS_LAG_HOURS)
+      WB_BIN | WB_STATE_DIR | WB_STORE | WB_TASKS_DIR | WB_ATLAS_DIR | WB_GATE_RULES | WB_TASK_LOOKBACK_HOURS | WB_MAX_ATLAS_LAG_HOURS | WB_PENDING_FILE | WB_OUTBOX_CLI | WB_PYTHON | WB_PENDING_MAX_AGE_HOURS)
         eval "$wb_key=\$wb_value"
         ;;
       *)
@@ -45,6 +50,32 @@ fi
 if [ -z "$WB_TASKS_DIR" ] && [ -d "${HERMES_HOME:-$HOME/.hermes}/worldbuilder/task-records" ]; then
   WB_TASKS_DIR="${HERMES_HOME:-$HOME/.hermes}/worldbuilder/task-records"
 fi
+
+[ -z "$WB_PENDING_FILE" ] && WB_PENDING_FILE="${HERMES_HOME:-$HOME/.hermes}/worldbuilder/pending-write-back.jsonl"
+[ -z "$WB_OUTBOX_CLI" ] && WB_OUTBOX_CLI="${HERMES_HOME:-$HOME/.hermes}/plugins/worldbuilder-knowledge-loop/outbox.py"
+
+# wb_pending_check: report the pending write-back outbox (the plugin's memory writes made while the
+# Worldbuilder was unreachable, ADR-0046). Sets wb_pending_out (the report, empty when there is
+# nothing to say) and wb_pending_code: 0 nothing stale, 4 an entry older than WB_PENDING_MAX_AGE_HOURS is
+# still not flushed, 2 the check itself failed (a broken check is not a healthy outbox).
+wb_pending_check() {
+  wb_pending_out=""
+  wb_pending_code=0
+  [ -e "$WB_PENDING_FILE" ] || return 0
+  if [ ! -f "$WB_OUTBOX_CLI" ]; then
+    wb_pending_out="Worldbuilder pending write-back: $WB_PENDING_FILE exists but the checker $WB_OUTBOX_CLI is missing (set WB_OUTBOX_CLI)."
+    wb_pending_code=2
+    return 0
+  fi
+  if wb_pending_out=$("$WB_PYTHON" "$WB_OUTBOX_CLI" check --file "$WB_PENDING_FILE" --max-age-hours "$WB_PENDING_MAX_AGE_HOURS" 2>&1); then
+    wb_pending_code=0
+  else
+    wb_pending_code=$?
+    [ "$wb_pending_code" -eq 4 ] || wb_pending_out="Worldbuilder pending write-back could not be checked (exit $wb_pending_code):
+$wb_pending_out"
+  fi
+  return 0
+}
 
 # wb_cmd <args...>: run the wb command line; --state goes last, after the subcommand and its
 # arguments (WB_BIN may be a command with arguments, such as

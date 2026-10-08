@@ -1,0 +1,20 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/task-record.schema.json",
+  "description": "A hand-off that also lists memory writes still pending write-back (ADR-0046).",
+  "data": {
+    "taskRef": "TASK-2026-0042",
+    "agent": "agent:research-helper",
+    "startedAt": "2026-10-05T08:59:00Z",
+    "completedAt": "2026-10-05T09:31:00Z",
+    "knowledgeReceipt": {
+      "receiptId": "01M1KM00000000000000000001",
+      "hash": "sha256:eb445bd8333247b874fbd443556bc675b2125138e4b1d9d40a930032d3ac47da"
+    },
+    "writeBackReceipt": {
+      "receiptId": "01M1KM00000000000000000002",
+      "hash": "sha256:0143bd1704dbed4ec8992251ce274cd315b585242ded13af50109b485f0a4f22"
+    },
+    "pendingWriteBack": ["01M1KM00000000000000000003", "01M1KM00000000000000000004"]
+  }
+}

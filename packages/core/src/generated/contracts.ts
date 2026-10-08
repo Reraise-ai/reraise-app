@@ -1550,6 +1550,12 @@ export interface TaskRecord {
   completedAt: DateTime;
   knowledgeReceipt?: ReceiptRef;
   writeBackReceipt?: ReceiptRef;
+  /**
+   * Outbox ids of memory writes this task made while the Worldbuilder was unreachable and that were not yet offered as card proposals (ADR-0046). They are reported by the verifier and never make a record invalid.
+   *
+   * @maxItems 100
+   */
+  pendingWriteBack?: Ulid[];
 }
 /**
  * A receipt cited by id and hash.

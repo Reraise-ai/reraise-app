@@ -77,8 +77,16 @@ plugins:
         gate_kanban_complete: true
         # Route memory tool writes through memory_route (lessons become card proposals).
         route_memory: true
-        # When the Worldbuilder cannot be reached: "allow" the memory write (nothing is lost) or "block".
-        memory_on_error: allow
+        # When the Worldbuilder cannot be reached (ADR-0046):
+        #   queue (default): the memory write goes ahead, its text is prefixed "[pending write-back <id>]"
+        #     and it is recorded in an owner-only outbox (<HERMES_HOME>/worldbuilder/pending-write-back.jsonl);
+        #     every entry is offered as a private card proposal once the Worldbuilder answers again
+        #     (secret-like entries are never sent and are reported every night).
+        #   block: the memory write is blocked.
+        # The old value "allow" is treated as "queue" and logs a deprecation notice.
+        memory_on_error: queue
+        # Optional: where the outbox lives (owner-only, mode 0600).
+        # pending_file: "/path/to/pending-write-back.jsonl"
   # A pre_tool_call hook that takes longer than this is abandoned and the tool is blocked
   # (fail closed). The plugin keeps its own budget of 25 s inside it for memory writes.
   hook_callback_timeout: 30

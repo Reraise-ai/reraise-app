@@ -66,6 +66,20 @@ describe('wb receipts verify (ADR-0040)', () => {
     expect(out.join('')).toContain('1 of 1 task records have valid receipts');
   });
 
+  it('reports pending write-back entries of a task without failing it (ADR-0046)', async () => {
+    const log = await writeLog(logOf([k, w]));
+    const ids = ['01M1KM00000000000000000003', '01M1KM00000000000000000004'];
+    const tasks = await writeTasks([{ ...taskOf('TASK-A', k, w), pendingWriteBack: ids }]);
+    expect(await run('receipts', 'verify', tasks, '--log', log)).toBe(EXIT.ok);
+    expect(out.join('')).toContain(`PENDING TASK-A: 2 memory write(s) not yet offered`);
+    expect(out.join('')).toContain(ids[0]);
+    out = [];
+    await run('receipts', 'verify', tasks, '--log', log, '--json');
+    expect(JSON.parse(out.join('')).pendingWriteBack).toEqual([
+      { taskRef: 'TASK-A', outboxIds: ids },
+    ]);
+  });
+
   it('exits 1 when a task record fails, naming slot and code', async () => {
     const log = await writeLog(logOf([k, w]));
     const tasks = await writeTasks([

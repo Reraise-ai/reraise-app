@@ -7,10 +7,13 @@ Hermes itself in ``ctx.call_mcp`` (default-deny)."""
 
 from __future__ import annotations
 
+import logging
 import os
 import re
 from dataclasses import dataclass
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 ULID_RE = re.compile(r"^[0-7][0-9A-HJKMNP-TV-Z]{25}$")
 AGENT_RE = re.compile(r"^agent:[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
@@ -28,10 +31,11 @@ class Settings:
     require_receipt_for_delegation: bool = False
     gate_kanban_complete: bool = True
     route_memory: bool = True
-    memory_on_error: str = "allow"
+    memory_on_error: str = "queue"
     task_ref_prefix: str = "hermes"
     agent: str = "agent:hermes"
     task_records_dir: str = ""  # empty: <HERMES_HOME>/worldbuilder/task-records
+    pending_file: str = ""  # empty: <HERMES_HOME>/worldbuilder/pending-write-back.jsonl
 
     def problems(self) -> list[str]:
         """Configuration errors that make a consult impossible. Reported to the model and the
@@ -108,10 +112,28 @@ def _as_float(value: Any, default: float, low: float, high: float) -> float:
     return max(low, min(number, high))
 
 
+def normalise_memory_on_error(raw: Any) -> str:
+    """``queue`` (default) or ``block``. The silent ``allow`` of earlier versions is gone (ADR-0046):
+    an old configuration that says ``allow`` is treated as ``queue`` and a deprecation notice is logged,
+    so a memory write made while the Worldbuilder is unreachable is never left outside the loop."""
+    value = str(raw).strip().lower()
+    if value in ("queue", "block"):
+        return value
+    if value == "allow":
+        logger.warning(
+            "worldbuilder-knowledge-loop: memory_on_error: allow is deprecated and no longer silent; "
+            "it is treated as queue (writes made while the Worldbuilder is unreachable are marked "
+            "'pending write-back' and offered as card proposals later). Set memory_on_error: queue."
+        )
+    else:
+        logger.warning("worldbuilder-knowledge-loop: unknown memory_on_error %r; using queue", value)
+    return "queue"
+
+
 def load_settings(ctx: Any) -> Settings:
     d = Settings()
     world_id = str(_get(ctx, "world_id", "") or os.environ.get("WORLDBUILDER_WORLD_ID", "")).strip()
-    memory_on_error = str(_get(ctx, "memory_on_error", d.memory_on_error)).strip().lower()
+    memory_on_error = normalise_memory_on_error(_get(ctx, "memory_on_error", d.memory_on_error))
     return Settings(
         server=str(_get(ctx, "server", d.server)).strip(),
         world_id=world_id,
@@ -124,9 +146,10 @@ def load_settings(ctx: Any) -> Settings:
         ),
         gate_kanban_complete=_as_bool(_get(ctx, "gate_kanban_complete", d.gate_kanban_complete), True),
         route_memory=_as_bool(_get(ctx, "route_memory", d.route_memory), True),
-        memory_on_error=memory_on_error if memory_on_error in ("allow", "block") else "allow",
+        memory_on_error=memory_on_error,
         task_ref_prefix=re.sub(r"[^A-Za-z0-9._-]", "-", str(_get(ctx, "task_ref_prefix", d.task_ref_prefix)))[:32]
         or "hermes",
         agent=str(_get(ctx, "agent", d.agent)).strip(),
         task_records_dir=str(_get(ctx, "task_records_dir", "") or "").strip(),
+        pending_file=str(_get(ctx, "pending_file", "") or "").strip(),
     )

@@ -56,8 +56,12 @@ config_schema:
     description: Route writes of the memory tool through memory_route.
   memory_on_error:
     type: str
-    default: allow
-    description: 'allow or block memory writes when the Worldbuilder cannot be reached.'
+    default: queue
+    description: 'queue (default) or block memory writes when the Worldbuilder cannot be reached. queue lets the write through, marked "[pending write-back <id>]", records it in an owner-only outbox and offers it as a private card proposal once the Worldbuilder answers again; the old value allow is treated as queue (ADR-0046).'
+  pending_file:
+    type: str
+    default: ''
+    description: 'Outbox of pending write-backs (default <HERMES_HOME>/worldbuilder/pending-write-back.jsonl, mode 0600).'
   task_ref_prefix:
     type: str
     default: hermes

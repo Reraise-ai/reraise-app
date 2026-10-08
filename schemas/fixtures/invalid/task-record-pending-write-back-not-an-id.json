@@ -1,0 +1,15 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/task-record.schema.json",
+  "description": "Pending write-back entries are outbox ids (ULIDs), not free text.",
+  "expect": {
+    "keyword": "pattern",
+    "instancePath": "/pendingWriteBack/0"
+  },
+  "data": {
+    "taskRef": "TASK-1",
+    "agent": "agent:research-helper",
+    "completedAt": "2026-10-05T11:00:00Z",
+    "pendingWriteBack": ["not an id"]
+  }
+}

@@ -22,3 +22,11 @@ WB_GATE_RULES=
 # Optional tuning.
 WB_TASK_LOOKBACK_HOURS=24
 WB_MAX_ATLAS_LAG_HOURS=72
+
+# Pending write-back outbox (the plugin's memory writes made while the Worldbuilder was unreachable).
+# Empty values mean the defaults below. The nightly validation reports it and exits 4 when an entry is
+# older than WB_PENDING_MAX_AGE_HOURS and still not offered as a card proposal; the watchdog speaks too.
+WB_PENDING_FILE=
+WB_OUTBOX_CLI=
+WB_PYTHON=python3
+WB_PENDING_MAX_AGE_HOURS=24
