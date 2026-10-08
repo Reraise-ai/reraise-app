@@ -2066,7 +2066,7 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
       },
       classifier: {
         description:
-          'rules:v3 for the deterministic rules of ADR-0042; model:<engine> only for a later model-assisted slice.',
+          'rules:vN as recorded in ADR-0042 for the deterministic rules; model:<engine> only for a later model-assisted slice.',
         type: 'string',
         pattern: '^(rules:v[0-9]+|model:[A-Za-z0-9][A-Za-z0-9._-]{0,63})$',
       },
