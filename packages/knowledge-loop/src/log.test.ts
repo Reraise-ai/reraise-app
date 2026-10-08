@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright The Worldbuilder contributors
 
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -164,6 +164,24 @@ describe('file port (ADR-0040)', () => {
 });
 
 describe('device receipt key (ADR-0039)', () => {
+  it('many concurrent first starts all get one complete key and leave no temp file', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'wb-key-'));
+    try {
+      const state = path.join(dir, 'state');
+      const keys = await Promise.all(
+        Array.from({ length: 24 }, () => loadOrCreateReceiptKey(state)),
+      );
+      for (const k of keys) expect(k).toEqual(keys[0]);
+      expect(keys[0]).toHaveLength(32);
+      expect(await readdir(state)).toEqual(['receipt-key']);
+      if (process.platform !== 'win32') {
+        expect((await stat(path.join(state, 'receipt-key'))).mode & 0o777).toBe(0o600);
+      }
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
   it('is created once, owner-only, and read back unchanged', async () => {
     const dir = await mkdtemp(path.join(tmpdir(), 'wb-key-'));
     try {
