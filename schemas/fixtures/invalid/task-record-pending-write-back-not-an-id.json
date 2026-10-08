@@ -10,8 +10,6 @@
     "taskRef": "TASK-1",
     "agent": "agent:research-helper",
     "completedAt": "2026-10-05T11:00:00Z",
-    "pendingWriteBack": [
-      "not an id"
-    ]
+    "pendingWriteBack": ["not an id"]
   }
 }
