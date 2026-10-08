@@ -365,7 +365,7 @@ def test_a_queue_made_outside_any_task_still_lets_the_next_turn_consult(make_wor
 # --- review round: sensitive, empty batch, over-long, faults, locking, deadlines ---------------------------------
 
 EMAIL = "Contact the analyst at jane.roe@example.org about the tanker lessons learned always."
-PRIVATE_IP = "Lesson learned: the relay at 192.168.4.17 always drops packets because of the switch."
+LOCAL_REF = "Lesson learned: the relay on localhost:4310 always drops packets because of the switch."
 LONG = ("Lesson learned: premiums tend to double. " * 120)[:4500]
 
 
@@ -376,7 +376,7 @@ def real_classifier_needed() -> None:
         pytest.skip("needs node and a built packages/knowledge-loop")
 
 
-@pytest.mark.parametrize("text,rule", [(EMAIL, "personal_data"), (PRIVATE_IP, "local_reference")])
+@pytest.mark.parametrize("text,rule", [(EMAIL, "personal_data"), (LOCAL_REF, "local_reference")])
 def test_personal_data_and_local_references_are_held_not_sent(make_world, text, rule) -> None:  # type: ignore[no-untyped-def]
     real_classifier_needed()
     wb, hermes = make_world()
