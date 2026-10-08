@@ -16,7 +16,7 @@ fake stands in. It is held to the contract, not to the implementation:
   over what the plugin produced (tests/test_wb_verify.py).
 
 Not faithful (and not meant to be): card matching is keyword overlap, the memory classifier is the real
-rules:v3 of packages/knowledge-loop run in node (a tiny stand-in only without node), ``draftHash`` is a
+rules:v4 of packages/knowledge-loop run in node (a tiny stand-in only without node), ``draftHash`` is a
 JCS hash of the draft instead of
 the card content hash of ADR-0034, and decision_record / decision_outcome are not implemented.
 Passing against this fake proves the plugin honours the contracts; it does not prove the service.
@@ -58,7 +58,7 @@ REAL_CLASSIFIER = bool(shutil.which("node")) and ROUTE_DIST.is_file()
 
 
 def real_route(request: dict[str, Any]) -> dict[str, Any]:
-    """The classifier of packages/knowledge-loop (rules:v3), run in node. Needs a built package."""
+    """The classifier of packages/knowledge-loop (rules:v4), run in node. Needs a built package."""
     done = subprocess.run(
         ["node", str(ROUTE_CLI)], input=json.dumps(request), capture_output=True, text=True, timeout=30, check=True
     )

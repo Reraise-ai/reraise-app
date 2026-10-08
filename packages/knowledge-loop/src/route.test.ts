@@ -191,11 +191,11 @@ describe('routeMemory (ADR-0042)', () => {
     };
     const result = routeMemory(request);
     expect([result.route, result.ruleId]).toEqual([route, ruleId]);
-    expect(result.classifier).toBe('rules:v3');
+    expect(result.classifier).toBe('rules:v4');
     expect(validateContract('memory-route.schema.json', result)).toEqual({ ok: true });
   });
 
-  it('covers every rule of rules:v3 in the corpus', () => {
+  it('covers every rule of rules:v4 in the corpus', () => {
     const rules = new Set(CORPUS.map((c) => c[3]));
     expect([...rules].sort()).toEqual(
       [
@@ -254,7 +254,7 @@ describe('routeMemory (ADR-0042)', () => {
   });
 });
 
-describe('token-like runs and known prefixes (rules:v3)', () => {
+describe('token-like runs and known prefixes (rules:v3, v4)', () => {
   // Built from parts at run time: no token-like literal sits in the repository (ADR-0022).
   const tail = (n: number, alphabet = 'abcdefghjkmnpqrstuvwxyz0123456789') =>
     Array.from({ length: n }, (_, i) => alphabet[(i * 7) % alphabet.length]).join('');
@@ -292,6 +292,25 @@ describe('token-like runs and known prefixes (rules:v3)', () => {
       'a URL with a password',
       `Lesson: the db url ${'postgres'}://app:${'hunter2'}@db.example.org/app always works`,
     ],
+    [
+      'a hyphenated token of short mixed parts',
+      'Lesson: the code a1b2c3-d4e5f6-g7h8i9 always works',
+    ],
+    ['an underscore token of short mixed parts', 'Lesson: use x9y8_z7w6_v5u4_t3s2 always'],
+    [
+      'a UUID after a credential word',
+      'Lesson: the API token is 123e4567-e89b-42d3-a456-426614174000 and always works',
+    ],
+    ['a UUID after Passwort', 'Merke: Passwort 123e4567-e89b-42d3-a456-426614174000 immer nutzen'],
+    [
+      'a UUID after Schlüssel with a colon',
+      'Wichtig: Schlüssel: 123e4567-e89b-42d3-a456-426614174000 gilt immer',
+    ],
+    ['a UUID after key', 'Insight: the key 123e4567-e89b-42d3-a456-426614174000 is always needed'],
+    [
+      'a 40-character blob with digits inside',
+      `Lesson: ${'Abcdefghij'.repeat(2)}7${'klmnopqrst'}8${'uvwx'} always`,
+    ],
     ['a project key with sk-', `Lesson: ${'sk' + '-proj-'}${tail(22)} always works`],
   ])('treats %s as a secret', (_name, text) => {
     const r = routeMemory({ text, kindHint: 'learning' });
@@ -306,6 +325,24 @@ describe('token-like runs and known prefixes (rules:v3)', () => {
       'see https://news.example.org/2026/very-long-article-title-about-the-strait-and-tankers',
     ],
     ['a long word compound', 'internationalisation-and-localisation-guidelines always apply here'],
+    [
+      'a long German compound noun',
+      'Die Donaudampfschifffahrtsgesellschaftskapitaensmuetzenfabrik gilt immer als Beispiel',
+    ],
+    [
+      'a long German compound ending in a number',
+      'Lesson: donaudampfschifffahrtsgesellschaftskapitaenspatent12 always applies',
+    ],
+    ['a dated slug with few mixed parts', 'Lesson: see report-2026-10-08-update always'],
+    ['a version slug', 'Lesson: release v2-beta-3 and plan-b-4 always differ'],
+    [
+      'a UUID far from any credential word',
+      'Insight: the token budget discussion in the long weekly review always references card 123e4567-e89b-42d3-a456-426614174000',
+    ],
+    [
+      'a UUID after a normal word',
+      'Insight: the card 123e4567-e89b-42d3-a456-426614174000 always shows the pattern',
+    ],
     ['a short sk- word', 'The ski-lift always closes early because of wind'],
     [
       'a dated news URL',

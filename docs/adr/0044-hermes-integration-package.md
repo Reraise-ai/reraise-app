@@ -99,7 +99,7 @@ tests use `pytest`, `jsonschema`, `pyyaml` and `ruff`, which are not needed at r
 
 `pnpm test:hermes` (`integrations/hermes/tests`): a fake Hermes loads `register(ctx)` and drives
 the payloads above; the fake Worldbuilder validates every request and result against the JSON
-Schemas, uses the real `rules:v3` classifier for `memory_route` and the real `wb receipts verify`
+Schemas, uses the real `rules:v4` classifier for `memory_route` and the real `wb receipts verify`
 over what the plugin produced; the ADR-0042 secret corpus never reaches `knowledge_write_back`.
 A real Hermes run is not part of CI.
 
