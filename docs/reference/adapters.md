@@ -50,6 +50,9 @@ cards/**/_archive/<file>.v<n>.md   archived versions, next to the card; never cu
 - **One writer per store.** Every write takes an in-process queue and the lock file, re-reads
   the files, checks the guard and writes through a temporary file and a rename. A lock older
   than 60 s, or held by a process that no longer exists on this host, is broken.
+  Before the rename that replaces a card (create and patch), the lock token is checked again;
+  if the lock was lost, the write fails with `locked` and nothing is written (a version copy
+  made for a Lage patch is removed again).
 - **Derived index.** The index is built in memory at start and refreshed by a file watcher.
   Watcher events are hints: a changed file is re-read and a miss triggers a rescan
   ([ADR-0033](../adr/0033-derived-index-reference-adapter.md)). `rebuildIndex()` throws the
