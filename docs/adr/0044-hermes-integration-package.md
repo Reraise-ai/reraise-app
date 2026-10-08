@@ -72,8 +72,11 @@ tests use `pytest`, `jsonschema`, `pyyaml` and `ruff`, which are not needed at r
 - Hermes abandons a `pre_tool_call` callback after `plugins.hook_callback_timeout` (30 s) and
   blocks the tool. The plugin keeps its Worldbuilder calls inside that timeout minus a margin.
 - Consult failure: visible notice, no receipt, retry; the task cannot pass `wb receipts verify`.
-- `memory_on_error: allow` (default): when the Worldbuilder cannot be reached the memory write
-  goes ahead, nothing is lost; `block` is available. See OQ-16.
+- `memory_on_error`: superseded by [ADR-0046](0046-pending-write-back-outbox.md). The default is
+  now `queue`: when the Worldbuilder cannot be reached the memory write goes ahead, marked
+  `[pending write-back <id>]` and recorded in an owner-only outbox, and is offered as a card
+  proposal once the Worldbuilder answers again; `block` is available; the old `allow` is treated as
+  `queue`. (Originally `allow`, OQ-16.)
 - `gate_kanban_complete: true` (default): a hand-off without receipts cannot complete. See OQ-17.
 - `require_receipt_for_delegation: false` (default): delegation gets the contract fields but is not
   blocked while the parent has no receipt; the child's own receipt is still required. See OQ-18.
@@ -129,7 +132,8 @@ A real Hermes run is not part of CI.
 
 ## More Information
 
-- Supersedes: nothing. Extends [ADR-0037](0037-hermes-agents-as-mcp-clients.md).
+- Supersedes: nothing. Extends [ADR-0037](0037-hermes-agents-as-mcp-clients.md). Partly superseded by
+  [ADR-0046](0046-pending-write-back-outbox.md): the `memory_on_error` default and OQ-16.
 - Related: [ADR-0039](0039-knowledge-loop-receipts.md), [ADR-0040](0040-receipt-log-and-verifier.md),
   [ADR-0041](0041-usage-ledger-and-metrics.md), [ADR-0042](0042-memory-route-classification.md),
   [ADR-0043](0043-digest-atlas-regeneration.md), [ADR-0022](0022-public-hygiene.md).
