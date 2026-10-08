@@ -930,6 +930,25 @@ describe('escalation checks what the store wrote', () => {
     expect((await f.adapter.versions(written!)).length).toBeGreaterThan(0);
   });
 
+  it('says the card could not be retired, without any id, when archiving fails', async () => {
+    const f = await fixture({ rules: FIXTURE_RULES });
+    const w = seedWorld(f);
+    await predict(f, w);
+    const create = f.adapter.create.bind(f.adapter);
+    let written: string | undefined;
+    vi.spyOn(f.adapter, 'create').mockImplementation(async (draft, author) => {
+      written = await create({ ...draft, visibility: 'public' } as CardDraft, author);
+      return written;
+    });
+    const archive = vi.spyOn(f.adapter, 'archive').mockRejectedValue(new Error('disk gone'));
+    const res = await f.human('POST', url(w, '/escalate'), { playerCardId: w.navy });
+    expect(archive).toHaveBeenCalled();
+    expect(res.statusCode).toBe(500);
+    expect(res.body).toContain('could not be retired');
+    expect(res.body).not.toContain(written!);
+    expect(res.body).not.toContain('disk gone');
+  });
+
   it('refuses and retires a card that clears for a target the computed one does not (tags dropped)', async () => {
     const f = await fixture({
       rules: `rules:
