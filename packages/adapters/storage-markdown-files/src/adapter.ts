@@ -46,7 +46,7 @@ import {
 import { MarkdownStoreError } from './errors.js';
 import { parseFrontMatter } from './frontmatter.js';
 import { writeAtomic } from './atomic.js';
-import { acquireLock, type LockOptions } from './lock.js';
+import { acquireLock, type HeldLock, type LockOptions } from './lock.js';
 import { describeErrors, schemaValidator } from './validate.js';
 import { mintUlid } from './ulid.js';
 
@@ -146,6 +146,7 @@ export class MarkdownFilesAdapter implements StorageAdapter {
 
   private readonly cardsDir: string;
   private readonly lockPath: string;
+  private heldLock: HeldLock | undefined;
   private readonly entries = new Map<string, Entry>();
   private readonly byId = new Map<string, Entry>();
   private readonly archived = new Map<string, ArchiveEntry>();
@@ -343,6 +344,7 @@ export class MarkdownFilesAdapter implements StorageAdapter {
       const abs = this.abs(rel);
       if (await exists(abs)) throw new MarkdownStoreError('conflict', `${rel} already exists`);
       await mkdir(path.dirname(abs), { recursive: true });
+      await this.assertLockHeld();
       await writeAtomic(abs, text);
       await this.sync();
       return id;
@@ -419,7 +421,9 @@ export class MarkdownFilesAdapter implements StorageAdapter {
         }
       }
       if (next === text) return;
+      await this.assertLockHeld();
       if (patch.lage) await this.archiveCopy(entry.path, text, storedVersion);
+      await this.assertLockHeld();
       await writeAtomic(abs, next);
       await this.sync();
     });
@@ -528,14 +532,30 @@ export class MarkdownFilesAdapter implements StorageAdapter {
     await writeAtomic(path.join(dir, `${stem}.v${n}.md`), text);
   }
 
+  /**
+   * Re-check, just before a rename over a card, that the lock is still ours. If a stale-lock
+   * breaker took it (e.g. this process stalled past the stale limit), another writer may be
+   * active, so abort without writing.
+   */
+  private async assertLockHeld(): Promise<void> {
+    if (this.heldLock && !(await this.heldLock.stillHeld())) {
+      throw new MarkdownStoreError(
+        'locked',
+        'the store lock was lost during the write; nothing was written',
+      );
+    }
+  }
+
   /** Serialise writes in this process, then across processes with the lock file. */
   private write<T>(fn: () => Promise<T>): Promise<T> {
     const run = this.writeChain.then(async () => {
       const held = await acquireLock(this.lockPath, this.options.lock);
+      this.heldLock = held;
       try {
         await this.sync(); // see what other writers did before deciding anything
         return await fn();
       } finally {
+        this.heldLock = undefined;
         await held.release();
       }
     });

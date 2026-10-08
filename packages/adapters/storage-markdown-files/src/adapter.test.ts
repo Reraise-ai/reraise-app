@@ -188,6 +188,26 @@ describe('create', () => {
 });
 
 describe('patch', () => {
+  it('aborts without writing when the store lock was taken over before the rename', async () => {
+    const dir = await copyHormuz();
+    const adapter = await openStore(dir);
+    const file = await fileOf(dir, WIRE);
+    const before = await readFile(file, 'utf8');
+    const sync = (adapter as unknown as { sync: () => Promise<void> }).sync.bind(adapter);
+    // Simulate a stale-lock breaker replacing the lock after we acquired it.
+    vi.spyOn(adapter as unknown as { sync: () => Promise<void> }, 'sync').mockImplementationOnce(
+      async () => {
+        await writeFile(
+          path.join(dir, '.worldbuilder', 'write.lock'),
+          JSON.stringify({ token: 'thief', pid: process.pid, host: 'x', createdAt: Date.now() }),
+        );
+        await sync();
+      },
+    );
+    await rejects(adapter.patch(WIRE, { title: 'Should not land' }), 'locked');
+    expect(await readFile(file, 'utf8')).toBe(before);
+  });
+
   it('keeps comments, order, foreign fields and quoting while changing several fields', async () => {
     const dir = await copyHormuz({ cards: false });
     const adapter = await openStore(dir);
