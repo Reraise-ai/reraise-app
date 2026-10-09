@@ -25,26 +25,35 @@ reach the port, and a runaway agent can flood the service.
 ## Decision Outcome
 
 Chosen option: two in-memory limits, both answered with `429` as an RFC 9457 problem (type
-`too-many-requests`) and a `Retry-After` header, never with card content:
+`too-many-requests`) and a `Retry-After` header, never with card content. The order of the hooks
+is fixed: Host and Origin check, then the request limit, then authentication.
 
-1. **Per credential**: the official `@fastify/rate-limit` plugin, keyed by the SHA-256 of the
-   presented credential (the address when there is none). Default 600 requests per 60 seconds.
+1. **Per credential**: the official `@fastify/rate-limit` plugin, registered with `global: false`
+   and applied through an explicit `onRequest` hook that runs before authentication, so requests
+   without a credential are limited by address before they are rejected as 401. Requests that
+   present a credential are keyed by the SHA-256 of it. Default 600 requests per 60 seconds.
    `/health` and CORS preflights are exempt. `/mcp` is covered like every other route.
-2. **Failed credentials per address**: after 10 rejected credentials in 60 seconds the address is
-   refused for the rest of the window, a valid token included; otherwise a correct guess would
-   pass at full speed. Memory is bounded (1024 addresses).
+2. **Failed credentials per address**: after 10 rejected credentials in 60 seconds, every further
+   request from that address that fails authentication is answered `429` instead of `401` until
+   the window ends. A request with a valid credential still passes (decision of the CTO: tokens
+   carry 256 bits, and a misconfigured agent must not lock the board out). Memory is bounded
+   (1024 addresses).
 
 Both are configurable (`--rate-limit`, `--auth-failure-limit` of `worldbuilder serve`; the
-`rateLimit` service option). The OpenAPI document declares the `429` response on every operation.
+`rateLimit` service option). The OpenAPI document declares the `429` response on every operation,
+and `Retry-After` and the `x-ratelimit-*` headers are exposed to the board's origin (CORS).
 
 ### Consequences
 
-- Good, because brute force and flooding from a local process are slowed, with no new
-  authentication state.
-- Bad, because a local process that sends bad credentials can lock the human out for up to a
-  minute from the same address. Accepted: a local process can already stop the service, and the
-  board shows the problem with its `Retry-After`.
+- Good, because flooding from a local process is slowed, with no new authentication state, and
+  an anonymous or bad-credential flood is counted before any credential is looked at.
+- Good, because a bad client cannot lock the human or other agents out.
+- Bad, because the lock-out does not slow a correct guess: it changes the answer to wrong guesses
+  from 401 to 429 and caps nothing else. Guessing is infeasible because of the token entropy, not
+  because of this limit; the limit mainly keeps floods and noisy failures in check and makes
+  them visible.
 - Bad, because the limits are per process and lost on restart.
+- The board does not yet show the 429 problem specially; it is an ordinary failed request.
 
 ### Confirmation
 
