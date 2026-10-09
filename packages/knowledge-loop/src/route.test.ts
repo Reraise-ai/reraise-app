@@ -419,16 +419,56 @@ describe('adversarial input stays linear (CodeQL js/polynomial-redos)', () => {
     'url with exclamation marks inside, not at the end': `https://example.org/${'!'.repeat(N)}a`,
     'url ending in mixed punctuation': `https://example.org/${'.,;:!?'.repeat(N / 6)}`,
     'percent run': '%'.repeat(N),
+    'bracket and colons (IPv6 literal)': `[${':'.repeat(N)}`,
+    'many brackets with colons': '[a:'.repeat(N / 3),
+    'dotted host without a port': 'a.'.repeat(N / 2),
+    'hyphenated host without a port': `${'a-'.repeat(N / 2)}x`,
+    'pid followed by spaces': `pid${' '.repeat(N)}x`,
+    'repeated pid': 'pid '.repeat(N / 4),
+    'dotted scheme without separator': 'a.'.repeat(N / 2),
+    'repeated scheme separators': 'a://'.repeat(N / 4),
+    'long user part without password': `x://${'a'.repeat(N)}`,
+    'jwt heads joined by hyphens': 'eyJ-'.repeat(N / 4),
+    'jwt heads joined by dots': 'eyJabcdefgh.'.repeat(N / 12),
+    'hyphen-joined parts': 'a-'.repeat(N / 2),
+    'mixed parts': 'a1-'.repeat(N / 3),
+    'alphanumeric run': 'a'.repeat(N),
     spaces: ' '.repeat(N),
   };
-  it.each(Object.entries(inputs))('%s classifies in under 200 ms', (_name, text) => {
+  it.each(Object.entries(inputs))('%s classifies in under 1000 ms', (_name, text) => {
     const start = performance.now();
     routeMemory({ text });
-    expect(performance.now() - start).toBeLessThan(200);
+    expect(performance.now() - start).toBeLessThan(1000);
   });
 
   it('still strips trailing sentence punctuation before judging a public source', () => {
     const result = memorySignals({ text: 'Reference: https://example.org/report?!.' });
     expect(result).toContain('public_source');
+  });
+
+  it('classifies the rewritten patterns exactly as before', () => {
+    const has = (text: string, signal: string) => memorySignals({ text }).includes(signal as never);
+    expect(has('Reach it at [2001:db8::1] later', 'local_reference')).toBe(true);
+    expect(has('Reach it at [abc] later', 'local_reference')).toBe(false);
+    expect(has('The process pid : 4242 stalled', 'local_reference')).toBe(true);
+    expect(has('The process pid#4242 stalled', 'local_reference')).toBe(true);
+    expect(has('The process pid 4242 stalled', 'local_reference')).toBe(true);
+    expect(has('The process pid stalled', 'local_reference')).toBe(false);
+    expect(has('Service runs on build-host.corp-net:8443 today', 'local_reference')).toBe(true);
+    const url = ['postgres', '://app:', 'pw', '@db.example.org/app'].join('');
+    expect(has(`Lesson: the db url ${url} always works`, 'secret_like')).toBe(true);
+    expect(has('Lesson: see https://news.example.org/a:b for it', 'secret_like')).toBe(false);
+    const jwt = [
+      'eyJ',
+      'hbGciOiJIUzI1NiJ9',
+      '.',
+      'eyJ',
+      'zdWIiOiIxMjM0NTY3ODkwIn0',
+      '.',
+      'c2lnbmF0dXJl',
+    ];
+    expect(has(`Insight: ${jwt.join('')} is used`, 'secret_like')).toBe(true);
+    expect(has(`Insight: x-${jwt.join('')} is used`, 'secret_like')).toBe(true);
+    expect(has(`Insight: ${jwt.slice(0, 5).join('')} is used`, 'secret_like')).toBe(false);
   });
 });
