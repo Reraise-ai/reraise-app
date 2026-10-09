@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright The Worldbuilder contributors
 
-import { mkdir, symlink } from 'node:fs/promises';
+import { mkdir, stat, symlink } from 'node:fs/promises';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { assertStateDirSafe, resolveStateDir } from './state-dir.js';
@@ -197,9 +197,28 @@ describe('assertStateDirSafe', () => {
     await expect(
       assertStateDirSafe(probe, { storeRoots: [root], caseInsensitive: true }),
     ).rejects.toMatchObject({ code: 'unsafe_state_dir' });
+    // On a case-insensitive file system (macOS, Windows) realpath already canonicalises the
+    // probe to the store root's spelling, so containment holds even without folding.
+    const fsFolds = await stat(probe.replace(/state$/, '')).then(
+      () => true,
+      () => false,
+    );
+    const unfolded = assertStateDirSafe(probe, { storeRoots: [root], caseInsensitive: false });
+    if (fsFolds) await expect(unfolded).rejects.toMatchObject({ code: 'unsafe_state_dir' });
+    else await expect(unfolded).resolves.toBeTruthy();
+  });
+
+  it('a case-only difference in a path that does not exist yet still counts as inside', async () => {
+    const base = await tempDir();
+    const root = path.join(base, 'Store');
+    await mkdir(root);
+    // Neither spelling of the child exists, but the parent does: the tail is compared folded.
     await expect(
-      assertStateDirSafe(probe, { storeRoots: [root], caseInsensitive: false }),
-    ).resolves.toBeTruthy();
+      assertStateDirSafe(path.join(base, 'store', 'x', 'state'), {
+        storeRoots: [path.join(root, 'X')],
+        caseInsensitive: true,
+      }),
+    ).rejects.toMatchObject({ code: 'unsafe_state_dir' });
   });
 });
 

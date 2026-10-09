@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright The Worldbuilder contributors
 
-import { mkdir, readFile, readdir, stat, symlink, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, realpath, stat, symlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { isLocalStateError } from './errors.js';
+import { resolveStateDir } from './state-dir.js';
 import { createLocalStateStore } from './store.js';
 import { CARD_A, CARD_B, LAGE, tempDir } from './test-helpers.js';
 
@@ -38,7 +39,8 @@ describe('createLocalStateStore', () => {
       reason: 'rule_allow',
       ruleId: 'r',
     });
-    expect(store.stateDir).toBe(stateDir);
+    // The store keeps the real path (macOS: /var -> /private/var).
+    expect(store.stateDir).toBe(await realpath(stateDir));
     expect((await readdir(base)).sort()).toEqual(['state']);
     expect((await readdir(stateDir)).sort()).toEqual(['gate-log.jsonl', 'proposals', 'stances']);
     expect(await readdir(path.join(stateDir, 'proposals'))).toEqual([`${p.id}.json`]);
@@ -46,12 +48,12 @@ describe('createLocalStateStore', () => {
 
   it('resolves the per-OS default from the injected environment', async () => {
     const base = await tempDir();
-    const store = await createLocalStateStore({
-      platform: 'linux',
-      env: { XDG_STATE_HOME: path.join(base, 'xdg') },
+    const options = {
+      env: { XDG_STATE_HOME: path.join(base, 'xdg'), LOCALAPPDATA: path.join(base, 'xdg') },
       homedir: base,
-    });
-    expect(store.stateDir.endsWith(path.join('xdg', 'worldbuilder'))).toBe(true);
+    };
+    const store = await createLocalStateStore(options);
+    expect(store.stateDir).toBe(await realpath(resolveStateDir(options)));
   });
 
   it('refuses a state directory inside a store root or a Git working tree', async () => {
