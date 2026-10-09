@@ -457,15 +457,42 @@ describe('credentials, Host and Origin', () => {
   });
 
   it('answers 413 for a body over the limit', async () => {
-    const auth = { authorization: `Bearer ${f.tokens['scripted']}` };
-    const big = JSON.stringify({
-      jsonrpc: '2.0',
-      id: 1,
-      method: 'x',
-      params: { pad: 'a'.repeat(1024 * 1024 + 10) },
-    });
-    const res = await rawMcp({ ...MCP_HEADERS, ...auth }, big);
+    // Fastify rejects on the declared Content-Length, before reading the body. The client
+    // declares an over-limit length but sends only a small prefix and never finishes the
+    // upload, so the server has nothing left to reset: the response is read while the request
+    // is still open. (Uploading the whole body races the server closing the socket, which
+    // Windows reports as ECONNRESET before the 413 is read.)
+    const { port } = new URL(f.url);
+    const res = await new Promise<{ status: number; body: string; type: unknown }>(
+      (resolve, reject) => {
+        const req = httpRequest(
+          {
+            host: '127.0.0.1',
+            port,
+            path: '/mcp',
+            method: 'POST',
+            headers: {
+              ...MCP_HEADERS,
+              authorization: `Bearer ${f.tokens['scripted']}`,
+              'content-length': String(1024 * 1024 + 4096),
+            },
+          },
+          (r) => {
+            let text = '';
+            r.on('data', (c: Buffer) => (text += c.toString('utf8')));
+            r.on('end', () => {
+              req.destroy();
+              resolve({ status: r.statusCode ?? 0, body: text, type: r.headers['content-type'] });
+            });
+          },
+        );
+        req.on('error', reject);
+        req.write('{"jsonrpc":"2.0","id":1,"method":"x","params":{"pad":"');
+      },
+    );
     expect(res.status).toBe(413);
+    expect(String(res.type)).toContain('application/problem+json');
+    expect(JSON.parse(res.body).title).toBe('Payload too large');
   });
 
   it('a revoked token stops working at once, also inside an open session', async () => {

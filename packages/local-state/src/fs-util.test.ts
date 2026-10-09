@@ -35,21 +35,38 @@ describe('atomicWriteFile', () => {
     const big = (c: string) => c.repeat(200_000);
     await atomicWriteFile(file, big('a'));
     let done = false;
+    // The writer's outcome is captured, never left as a bare promise: a failure is rethrown
+    // below, after the readers have stopped, so it cannot become an unhandled rejection.
     const writer = (async () => {
       try {
         for (let i = 0; i < 20; i++) await atomicWriteFile(file, big(i % 2 ? 'a' : 'b'));
       } finally {
-        done = true; // a failing writer must end the reader loop so its real error surfaces
+        done = true; // a failing writer must end the reader loops
       }
-    })();
-    while (!done) {
-      const text = await readFile(file, 'utf8');
-      expect(text.length).toBe(200_000);
-      expect(new Set(text).size).toBe(1);
-      // Yield to the event loop so the writer's timers and I/O callbacks can run (Windows).
-      await new Promise((resolve) => setImmediate(resolve));
-    }
-    await writer;
+    })().then(
+      () => undefined,
+      (e: unknown) => ({ error: e }),
+    );
+    // Several readers interleave with the writer. Each pauses a few milliseconds between reads:
+    // like the board polling a card, reads are short and sporadic. A reader that re-opens the
+    // file in a busy loop keeps it open almost permanently, and on Windows a rename onto an open
+    // file fails (EPERM) for as long as that lasts, which would starve any writer and say nothing
+    // about atomicity.
+    const reader = async (pauseMs: number) => {
+      let reads = 0;
+      while (!done) {
+        const text = await readFile(file, 'utf8');
+        expect(text.length).toBe(200_000);
+        expect(new Set(text).size).toBe(1);
+        reads++;
+        await new Promise((resolve) => setTimeout(resolve, pauseMs));
+      }
+      return reads;
+    };
+    const reads = await Promise.all([reader(1), reader(2), reader(3), reader(5)]);
+    const failure = await writer;
+    if (failure) throw failure.error;
+    expect(reads.every((n) => n > 0)).toBe(true);
   });
 });
 
