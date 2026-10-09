@@ -225,21 +225,22 @@ describe('assertStateDirSafe', () => {
 describe('platform default for case folding (macOS and Windows hosts)', () => {
   // No `caseInsensitive` option: the default is derived from process.platform.
   it.skipIf(process.platform === 'linux')(
-    'refuses a case-only difference for existing and missing tails by default',
+    'refuses a case-only difference by default, for existing and not-yet-existing segments',
     async () => {
       const base = await tempDir();
       const root = path.join(base, 'Store');
       await mkdir(path.join(root, 'Sub'), { recursive: true });
-      for (const probe of [
-        path.join(base, 'STORE', 'state'), // missing tail
-        path.join(base, 'store', 'sub'), // existing directory, other spelling
-        path.join(base, 'Store', 'SUB', 'missing', 'state'), // missing tail below a case change
-      ]) {
-        await expect(
-          assertStateDirSafe(probe, { storeRoots: [root] }),
-          probe,
-        ).rejects.toMatchObject({ code: 'unsafe_state_dir' });
-      }
+      // Existing path in another spelling: realpath canonicalises it on these file systems.
+      await expect(
+        assertStateDirSafe(path.join(base, 'store', 'sub'), { storeRoots: [root] }),
+      ).rejects.toMatchObject({ code: 'unsafe_state_dir' });
+      // The store root 'Store/New' and the probe's 'Store/NEW' do not exist on disk, so realpath
+      // cannot canonicalise them: only the folded comparison (the platform default) catches it.
+      await expect(
+        assertStateDirSafe(path.join(base, 'Store', 'NEW', 'state'), {
+          storeRoots: [path.join(base, 'Store', 'New')],
+        }),
+      ).rejects.toMatchObject({ code: 'unsafe_state_dir' });
     },
   );
 });

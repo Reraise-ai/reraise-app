@@ -61,7 +61,7 @@ describe('renameWithRetry (Windows sharing violations)', () => {
     await renameWithRetry('a', 'b', {
       rename: () => (calls++ < 3 ? Promise.reject(errno(codes[calls - 1]!)) : Promise.resolve()),
       sleep: (ms) => (sleeps.push(ms), Promise.resolve()),
-      random: () => 1,
+      random: () => 0.999,
     });
     expect(calls).toBe(4);
     expect(sleeps).toEqual([10, 20, 40]);
@@ -69,7 +69,7 @@ describe('renameWithRetry (Windows sharing violations)', () => {
 
   it('backs off exponentially with jitter and a bounded total of about two seconds', async () => {
     for (const [random, expected] of [
-      [1, 2230],
+      [0.999, 2230],
       [0, 1115],
     ] as const) {
       const sleeps: number[] = [];

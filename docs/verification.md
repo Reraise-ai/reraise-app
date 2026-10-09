@@ -34,7 +34,7 @@ It is updated as tests land.
 - docs:build: PASS
 - check:doc-anchors: PASS
 
-**Note:** the first CI run (pull request 13 on the project's GitHub repository) showed the end-to-end job green on all three operating systems, while the unit-test job failed on macOS (3 tests) and Windows (6 tests); the fixes are on branch `ci/02-macos` and are not yet proven by a green matrix. The gitleaks job also failed on a published documentation example key in older history and is handled by a narrow allowlist in `.gitleaks.toml`.
+**Note:** the first CI run (pull request 13 on the project's GitHub repository) showed the end-to-end job green on all three operating systems, while the unit-test job failed on macOS (3 tests) and Windows (6 tests); the fixes are on branch `ci/02-macos` and are not yet proven by a green matrix. The gitleaks job also failed on six synthetic values in older history (the published Stripe documentation example key used as test bait, plus five test or fixture tokens: a base64 confirmation token in two Level-1 fixtures, a fake adapter key, an example sentence for the secret router and an arbitrary token in an invalid fixture). History cannot be rewritten, so `.gitleaks.toml` allowlists each exact value in the file(s) where it lives, with the default rules left on; the same value in any other file is still flagged.
 
 Status values:
 
