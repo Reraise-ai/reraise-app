@@ -49,7 +49,10 @@ describe('createLocalStateStore', () => {
   it('resolves the per-OS default from the injected environment', async () => {
     const base = await tempDir();
     const options = {
-      env: { XDG_STATE_HOME: path.join(base, 'xdg'), LOCALAPPDATA: path.join(base, 'xdg') },
+      env: {
+        XDG_STATE_HOME: path.join(base, 'xdg'),
+        LOCALAPPDATA: path.join(base, 'localappdata'),
+      },
       homedir: base,
     };
     const store = await createLocalStateStore(options);

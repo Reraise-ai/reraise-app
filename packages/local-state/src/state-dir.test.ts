@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright The Worldbuilder contributors
 
-import { mkdir, stat, symlink } from 'node:fs/promises';
+import { mkdir, realpath, symlink } from 'node:fs/promises';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { assertStateDirSafe, resolveStateDir } from './state-dir.js';
@@ -199,8 +199,8 @@ describe('assertStateDirSafe', () => {
     ).rejects.toMatchObject({ code: 'unsafe_state_dir' });
     // On a case-insensitive file system (macOS, Windows) realpath already canonicalises the
     // probe to the store root's spelling, so containment holds even without folding.
-    const fsFolds = await stat(probe.replace(/state$/, '')).then(
-      () => true,
+    const fsFolds = await realpath(path.join(base, 'STORE')).then(
+      (real) => real.endsWith(`${path.sep}Store`),
       () => false,
     );
     const unfolded = assertStateDirSafe(probe, { storeRoots: [root], caseInsensitive: false });
@@ -208,7 +208,7 @@ describe('assertStateDirSafe', () => {
     else await expect(unfolded).resolves.toBeTruthy();
   });
 
-  it('a case-only difference in a path that does not exist yet still counts as inside', async () => {
+  it('folds case for a missing tail when asked, whatever the file system', async () => {
     const base = await tempDir();
     const root = path.join(base, 'Store');
     await mkdir(root);
@@ -220,6 +220,28 @@ describe('assertStateDirSafe', () => {
       }),
     ).rejects.toMatchObject({ code: 'unsafe_state_dir' });
   });
+});
+
+describe('platform default for case folding (macOS and Windows hosts)', () => {
+  // No `caseInsensitive` option: the default is derived from process.platform.
+  it.skipIf(process.platform === 'linux')(
+    'refuses a case-only difference for existing and missing tails by default',
+    async () => {
+      const base = await tempDir();
+      const root = path.join(base, 'Store');
+      await mkdir(path.join(root, 'Sub'), { recursive: true });
+      for (const probe of [
+        path.join(base, 'STORE', 'state'), // missing tail
+        path.join(base, 'store', 'sub'), // existing directory, other spelling
+        path.join(base, 'Store', 'SUB', 'missing', 'state'), // missing tail below a case change
+      ]) {
+        await expect(
+          assertStateDirSafe(probe, { storeRoots: [root] }),
+          probe,
+        ).rejects.toMatchObject({ code: 'unsafe_state_dir' });
+      }
+    },
+  );
 });
 
 describe('review regressions', () => {

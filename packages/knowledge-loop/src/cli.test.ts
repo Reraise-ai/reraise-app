@@ -105,7 +105,7 @@ describe('wb receipts verify (ADR-0040)', () => {
 
   it('exits 3 when the log is broken, and reads the default log in the state directory', async () => {
     // The per-OS default (XDG on Linux, Application Support on macOS, LOCALAPPDATA on Windows).
-    const defaultDir = resolveStateDir({ ...io(), homedir: path.join(dir, 'home') });
+    const defaultDir = resolveStateDir(io());
     await writeLog([logOf([k, w])[1]!], path.join(defaultDir, RECEIPT_LOG_FILE));
     const tasks = await writeTasks([taskOf('TASK-A', k, w)]);
     expect(await run('receipts', 'verify', tasks)).toBe(EXIT.logBroken);
