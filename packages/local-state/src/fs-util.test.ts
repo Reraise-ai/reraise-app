@@ -36,13 +36,18 @@ describe('atomicWriteFile', () => {
     await atomicWriteFile(file, big('a'));
     let done = false;
     const writer = (async () => {
-      for (let i = 0; i < 20; i++) await atomicWriteFile(file, big(i % 2 ? 'a' : 'b'));
-      done = true;
+      try {
+        for (let i = 0; i < 20; i++) await atomicWriteFile(file, big(i % 2 ? 'a' : 'b'));
+      } finally {
+        done = true; // a failing writer must end the reader loop so its real error surfaces
+      }
     })();
     while (!done) {
       const text = await readFile(file, 'utf8');
       expect(text.length).toBe(200_000);
       expect(new Set(text).size).toBe(1);
+      // Yield to the event loop so the writer's timers and I/O callbacks can run (Windows).
+      await new Promise((resolve) => setImmediate(resolve));
     }
     await writer;
   });
@@ -56,19 +61,37 @@ describe('renameWithRetry (Windows sharing violations)', () => {
     await renameWithRetry('a', 'b', {
       rename: () => (calls++ < 3 ? Promise.reject(errno(codes[calls - 1]!)) : Promise.resolve()),
       sleep: (ms) => (sleeps.push(ms), Promise.resolve()),
+      random: () => 0.999,
     });
     expect(calls).toBe(4);
-    expect(sleeps).toEqual([10, 20, 30]);
+    expect(sleeps).toEqual([10, 20, 40]);
   });
 
-  it('gives up after ten attempts', async () => {
+  it('backs off exponentially with jitter and a bounded total of about two seconds', async () => {
+    for (const [random, expected] of [
+      [0.999, 2230],
+      [0, 1115],
+    ] as const) {
+      const sleeps: number[] = [];
+      const ops = {
+        rename: () => Promise.reject(errno('EBUSY')),
+        sleep: (ms: number) => (sleeps.push(ms), Promise.resolve()),
+        random: () => random,
+      };
+      await expect(renameWithRetry('a', 'b', ops)).rejects.toThrow('EBUSY');
+      expect(sleeps).toHaveLength(11);
+      expect(sleeps.reduce((a, b) => a + b, 0)).toBe(expected);
+    }
+  });
+
+  it('gives up after twelve attempts', async () => {
     let calls = 0;
     const ops = {
       rename: () => (calls++, Promise.reject(errno('EPERM'))),
       sleep: () => Promise.resolve(),
     };
     await expect(renameWithRetry('a', 'b', ops)).rejects.toThrow('EPERM');
-    expect(calls).toBe(10);
+    expect(calls).toBe(12);
   });
 
   it('does not retry other errors', async () => {

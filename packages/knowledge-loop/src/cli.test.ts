@@ -5,6 +5,7 @@ import { cp, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/pr
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { resolveStateDir } from '@worldbuilder/local-state';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { EXIT, parseTaskRecord, runCli } from './cli.js';
 import { RECEIPT_LOG_FILE } from './log.js';
@@ -20,7 +21,8 @@ let err: string[];
 const io = () => ({
   stdout: (t: string) => out.push(t),
   stderr: (t: string) => err.push(t),
-  env: { XDG_STATE_HOME: path.join(dir, 'xdg') },
+  env: { XDG_STATE_HOME: path.join(dir, 'xdg'), LOCALAPPDATA: path.join(dir, 'localappdata') },
+  homedir: path.join(dir, 'home'),
   now: NOW,
 });
 const run = (...argv: string[]) => runCli(argv, io());
@@ -102,7 +104,9 @@ describe('wb receipts verify (ADR-0040)', () => {
   });
 
   it('exits 3 when the log is broken, and reads the default log in the state directory', async () => {
-    await writeLog([logOf([k, w])[1]!], path.join(dir, 'xdg', 'worldbuilder', RECEIPT_LOG_FILE));
+    // The per-OS default (XDG on Linux, Application Support on macOS, LOCALAPPDATA on Windows).
+    const defaultDir = resolveStateDir(io());
+    await writeLog([logOf([k, w])[1]!], path.join(defaultDir, RECEIPT_LOG_FILE));
     const tasks = await writeTasks([taskOf('TASK-A', k, w)]);
     expect(await run('receipts', 'verify', tasks)).toBe(EXIT.logBroken);
     expect(out.join('')).toContain('LOG BROKEN');
