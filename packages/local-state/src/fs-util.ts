@@ -12,6 +12,8 @@ export interface FsOps {
   rename(from: string, to: string): Promise<void>;
   /** Delay between rename retries; replaced in tests. */
   sleep(ms: number): Promise<void>;
+  /** Uniform random in [0, 1) for retry jitter; replaced in tests. */
+  random?(): number;
 }
 
 export const defaultFsOps: FsOps = {
@@ -20,9 +22,22 @@ export const defaultFsOps: FsOps = {
 };
 
 const TRANSIENT = new Set(['EPERM', 'EACCES', 'EBUSY']);
-const RENAME_ATTEMPTS = 10;
+/**
+ * Bounded retry budget: 12 attempts with exponential back-off (10, 20, 40, 80, 160, then 320 ms
+ * per wait, i.e. 2.23 s of nominal waiting) and "equal jitter" (each wait is between half and the
+ * full nominal value), so contending writers do not retry in lock step. A rename still failing
+ * after that is reported as the original error and the temp file is removed (fail-closed: the
+ * old content stays, nothing is half-written).
+ */
+const RENAME_ATTEMPTS = 12;
+const MAX_WAIT_MS = 320;
 
-/** Rename, retrying a few times on EPERM, EACCES and EBUSY (Windows, antivirus, indexers). */
+/**
+ * Rename, retrying on EPERM, EACCES and EBUSY. On Windows a rename onto a file that another
+ * process (antivirus, search indexer, backup agent) holds open without delete sharing fails with
+ * these codes until the handle is released; the condition is transient but can last a second or
+ * more on a busy CI host.
+ */
 export async function renameWithRetry(
   from: string,
   to: string,
@@ -35,7 +50,9 @@ export async function renameWithRetry(
     } catch (e) {
       const code = (e as NodeJS.ErrnoException).code;
       if (attempt >= RENAME_ATTEMPTS || code === undefined || !TRANSIENT.has(code)) throw e;
-      await ops.sleep(10 * attempt);
+      const nominal = Math.min(10 * 2 ** (attempt - 1), MAX_WAIT_MS);
+      const jitter = (ops.random ?? Math.random)();
+      await ops.sleep(Math.round(nominal / 2 + (nominal / 2) * jitter));
     }
   }
 }
