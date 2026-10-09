@@ -5,8 +5,9 @@
 // credentials, 429 problems with Retry-After, and normal use (board polling, MCP) unaffected.
 
 import { afterEach, describe, expect, it } from 'vitest';
+import { loadOperations } from './contract.js';
 import { AuthFailureLimiter } from './rate-limit.js';
-import { expectContract, makeFixture, type Fixture } from './test-helpers.js';
+import { expectContract, HOST_HEADER, makeFixture, type Fixture } from './test-helpers.js';
 
 let f: Fixture | undefined;
 afterEach(async () => {
@@ -78,22 +79,76 @@ describe('requests per credential', () => {
   });
 });
 
+describe('order: the request limit runs before authentication', () => {
+  it('limits requests without any credential by address, before they are rejected as 401', async () => {
+    f = await makeFixture({ rateLimit: { max: 3, windowMs: 60_000, authFailureMax: 1_000_000 } });
+    const anonymous = () => f!.raw({ method: 'GET', url: '/worlds' });
+    for (let i = 0; i < 3; i++) expect((await anonymous()).statusCode).toBe(401);
+    const res = await anonymous();
+    expect(res.statusCode).toBe(429);
+    expect(res.headers['content-type']).toContain('application/problem+json');
+    expect(Number(res.headers['retry-after'])).toBeGreaterThanOrEqual(1);
+  });
+
+  it('limits a bad-credential flood by address through the lock-out', async () => {
+    f = await makeFixture({ rateLimit: { authFailureMax: 3 } });
+    const codes: number[] = [];
+    for (let i = 0; i < 6; i++) {
+      codes.push(
+        (
+          await f.raw({
+            method: 'GET',
+            url: '/worlds',
+            headers: { authorization: `Bearer guess-${i}` },
+          })
+        ).statusCode,
+      );
+    }
+    expect(codes).toEqual([401, 401, 401, 429, 429, 429]);
+  });
+
+  it('exposes Retry-After and the rate limit headers to the board origin', async () => {
+    f = await makeFixture();
+    const origin = `http://${HOST_HEADER}`;
+    const res = await f.raw({
+      method: 'GET',
+      url: '/worlds',
+      headers: { 'x-worldbuilder-session': f.service.sessionToken, origin },
+    });
+    expect(res.headers['access-control-expose-headers']).toContain('retry-after');
+    expect(res.headers['access-control-expose-headers']).toContain('x-ratelimit-remaining');
+    const preflight = await f.raw({
+      method: 'OPTIONS',
+      url: '/worlds',
+      headers: { origin, 'access-control-request-method': 'GET' },
+    });
+    expect(preflight.headers['access-control-expose-headers']).toContain('retry-after');
+  });
+});
+
 describe('failed credentials per address', () => {
   const bad = (fx: Fixture) =>
     fx.raw({ method: 'GET', url: '/worlds', headers: { authorization: 'Bearer wrong-token' } });
 
-  it('locks the address out after the allowed failures, valid tokens included', async () => {
+  it('answers failing requests with 429 once the allowed failures are used up', async () => {
     f = await makeFixture({ rateLimit: { authFailureMax: 3 } });
     for (let i = 0; i < 3; i++) expect((await bad(f)).statusCode).toBe(401);
     const blocked = await bad(f);
     expect(blocked.statusCode).toBe(429);
     expect(blocked.headers['content-type']).toContain('application/problem+json');
     expect(Number(blocked.headers['retry-after'])).toBeGreaterThanOrEqual(1);
-    // A correct guess must not get through at full speed either.
-    expectContract('world_list', await f.human('GET', '/worlds'), 429);
   });
 
-  it('lets the address back in once the window has passed', async () => {
+  it('lets valid credentials pass during a lock-out, so a bad client cannot lock the board out', async () => {
+    f = await makeFixture({ rateLimit: { authFailureMax: 2 } });
+    await bad(f);
+    await bad(f);
+    expect((await bad(f)).statusCode).toBe(429);
+    expectContract('world_list', await f.human('GET', '/worlds'), 200);
+    expect((await f.agent('scripted', 'GET', '/worlds')).statusCode).toBe(200);
+  });
+
+  it('starts counting afresh once the window has passed', async () => {
     let t = Date.parse('2026-10-09T10:00:00Z');
     f = await makeFixture({
       rateLimit: { authFailureMax: 2, windowMs: 60_000 },
@@ -101,14 +156,24 @@ describe('failed credentials per address', () => {
     });
     await bad(f);
     await bad(f);
-    expect((await f.human('GET', '/worlds')).statusCode).toBe(429);
+    expect((await bad(f)).statusCode).toBe(429);
     t += 61_000;
-    expect((await f.human('GET', '/worlds')).statusCode).toBe(200);
+    expect((await bad(f)).statusCode).toBe(401);
   });
 
   it('does not count successful requests as failures', async () => {
     f = await makeFixture({ rateLimit: { authFailureMax: 2 } });
     for (let i = 0; i < 10; i++) expect((await f.human('GET', '/worlds')).statusCode).toBe(200);
+    expect((await bad(f)).statusCode).toBe(401);
+  });
+});
+
+describe('the OpenAPI contract', () => {
+  it('declares the 429 problem on every operation', () => {
+    const ops = loadOperations();
+    expect(ops.length).toBeGreaterThan(20);
+    const without = ops.filter((o) => !o.responses.get(429)).map((o) => o.id);
+    expect(without).toEqual([]);
   });
 });
 

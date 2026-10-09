@@ -1050,6 +1050,8 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '413':
           $ref: '#/components/responses/TooLarge'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
   /metrics/usage:
     get:
       operationId: usage_metrics_get

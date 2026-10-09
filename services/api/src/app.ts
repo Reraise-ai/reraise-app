@@ -85,10 +85,14 @@ export interface BoardApp extends FastifyInstance {
   readonly mcp: McpMount['sessions'];
 }
 
+/** Response headers a browser page may read: the rate limit state (ADR-0047). */
+const EXPOSED_HEADERS = 'retry-after, x-ratelimit-limit, x-ratelimit-remaining, x-ratelimit-reset';
+
 const CORS_HEADERS = {
   'access-control-allow-headers': 'content-type, authorization, x-worldbuilder-session',
   'access-control-allow-methods': 'GET, POST, PUT, OPTIONS',
   'access-control-max-age': '600',
+  'access-control-expose-headers': EXPOSED_HEADERS,
 } as const;
 
 function bearerOf(req: FastifyRequest): string | undefined {
@@ -218,7 +222,10 @@ export async function buildApp(options: AppOptions): Promise<BoardApp> {
       if (!origins.has(origin.toLowerCase())) {
         return problem(reply, 403, 'the Origin header is not allowed', 'origin-not-allowed');
       }
-      reply.header('access-control-allow-origin', origin).header('vary', 'Origin');
+      reply
+        .header('access-control-allow-origin', origin)
+        .header('access-control-expose-headers', EXPOSED_HEADERS)
+        .header('vary', 'Origin');
       if (req.method === 'OPTIONS') {
         return reply.code(204).headers(CORS_HEADERS).send();
       }
@@ -226,10 +233,13 @@ export async function buildApp(options: AppOptions): Promise<BoardApp> {
     return undefined;
   });
 
-  // Rate limits (ADR-0047). Requests are counted per credential, after the Host and Origin check
-  // (a foreign page spends no budget) and before authentication, so every authenticated route and
-  // /mcp is covered. Failed credentials are counted per address: after the allowed number the
-  // address is locked out for the rest of the window.
+  // Rate limits (ADR-0047). The plugin is registered with `global: false` and its limiter is added
+  // as an explicit onRequest hook here, so the order is fixed by the hooks below:
+  //   Host/Origin check -> request limit -> authentication (with the failed-credential lock-out).
+  // A foreign page spends no budget; unauthenticated and bad-credential floods are counted before
+  // any credential is checked (per address when none is sent, per presented credential otherwise).
+  // Failed credentials are counted per address: during a lock-out only requests that fail
+  // authentication are refused (429), valid credentials pass.
   const limits =
     options.rateLimit === false ? undefined : { ...DEFAULT_RATE_LIMIT, ...options.rateLimit };
   const authFailures = limits
@@ -237,7 +247,7 @@ export async function buildApp(options: AppOptions): Promise<BoardApp> {
     : undefined;
   if (limits) {
     await app.register(rateLimit, {
-      global: true,
+      global: false,
       max: limits.max,
       timeWindow: limits.windowMs,
       keyGenerator: rateLimitKey,
@@ -250,6 +260,7 @@ export async function buildApp(options: AppOptions): Promise<BoardApp> {
           Math.max(1, Math.ceil(context.ttl / 1000)),
         ),
     });
+    app.addHook('onRequest', app.rateLimit());
   }
 
   /** The caller of a request: exactly one credential, the session token or a registered agent. */
@@ -277,14 +288,17 @@ export async function buildApp(options: AppOptions): Promise<BoardApp> {
   // size limits or parse errors. Only liveness is open (it carries no data).
   app.addHook('onRequest', async (req) => {
     if (req.method === 'OPTIONS' || req.url === '/health') return;
-    const wait = authFailures?.lockedFor(req.ip);
-    if (wait !== undefined) {
-      throw new HttpError(429, 'too many failed credentials; retry later', undefined, wait);
-    }
     try {
       req.principal = await authenticate(req);
     } catch (error) {
-      if (error instanceof HttpError && error.status === 401) authFailures?.recordFailure(req.ip);
+      if (error instanceof HttpError && error.status === 401 && authFailures) {
+        // Only a request that fails authentication meets the lock-out; a valid credential never does.
+        const wait = authFailures.lockedFor(req.ip);
+        if (wait !== undefined) {
+          throw new HttpError(429, 'too many failed credentials; retry later', undefined, wait);
+        }
+        authFailures.recordFailure(req.ip);
+      }
       throw error;
     }
   });

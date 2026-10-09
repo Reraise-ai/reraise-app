@@ -337,7 +337,7 @@ describe('worldbuilder usage', () => {
 });
 
 describe('worldbuilder serve', () => {
-  it('applies --rate-limit and --auth-failure-limit', async () => {
+  it('applies --rate-limit', async () => {
     const port = await freePort();
     let service: Service | undefined;
     const code = await main(
@@ -373,6 +373,53 @@ describe('worldbuilder serve', () => {
       expect((await call()).statusCode).toBe(200);
       expect((await call()).statusCode).toBe(200);
       expect((await call()).statusCode).toBe(429);
+    } finally {
+      await service?.close();
+    }
+  });
+  it('applies --auth-failure-limit', async () => {
+    const port = await freePort();
+    let service: Service | undefined;
+    const code = await main(
+      [
+        'serve',
+        '--store',
+        path.join(dir, 'store'),
+        '--state',
+        path.join(dir, 'state'),
+        '--port',
+        String(port),
+        '--auth-failure-limit',
+        '2',
+      ],
+      {
+        stdout: sink(),
+        stderr: sink(),
+        logger: false,
+        openStore: async () => new MemoryStorageAdapter(new MemoryStore(crypto.randomUUID())),
+        onServe: (s) => {
+          service = s;
+        },
+      },
+    );
+    try {
+      expect(code).toBe(-1);
+      const call = () =>
+        service!.app.inject({
+          method: 'GET',
+          url: '/worlds',
+          headers: { 'x-worldbuilder-session': service!.sessionToken, host: `127.0.0.1:${port}` },
+        });
+      const bad = () =>
+        service!.app.inject({
+          method: 'GET',
+          url: '/worlds',
+          headers: { authorization: 'Bearer nope', host: `127.0.0.1:${port}` },
+        });
+      expect((await bad()).statusCode).toBe(401);
+      expect((await bad()).statusCode).toBe(401);
+      expect((await bad()).statusCode).toBe(429);
+      expect((await call()).statusCode).toBe(200);
     } finally {
       await service?.close();
     }

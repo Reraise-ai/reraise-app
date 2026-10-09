@@ -6,8 +6,9 @@
 //   - requests per credential (or per address when there is none), the official @fastify/rate-limit
 //     plugin, so a runaway local client cannot flood the service;
 //   - failed credentials per address, so a local process cannot guess tokens at speed. After the
-//     allowed number of failures in a window every request from that address is refused until the
-//     window has passed, a valid token included (otherwise a correct guess would pass at full speed).
+//     allowed number of failures in a window, every request from that address that fails
+//     authentication gets 429 instead of 401; a valid credential
+//     still passes, so a misconfigured agent cannot lock the board out.
 
 import { sha256Hex } from './auth.js';
 import type { FastifyRequest } from 'fastify';
