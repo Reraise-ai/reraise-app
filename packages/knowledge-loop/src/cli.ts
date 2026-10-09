@@ -48,6 +48,8 @@ export interface CliIo {
   readonly stdout: (text: string) => void;
   readonly stderr: (text: string) => void;
   readonly env?: Readonly<Record<string, string | undefined>>;
+  /** Home directory used for the per-OS state directory default; defaults to the host's. */
+  readonly homedir?: string;
   readonly now?: () => Date;
 }
 
@@ -86,6 +88,7 @@ export async function runCli(argv: readonly string[], io: CliIo): Promise<number
 const stateDir = (values: { state?: string | undefined }, io: CliIo) =>
   resolveStateDir({
     ...(io.env ? { env: io.env } : {}),
+    ...(io.homedir !== undefined ? { homedir: io.homedir } : {}),
     ...(values.state !== undefined ? { explicitPath: path.resolve(values.state) } : {}),
   });
 

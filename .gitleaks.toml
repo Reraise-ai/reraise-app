@@ -1,0 +1,54 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright The Worldbuilder contributors
+#
+# gitleaks configuration (read automatically from the repository root by the CI secret scan).
+# The default rules stay on; only the narrow exception below is added.
+
+title = "The Worldbuilder gitleaks configuration"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Stripe's published documentation example key, used as test bait in the Hermes memory tests (older commits cannot be rewritten; the current tests assemble it at run time)."
+condition = "AND"
+regexTarget = "match"
+regexes = ['''sk_test_4eC39HqLyjWDarjtT1zdp7dc''']
+paths = [
+  '''integrations/hermes/tests/test_memory\.py''',
+  '''integrations/hermes/tests/test_pending_write_back\.py''',
+]
+
+# The entries below are synthetic values in older history that gitleaks' generic rule flags.
+# Each is limited to its exact value and the file(s) it lives in, so they survive a squash.
+
+[[allowlists]]
+description = "Synthetic single-use confirmation token (base64 of the text 'foobarbazqux12345678') in the Level-1 predict request fixtures: the valid cloud-confirmed one and the invalid 'token without transfer' one."
+condition = "AND"
+regexTarget = "match"
+regexes = ['''Zm9vYmFyYmF6cXV4MTIzNDU2Nzg''']
+paths = [
+  '''schemas/fixtures/valid/api-level1-predict-request-cloud-confirmed\.json''',
+  '''schemas/fixtures/invalid/api-level1-predict-request-token-without-transfer\.json''',
+]
+
+[[allowlists]]
+description = "Obviously fake API key of the System One (Jev) adapter test, asserted in the Authorization header."
+condition = "AND"
+regexTarget = "match"
+regexes = ['''synthetic-test-key-1234''']
+paths = ['''packages/level1-engines/src/system-one\.test\.ts''']
+
+[[allowlists]]
+description = "Example sentence 'API token for the board: abc123def456' that memory.route must classify as a secret."
+condition = "AND"
+regexTarget = "match"
+regexes = ['''abc123def456''']
+paths = ['''packages/knowledge-loop/src/route\.test\.ts''']
+
+[[allowlists]]
+description = "Arbitrary string in an invalid fixture marked synthetic, proving that a cleartext token in agent-connections is rejected."
+condition = "AND"
+regexTarget = "match"
+regexes = ['''kJ8m2Qp4Vx7Zr1Tn5Wb9Yc3Hd6Lf0Gs2''']
+paths = ['''schemas/fixtures/invalid/agent-connections-clear-token\.json''']

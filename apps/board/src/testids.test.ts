@@ -2,13 +2,14 @@
 // Copyright The Worldbuilder contributors
 import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 // The e2e depends on the test ids; apps/board/README.md is their documentation. Every id in a
 // component must be named there (the README writes dynamic ids as `name-<id>`).
 describe('documented test ids', () => {
   it('names every data-testid of the components in the README', () => {
-    const here = path.dirname(new URL(import.meta.url).pathname);
+    const here = path.dirname(fileURLToPath(import.meta.url));
     const readme = readFileSync(path.join(here, '..', 'README.md'), 'utf8');
     const dir = path.join(here, 'components');
     const missing: string[] = [];
