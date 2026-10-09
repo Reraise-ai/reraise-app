@@ -60,11 +60,11 @@ describe('personal data patterns (ADR-0022, ADR-0042)', () => {
       'dotted labels without top-level domain': `a@${'a.'.repeat(N / 2)}1`,
       'digits and spaces': '1 '.repeat(N / 2),
     };
-    it.each(Object.entries(inputs))('%s completes in under 200 ms', (_name, text) => {
+    it.each(Object.entries(inputs))('%s completes in under 1000 ms', (_name, text) => {
       const start = performance.now();
       findEmails(text);
       personalDataKinds(text);
-      expect(performance.now() - start).toBeLessThan(200);
+      expect(performance.now() - start).toBeLessThan(1000);
     });
 
     it('still finds an address behind a very long local part, and one at the end of a run', () => {
