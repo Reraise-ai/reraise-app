@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright The Worldbuilder contributors
+#
+# gitleaks configuration (read automatically from the repository root by the CI secret scan).
+# The default rules stay on; only the narrow exception below is added.
+
+title = "The Worldbuilder gitleaks configuration"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Stripe's published documentation example key, used as test bait in the Hermes memory tests (older commits cannot be rewritten; the current tests assemble it at run time)."
+condition = "AND"
+regexTarget = "match"
+regexes = ['''sk_test_4eC39HqLyjWDarjtT1zdp7dc''']
+paths = [
+  '''integrations/hermes/tests/test_memory\.py''',
+  '''integrations/hermes/tests/test_pending_write_back\.py''',
+]
