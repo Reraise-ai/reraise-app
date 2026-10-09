@@ -183,6 +183,14 @@ const LOCAL_REFERENCE = [
 ];
 
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/** Drop trailing sentence punctuation from a URL; a linear scan (a `[...]+$` regex is quadratic on a long run). */
+function stripTrailingPunctuation(url: string): string {
+  let end = url.length;
+  while (end > 0 && '.,;:!?'.includes(url.charAt(end - 1))) end--;
+  return url.slice(0, end);
+}
+
 const wordsRe = (words: readonly string[]) =>
   new RegExp(`(?<![\\p{L}\\p{N}])(?:${words.map(escapeRe).join('|')})(?![\\p{L}\\p{N}])`, 'u');
 
@@ -258,7 +266,7 @@ export function memorySignals(request: MemoryRouteRequest, options: RouteOptions
   )
     signals.push('secret_like');
   if (personalDataKinds(raw).length > 0) signals.push('personal_data');
-  const urls = [...raw.matchAll(URL)].map((m) => m[0].replace(/[.,;:!?]+$/, ''));
+  const urls = [...raw.matchAll(URL)].map((m) => stripTrailingPunctuation(m[0]));
   if (request.source !== undefined) urls.push(request.source);
   if (urls.some((u) => isPublicSourceUri(u))) signals.push('public_source');
   const withoutUrls = raw.replace(URL, ' ');

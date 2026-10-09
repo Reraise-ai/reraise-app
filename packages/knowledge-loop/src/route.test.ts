@@ -409,3 +409,26 @@ describe('token-like runs and known prefixes (rules:v3, v4)', () => {
     expect(routeMemory({ text }).ruleId).not.toBe('secret');
   });
 });
+
+describe('adversarial input stays linear (CodeQL js/polynomial-redos)', () => {
+  const N = 100_000;
+  const inputs: Record<string, string> = {
+    'exclamation marks': '!'.repeat(N),
+    'url ending in exclamation marks': `see https://example.org/a${'!'.repeat(N)}`,
+    'many urls each ending in punctuation': 'https://example.org/x!!. '.repeat(N / 25),
+    'url with exclamation marks inside, not at the end': `https://example.org/${'!'.repeat(N)}a`,
+    'url ending in mixed punctuation': `https://example.org/${'.,;:!?'.repeat(N / 6)}`,
+    'percent run': '%'.repeat(N),
+    spaces: ' '.repeat(N),
+  };
+  it.each(Object.entries(inputs))('%s classifies in under 200 ms', (_name, text) => {
+    const start = performance.now();
+    routeMemory({ text });
+    expect(performance.now() - start).toBeLessThan(200);
+  });
+
+  it('still strips trailing sentence punctuation before judging a public source', () => {
+    const result = memorySignals({ text: 'Reference: https://example.org/report?!.' });
+    expect(result).toContain('public_source');
+  });
+});
