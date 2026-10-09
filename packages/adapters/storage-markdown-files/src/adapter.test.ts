@@ -308,7 +308,6 @@ describe('patch', () => {
       original
         .replace('title:    Original title', 'title: Changed')
         .replace('tags: [a, b]', 'tags: [c]')
-        .replace('x-other:', 'x-other:')
         .replace('  nested: [1, 2]\n---', '  nested: [1, 2]\nstatus: checked\n---'),
     );
   });
@@ -457,7 +456,7 @@ describe('structured cards', () => {
         .body!.replace('"x": 120', '"x": 999')
         .replace('"then": "Reroute laden tankers via the Cape of Good Hope"', '"then": "Hold"')
         .replace('Delivery reliability before freight cost.', 'Cost before reliability.')
-        .replace('Reroute laden tankers', 'Reroute laden tankers');
+        .replace('Reroute the next three laden tankers', 'Hold the next three laden tankers');
       expect(edited).not.toBe(card.body);
       await rejects(adapter.patch(id, { body: edited }), 'invalid_patch');
       expect(await readFile(await fileOf(dir, id), 'utf8')).toBe(before);
