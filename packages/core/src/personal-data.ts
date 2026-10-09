@@ -5,8 +5,13 @@
 // (scripts/check-no-real-data.mjs, ADR-0022) and memory routing (ADR-0042): e-mail addresses,
 // IBANs (ISO 13616 with mod-97) and phone numbers. Pure; one definition for both uses.
 
-/** An e-mail address; group 1 is the domain. */
-export const EMAIL_PATTERN = /[A-Za-z0-9._%+-]+@((?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,})\b/g;
+/**
+ * An e-mail address; group 1 is the domain. The local part is capped at 64 characters (RFC 5321
+ * section 4.5.3.1.1), so a scan that finds no "@" costs at most 64 steps per start position and the
+ * whole match is linear in the input (an unbounded `+` here was quadratic on long runs of local-part
+ * characters such as "%"). A longer run is still detected through its last 64 characters.
+ */
+export const EMAIL_PATTERN = /[A-Za-z0-9._%+-]{1,64}@((?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,})\b/g;
 
 /** E-mail addresses in `text`, with their domains. */
 export function findEmails(text: string): { readonly match: string; readonly domain: string }[] {

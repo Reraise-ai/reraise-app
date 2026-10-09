@@ -48,4 +48,30 @@ describe('personal data patterns (ADR-0022, ADR-0042)', () => {
     ]);
     expect(personalDataKinds('Tankers reroute before insurers react')).toEqual([]);
   });
+
+  describe('adversarial input stays linear (CodeQL js/polynomial-redos)', () => {
+    const N = 100_000;
+    const inputs: Record<string, string> = {
+      'percent run': '%'.repeat(N),
+      'percent run then at-sign': `${'%'.repeat(N)}@`,
+      'local-part characters': '._%+-a0'.repeat(Math.ceil(N / 7)),
+      'many at-signs': 'a@'.repeat(N / 2),
+      'long label after at-sign': `a@${'a'.repeat(N)}`,
+      'dotted labels without top-level domain': `a@${'a.'.repeat(N / 2)}1`,
+      'digits and spaces': '1 '.repeat(N / 2),
+    };
+    it.each(Object.entries(inputs))('%s completes in under 200 ms', (_name, text) => {
+      const start = performance.now();
+      findEmails(text);
+      personalDataKinds(text);
+      expect(performance.now() - start).toBeLessThan(200);
+    });
+
+    it('still finds an address behind a very long local part, and one at the end of a run', () => {
+      const found = findEmails(`${'a'.repeat(500)}@example.org`);
+      expect(found).toHaveLength(1);
+      expect(found[0]?.domain).toBe('example.org');
+      expect(findEmails(`${'%'.repeat(N)}jane@example.org`)).toHaveLength(1);
+    });
+  });
 });
