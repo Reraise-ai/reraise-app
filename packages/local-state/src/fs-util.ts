@@ -33,10 +33,11 @@ const RENAME_ATTEMPTS = 12;
 const MAX_WAIT_MS = 320;
 
 /**
- * Rename, retrying on EPERM, EACCES and EBUSY. On Windows a rename onto a file that another
- * process (antivirus, search indexer, backup agent) holds open without delete sharing fails with
- * these codes until the handle is released; the condition is transient but can last a second or
- * more on a busy CI host.
+ * Rename, retrying on EPERM, EACCES and EBUSY. On Windows any open handle on the target,
+ * including concurrent readers in this process, blocks a replacing rename until it is closed
+ * (antivirus, search indexers and backup agents do the same); the condition is transient but can
+ * last a second or more on a busy host. Twin: the adapter copy in
+ * `packages/adapters/storage-markdown-files/src/atomic.ts`.
  */
 export async function renameWithRetry(
   from: string,
