@@ -29,6 +29,8 @@ export interface ServiceOptions {
   readonly allowedHosts?: readonly string[];
   readonly allowedOrigins?: readonly string[];
   readonly bodyLimit?: number;
+  /** Rate limits of the HTTP API (ADR-0047); `false` switches them off. */
+  readonly rateLimit?: AppOptions['rateLimit'];
   readonly syntheticStores?: readonly string[];
   /** Level 1 test seams: an injected `fetch` for cloud engines, a replacement local engine. */
   readonly level1?: AppOptions['level1'];
@@ -116,6 +118,7 @@ async function assemble(
     ...(options.allowedHosts ? { allowedHosts: options.allowedHosts } : {}),
     ...(options.allowedOrigins ? { allowedOrigins: options.allowedOrigins } : {}),
     ...(options.bodyLimit !== undefined ? { bodyLimit: options.bodyLimit } : {}),
+    ...(options.rateLimit !== undefined ? { rateLimit: options.rateLimit } : {}),
     ...(options.syntheticStores ? { syntheticStores: options.syntheticStores } : {}),
     ...(options.level1 ? { level1: options.level1 } : {}),
     ...(options.logger !== undefined ? { logger: options.logger } : {}),

@@ -18,6 +18,7 @@ const TITLES: Readonly<Record<number, { slug: string; title: string }>> = {
   413: { slug: 'payload-too-large', title: 'Payload too large' },
   414: { slug: 'uri-too-long', title: 'URI too long' },
   415: { slug: 'unsupported-media-type', title: 'Unsupported media type' },
+  429: { slug: 'too-many-requests', title: 'Too many requests' },
   500: { slug: 'internal-error', title: 'Internal error' },
   502: { slug: 'bad-gateway', title: 'Bad gateway' },
   503: { slug: 'unavailable', title: 'Service unavailable' },
@@ -30,6 +31,8 @@ export class HttpError extends Error {
     readonly status: number,
     readonly detail: string,
     readonly slug?: string,
+    /** Seconds a client should wait before it retries (429). */
+    readonly retryAfter?: number,
   ) {
     super(detail);
   }

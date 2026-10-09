@@ -42,6 +42,8 @@ paths:
       responses:
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '200':
           description: The worlds of the store.
           content:
@@ -70,6 +72,8 @@ paths:
       responses:
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '201':
           description: The new Lage card.
           content:
@@ -99,6 +103,8 @@ paths:
       responses:
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '200':
           description: The Lage card.
           content:
@@ -128,6 +134,8 @@ paths:
       responses:
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '200':
           description: The saved Lage card.
           content:
@@ -176,6 +184,8 @@ paths:
       responses:
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '200':
           description: The Level 1 state of the Lage.
           content:
@@ -219,6 +229,8 @@ paths:
       responses:
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '200':
           description: The result of the call.
           content:
@@ -269,6 +281,8 @@ paths:
       responses:
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '201':
           description: The new Lage card.
           content:
@@ -321,6 +335,8 @@ paths:
       responses:
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '200':
           description: Gate-cleared matching cards.
           content:
@@ -345,6 +361,8 @@ paths:
       responses:
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '200':
           description: The card, if the gate allows it for the caller.
           content:
@@ -375,6 +393,8 @@ paths:
       responses:
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '200':
           description: The stance with its history.
           content:
@@ -407,6 +427,8 @@ paths:
       responses:
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '200':
           description: The saved stance.
           content:
@@ -449,6 +471,8 @@ paths:
       responses:
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '404':
           $ref: '#/components/responses/NotFound'
         '200':
@@ -483,6 +507,8 @@ paths:
       responses:
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '200':
           description: The rule evaluation for the caller's target.
           content:
@@ -528,6 +554,8 @@ paths:
       responses:
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '200':
           description: Proposals, newest first.
           content:
@@ -558,6 +586,8 @@ paths:
       responses:
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '201':
           description: The pending proposal.
           content:
@@ -591,6 +621,8 @@ paths:
       responses:
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '200':
           description: The accepted proposal.
           content:
@@ -627,6 +659,8 @@ paths:
       responses:
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '200':
           description: The rejected proposal.
           content:
@@ -662,6 +696,8 @@ paths:
       responses:
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '201':
           description: The saved decision card.
           content:
@@ -701,6 +737,8 @@ paths:
       responses:
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '200':
           description: The saved decision card.
           content:
@@ -742,6 +780,8 @@ paths:
       responses:
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '201':
           description: The previewed transfer.
           content:
@@ -771,6 +811,8 @@ paths:
       responses:
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '200':
           description: The pending transfer.
           content:
@@ -809,6 +851,8 @@ paths:
       responses:
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '200':
           description: The confirmation with its single-use token.
           content:
@@ -851,6 +895,8 @@ paths:
       responses:
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '404':
           $ref: '#/components/responses/NotFound'
         '200':
@@ -887,6 +933,8 @@ paths:
       responses:
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '201':
           description: The Write-back Receipt, and the pending proposal if a card was proposed.
           content:
@@ -921,6 +969,8 @@ paths:
       responses:
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '201':
           description: The pending proposal.
           content:
@@ -955,6 +1005,8 @@ paths:
       responses:
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '201':
           description: The pending proposal.
           content:
@@ -1018,6 +1070,8 @@ paths:
       responses:
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '200':
           description: The usage metrics.
           content:
@@ -1113,6 +1167,20 @@ components:
       headers:
         Retry-After:
           description: Seconds to wait; present for a locked store.
+          schema:
+            type: string
+      content:
+        application/problem+json:
+          schema:
+            $ref: '../api.schema.json#/$defs/problem'
+    TooManyRequests:
+      description: >-
+        Too many requests for this credential in the current window, or too many failed
+        credentials from this address (ADR-0047). Retry after the time in `Retry-After`. Never
+        carries card content.
+      headers:
+        Retry-After:
+          description: Seconds to wait.
           schema:
             type: string
       content:

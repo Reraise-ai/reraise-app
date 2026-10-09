@@ -308,6 +308,23 @@ describe('worldbuilder usage', () => {
     expect(err3.text()).toContain('not an argument');
     expect(err3.text()).not.toContain('abc');
   });
+  it.each(['0', '1.5', 'many', '1000001'])('refuses --rate-limit %s', async (bad) => {
+    const err = sink();
+    const code = await main(['serve', '--store', path.join(dir, 'store'), '--rate-limit', bad], {
+      stderr: err,
+    });
+    expect(code).toBe(2);
+    expect(err.text()).toContain('--rate-limit must be an integer from 1 to 1000000');
+  });
+  it('refuses a bad --auth-failure-limit', async () => {
+    const err = sink();
+    const code = await main(
+      ['serve', '--store', path.join(dir, 'store'), '--auth-failure-limit', 'x'],
+      { stderr: err },
+    );
+    expect(code).toBe(2);
+    expect(err.text()).toContain('--auth-failure-limit');
+  });
   it('fails cleanly when the store cannot be opened', async () => {
     const err = sink();
     const code = await main(
@@ -320,6 +337,46 @@ describe('worldbuilder usage', () => {
 });
 
 describe('worldbuilder serve', () => {
+  it('applies --rate-limit and --auth-failure-limit', async () => {
+    const port = await freePort();
+    let service: Service | undefined;
+    const code = await main(
+      [
+        'serve',
+        '--store',
+        path.join(dir, 'store'),
+        '--state',
+        path.join(dir, 'state'),
+        '--port',
+        String(port),
+        '--rate-limit',
+        '2',
+      ],
+      {
+        stdout: sink(),
+        stderr: sink(),
+        logger: false,
+        openStore: async () => new MemoryStorageAdapter(new MemoryStore(crypto.randomUUID())),
+        onServe: (s) => {
+          service = s;
+        },
+      },
+    );
+    try {
+      expect(code).toBe(-1);
+      const call = () =>
+        service!.app.inject({
+          method: 'GET',
+          url: '/worlds',
+          headers: { 'x-worldbuilder-session': service!.sessionToken, host: `127.0.0.1:${port}` },
+        });
+      expect((await call()).statusCode).toBe(200);
+      expect((await call()).statusCode).toBe(200);
+      expect((await call()).statusCode).toBe(429);
+    } finally {
+      await service?.close();
+    }
+  });
   it('starts on loopback, prints the token once, seeds screen-only rules and answers over HTTP', async () => {
     const out = sink();
     const port = await freePort();

@@ -67,6 +67,8 @@ export interface FixtureOptions {
   readonly rules?: string | null;
   readonly agents?: Readonly<Record<string, AgentTarget>>;
   readonly bodyLimit?: number;
+  /** Rate limits of the service (defaults when omitted). */
+  readonly rateLimit?: ServiceOptions['rateLimit'];
   /** Listen on a free loopback port (real HTTP, for the MCP tests); `url` is set then. */
   readonly listen?: boolean;
   readonly now?: () => Date;
@@ -175,6 +177,7 @@ export async function makeFixture(options: FixtureOptions = {}): Promise<Fixture
     stateDir,
     port: options.listen ? 0 : PORT,
     ...(options.bodyLimit !== undefined ? { bodyLimit: options.bodyLimit } : {}),
+    ...(options.rateLimit !== undefined ? { rateLimit: options.rateLimit } : {}),
     ...(options.now ? { now: options.now } : {}),
     ...(options.level1 ? { level1: options.level1 } : {}),
   });

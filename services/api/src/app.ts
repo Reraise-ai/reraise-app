@@ -10,6 +10,7 @@
 // package) is a 500 and never reaches the caller.
 
 import type { LocalStateStore, StorageAdapter } from '@worldbuilder/core';
+import rateLimit from '@fastify/rate-limit';
 import Fastify, {
   type FastifyBaseLogger,
   type FastifyInstance,
@@ -30,6 +31,12 @@ import { handlers } from './operations.js';
 import { ReceiptStore } from './receipts.js';
 import { HttpError, problemOf } from './problem.js';
 import type { Services } from './services.js';
+import {
+  AuthFailureLimiter,
+  DEFAULT_RATE_LIMIT,
+  rateLimitKey,
+  type RateLimitOptions,
+} from './rate-limit.js';
 import { Mutex } from './util.js';
 
 export const DEFAULT_PORT = 4310;
@@ -56,6 +63,8 @@ export interface AppOptions {
   readonly syntheticStores?: readonly string[];
   /** Level 1: an injected `fetch` for cloud engines and a replacement local engine (tests). */
   readonly level1?: Pick<Level1EngineRegistryOptions, 'fetch' | 'localEngine'>;
+  /** Rate limits (ADR-0047); `false` switches them off. */
+  readonly rateLimit?: RateLimitOptions | false;
   readonly logger?: FastifyBaseLogger | boolean | object;
   readonly now?: () => Date;
 }
@@ -217,6 +226,32 @@ export async function buildApp(options: AppOptions): Promise<BoardApp> {
     return undefined;
   });
 
+  // Rate limits (ADR-0047). Requests are counted per credential, after the Host and Origin check
+  // (a foreign page spends no budget) and before authentication, so every authenticated route and
+  // /mcp is covered. Failed credentials are counted per address: after the allowed number the
+  // address is locked out for the rest of the window.
+  const limits =
+    options.rateLimit === false ? undefined : { ...DEFAULT_RATE_LIMIT, ...options.rateLimit };
+  const authFailures = limits
+    ? new AuthFailureLimiter(limits.authFailureMax, limits.windowMs, () => now().getTime())
+    : undefined;
+  if (limits) {
+    await app.register(rateLimit, {
+      global: true,
+      max: limits.max,
+      timeWindow: limits.windowMs,
+      keyGenerator: rateLimitKey,
+      allowList: (req) => req.method === 'OPTIONS' || req.url === '/health',
+      errorResponseBuilder: (_req, context) =>
+        new HttpError(
+          429,
+          'too many requests; retry later',
+          undefined,
+          Math.max(1, Math.ceil(context.ttl / 1000)),
+        ),
+    });
+  }
+
   /** The caller of a request: exactly one credential, the session token or a registered agent. */
   const authenticate = async (req: FastifyRequest): Promise<Principal> => {
     const session = req.headers['x-worldbuilder-session'];
@@ -242,7 +277,16 @@ export async function buildApp(options: AppOptions): Promise<BoardApp> {
   // size limits or parse errors. Only liveness is open (it carries no data).
   app.addHook('onRequest', async (req) => {
     if (req.method === 'OPTIONS' || req.url === '/health') return;
-    req.principal = await authenticate(req);
+    const wait = authFailures?.lockedFor(req.ip);
+    if (wait !== undefined) {
+      throw new HttpError(429, 'too many failed credentials; retry later', undefined, wait);
+    }
+    try {
+      req.principal = await authenticate(req);
+    } catch (error) {
+      if (error instanceof HttpError && error.status === 401) authFailures?.recordFailure(req.ip);
+      throw error;
+    }
   });
 
   const run = async (op: Operation, req: FastifyRequest, reply: FastifyReply) => {

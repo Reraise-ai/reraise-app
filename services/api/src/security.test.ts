@@ -16,7 +16,8 @@ import { tmpdir } from 'node:os';
 
 let f: Fixture;
 beforeAll(async () => {
-  f = await makeFixture({ bodyLimit: 4096 });
+  // This suite sends many bad credentials on purpose; the lock-out has its own tests (rate-limit.test.ts).
+  f = await makeFixture({ bodyLimit: 4096, rateLimit: { authFailureMax: 1_000_000 } });
 });
 afterAll(async () => {
   await f.close();

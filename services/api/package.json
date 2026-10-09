@@ -25,6 +25,7 @@
     "start": "node dist/cli.js serve"
   },
   "dependencies": {
+    "@fastify/rate-limit": "11.2.1",
     "@worldbuilder/core": "workspace:*",
     "@worldbuilder/disclosure-gate": "workspace:*",
     "@worldbuilder/knowledge-loop": "workspace:*",
