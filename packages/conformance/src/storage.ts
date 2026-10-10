@@ -452,6 +452,43 @@ export function describeStorageAdapterConformance(
       ).rejects.toThrow();
     });
 
+    it('leaves the version list unchanged when an inverted period rejects a patch', async () => {
+      const { adapter } = await factory();
+      const lage = {
+        question: 'Conformance?',
+        options: ['yes', 'no'],
+        cards: [],
+        seats: [{ name: 'Tester', kind: 'human' as const }],
+        edges: [],
+        version: 1,
+        updatedAt: '2026-10-06T00:00:00Z',
+      };
+      const id = await adapter.create(
+        {
+          format: 2,
+          collection: 'decisions',
+          type: 'lage',
+          title: 'Period Lage',
+          validFrom: '2026-01-01',
+          validUntil: '2026-12-31',
+          lage,
+        },
+        'human',
+      );
+      const before = await adapter.versions(id);
+      await expect(
+        adapter.patch(
+          id,
+          { lage: { ...lage, version: 2 }, validUntil: '2025-06-01' },
+          { lageVersion: 1 },
+        ),
+      ).rejects.toThrow(/earlier than validFrom/);
+      expect(await adapter.versions(id)).toEqual(before);
+      const card = await adapter.read(id);
+      expect(card?.lage?.version).toBe(1);
+      expect(card?.validUntil).toBe('2026-12-31');
+    });
+
     it('searches by text and filters by layer', async () => {
       const { adapter } = await factory();
       await adapter.create({ ...draft, title: 'Needle in the store' }, 'human');

@@ -281,15 +281,17 @@ export class MemoryStorageAdapter implements StorageAdapter {
       if (version !== undefined && patch.lage.version !== version + 1) {
         throw new StorageError('invalid', 'a new Lage version must be the stored version plus one');
       }
-      this.pushVersion(externalId, current);
     }
     const next: Record<string, unknown> = { ...current };
     for (const [key, value] of Object.entries(patch)) {
       if (value === undefined) delete next[key];
       else next[key] = value;
     }
+    // Accept the merged card before archiving, so a rejected period leaves the version list
+    // unchanged.
     const period = validityPeriodError(next);
     if (period) throw new StorageError('invalid', period);
+    if (patch.lage) this.pushVersion(externalId, current);
     const lines = [...stored.lines];
     for (const [key, value] of Object.entries(patch)) {
       const at = lines.findIndex((l) => l.startsWith(`${key}: `));
