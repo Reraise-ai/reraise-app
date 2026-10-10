@@ -446,7 +446,8 @@ button.wb-link {
 .wb-powered-by {
   flex: 0 0 auto;
   margin-top: auto;
-  padding: var(--wb-space-half) var(--wb-space-2);
+  /* Bottom padding clears the 3px focus ring plus its offset, which otherwise clips at the window edge. */
+  padding: var(--wb-space-half) var(--wb-space-2) var(--wb-space-1);
   text-align: end;
   border-top: var(--wb-stroke) solid var(--wb-line);
 }
