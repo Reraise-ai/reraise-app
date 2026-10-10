@@ -176,15 +176,16 @@ describe('reference gate output matches the schemas', () => {
     }
   });
 
-  it('drops private refs from a cloud preview and leaves the caller card intact (ADR-0048)', () => {
+  it('sends a cloud preview and its release as the allowed card, including refs (ADR-0048)', () => {
     const gate = createDisclosureGate({ rules });
+    const refs = [{ system: 'archive', id: 'CLIP-0001' }];
     const withRefs = card('01M1J0000000000000000000R1', {
       class: 'C',
       language: 'es',
       validFrom: '2026-01-01',
       validUntil: '2026-12-31',
       aliases: ['Daily A'],
-      refs: [{ system: 'archive', id: 'CLIP-0001' }],
+      refs,
     });
     const transfer = gate.preview({
       connectorId: 'jev-stub',
@@ -195,9 +196,13 @@ describe('reference gate output matches the schemas', () => {
     });
     expect(transfer.preview.objects).toHaveLength(1);
     const sent = transfer.preview.objects[0]!;
-    expect(sent).not.toHaveProperty('refs');
+    expect(sent.refs).toEqual(refs);
     expect(sent.language).toBe('es');
-    expect(withRefs.refs).toEqual([{ system: 'archive', id: 'CLIP-0001' }]);
+    expect(sent.validFrom).toBe('2026-01-01');
+    expect(sent.validUntil).toBe('2026-12-31');
+    expect(sent.aliases).toEqual(['Daily A']);
+    expect(sent).not.toBe(withRefs);
+    expect(withRefs.refs).toEqual(refs);
     const confirmation = gate.confirm({
       transferId: transfer.transferId,
       payloadHash: transfer.payloadHash,
@@ -208,8 +213,9 @@ describe('reference gate output matches the schemas', () => {
       grant: { kind: 'token', token: confirmation.token!, sessionId: 's' },
       envelope: transfer.preview,
     });
-    expect(release.objects[0]).not.toHaveProperty('refs');
-    expect(release.objects[0]?.language).toBe('es');
+    expect(release.objects).toEqual(transfer.preview.objects);
+    expect(release.objects[0]?.refs).toEqual(refs);
+    expect(release.confirmation.payloadHash).toBe(transfer.payloadHash);
   });
 
   it('for share decisions and share bundles (ADR-0036)', () => {

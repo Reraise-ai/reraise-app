@@ -14,12 +14,7 @@ import type {
   Level1Prediction,
   Level1PredictionRequest,
 } from '@worldbuilder/core';
-import {
-  computeContentHash,
-  computePayloadHash,
-  hashJcs,
-  withoutPrivateRefs,
-} from '@worldbuilder/core';
+import { computeContentHash, computePayloadHash, hashJcs } from '@worldbuilder/core';
 import { describe, expect, it } from 'vitest';
 import { schemaValidator } from './validate.js';
 
@@ -106,7 +101,7 @@ export function releaseOf(cards: readonly Card[]): DisclosureRelease {
     target: 'cloud_model',
     connectorId: 'conformance',
     request: {},
-    objects: cards.map((card) => withoutPrivateRefs(card)),
+    objects: [...cards],
   });
 }
 

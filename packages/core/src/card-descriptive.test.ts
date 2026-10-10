@@ -2,7 +2,7 @@
 // Copyright The Worldbuilder contributors
 
 import { describe, expect, it } from 'vitest';
-import { validityPeriodError, withoutPrivateRefs } from './card-descriptive.js';
+import { validityPeriodError } from './card-descriptive.js';
 
 describe('validityPeriodError (ADR-0048)', () => {
   it('allows either end alone, equal dates, and a later end', () => {
@@ -22,24 +22,5 @@ describe('validityPeriodError (ADR-0048)', () => {
       'validUntil 2026-10-01 is earlier than validFrom 2026-10-31',
     );
     expect(validityPeriodError({ validFrom: 'yesterday', validUntil: 'today' })).toBeUndefined();
-  });
-});
-
-describe('withoutPrivateRefs (ADR-0048)', () => {
-  it('drops refs and leaves the input card unchanged', () => {
-    const card = {
-      title: 'Listing',
-      language: 'es',
-      refs: [{ system: 'listings', id: 'PALMA-2B-0001' }],
-    };
-    const out = withoutPrivateRefs(card);
-    expect(out).not.toHaveProperty('refs');
-    expect(out.language).toBe('es');
-    expect(card.refs).toEqual([{ system: 'listings', id: 'PALMA-2B-0001' }]);
-  });
-
-  it('returns a card that has no refs as given', () => {
-    const card = { title: 'Listing', language: 'es' };
-    expect(withoutPrivateRefs(card)).toBe(card);
   });
 });

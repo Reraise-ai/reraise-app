@@ -241,7 +241,7 @@ export function describeDisclosureGateConformance(
       expect(configured.decide({ kind: 'card', card }, 'cloud_model').decision).toBe('deny');
     });
 
-    it('a preview and a release of a card that carries refs contain no refs', () => {
+    it('a preview and a release of a card that carries refs contain those refs', () => {
       const { configured, card } = setup();
       const refs = [
         { system: 'listings', id: 'LIST-0001', url: 'https://example.org/archive/LIST-0001' },
@@ -250,7 +250,7 @@ export function describeDisclosureGateConformance(
       const t = previewOf(configured, [withRefs]);
       expect(t.cardIds).toEqual([withRefs.id]);
       expect(t.preview.objects).toHaveLength(1);
-      expect(t.preview.objects[0]).not.toHaveProperty('refs');
+      expect(t.preview.objects[0]?.refs).toEqual(refs);
       expect(t.preview.objects[0]?.id).toBe(withRefs.id);
       const grant = {
         kind: 'token' as const,
@@ -258,8 +258,8 @@ export function describeDisclosureGateConformance(
         sessionId: SESSION,
       };
       const release = send(configured, grant, t.preview);
-      expect(release.objects).toHaveLength(1);
-      expect(release.objects[0]).not.toHaveProperty('refs');
+      expect(release.objects).toEqual(t.preview.objects);
+      expect(release.objects[0]?.refs).toEqual(refs);
       expect(release.objects[0]?.id).toBe(withRefs.id);
       expect(withRefs.refs).toEqual(refs);
     });

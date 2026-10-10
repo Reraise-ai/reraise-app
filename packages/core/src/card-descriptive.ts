@@ -2,8 +2,7 @@
 // Copyright The Worldbuilder contributors
 //
 // Descriptive card fields (ADR-0048): language, validity period, aliases and external refs.
-// They are not content. `refs` names the owner's private systems and must not be copied into
-// anything that can leave the device.
+// They are not content: none of them enters the content hash.
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -24,16 +23,4 @@ export function validityPeriodError(card: {
     return `validUntil ${validUntil} is earlier than validFrom ${validFrom}`;
   }
   return undefined;
-}
-
-/**
- * A copy of `card` without `refs` (ADR-0048). Cloud transfers, level-1 envelopes and training
- * exports copy whole cards; this is what they drop before the copy can leave the device.
- * A card without `refs` is returned as given.
- */
-export function withoutPrivateRefs<T extends object>(card: T): T {
-  if (!('refs' in card) || card.refs === undefined) return card;
-  const copy = { ...card } as T & { refs?: unknown };
-  delete copy.refs;
-  return copy;
 }

@@ -7,7 +7,6 @@
 // move options, output schema or set of cards is worthless.
 
 import type { Card, DisclosurePreviewEnvelope, Level1PredictionRequest } from '@worldbuilder/core';
-import { withoutPrivateRefs } from '@worldbuilder/core';
 
 interface SchemaPlayer {
   readonly playerCardId: string;
@@ -54,8 +53,9 @@ export function level1OptionLabels(request: Level1PredictionRequest): string[] {
 
 /**
  * The envelope a cloud level-1 engine sends: target `cloud_model`, the engine id as connector,
- * the question, the flattened options and the output schema, and the released objects. The
- * service previews, confirms and redeems exactly this envelope; the adapter checks
+ * the question, the flattened options and the output schema, and the released cards as they
+ * are, including `refs` (ADR-0048). The service previews, confirms and redeems exactly this
+ * envelope; the adapter checks
  * `computePayloadHash(level1EnvelopeFor(...)) === release.confirmation.payloadHash`.
  */
 export function level1EnvelopeFor(
@@ -74,6 +74,6 @@ export function level1EnvelopeFor(
         cardIds: objects.map((c) => c.id),
       }),
     },
-    objects: objects.map((card) => withoutPrivateRefs(card)),
+    objects: [...objects],
   };
 }
