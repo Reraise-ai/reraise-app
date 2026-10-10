@@ -8,6 +8,9 @@ decision-makers: "Owner (product), CTO/orchestrator (technical)"
 
 > Refined by [ADR-0039](0039-knowledge-loop-receipts.md): an accepted `record_outcome` proposal
 > patches the outcome section of a decision card; it can never touch `release` or other metadata.
+>
+> Amended by [ADR-0048](0048-card-descriptive-fields.md): `language`, `validFrom`, `validUntil`,
+> `aliases` and `refs` are not part of the share projection. `refs` never leaves the device.
 
 ## Context and Problem Statement
 

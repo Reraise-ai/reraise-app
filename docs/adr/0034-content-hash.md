@@ -8,6 +8,9 @@ decision-makers: "Owner (product), CTO/orchestrator (technical)"
 
 > Amended by [ADR-0038](0038-player-fields-red-lines-goals-personality.md): `redLines` and
 > `assumedGoals` join the hashed fields; `personalityType` does not.
+>
+> Amended by [ADR-0048](0048-card-descriptive-fields.md): `language`, `validFrom`, `validUntil`,
+> `aliases` and `refs` are descriptive metadata and do not enter the content hash.
 
 ## Context and Problem Statement
 

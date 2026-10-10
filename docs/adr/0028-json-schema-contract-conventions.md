@@ -14,6 +14,9 @@ decision-makers: "Owner (product), CTO/orchestrator (technical)"
 > Extended by [ADR-0039](0039-knowledge-loop-receipts.md) to
 > [ADR-0043](0043-digest-atlas-regeneration.md): knowledge-loop schemas and the cross-checks
 > `receipt-hash` and `digest-lines`; agent drafts carry `training` only as `false`.
+>
+> Extended by [ADR-0048](0048-card-descriptive-fields.md): cross-check `validity-period`
+> (`validUntil` is not earlier than `validFrom`).
 
 ## Context and Problem Statement
 
