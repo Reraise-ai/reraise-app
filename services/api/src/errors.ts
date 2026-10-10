@@ -21,7 +21,7 @@ export interface DescribedError {
   readonly status: number;
   readonly detail?: string;
   readonly slug?: string;
-  /** Seconds a client should wait before it retries (503 `locked`). */
+  /** Seconds a client should wait before it retries (503 `locked`, 429). */
   readonly retryAfter?: number;
   /** The error's own code, for the log only. */
   readonly code?: string;
@@ -37,6 +37,7 @@ export function describeError(error: unknown): DescribedError {
       status: e.status,
       detail: e.detail,
       ...(e.slug !== undefined ? { slug: e.slug } : {}),
+      ...(e.retryAfter !== undefined ? { retryAfter: e.retryAfter } : {}),
     };
   }
   if (isLocalStateError(e)) {

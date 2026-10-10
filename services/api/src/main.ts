@@ -23,6 +23,7 @@ import { openMarkdownStore } from './store.js';
 const USAGE = `Usage:
   worldbuilder serve --store <path> [--state <path>] [--port <n>] [--host <h>]
                      [--allow-host <host>]... [--allow-origin <origin>]...
+                     [--rate-limit <requests per minute>] [--auth-failure-limit <n per minute>]
   worldbuilder agent add <name> --target local_model|cloud_model [--state <path>] [--store <path>]
                          [--token-file <path>]
   worldbuilder agent list [--state <path>] [--store <path>]
@@ -91,6 +92,8 @@ async function serve(argv: string[], deps: MainDeps): Promise<void> {
       host: { type: 'string' },
       'allow-host': { type: 'string', multiple: true },
       'allow-origin': { type: 'string', multiple: true },
+      'rate-limit': { type: 'string' },
+      'auth-failure-limit': { type: 'string' },
     },
     strict: true,
   });
@@ -99,6 +102,17 @@ async function serve(argv: string[], deps: MainDeps): Promise<void> {
   if (!Number.isInteger(port) || port < 1 || port > 65535) {
     throw new UsageError('--port must be an integer from 1 to 65535');
   }
+  const positive = (flag: 'rate-limit' | 'auth-failure-limit'): number | undefined => {
+    const raw = values[flag];
+    if (raw === undefined) return undefined;
+    const n = Number(raw);
+    if (!Number.isInteger(n) || n < 1 || n > 1_000_000) {
+      throw new UsageError(`--${flag} must be an integer from 1 to 1000000`);
+    }
+    return n;
+  };
+  const max = positive('rate-limit');
+  const authFailureMax = positive('auth-failure-limit');
   const host = values.host ?? '127.0.0.1';
   const allowedHosts = (values['allow-host'] ?? []).map((h) => normaliseAllowedHost(h, port));
   const storeRoot = absolute(values.store);
@@ -111,6 +125,14 @@ async function serve(argv: string[], deps: MainDeps): Promise<void> {
     port,
     ...(allowedHosts.length > 0 ? { allowedHosts } : {}),
     ...(values['allow-origin'] ? { allowedOrigins: values['allow-origin'] } : {}),
+    ...(max !== undefined || authFailureMax !== undefined
+      ? {
+          rateLimit: {
+            ...(max !== undefined ? { max } : {}),
+            ...(authFailureMax !== undefined ? { authFailureMax } : {}),
+          },
+        }
+      : {}),
     seedDefaultGateRules: true,
     logger: deps.logger ?? {
       level: 'info',

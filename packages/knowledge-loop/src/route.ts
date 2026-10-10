@@ -151,9 +151,24 @@ const ISO_DATE = /\b\d{4}-\d{2}-\d{2}(?:T[\d:.]+Z?)?\b/g;
 /** Raw-text credentials: Slack-style webhooks, JSON Web Tokens, URLs with a password. */
 const RAW_SECRETS = [
   /\bhooks\.slack\.com\/(?:services|workflows)\/\S+/i,
-  /\beyJ[A-Za-z0-9_-]{8,}\.eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}/,
-  /\b[a-z][a-z0-9+.-]*:\/\/[^\s/:@]+:[^\s/@]+@/i,
+  // A URL with a password. The scheme is checked backwards once "://" is found (a forward scan from every
+  // word boundary was quadratic on a long "a.a.a." run); the same strings match as before.
+  /:\/\/(?<=\b[a-z][a-z0-9+.-]*:\/\/)[^\s/:@]+:[^\s/@]+@/i,
 ];
+const JWT_HEAD = /\beyJ[A-Za-z0-9_-]{8,}/g;
+const JWT_TAIL = /\.eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}/y;
+/**
+ * A JSON Web Token: three dot-separated segments, the first two starting with `eyJ`. Each head
+ * match consumes its whole run, and every later start inside that run would end at the same
+ * place, so the scan is linear (a single regex retried the run from every `-`).
+ */
+function hasJwt(raw: string): boolean {
+  for (const m of raw.matchAll(JWT_HEAD)) {
+    JWT_TAIL.lastIndex = m.index + m[0].length;
+    if (JWT_TAIL.test(raw)) return true;
+  }
+  return false;
+}
 /** Known credential prefixes of common services, at the start of a token. */
 const KNOWN_TOKEN = new RegExp(
   '(?<![A-Za-z0-9])(?:' +
@@ -177,12 +192,20 @@ const LOCAL_REFERENCE = [
   /(?:^|[\s"'(=])(?:~\/|\/(?:[\w.-]+\/)+[\w.-]*|[a-z]:\\)/i, // absolute or home-relative path
   /\blocalhost\b/i,
   /\b\d{1,3}(?:\.\d{1,3}){3}\b/, // IPv4 literal
-  /\[[0-9a-f:]*:[0-9a-f:]*\]/i, // bracketed IPv6 literal
-  /\b[a-z][\w.-]*:\d{2,5}\b|(?<![\w:]):\d{2,5}\b/i, // host:port or :port (not a time)
-  /\bpid\s*[:#]?\s*\d+\b/i,
+  /\[(?=[0-9a-f]*:)[0-9a-f:]*\]/i, // bracketed IPv6 literal (the lookahead asks for a colon)
+  /\b[a-z][\w.-]{0,252}:\d{2,5}\b|(?<![\w:]):\d{2,5}\b/i, // host:port or :port (not a time)
+  /\bpid(?:\s*[:#])?\s*\d+\b/i,
 ];
 
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/** Drop trailing sentence punctuation from a URL; a linear scan (a `[...]+$` regex is quadratic on a long run). */
+function stripTrailingPunctuation(url: string): string {
+  let end = url.length;
+  while (end > 0 && '.,;:!?'.includes(url.charAt(end - 1))) end--;
+  return url.slice(0, end);
+}
+
 const wordsRe = (words: readonly string[]) =>
   new RegExp(`(?<![\\p{L}\\p{N}])(?:${words.map(escapeRe).join('|')})(?![\\p{L}\\p{N}])`, 'u');
 
@@ -201,7 +224,7 @@ const isSlug = (s: string) => {
  * Natural slugs and dates have no such parts.
  */
 function isMixedPartToken(segment: string): boolean {
-  for (const m of segment.matchAll(/[A-Za-z0-9]+(?:[-_][A-Za-z0-9]+)+/g)) {
+  for (const m of segment.matchAll(/(?<![A-Za-z0-9])[A-Za-z0-9]+(?:[-_][A-Za-z0-9]+)+/g)) {
     const parts = m[0].split(/[-_]/);
     const digits = (m[0].match(/\d/g) ?? []).length;
     const mixed = parts.filter((p) => /\d/.test(p) && /[A-Za-z]/.test(p)).length;
@@ -233,7 +256,7 @@ function tokenLikeSegment(segment: string): boolean {
  */
 function hasTokenRun(raw: string): boolean {
   if (UUID_AFTER_CREDENTIAL.test(raw)) return true;
-  if (KNOWN_TOKEN.test(raw) || RAW_SECRETS.some((re) => re.test(raw))) return true;
+  if (KNOWN_TOKEN.test(raw) || RAW_SECRETS.some((re) => re.test(raw)) || hasJwt(raw)) return true;
   const text = raw.replace(WB_URI, ' ').replace(UUID, ' ').replace(ISO_DATE, ' ');
   if (HEX_RUN.test(text)) return true;
   for (const word of text.split(/\s+/)) {
@@ -258,7 +281,7 @@ export function memorySignals(request: MemoryRouteRequest, options: RouteOptions
   )
     signals.push('secret_like');
   if (personalDataKinds(raw).length > 0) signals.push('personal_data');
-  const urls = [...raw.matchAll(URL)].map((m) => m[0].replace(/[.,;:!?]+$/, ''));
+  const urls = [...raw.matchAll(URL)].map((m) => stripTrailingPunctuation(m[0]));
   if (request.source !== undefined) urls.push(request.source);
   if (urls.some((u) => isPublicSourceUri(u))) signals.push('public_source');
   const withoutUrls = raw.replace(URL, ' ');
