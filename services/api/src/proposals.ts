@@ -13,6 +13,7 @@ import type {
   PlaceCardPayload,
   Proposal,
 } from '@worldbuilder/core';
+import { validityPeriodError } from '@worldbuilder/core';
 import { HttpError } from './problem.js';
 import { readLage, withPlacement, writeLageVersion } from './lage.js';
 import type { Services } from './services.js';
@@ -54,6 +55,8 @@ export function draftEdgeProblem(draft: CardDraft, author: string): string | und
 export function draftProblem(draft: CardDraft, author: string): string | undefined {
   const forbidden = forbiddenDraftFields(draft);
   if (forbidden.length > 0) return `an agent may not set ${forbidden.join(', ')} on a card`;
+  const period = validityPeriodError(draft);
+  if (period) return period;
   return draftEdgeProblem(draft, author);
 }
 

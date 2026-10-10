@@ -37,9 +37,10 @@ export async function requireCleared(
 }
 
 /**
- * Throws the problem an agent proposal deserves before it is stored: a forbidden draft field or
- * a foreign edge (400); a decision draft that uses cards the agent may not know (400); an
- * outcome for a decision the agent may not know (404, like an unknown decision).
+ * Throws the problem an agent proposal deserves before it is stored: a forbidden draft field, a
+ * foreign edge, or an inverted validity period (400); a decision draft that uses cards the agent
+ * may not know (400); an outcome for a decision the agent may not know (404, like an unknown
+ * decision).
  */
 export async function assertAgentProposal(
   s: Services,

@@ -344,6 +344,22 @@ describe('what an agent may put into a proposed card', () => {
       expect(res.json().detail).toContain(field);
     },
   );
+  it('rejects a create_card whose validity period is inverted (400)', async () => {
+    const res = await create(
+      'scripted',
+      draft({ validFrom: '2026-10-31', validUntil: '2026-10-01' }),
+    );
+    expectContract('proposal_create', res, 400);
+    expect(res.json().detail).toBe('validUntil 2026-10-01 is earlier than validFrom 2026-10-31');
+    expect(
+      (
+        await create(
+          'scripted',
+          draft({ title: 'Equal period', validFrom: '2026-06-01', validUntil: '2026-06-01' }),
+        )
+      ).statusCode,
+    ).toBe(201);
+  });
   it('a created card joins the worlds of the Lage it is placed on, and no others', async () => {
     const p = await propose('scripted', 'create_card', {
       card: draft({ title: 'Placed agent card' }),
