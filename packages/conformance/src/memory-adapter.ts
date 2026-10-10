@@ -31,6 +31,7 @@ import {
   deriveCardId,
   encodeUlid,
   StorageError,
+  validityPeriodError,
 } from '@worldbuilder/core';
 import type { StorageAdapterHarness } from './storage.js';
 import { schemaValidator } from './validate.js';
@@ -46,8 +47,12 @@ const CONTENT_FIELDS = new Set([
   'type',
   'typeRaw',
   'title',
+  'language',
+  'aliases',
   'body',
   'date',
+  'validFrom',
+  'validUntil',
   'source',
   'sourceDate',
   'sourceChecksum',
@@ -64,6 +69,7 @@ const CONTENT_FIELDS = new Set([
   'tags',
   'author',
   'originSystem',
+  'refs',
   'training',
   'edges',
   'interests',
@@ -78,6 +84,7 @@ const CONTENT_FIELDS = new Set([
   'rule',
 ]);
 const NOT_PATCHABLE = new Set(['format', 'author', 'contentHash']);
+/** Descriptive metadata does not make a card format 2 (ADR-0048), same as tags. */
 const FORMAT_2_FIELDS = [
   'layer',
   'worlds',
@@ -238,6 +245,8 @@ export class MemoryStorageAdapter implements StorageAdapter {
         `invalid card draft: ${JSON.stringify(validateDraft.errors)}`,
       );
     }
+    const period = validityPeriodError(draft);
+    if (period) throw new StorageError('invalid', period);
     // A draft's contentHash is not stored: the hash is recomputed on every read.
     const content: Record<string, unknown> = { ...draft, author };
     delete content['contentHash'];
@@ -274,6 +283,13 @@ export class MemoryStorageAdapter implements StorageAdapter {
       }
       this.pushVersion(externalId, current);
     }
+    const next: Record<string, unknown> = { ...current };
+    for (const [key, value] of Object.entries(patch)) {
+      if (value === undefined) delete next[key];
+      else next[key] = value;
+    }
+    const period = validityPeriodError(next);
+    if (period) throw new StorageError('invalid', period);
     const lines = [...stored.lines];
     for (const [key, value] of Object.entries(patch)) {
       const at = lines.findIndex((l) => l.startsWith(`${key}: `));

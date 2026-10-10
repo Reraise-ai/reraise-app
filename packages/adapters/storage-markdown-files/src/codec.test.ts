@@ -190,6 +190,46 @@ describe('renderNewCard', () => {
     });
   });
 
+  it('writes descriptive fields in a stable order and reads them back (ADR-0048)', () => {
+    const fields = {
+      language: 'es-AR',
+      aliases: ['Harbour master', 'Harbour: master'],
+      date: '2026-09-15',
+      validFrom: '2026-01-01',
+      validUntil: '2026-12-31',
+      originSystem: 'Example desk',
+      refs: [
+        { system: 'archive', id: 'CLIP-0001' },
+        { system: 'erp', url: 'https://example.org/v/1' },
+      ],
+    };
+    const text = renderNewCard(ID, draft(fields), 'human', ctx);
+    const keys = [
+      'title',
+      'language',
+      'aliases',
+      'originSystem',
+      'refs',
+      'date',
+      'validFrom',
+      'validUntil',
+    ];
+    let at = -1;
+    for (const key of keys) {
+      const i = text.indexOf(`\n${key}:`);
+      expect(i, key).toBeGreaterThan(at);
+      at = i;
+    }
+    expect(text).toContain('Harbour: master');
+    const { card: c } = parseCardText(text, ctx);
+    expect(c).toMatchObject(fields);
+    expect(
+      referencedIds({
+        refs: [{ system: 'archive', id: OTHER }],
+      }),
+    ).toEqual([]);
+  });
+
   it('writes a Lage, a rule and decision sections as structured body sections', () => {
     const lage = {
       question: 'Q?',

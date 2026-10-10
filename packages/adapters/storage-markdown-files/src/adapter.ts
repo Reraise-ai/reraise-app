@@ -18,7 +18,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { watch, type FSWatcher } from 'node:fs';
 import { mkdir, readFile, readdir, stat, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { canonicalJson, encodeUlid } from '@worldbuilder/core';
+import { canonicalJson, encodeUlid, validityPeriodError } from '@worldbuilder/core';
 import type {
   ArchivedVersion,
   Card,
@@ -483,6 +483,8 @@ export class MarkdownFilesAdapter implements StorageAdapter {
     if (!validate(card)) {
       throw new MarkdownStoreError('invalid_card', `invalid card: ${describeErrors(validate)}`);
     }
+    const period = validityPeriodError(card);
+    if (period) throw new MarkdownStoreError('invalid_card', period);
     return { card };
   }
 

@@ -36,7 +36,11 @@ export const FRONT_MATTER_FIELDS = [
   'type',
   'typeRaw',
   'title',
+  'language',
+  'aliases',
   'date',
+  'validFrom',
+  'validUntil',
   'source',
   'sourceDate',
   'sourceChecksum',
@@ -51,6 +55,7 @@ export const FRONT_MATTER_FIELDS = [
   'worlds',
   'tags',
   'originSystem',
+  'refs',
   'training',
   'edges',
   'interests',
@@ -72,7 +77,11 @@ export const PATCHABLE_FIELDS: ReadonlySet<string> = new Set([
   ...STRUCTURED_PATCH_FIELDS,
 ]);
 
-/** Fields whose presence makes a card format 2 (ADR-0023). */
+/**
+ * Fields whose presence makes a card format 2 (ADR-0023). Descriptive metadata
+ * (`language`, `validFrom`, `validUntil`, `aliases`, `refs`) does not, same as `tags`
+ * (ADR-0048): a legacy card that only gains a spelling or a private pointer stays format 1.
+ */
 const FORMAT_2_FIELDS = [
   'layer',
   'worlds',
@@ -333,6 +342,15 @@ function toFileValue(key: string, value: unknown, ctx: CodecContext): unknown {
     const e = value as { text: string; source: string };
     return entryString([e.text, e.source], 'personality type');
   }
+  if (key === 'refs') {
+    // Stable key order: system, then id, then url. Absent ends are omitted.
+    return (value as { system: string; id?: string; url?: string }[]).map((ref) => {
+      const out: Record<string, string> = { system: ref.system };
+      if (ref.id !== undefined) out['id'] = ref.id;
+      if (ref.url !== undefined) out['url'] = ref.url;
+      return out;
+    });
+  }
   return value;
 }
 
@@ -390,12 +408,15 @@ const KEY_ORDER = [
   'type',
   'typeRaw',
   'title',
+  'language',
+  'aliases',
   'layer',
   'author',
   'source',
   'sourceDate',
   'sourceChecksum',
   'originSystem',
+  'refs',
   'status',
   'class',
   'visibility',
@@ -404,6 +425,8 @@ const KEY_ORDER = [
   'carrier',
   'affiliation',
   'date',
+  'validFrom',
+  'validUntil',
   'worlds',
   'tags',
   'training',

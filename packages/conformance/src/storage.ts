@@ -223,6 +223,60 @@ export function describeStorageAdapterConformance(
       expect(card).toMatchObject(fields);
     });
 
+    it('round-trips language, a validity period, aliases and refs (ADR-0048)', async () => {
+      const { adapter } = await factory();
+      const fields = {
+        language: 'es-AR',
+        validFrom: '2026-01-01',
+        validUntil: '2026-12-31',
+        aliases: ['Harbour master', 'Harbour: master'],
+        refs: [
+          { system: 'archive', id: 'CLIP-0001' },
+          { system: 'erp', url: 'https://example.org/v/1' },
+        ],
+      };
+      const id = await adapter.create({ ...draft, ...fields }, 'human');
+      const card = await adapter.read(id);
+      expectValidCard(card);
+      expect(card).toMatchObject(fields);
+
+      const bareId = await adapter.create({ ...draft, title: 'Bare conformance claim' }, 'human');
+      const bare = await adapter.read(bareId);
+      await adapter.patch(bareId, fields);
+      const withFields = await adapter.read(bareId);
+      expectValidCard(withFields);
+      expect(withFields).toMatchObject(fields);
+      expect(withFields?.contentHash, 'descriptive metadata is not content').toBe(
+        bare?.contentHash,
+      );
+
+      const fromOnly = await adapter.create(
+        { ...draft, title: 'From only', validFrom: '2026-06-01' },
+        'human',
+      );
+      expect((await adapter.read(fromOnly))?.validFrom).toBe('2026-06-01');
+      expect((await adapter.read(fromOnly))?.validUntil).toBeUndefined();
+      const untilOnly = await adapter.create(
+        { ...draft, title: 'Until only', validUntil: '2026-06-30' },
+        'human',
+      );
+      expect((await adapter.read(untilOnly))?.validUntil).toBe('2026-06-30');
+      const sameDay = await adapter.create(
+        { ...draft, title: 'Same day', validFrom: '2026-06-01', validUntil: '2026-06-01' },
+        'human',
+      );
+      expect((await adapter.read(sameDay))?.validUntil).toBe('2026-06-01');
+
+      await expect(
+        adapter.create(
+          { ...draft, title: 'Inverted', validFrom: '2026-10-31', validUntil: '2026-10-01' },
+          'human',
+        ),
+      ).rejects.toThrow();
+      await expect(adapter.patch(fromOnly, { validUntil: '2026-01-01' })).rejects.toThrow();
+      expect((await adapter.read(fromOnly))?.validUntil).toBeUndefined();
+    });
+
     it('builds every uri from the store instance id, never from a hostname or path', async () => {
       const { adapter, seed } = await factory();
       await adapter.create(draft, 'human');

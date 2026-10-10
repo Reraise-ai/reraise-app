@@ -37,7 +37,11 @@ export const DERIVED_KEYS = [
   'contentHash',
 ];
 
-/** Fields whose presence makes a card format 2 (ADR-0023). */
+/**
+ * Fields whose presence makes a card format 2 (ADR-0023). Descriptive metadata
+ * (`language`, `validFrom`, `validUntil`, `aliases`, `refs`) does not, same as `tags`
+ * (ADR-0048).
+ */
 export const FORMAT_2_FIELDS = [
   'layer',
   'worlds',
