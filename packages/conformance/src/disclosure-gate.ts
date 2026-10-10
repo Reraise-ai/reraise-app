@@ -480,10 +480,15 @@ export function describeDisclosureGateConformance(
         expect(narrowed.decide({ kind: 'card', card: external }, 'share').decision).toBe('deny');
       });
 
-      it('shares content and provenance only, and player entries with a public source only', () => {
+      it('shares content, provenance and public descriptive fields, and player entries with a public source only', () => {
         const h = setup();
         const gate = allowAll(h);
         const { external, conclusions } = cards(h.card);
+        const publicRef = {
+          system: 'erp',
+          id: 'ERP-1',
+          url: 'https://example.org/conformance/erp-1',
+        };
         const person = variant(h.card, '01M1J0000000000000000000C1', {
           collection: 'actors',
           type: 'person',
@@ -494,6 +499,15 @@ export function describeDisclosureGateConformance(
           interests: [{ text: 'Public interest', source: PUBLIC }],
           assumedGoals: [{ text: 'Assumed by the user', source: conclusions.rating.id }],
           personalityType: { text: 'ISTJ', source: PUBLIC },
+          language: 'es',
+          validFrom: '2026-01-01',
+          validUntil: '2026-12-31',
+          aliases: ['Harbour master'],
+          refs: [
+            { system: 'archive', id: 'CLIP-0001' },
+            publicRef,
+            { system: 'wiki', url: 'https://wiki.internal/page' },
+          ],
         });
         const bundle = gate.prepareShare([person, conclusions.decision]);
         expect(bundle.denied.map((d) => d.cardId)).toEqual([conclusions.decision.id]);
@@ -504,6 +518,11 @@ export function describeDisclosureGateConformance(
         expect(shared.id).toBe(person.id);
         expect(shared.source).toBe(person.source);
         expect(shared.interests).toEqual(person.interests);
+        expect(shared.language).toBe('es');
+        expect(shared.validFrom).toBe('2026-01-01');
+        expect(shared.validUntil).toBe('2026-12-31');
+        expect(shared.aliases).toEqual(['Harbour master']);
+        expect(shared.refs).toEqual([publicRef]);
         for (const k of [
           'uri',
           'externalId',

@@ -62,19 +62,19 @@
           "$ref": "common.schema.json#/$defs/isoDate"
         },
         "language": {
-          "description": "BCP 47 language of the card's title and body (ADR-0048). Descriptive metadata: it does not enter the content hash and it is not shared.",
+          "description": "BCP 47 language of the card's title and body (ADR-0048). Descriptive metadata: it does not enter the content hash. It travels with a shared card and with a card the gate sends to the owner's own cloud agent.",
           "$ref": "common.schema.json#/$defs/languageTag"
         },
         "validFrom": {
-          "description": "First day the card's statement applies, inclusive (ADR-0048). Not the day it happened (`date`) and not the day the source said it (`sourceDate`). Either end of the period may stand alone. Descriptive metadata: not hashed, not shared. `validUntil` must not be earlier (checked beyond this schema).",
+          "description": "First day the card's statement applies, inclusive (ADR-0048). Not the day it happened (`date`) and not the day the source said it (`sourceDate`). Either end of the period may stand alone. Descriptive metadata: not hashed. It travels with a shared card and with a cloud copy. `validUntil` must not be earlier (checked beyond this schema).",
           "$ref": "common.schema.json#/$defs/isoDate"
         },
         "validUntil": {
-          "description": "Last day the card's statement applies, inclusive (ADR-0048). Either end of the period may stand alone. Descriptive metadata: not hashed, not shared.",
+          "description": "Last day the card's statement applies, inclusive (ADR-0048). Either end of the period may stand alone. Descriptive metadata: not hashed. It travels with a shared card and with a cloud copy.",
           "$ref": "common.schema.json#/$defs/isoDate"
         },
         "aliases": {
-          "description": "Other names for the card's subject: spellings, former names, abbreviations (ADR-0048). Unique and non-empty. Descriptive metadata: not hashed, not shared.",
+          "description": "Other names for the card's subject: spellings, former names, abbreviations (ADR-0048). Unique and non-empty. Descriptive metadata: not hashed. The list travels with a shared card and with a cloud copy.",
           "type": "array",
           "items": {
             "$ref": "common.schema.json#/$defs/text"
@@ -83,7 +83,7 @@
           "uniqueItems": true
         },
         "refs": {
-          "description": "Pointers to the same thing in the owner's other systems (ADR-0048). Private: never shared, and dropped from every copy that can leave the device.",
+          "description": "Pointers to the same thing in the owner's other systems (ADR-0048). Not hashed. A copy for the owner's own cloud agent or a training export keeps them. A share keeps an entry only when its url is a public address under the same rule as source, and drops the field when none remain.",
           "type": "array",
           "items": {
             "$ref": "#/$defs/externalRef"

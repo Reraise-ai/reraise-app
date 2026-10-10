@@ -1,7 +1,7 @@
 {
   "synthetic": true,
   "schema": "https://worldbuilder.invalid/schemas/v0/shared-card.schema.json",
-  "description": "A released external-source card as it is shared: content and provenance only (ADR-0036).",
+  "description": "A released external-source card as it is shared: content and provenance (ADR-0036).",
   "data": {
     "id": "01M1E34QM03WVTE8T1RYS3AM18",
     "format": 2,

@@ -478,22 +478,22 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
           date: { $ref: 'common.schema.json#/$defs/isoDate' },
           language: {
             description:
-              "BCP 47 language of the card's title and body (ADR-0048). Descriptive metadata: it does not enter the content hash and it is not shared.",
+              "BCP 47 language of the card's title and body (ADR-0048). Descriptive metadata: it does not enter the content hash. It travels with a shared card and with a card the gate sends to the owner's own cloud agent.",
             $ref: 'common.schema.json#/$defs/languageTag',
           },
           validFrom: {
             description:
-              "First day the card's statement applies, inclusive (ADR-0048). Not the day it happened (`date`) and not the day the source said it (`sourceDate`). Either end of the period may stand alone. Descriptive metadata: not hashed, not shared. `validUntil` must not be earlier (checked beyond this schema).",
+              "First day the card's statement applies, inclusive (ADR-0048). Not the day it happened (`date`) and not the day the source said it (`sourceDate`). Either end of the period may stand alone. Descriptive metadata: not hashed. It travels with a shared card and with a cloud copy. `validUntil` must not be earlier (checked beyond this schema).",
             $ref: 'common.schema.json#/$defs/isoDate',
           },
           validUntil: {
             description:
-              "Last day the card's statement applies, inclusive (ADR-0048). Either end of the period may stand alone. Descriptive metadata: not hashed, not shared.",
+              "Last day the card's statement applies, inclusive (ADR-0048). Either end of the period may stand alone. Descriptive metadata: not hashed. It travels with a shared card and with a cloud copy.",
             $ref: 'common.schema.json#/$defs/isoDate',
           },
           aliases: {
             description:
-              "Other names for the card's subject: spellings, former names, abbreviations (ADR-0048). Unique and non-empty. Descriptive metadata: not hashed, not shared.",
+              "Other names for the card's subject: spellings, former names, abbreviations (ADR-0048). Unique and non-empty. Descriptive metadata: not hashed. The list travels with a shared card and with a cloud copy.",
             type: 'array',
             items: { $ref: 'common.schema.json#/$defs/text' },
             minItems: 1,
@@ -501,7 +501,7 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
           },
           refs: {
             description:
-              "Pointers to the same thing in the owner's other systems (ADR-0048). Private: never shared, and dropped from every copy that can leave the device.",
+              "Pointers to the same thing in the owner's other systems (ADR-0048). Not hashed. A copy for the owner's own cloud agent or a training export keeps them. A share keeps an entry only when its url is a public address under the same rule as source, and drops the field when none remain.",
             type: 'array',
             items: { $ref: '#/$defs/externalRef' },
             minItems: 1,
@@ -2692,7 +2692,7 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
     $id: 'https://worldbuilder.invalid/schemas/v0/shared-card.schema.json',
     title: 'SharedCard',
     description:
-      'What leaves the device when a card is shared with other people (target share, ADR-0036): content and provenance only. No store identity (uri, externalId), no origin system, no source other than a public address, no worlds, tags, class, visibility, release, training, status, rating, edges, structured state or private player field (personalityType), no language, validity period, aliases or external refs (ADR-0048), and no player entry without a public source. contentHash is the hash of this projection (ADR-0034). Built by shareProjection in packages/core after the gate allowed the card for share.',
+      'What leaves the device when a card is shared with other people (target share, ADR-0036, ADR-0048). Whether a field may be shared depends on whether it is public information one can point to, not on the kind of field. The projection holds content and provenance, plus language, the validity period and aliases. A source, a player entry and a refs entry are kept only with a public http or https address (the same rule, isPublicSourceUri). A refs entry keeps system, id and url; if none remain, refs is absent. No store identity (uri, externalId), no origin system, no worlds, tags, class, visibility, release, training, status, rating, edges, structured state or private player field (personalityType). contentHash is the hash of the hashed card content of this projection (ADR-0034) and does not cover the descriptive fields. Built by shareProjection in packages/core after the gate allowed the card for share.',
     type: 'object',
     properties: {
       id: { $ref: 'common.schema.json#/$defs/cardId' },
@@ -2700,8 +2700,31 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
       collection: { $ref: 'common.schema.json#/$defs/collection' },
       type: { $ref: 'common.schema.json#/$defs/text' },
       title: { $ref: 'common.schema.json#/$defs/text' },
+      language: {
+        description:
+          'BCP 47 language of the title and body. Travels with a shared card (ADR-0048). Not part of the content hash.',
+        $ref: 'common.schema.json#/$defs/languageTag',
+      },
+      aliases: {
+        description:
+          'Other names for the subject. Travels with a shared card (ADR-0048). Not part of the content hash.',
+        type: 'array',
+        items: { $ref: 'common.schema.json#/$defs/text' },
+        minItems: 1,
+        uniqueItems: true,
+      },
       body: { type: 'string' },
       date: { $ref: 'common.schema.json#/$defs/isoDate' },
+      validFrom: {
+        description:
+          'First day the statement applies, inclusive. Travels with a shared card (ADR-0048). Not part of the content hash.',
+        $ref: 'common.schema.json#/$defs/isoDate',
+      },
+      validUntil: {
+        description:
+          'Last day the statement applies, inclusive. Travels with a shared card (ADR-0048). Not part of the content hash.',
+        $ref: 'common.schema.json#/$defs/isoDate',
+      },
       layer: { $ref: 'common.schema.json#/$defs/layer' },
       source: {
         description:
@@ -2717,6 +2740,14 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
       moves: { $ref: '#/$defs/playerField' },
       redLines: { $ref: '#/$defs/playerField' },
       assumedGoals: { $ref: '#/$defs/playerField' },
+      refs: {
+        description:
+          'External refs kept only when url is a public address under the same rule as source (ADR-0048). An entry keeps system, id and url. Absent when none remain.',
+        type: 'array',
+        items: { $ref: '#/$defs/sharedRef' },
+        minItems: 1,
+        uniqueItems: true,
+      },
       contentHash: { $ref: 'common.schema.json#/$defs/contentHash' },
     },
     required: ['id', 'format', 'type', 'title', 'layer', 'author', 'contentHash'],
@@ -2752,6 +2783,29 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
         type: 'string',
         format: 'uri',
         pattern: '^[Hh][Tt][Tt][Pp][Ss]?://[^\\s/@?#]*[A-Za-z][^\\s/@?#]*(?:[/?#]\\S*)?$',
+      },
+      sharedRef: {
+        title: 'SharedExternalRef',
+        description:
+          'An external ref that has a public url. system and url are kept; id is kept when the card had one. url uses the same public-address form as source (ADR-0036, ADR-0048). The schema checks the form; isPublicSourceUri also rejects IP literals and private host names.',
+        type: 'object',
+        properties: {
+          system: {
+            description: 'Lower-case slug of the other system.',
+            type: 'string',
+            pattern: '^[a-z0-9][a-z0-9._-]*$',
+          },
+          id: {
+            description: "The thing's identifier in that system.",
+            $ref: 'common.schema.json#/$defs/text',
+          },
+          url: {
+            description: 'A public http or https address, the same form as source.',
+            $ref: '#/$defs/publicSourceRef',
+          },
+        },
+        required: ['system', 'url'],
+        additionalProperties: false,
       },
     },
   },

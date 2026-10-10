@@ -17,7 +17,7 @@ names, not addresses, and nothing fetches them. `v0` is the pre-release contract
 | ------------------------------------ | ---------------------------------------------------------------------------- | ---------------- |
 | `common.schema.json`                 | shared definitions: ULID, `wb:` URI, author forms, enums                     | 0023             |
 | `card.schema.json`                   | canonical card, card draft, player fields, decision sections                 | 0007, 0009, 0023 |
-| `shared-card.schema.json`            | what a share with other people carries: content and provenance only          | 0036             |
+| `shared-card.schema.json`            | what a share carries: content, provenance and public descriptive fields      | 0036, 0048       |
 | `edge.schema.json`                   | typed card edge                                                              | 0023             |
 | `lage.schema.json`                   | board state of a Lage                                                        | 0006, 0023       |
 | `decision.schema.json`               | decision card with eleven sections                                           | 0017             |

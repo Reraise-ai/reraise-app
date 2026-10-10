@@ -155,24 +155,52 @@ describe('shareProjection (ADR-0036)', () => {
     ],
   });
 
-  it('carries content and provenance only', () => {
+  it('carries content, provenance and public descriptive fields', () => {
     const shared = shareProjection(actor);
-    const allowed = new Set<string>([...SHARED_FIELDS, ...SHARED_PLAYER_FIELDS, 'contentHash']);
+    const allowed = new Set<string>([
+      ...SHARED_FIELDS,
+      ...SHARED_PLAYER_FIELDS,
+      'contentHash',
+      'refs',
+    ]);
     expect(Object.keys(shared).filter((k) => !allowed.has(k))).toEqual([]);
     for (const k of ['uri', 'externalId', 'worlds', 'tags', 'class', 'visibility', 'release']) {
       expect(shared, k).not.toHaveProperty(k);
     }
-    for (const k of ['training', 'status', 'rating', 'edges', 'personalityType']) {
+    for (const k of ['training', 'status', 'rating', 'edges', 'personalityType', 'originSystem']) {
       expect(shared, k).not.toHaveProperty(k);
     }
-    for (const k of ['language', 'validFrom', 'validUntil', 'aliases', 'refs']) {
-      expect(shared, k).not.toHaveProperty(k);
-    }
+    expect(shared.language).toBe('es-AR');
+    expect(shared.validFrom).toBe('2026-01-01');
+    expect(shared.validUntil).toBe('2026-12-31');
+    expect(shared.aliases).toEqual(['Harbour master', 'HM']);
+    expect(shared.refs).toEqual([{ system: 'erp', url: 'https://example.org/v/1' }]);
+    expect(actor.refs).toHaveLength(2);
     expect(shared.source).toBe(actor.source);
     expect(shared.author).toBe('human');
     expect(shareProjection({ ...actor, originSystem: 'Own wiki' })).not.toHaveProperty(
       'originSystem',
     );
+  });
+
+  it('drops refs that have no public url, and omits refs when none remain', () => {
+    const mixed = shareProjection(
+      card({
+        refs: [
+          { system: 'archive', id: 'CLIP-0001', url: 'https://example.org/archive/CLIP-0001' },
+          { system: 'archive', id: 'CLIP-0002' },
+          { system: 'wiki', url: 'https://user:secret@example.org/a' },
+          { system: 'wiki', url: 'https://wiki.internal/page' },
+          { system: 'files', url: 'file:///tmp/note' },
+          { system: 'loop', url: 'https://localhost/note' },
+        ],
+      }),
+    );
+    expect(mixed.refs).toEqual([
+      { system: 'archive', id: 'CLIP-0001', url: 'https://example.org/archive/CLIP-0001' },
+    ]);
+    const none = shareProjection(card({ refs: [{ system: 'archive', id: 'CLIP-0002' }] }));
+    expect(none).not.toHaveProperty('refs');
   });
 
   it('drops any source that is not a public address, also on own experience', () => {

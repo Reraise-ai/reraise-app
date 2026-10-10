@@ -56,15 +56,22 @@ export const SHARED_PLAYER_FIELDS = [
   'assumedGoals',
 ] as const;
 
-/** Card fields a share carries besides the player fields: content and provenance only. */
+/**
+ * Card fields a share copies as they are: content, provenance, and the descriptive fields
+ * that are public information (ADR-0036, ADR-0048). `refs` is filtered separately.
+ */
 export const SHARED_FIELDS = [
   'id',
   'format',
   'collection',
   'type',
   'title',
+  'language',
+  'aliases',
   'body',
   'date',
+  'validFrom',
+  'validUntil',
   'layer',
   'source',
   'sourceDate',
@@ -152,12 +159,32 @@ const publicEntries = (entries: readonly PlayerEntry[] | undefined): SharedPlaye
     .map((e) => ({ text: e.text, source: e.source }));
 
 /**
- * What a share carries (ADR-0036): content and provenance only, a source and player entries
- * only with a public address, no origin system, never the personality type, the user's metadata, edges or store identity.
- * Language, the validity period, aliases and external refs are descriptive metadata and are
- * not part of the projection (ADR-0048); `refs` names the owner's private systems. The
- * content hash is recomputed over the projection. Call it only for a card the gate allowed
- * for `share`.
+ * A `refs` entry travels only when its `url` is a public address under the same rule as a
+ * source (`isPublicSourceUri`). The entry keeps `system`, `id` and `url`.
+ */
+function publicRefs(refs: Card['refs']): { system: string; id?: string; url: string }[] {
+  const kept: { system: string; id?: string; url: string }[] = [];
+  for (const ref of refs ?? []) {
+    if (typeof ref.url !== 'string' || !isPublicSourceUri(ref.url)) continue;
+    const entry: { system: string; id?: string; url: string } = {
+      system: ref.system,
+      url: ref.url,
+    };
+    if (ref.id !== undefined) entry.id = ref.id;
+    kept.push(entry);
+  }
+  return kept;
+}
+
+/**
+ * What a share carries (ADR-0036, ADR-0048). Public information travels whatever field it
+ * is in. Content and provenance travel. `language`, `validFrom`, `validUntil` and `aliases`
+ * travel. A source and a player entry travel only with a public address. A `refs` entry
+ * travels only when its `url` is a public address under that same rule, and keeps `system`,
+ * `id` and `url`; entries without a public url are dropped, and `refs` is omitted when none
+ * remain. The origin system, the personality type, the user's metadata, edges and store
+ * identity never leave. The content hash is recomputed over the projection and still ignores
+ * the descriptive fields. Call it only for a card the gate allowed for `share`.
  */
 export function shareProjection(card: Card): SharedCard {
   const out: Record<string, unknown> = {};
@@ -169,6 +196,8 @@ export function shareProjection(card: Card): SharedCard {
     const entries = publicEntries(card[key]);
     if (entries.length > 0) out[key] = entries;
   }
+  const refs = publicRefs(card.refs);
+  if (refs.length > 0) out['refs'] = refs;
   out['contentHash'] = computeContentHash(out as unknown as CardContent);
   return structuredClone(out) as unknown as SharedCard;
 }

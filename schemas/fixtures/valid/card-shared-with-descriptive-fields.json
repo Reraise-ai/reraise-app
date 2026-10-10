@@ -1,28 +1,30 @@
 {
   "synthetic": true,
   "schema": "https://worldbuilder.invalid/schemas/v0/shared-card.schema.json",
-  "description": "A share carries no language, validity period, aliases or external refs (ADR-0048).",
-  "expect": {
-    "keyword": "additionalProperties",
-    "instancePath": ""
-  },
+  "description": "A shared card carries language, a validity period, aliases, and a refs entry that has a public url (ADR-0048). The content hash ignores those fields.",
   "data": {
     "id": "01M1E34QM03WVTE8T1RYS3AM18",
     "format": 2,
     "collection": "evidence",
     "type": "event",
     "title": "Wire report announces transit restrictions in the strait",
-    "body": "A (fictional) wire agency reports that the coastal state will restrict night\ntransits of laden tankers through the strait from 1 October.\n",
     "language": "en",
+    "aliases": ["Night-transit note"],
+    "body": "A (fictional) wire agency reports that the coastal state will restrict night\ntransits of laden tankers through the strait from 1 October.\n",
     "validFrom": "2026-10-01",
     "validUntil": "2026-10-31",
-    "aliases": ["Night-transit note"],
-    "refs": [{ "system": "clippings", "id": "CLIP-0001" }],
     "layer": "evidenced",
     "source": "https://example.org/wire/2026-09-14-transit-restrictions",
     "sourceDate": "2026-09-14",
     "sourceChecksum": "846e5971241fdefb2d193751027b4d9a1f79b8e4fc1de533d5335d0cb04f6b9f",
     "author": "human",
-    "contentHash": "sha256:0da4ef9bbdf630dd457e6f843ffd3c6090fce56b1d2eee23e8cfa19710cb51ac"
+    "refs": [
+      {
+        "system": "clippings",
+        "id": "CLIP-0001",
+        "url": "https://example.org/clippings/CLIP-0001"
+      }
+    ],
+    "contentHash": "sha256:b149b8a3a46785b34c23c4cdfb74eee949d6aa5743b6f17c21468a1f8b72711d"
   }
 }

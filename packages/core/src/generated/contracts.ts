@@ -469,13 +469,13 @@ export interface CardContent {
   validFrom?: IsoDate;
   validUntil?: IsoDate;
   /**
-   * Other names for the card's subject: spellings, former names, abbreviations (ADR-0048). Unique and non-empty. Descriptive metadata: not hashed, not shared.
+   * Other names for the card's subject: spellings, former names, abbreviations (ADR-0048). Unique and non-empty. Descriptive metadata: not hashed. The list travels with a shared card and with a cloud copy.
    *
    * @minItems 1
    */
   aliases?: Text[];
   /**
-   * Pointers to the same thing in the owner's other systems (ADR-0048). Private: never shared, and dropped from every copy that can leave the device.
+   * Pointers to the same thing in the owner's other systems (ADR-0048). Not hashed. A copy for the owner's own cloud agent or a training export keeps them. A share keeps an entry only when its url is a public address under the same rule as source, and drops the field when none remain.
    *
    * @minItems 1
    */
@@ -1157,7 +1157,7 @@ export interface ShareBundle {
   denied: DeniedCard[];
 }
 /**
- * What leaves the device when a card is shared with other people (target share, ADR-0036): content and provenance only. No store identity (uri, externalId), no origin system, no source other than a public address, no worlds, tags, class, visibility, release, training, status, rating, edges, structured state or private player field (personalityType), no language, validity period, aliases or external refs (ADR-0048), and no player entry without a public source. contentHash is the hash of this projection (ADR-0034). Built by shareProjection in packages/core after the gate allowed the card for share.
+ * What leaves the device when a card is shared with other people (target share, ADR-0036, ADR-0048). Whether a field may be shared depends on whether it is public information one can point to, not on the kind of field. The projection holds content and provenance, plus language, the validity period and aliases. A source, a player entry and a refs entry are kept only with a public http or https address (the same rule, isPublicSourceUri). A refs entry keeps system, id and url; if none remain, refs is absent. No store identity (uri, externalId), no origin system, no worlds, tags, class, visibility, release, training, status, rating, edges, structured state or private player field (personalityType). contentHash is the hash of the hashed card content of this projection (ADR-0034) and does not cover the descriptive fields. Built by shareProjection in packages/core after the gate allowed the card for share.
  */
 export interface SharedCard {
   id: CardId;
@@ -1165,8 +1165,17 @@ export interface SharedCard {
   collection?: Collection;
   type: Text;
   title: Text;
+  language?: LanguageTag;
+  /**
+   * Other names for the subject. Travels with a shared card (ADR-0048). Not part of the content hash.
+   *
+   * @minItems 1
+   */
+  aliases?: Text[];
   body?: string;
   date?: IsoDate;
+  validFrom?: IsoDate;
+  validUntil?: IsoDate;
   layer: Layer;
   source?: PublicSourceRef;
   sourceDate?: IsoDate;
@@ -1178,11 +1187,28 @@ export interface SharedCard {
   moves?: SharedPlayerField;
   redLines?: SharedPlayerField;
   assumedGoals?: SharedPlayerField;
+  /**
+   * External refs kept only when url is a public address under the same rule as source (ADR-0048). An entry keeps system, id and url. Absent when none remain.
+   *
+   * @minItems 1
+   */
+  refs?: SharedExternalRef[];
   contentHash: ContentHash;
 }
 export interface SharedPlayerEntry {
   text: Text;
   source: PublicSourceRef;
+}
+/**
+ * An external ref that has a public url. system and url are kept; id is kept when the card had one. url uses the same public-address form as source (ADR-0036, ADR-0048). The schema checks the form; isPublicSourceUri also rejects IP literals and private host names.
+ */
+export interface SharedExternalRef {
+  /**
+   * Lower-case slug of the other system.
+   */
+  system: string;
+  id?: Text;
+  url: PublicSourceRef;
 }
 export interface Finding2 {
   /**

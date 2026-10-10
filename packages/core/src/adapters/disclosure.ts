@@ -79,7 +79,9 @@ export interface TransferError extends Error {
  *   assumption, Lage, agent output or a card without a public external source, see
  *   `originOf`); it allows the user's own experience and an external-source card only when
  *   the user released that card (`release` other than `private`) and a rule allows it, and
- *   what leaves is the share projection: content and provenance only;
+ *   what leaves is the share projection: content, provenance, and public descriptive
+ *   fields. `language`, the validity period and `aliases` travel. A `refs` entry travels
+ *   only when its `url` is a public address under the same rule as `source` (ADR-0048);
  * - `demo` never allows a conclusion or a card with a personality type, except from a store
  *   whose configuration says `synthetic: true` (pending owner decision OD-8);
  * - `decide` never allows `cloud_model`: cloud content leaves only as the objects that
