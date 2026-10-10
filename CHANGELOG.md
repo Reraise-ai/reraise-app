@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Optional descriptive card fields (ADR-0048): `language` (BCP 47), `validFrom` and `validUntil`,
+  `aliases`, and private `refs`. The format stays v2. None of them changes `contentHash` or the
+  share projection. `refs` is dropped from cloud transfers and training exports. `validUntil`
+  must not be earlier than `validFrom`. The legacy format has no names for these fields.
 - End-to-end test of the M1 walking skeleton (`e2e/`, Playwright with Chromium, `pnpm test:e2e`):
   the built service and board on loopback ports over a temporary copy of the synthetic Hormuz
   store, a scripted MCP agent that consults the knowledge and proposes a card, the human accepting

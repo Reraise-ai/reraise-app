@@ -8,8 +8,9 @@ derived and rebuildable.
 This page is the human-readable specification of the canonical model decided in
 [ADR-0023](../adr/0023-core-domain-model.md) (which is normative here), together with
 [ADR-0006](../adr/0006-files-are-the-truth.md), [ADR-0007](../adr/0007-epistemic-layer-field.md),
-[ADR-0008](../adr/0008-believed-as-private-stance.md) and
-[ADR-0009](../adr/0009-mandatory-provenance.md). The machine-readable contract is the set of
+[ADR-0008](../adr/0008-believed-as-private-stance.md),
+[ADR-0009](../adr/0009-mandatory-provenance.md) and
+[ADR-0048](../adr/0048-card-descriptive-fields.md). The machine-readable contract is the set of
 JSON Schemas in [`schemas/`](https://github.com/Reraise-ai/reraise-app/tree/main/schemas),
 which are in progress in milestone M0. If this page and a published schema differ, the
 schema wins and this page is a bug. The reference `markdown-files` storage adapter
@@ -86,7 +87,12 @@ contain a comma or square brackets.
 | `typeRaw` | string | for foreign stores | the store's original type value, never rewritten by a patch |
 | `title` | string | yes | short title |
 | `body` | Markdown | no | the Markdown after the front matter |
-| `date` | ISO date | no | date of the card |
+| `date` | ISO date | no | date of the card: when it happened. Not the validity period. |
+| `language` | BCP 47 tag | no | Language of `title` and `body`, for example `de`, `en`, `es-AR`. Descriptive metadata ([ADR-0048](../adr/0048-card-descriptive-fields.md)): not hashed, not shared, and it does not make a card format 2. |
+| `validFrom` | ISO date | no | First day the card's statement applies, inclusive. Not `date` and not `sourceDate`. Either end may stand alone. Not hashed, not shared. |
+| `validUntil` | ISO date | no | Last day the card's statement applies, inclusive. Must not be earlier than `validFrom` when both are set. Not hashed, not shared. |
+| `aliases` | list of text | no | Other names for the subject: spellings, former names, abbreviations. Unique and non-empty; at least one when the field is present. Not hashed, not shared. |
+| `refs` | list of `{system, id?, url?}` | no | Pointers to the same thing in the owner's other systems. `system` is a lower-case slug (`^[a-z0-9][a-z0-9._-]*$`). At least one of `id` (non-empty text) and `url` (a URI) is required. `id` is not a card id and is not resolved. Private: stored on the card, omitted from shares and from every copy that can leave the device. Not hashed. |
 | `source` | string | see rules | text, URI or card id |
 | `sourceDate` | ISO date | no | date of the source |
 | `sourceChecksum` | string | no | SHA-256 of the **original source document**. Must be SHA-256 on `collection: evidence`. On other cards any string is accepted with a warning only. |
@@ -101,6 +107,11 @@ contain a comma or square brackets.
 | `tags` | list of text | no | free tags, unique. An input to disclosure-gate rules. |
 | `level` | reserved | no | reserved for future card tiers. Unused. **Not** an epistemic field. |
 | `signature` | reserved | no | reserved for author signatures. Unused. |
+
+`language`, `validFrom`, `validUntil`, `aliases` and `refs` are optional on format 1 and format 2.
+Their presence does not make a card format 2. A new file writes them in this order: `language` and
+`aliases` after `title`, `validFrom` and `validUntil` after `date`, `refs` after `originSystem`.
+Each ref is written with keys `system`, then `id`, then `url`, and an absent end is omitted.
 
 #### Identity
 
@@ -329,6 +340,10 @@ For every v2 card:
 4. A `lage` card has readable JSON and names only existing cards.
 5. A v2 decision card has all eleven sections.
 6. The [provenance rules](#5-provenance-rules) hold.
+7. When both `validFrom` and `validUntil` are set, `validUntil` is not earlier than `validFrom`
+   ([ADR-0048](../adr/0048-card-descriptive-fields.md)). Equal dates are allowed. Either end alone
+   is allowed. The schema checks each date; this comparison is the `validity-period` cross-check
+   and the same check on every adapter write.
 
 Hints only, no error and no failing exit code: dangling targets in the legacy link list, and
 a `sourceChecksum` on a card outside `collection: evidence` that is not a SHA-256 value.
@@ -356,6 +371,12 @@ versions, not an event log.
   ([ADR-0011](../adr/0011-agent-moves-are-proposals.md)).
 - **Derived data.** A search index, an origin count or a rule evaluation can always be rebuilt
   from the files and is never the truth.
+- **External refs on a copy that leaves.** `refs` is stored on the card. It is omitted from the
+  share projection, from cloud disclosure objects, from level-1 envelopes and from training
+  exports ([ADR-0048](../adr/0048-card-descriptive-fields.md)). `language`, `validFrom`,
+  `validUntil` and `aliases` are also omitted from the share projection. They are not separate
+  fields of a context package or a disclosure transfer. Sharing the language and the validity
+  period later is a possible follow-up; `refs` is not.
 
 ## Mapping from the legacy German field names
 
@@ -390,6 +411,7 @@ A store that uses the German header names maps one to one. The authoritative tab
 | `interessen`, `faehigkeiten`, `abhaengigkeiten`, `zuege` | `interests`, `capabilities`, `dependencies`, `moves` | each `text\|source`, on `collection: actors` only |
 | `rote_linien`, `angenommene_ziele` | `redLines`, `assumedGoals` | each `text\|source`, on `collection: actors` only ([ADR-0038](../adr/0038-player-fields-red-lines-goals-personality.md)). The owner store must add these keys. |
 | `persoenlichkeitstyp` | `personalityType` | one `text\|source`, only on `typ: person`; always private ([ADR-0038](../adr/0038-player-fields-red-lines-goals-personality.md)). The owner store must add this key. |
+| (none) | `language`, `validFrom`, `validUntil`, `aliases`, `refs` | the legacy format has no equivalents ([ADR-0048](../adr/0048-card-descriptive-fields.md)). Do not invent German names. |
 | `lage`: `frage`, `optionen`, `karten`, `sitze`, `kanten` | `question`, `options`, `cards`, `seats`, `edges` | seat `art` (`mensch`, `agent`) becomes `kind` (`human`, `agent`). Edge `von`, `ziel`, `art`, `wer` become `from`, `to`, `kind`, `by`. `stand` becomes `updatedAt`. |
 | decision sections | `situation` to `outcome` | `offen` maps to `open` |
 | Lage body heading `## Stellung` | `## Position` | [ADR-0027](../adr/0027-card-format-mapping-addenda.md) |

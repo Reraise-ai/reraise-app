@@ -116,7 +116,8 @@ Visibility values: `privat` = `private`, `gesellschaftsintern` = `company_intern
 `partneruebergreifend` = `cross_partner`, `kundensichtbar` = `customer_visible`, `oeffentlich` =
 `public`. Collection values (`brett`): `akteure` = `actors`, `belege` = `evidence`,
 `entscheidungen` = `decisions`. Author values: `mensch` = `human`; an absent author on a legacy
-card is `unknown`.
+card is `unknown`. `language`, `validFrom`, `validUntil`, `aliases` and `refs` have no German
+legacy field ([ADR-0048](./adr/0048-card-descriptive-fields.md)).
 
 ## Lage fields
 

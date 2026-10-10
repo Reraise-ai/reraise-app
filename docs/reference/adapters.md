@@ -16,8 +16,8 @@ adapter (M1), the owner store's adapter, or any third-party store.
 | `storeInstanceId` | random UUID of the store, part of every card URI; never a hostname, path or user name |
 | `capabilities` | `write`, `search`, and `ids`: `native` (the store keeps the ULID) or `derived` (the id is derived from the URI) |
 | `read(id)`, `list(query)`, `search(query)`, `listWorlds()` | return canonical cards that validate against `card.schema.json`, each with its `contentHash` ([ADR-0034](../adr/0034-content-hash.md)) |
-| `create(draft, author)` | returns the canonical id; callers never predict it. Rejects drafts that break the provenance rules, carry an id or an author, or put player fields on a non-actor |
-| `patch(id, patch, guard?)` | changes only the given canonical fields; every other byte of the stored card stays as it was. Never identity, format, author, hash or stance data. A Lage rewrite archives the previous version |
+| `create(draft, author)` | returns the canonical id; callers never predict it. Rejects drafts that break the provenance rules, carry an id or an author, put player fields on a non-actor, or set `validUntil` earlier than `validFrom` ([ADR-0048](../adr/0048-card-descriptive-fields.md)) |
+| `patch(id, patch, guard?)` | changes only the given canonical fields; every other byte of the stored card stays as it was. Never identity, format, author, hash or stance data. A Lage rewrite archives the previous version. Rejects a result whose `validUntil` is earlier than `validFrom` |
 | `archive(id)`, `versions(id)` | nothing is deleted; history is archived versions ([ADR-0006](../adr/0006-files-are-the-truth.md)) |
 | `readLegacyStance?(id)` | read only: stance data a store already holds (believed layer, own assessment), mapped per [ADR-0008](../adr/0008-believed-as-private-stance.md); never written back |
 
