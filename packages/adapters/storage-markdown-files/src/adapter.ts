@@ -63,6 +63,8 @@ const RACY_MS = 2000;
 const DEFAULT_LIMIT = 50;
 /** An unknown id triggers at most one rescan per this many milliseconds. */
 const MISS_RESCAN_MS = 1000;
+/** How long open() waits for the file watcher to prove it is live. */
+const WATCH_READY_MS = 3000;
 const STRUCTURED_TYPES: ReadonlySet<string> = new Set(['lage', 'rule', 'decision']);
 
 export interface OpenOptions {
@@ -218,7 +220,10 @@ export class MarkdownFilesAdapter implements StorageAdapter {
       options,
     );
     await adapter.sync(true);
-    if (options.watch ?? true) adapter.startWatching();
+    if (options.watch ?? true) {
+      adapter.startWatching();
+      await adapter.awaitWatcherReady();
+    }
     return adapter;
   }
 
@@ -591,7 +596,17 @@ export class MarkdownFilesAdapter implements StorageAdapter {
         // Platforms differ in what they report: without a working watcher, check on every query.
         this.watching = false;
       };
-      const cards = watch(this.cardsDir, { recursive: true, persistent: false }, hint);
+      const cards = watch(this.cardsDir, { recursive: true, persistent: false }, (_e, name) => {
+        if (
+          name !== null &&
+          name !== undefined &&
+          this.probe &&
+          String(name).includes(this.probe.name)
+        ) {
+          this.probe.seen();
+        }
+        hint();
+      });
       const rootDir = watch(this.root, { persistent: false }, (_e, name) => {
         if (name && (name.startsWith('world') || name === CONFIG_FILE)) hint();
       });
@@ -610,6 +625,42 @@ export class MarkdownFilesAdapter implements StorageAdapter {
   }
 
   private debounce: NodeJS.Timeout | undefined;
+  private probe: { name: string; seen: () => void } | undefined;
+
+  /**
+   * Native watchers start asynchronously (FSEvents on macOS in particular) and miss changes made
+   * before they are live. Prove the watcher is live by touching a hidden probe file until its event
+   * arrives. If it never does, stop trusting the watcher: every query then checks the files.
+   */
+  private async awaitWatcherReady(): Promise<void> {
+    if (!this.watching) return;
+    const name = `.watch-probe-${randomUUID()}`;
+    const file = path.join(this.cardsDir, name);
+    let seen = false;
+    let wake: () => void = () => undefined;
+    this.probe = {
+      name,
+      seen: () => {
+        seen = true;
+        wake();
+      },
+    };
+    const deadline = Date.now() + WATCH_READY_MS;
+    try {
+      while (!seen && Date.now() < deadline && this.watching) {
+        await writeFile(file, String(Date.now()), 'utf8').catch(() => undefined);
+        await new Promise<void>((resolve) => {
+          wake = resolve;
+          setTimeout(resolve, 25).unref();
+        });
+      }
+    } finally {
+      this.probe = undefined;
+      await unlink(file).catch(() => undefined);
+    }
+    if (!seen) this.watching = false; // no proof of a live watcher: fall back to scanning
+    this.dirty = true;
+  }
 
   /** Bring the index in line with the files. `full` re-reads every file. */
   private sync(full = false): Promise<void> {

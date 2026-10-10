@@ -844,4 +844,23 @@ describe('watching', () => {
     await writeCardFile(dir, 'after-close.md', `---\nid: ${id3}\ntype: topic\ntitle: After\n---\n`);
     expect((await adapter.list()).items.map((c) => c.id)).toContain(id3);
   });
+
+  it('sees changes right after open, also when the store is reached through a symlink', async () => {
+    const dir = await copyHormuz({ cards: false });
+    const link = `${dir}-link`;
+    await symlink(dir, link, 'dir');
+    const adapter = await openStore(link, {
+      watch: true,
+      debounceMs: 5,
+      rescanIntervalMs: 3_600_000,
+    });
+    // open() resolved only after the watcher proved it is live, so this write cannot be missed
+    const id = newId();
+    await writeCardFile(dir, 'early.md', `---\nid: ${id}\ntype: topic\ntitle: Early\n---\n`);
+    await vi.waitFor(
+      async () => expect((await adapter.list()).items.map((c) => c.id)).toContain(id),
+      { timeout: 5000, interval: 20 },
+    );
+    adapter.close();
+  });
 });
