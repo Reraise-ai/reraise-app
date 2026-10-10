@@ -46,6 +46,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - ADR-0029 to ADR-0033: process topology, local state, gate rules and confirmation binding, M1
   proposal polling, and the derived index of the reference adapter.
 
+### Changed
+
+- Markdown-files reads `aliases` leniently: a single non-empty string becomes a one-item list and
+  an empty list is treated as absent. Writes always emit the list form. `language`, `validFrom`,
+  `validUntil` and `refs` stay strict, so a file that already carried one of them with a
+  non-conforming value is now reported as an invalid card.
+
 ### Fixed
 
 - Board: the open board has one main landmark and no skipped heading level (found by axe).

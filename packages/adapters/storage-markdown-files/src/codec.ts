@@ -231,6 +231,18 @@ function entryString(parts: readonly unknown[], what: string): string {
 
 // ---------------------------------------------------------------- reading
 
+/**
+ * Notes vaults write `aliases` as one name or as `[]`. The canonical field is a non-empty
+ * list: a single non-empty string becomes a one-item list, and an empty list is absent.
+ * Any other value is left as written so the schema rejects it. `language`, `validFrom`,
+ * `validUntil` and `refs` are not coerced.
+ */
+function canonicalAliases(value: unknown): unknown | undefined {
+  if (typeof value === 'string') return value.length > 0 ? [value] : value;
+  if (Array.isArray(value) && value.length === 0) return undefined;
+  return value;
+}
+
 export interface ParsedCard {
   readonly card: Card;
   /** The world names the file lists, for the implicit-world registry. */
@@ -251,6 +263,11 @@ export function parseCardText(text: string, ctx: CodecContext): ParsedCard {
   }
   const card: Json = {};
   for (const key of FRONT_MATTER_FIELDS) if (key in data) card[key] = data[key];
+  if ('aliases' in card) {
+    const aliases = canonicalAliases(card['aliases']);
+    if (aliases === undefined) delete card['aliases'];
+    else card['aliases'] = aliases;
+  }
   for (const key of ['level', 'signature']) if (key in data) card[key] = data[key];
 
   card['format'] = data['format'] ?? (FORMAT_2_FIELDS.some((f) => f in data) ? 2 : 1);

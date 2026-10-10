@@ -150,6 +150,37 @@ describe('parseCardText', () => {
     });
   });
 
+  it('reads one alias name or an empty alias list, and writes aliases as a list', () => {
+    const named = parseCardText(card('type: topic\ntitle: T\naliases: Some Name'), ctx).card;
+    expect(named.aliases).toEqual(['Some Name']);
+    const empty = parseCardText(card('type: topic\ntitle: T\naliases: []'), ctx).card;
+    expect(empty).not.toHaveProperty('aliases');
+    // The other descriptive keys stay as written, including values the schema will reject.
+    const strict = parseCardText(
+      card('type: topic\ntitle: T\nlanguage: [en]\nvalidFrom: [2026-01-01]\nrefs: listings'),
+      ctx,
+    ).card;
+    expect(strict.language).toEqual(['en']);
+    expect(strict.validFrom).toEqual(['2026-01-01']);
+    expect(strict.refs).toBe('listings');
+    const written = renderNewCard(
+      ID,
+      {
+        format: 2,
+        collection: 'evidence',
+        type: 'claim',
+        title: 'T',
+        layer: 'said',
+        source: 'https://example.org/a',
+        aliases: ['Some Name'],
+      },
+      'human',
+      ctx,
+    );
+    expect(written).toContain('\naliases: [Some Name]\n');
+    expect(parseCardText(written, ctx).card.aliases).toEqual(['Some Name']);
+  });
+
   it('does not take headings inside code fences for sections', () => {
     const body = '\n## Rule\n\n```json\n{"when":[],"then":"x","unless":[]}\n```\n';
     const c = parseCardText(card('type: rule', body), ctx).card;
