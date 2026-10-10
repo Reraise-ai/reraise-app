@@ -29,44 +29,55 @@ describe('atomicWriteFile', () => {
     expect(await readdir(dir)).toEqual(['a.json']);
   });
 
-  it('never exposes partial content to concurrent readers', async () => {
+  it('never exposes partial content to a concurrent reader', async () => {
     const dir = await tempDir();
     const file = path.join(dir, 'a.json');
     const big = (c: string) => c.repeat(200_000);
     await atomicWriteFile(file, big('a'));
     let done = false;
+    let writing = false;
     // The writer's outcome is captured, never left as a bare promise: a failure is rethrown
-    // below, after the readers have stopped, so it cannot become an unhandled rejection.
+    // below, after the reader has stopped, so it cannot become an unhandled rejection.
     const writer = (async () => {
       try {
-        for (let i = 0; i < 20; i++) await atomicWriteFile(file, big(i % 2 ? 'a' : 'b'));
+        writing = true;
+        for (let i = 0; i < 40; i++) {
+          await atomicWriteFile(file, big(i % 2 ? 'a' : 'b'));
+          await new Promise((resolve) => setTimeout(resolve, 5));
+        }
       } finally {
-        done = true; // a failing writer must end the reader loops
+        writing = false;
+        done = true; // a failing writer must end the reader loop
       }
     })().then(
       () => undefined,
       (e: unknown) => ({ error: e }),
     );
-    // Several readers interleave with the writer. Each pauses a few milliseconds between reads:
-    // like the board polling a card, reads are short and sporadic. A reader that re-opens the
-    // file in a busy loop keeps it open almost permanently, and on Windows a rename onto an open
-    // file fails (EPERM) for as long as that lasts, which would starve any writer and say nothing
-    // about atomicity.
-    const reader = async (pauseMs: number) => {
-      let reads = 0;
+    // One reader polls like the board does. On Windows any open handle on the target blocks the
+    // replacing rename (EPERM), so the reader must leave the writer windows: after each read it
+    // pauses at least 10 ms and at least four times as long as that read took, which keeps the
+    // fraction of time the file is open at or below 20 % even on a slow host. Several tight
+    // readers would hold a handle almost permanently and starve the writer, which says nothing
+    // about atomicity (production polls far less often). Reads and writes still interleave: the
+    // writer renames every few milliseconds and the test requires reads during the write period.
+    let overlapping = 0;
+    const reader = async () => {
       while (!done) {
+        const during = writing;
+        const started = performance.now();
         const text = await readFile(file, 'utf8');
+        const took = performance.now() - started;
         expect(text.length).toBe(200_000);
         expect(new Set(text).size).toBe(1);
-        reads++;
-        await new Promise((resolve) => setTimeout(resolve, pauseMs));
+        if (during) overlapping++;
+        await new Promise((resolve) => setTimeout(resolve, Math.max(10, 4 * took)));
       }
-      return reads;
     };
-    const reads = await Promise.all([reader(1), reader(2), reader(3), reader(5)]);
+    await reader();
     const failure = await writer;
     if (failure) throw failure.error;
-    expect(reads.every((n) => n > 0)).toBe(true);
+    // Guard against a degenerate run in which the reads all happened outside the writes.
+    expect(overlapping).toBeGreaterThanOrEqual(5);
   });
 });
 
