@@ -241,6 +241,29 @@ export function describeDisclosureGateConformance(
       expect(configured.decide({ kind: 'card', card }, 'cloud_model').decision).toBe('deny');
     });
 
+    it('a preview and a release of a card that carries refs contain no refs', () => {
+      const { configured, card } = setup();
+      const refs = [
+        { system: 'listings', id: 'LIST-0001', url: 'https://example.org/archive/LIST-0001' },
+      ];
+      const withRefs: Card = { ...card, refs };
+      const t = previewOf(configured, [withRefs]);
+      expect(t.cardIds).toEqual([withRefs.id]);
+      expect(t.preview.objects).toHaveLength(1);
+      expect(t.preview.objects[0]).not.toHaveProperty('refs');
+      expect(t.preview.objects[0]?.id).toBe(withRefs.id);
+      const grant = {
+        kind: 'token' as const,
+        token: confirm(configured, t).token!,
+        sessionId: SESSION,
+      };
+      const release = send(configured, grant, t.preview);
+      expect(release.objects).toHaveLength(1);
+      expect(release.objects[0]).not.toHaveProperty('refs');
+      expect(release.objects[0]?.id).toBe(withRefs.id);
+      expect(withRefs.refs).toEqual(refs);
+    });
+
     it('releases a transfer an MCP connection asked for to that connection only, without a token', () => {
       const { configured, card } = setup();
       const t = previewOf(configured, [card], { kind: 'connection', connectionId: 'agent-1' });

@@ -84,7 +84,9 @@ export interface TransferError extends Error {
  *   whose configuration says `synthetic: true` (pending owner decision OD-8);
  * - `decide` never allows `cloud_model`: cloud content leaves only as the objects that
  *   `redeem` returns for one confirmed, unexpired, unused transfer, bound to the board session
- *   (token) or to the MCP connection that asked.
+ *   (token) or to the MCP connection that asked;
+ * - the objects of a cloud preview, and of the release of that preview, contain no `refs`
+ *   (ADR-0048).
  */
 export interface DisclosureGate {
   decide(item: DisclosureItem, target: DisclosureTarget): DisclosureDecision;
