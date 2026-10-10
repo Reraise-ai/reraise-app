@@ -3,6 +3,8 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { withMermaid } from 'vitepress-plugin-mermaid';
+// The address lives in the board constant, so a change stays one line.
+import { PRIVATE_EXECUTIVE_URL } from '../../apps/board/src/privateExecutive.ts';
 
 const repo = 'https://github.com/Reraise-ai/reraise-app';
 
@@ -186,7 +188,10 @@ export default withMermaid({
     outline: [2, 3],
     footer: {
       message: 'Documentation licensed under Apache-2.0. The application is AGPL-3.0-or-later.',
-      copyright: 'Copyright The Worldbuilder contributors',
+      copyright:
+        'Copyright The Worldbuilder contributors. Powered by ' +
+        `<a href="${PRIVATE_EXECUTIVE_URL}" target="_blank" rel="noopener noreferrer">` +
+        'Private Executive</a>.',
     },
   },
 });

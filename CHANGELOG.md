@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Quiet attribution "Powered by Private Executive" on the board (the login screen and the working
+  screens), in the README, and in the documentation footer. "Private Executive" is a link that
+  opens in a new tab. The address is the constant `PRIVATE_EXECUTIVE_URL` in
+  `apps/board/src/privateExecutive.ts`. The docs site imports that constant. The README link uses
+  the same address.
 - Optional descriptive card fields (ADR-0048): `language` (BCP 47), `validFrom` and `validUntil`,
   `aliases`, and `refs`. The format stays v2. None of them changes `contentHash`. When the
   disclosure gate allows a card for the owner's own cloud agent, the card goes as it is,
