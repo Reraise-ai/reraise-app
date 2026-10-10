@@ -13,6 +13,7 @@ import {
   utimes,
   writeFile,
 } from 'node:fs/promises';
+import type { FSWatcher } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { CardDraft } from '@worldbuilder/core';
@@ -878,26 +879,46 @@ describe('watching', () => {
     const dir = await copyHormuz({ cards: false });
     const adapter = await openStore(dir, {
       watch: true,
-      debounceMs: 5,
+      debounceMs: 600_000,
       rescanIntervalMs: 3_600_000,
       watchWarmupMs: 600_000,
     });
+    const handles = (adapter as unknown as { watchers: FSWatcher[] }).watchers;
+    for (const w of handles) w.close(); // no stray real events; the callbacks are driven below
+    const [cards, root] = handles as [FSWatcher, FSWatcher];
     const sync = vi.spyOn(adapter as unknown as { sync: () => Promise<void> }, 'sync');
     await adapter.list();
-    expect(sync).toHaveBeenCalled(); // warming: queries rescan
-    // one event on each watcher proves both live
-    await writeCardFile(dir, 'a.md', `---\nid: ${newId()}\ntype: topic\ntitle: A\n---\n`);
-    await writeFile(path.join(dir, 'world.json'), '{}', 'utf8');
-    await vi.waitFor(() => {
-      const a = adapter as unknown as { cardsLive: boolean; rootLive: boolean };
-      expect(a.cardsLive && a.rootLive).toBe(true);
-    });
-    await new Promise((r) => setTimeout(r, 100)); // let the debounced refresh finish
+    expect(sync).toHaveBeenCalledTimes(1); // warming: queries rescan
+    await adapter.list();
+    expect(sync).toHaveBeenCalledTimes(2);
+    cards.emit('change', 'rename', 'a.md');
+    root.emit('change', 'change', 'world.json');
     await adapter.list();
     sync.mockClear();
     await adapter.list();
     await adapter.list();
     expect(sync).not.toHaveBeenCalled();
+  });
+
+  it('treats the first root event as proof of life and rescans once, whatever its name', async () => {
+    const dir = await copyHormuz({ cards: false });
+    const adapter = await openStore(dir, {
+      watch: true,
+      debounceMs: 600_000,
+      rescanIntervalMs: 3_600_000,
+      watchWarmupMs: 600_000,
+    });
+    const handles = (adapter as unknown as { watchers: FSWatcher[] }).watchers;
+    for (const w of handles) w.close();
+    const [cards, root] = handles as [FSWatcher, FSWatcher];
+    cards.emit('change', 'rename', 'a.md');
+    await adapter.list(); // clears dirty; still warming because the root watcher is silent
+    root.emit('change', 'change', 'notes.txt');
+    const sync = vi.spyOn(adapter as unknown as { sync: () => Promise<void> }, 'sync');
+    await adapter.list();
+    expect(sync).toHaveBeenCalledTimes(1);
+    await adapter.list();
+    expect(sync).toHaveBeenCalledTimes(1);
   });
 
   it('ends the warm-up after its window and forces one rescan then', async () => {
@@ -909,6 +930,7 @@ describe('watching', () => {
         rescanIntervalMs: 3_600_000,
         watchWarmupMs: 1000,
       });
+      for (const w of (adapter as unknown as { watchers: FSWatcher[] }).watchers) w.close();
       const a = adapter as unknown as { dirty: boolean; warmUntil: number };
       a.dirty = false;
       expect(Date.now()).toBeLessThan(a.warmUntil);

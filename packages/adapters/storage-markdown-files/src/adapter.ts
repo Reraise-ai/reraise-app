@@ -599,7 +599,10 @@ export class MarkdownFilesAdapter implements StorageAdapter {
         hint();
       });
       const rootDir = watch(this.root, { persistent: false }, (_e, name) => {
-        this.rootLive = true;
+        if (!this.rootLive) {
+          this.rootLive = true;
+          this.dirty = true;
+        }
         if (name && (name.startsWith('world') || name === CONFIG_FILE)) hint();
       });
       cards.on('error', onError);
