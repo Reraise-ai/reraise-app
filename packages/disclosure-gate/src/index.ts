@@ -33,6 +33,7 @@ import {
   SCHEMAS,
   computePayloadHash,
   encodeUlid,
+  withoutPrivateRefs,
   originOf,
   parseUri,
   shareProjection,
@@ -317,7 +318,7 @@ export function createDisclosureGate(options: DisclosureGateOptions = {}): Discl
         target: 'cloud_model' as const,
         connectorId: input.connectorId,
         request: input.request,
-        objects: structuredClone(objects),
+        objects: structuredClone(objects).map((card) => withoutPrivateRefs(card)),
       };
       const created = now();
       const transfer: DisclosureTransfer = {

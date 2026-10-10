@@ -7,6 +7,7 @@
 // move options, output schema or set of cards is worthless.
 
 import type { Card, DisclosurePreviewEnvelope, Level1PredictionRequest } from '@worldbuilder/core';
+import { withoutPrivateRefs } from '@worldbuilder/core';
 
 interface SchemaPlayer {
   readonly playerCardId: string;
@@ -73,6 +74,6 @@ export function level1EnvelopeFor(
         cardIds: objects.map((c) => c.id),
       }),
     },
-    objects: [...objects],
+    objects: objects.map((card) => withoutPrivateRefs(card)),
   };
 }

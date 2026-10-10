@@ -176,6 +176,42 @@ describe('reference gate output matches the schemas', () => {
     }
   });
 
+  it('drops private refs from a cloud preview and leaves the caller card intact (ADR-0048)', () => {
+    const gate = createDisclosureGate({ rules });
+    const withRefs = card('01M1J0000000000000000000R1', {
+      class: 'C',
+      language: 'es',
+      validFrom: '2026-01-01',
+      validUntil: '2026-12-31',
+      aliases: ['Daily A'],
+      refs: [{ system: 'archive', id: 'CLIP-0001' }],
+    });
+    const transfer = gate.preview({
+      connectorId: 'jev-stub',
+      purpose: 'level1',
+      request: { question: 'Q?' },
+      cards: [withRefs],
+      requester: { kind: 'board' },
+    });
+    expect(transfer.preview.objects).toHaveLength(1);
+    const sent = transfer.preview.objects[0]!;
+    expect(sent).not.toHaveProperty('refs');
+    expect(sent.language).toBe('es');
+    expect(withRefs.refs).toEqual([{ system: 'archive', id: 'CLIP-0001' }]);
+    const confirmation = gate.confirm({
+      transferId: transfer.transferId,
+      payloadHash: transfer.payloadHash,
+      sessionId: 's',
+      currentEnvelope: transfer.preview,
+    });
+    const release = gate.redeem({
+      grant: { kind: 'token', token: confirmation.token!, sessionId: 's' },
+      envelope: transfer.preview,
+    });
+    expect(release.objects[0]).not.toHaveProperty('refs');
+    expect(release.objects[0]?.language).toBe('es');
+  });
+
   it('for share decisions and share bundles (ADR-0036)', () => {
     const released = card('01M1J0000000000000000000D1', { class: 'C', release: 'community' });
     const decision = card('01M1J0000000000000000000D2', {

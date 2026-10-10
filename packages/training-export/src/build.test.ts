@@ -93,6 +93,27 @@ const input = { decision, cards, lage, brainstorm, exportedAt: '2026-10-06T12:00
 describe('buildTrainingRecord (ADR-0017, ADR-0039)', () => {
   const { record } = buildTrainingRecord(input);
 
+  it('drops private refs from every exported card and leaves the content hash unchanged (ADR-0048)', () => {
+    const refs = [{ system: 'archive', id: 'DOC-1' }];
+    const withRefs = cards.map((c, i) => (i === 0 ? seal({ ...c, refs }) : c));
+    const r = buildTrainingRecord({
+      ...input,
+      cards: withRefs,
+      decision: seal({ ...decision, refs: [{ system: 'erp', id: 'DEC-1' }] }),
+      lage: seal({ ...lage, refs: [{ system: 'archive', url: 'https://example.org/lage/1' }] }),
+    }).record!;
+    const json = JSON.stringify(r);
+    expect(json).not.toContain('DOC-1');
+    expect(json).not.toContain('DEC-1');
+    expect(json).not.toContain('example.org/lage/1');
+    expect(r.decision).not.toHaveProperty('refs');
+    expect(r.lage).not.toHaveProperty('refs');
+    expect(r.usedCards[0]).not.toHaveProperty('refs');
+    expect(r.decision.contentHash).toBe(record!.decision.contentHash);
+    expect(r.usedCards[0]!.contentHash).toBe(record!.usedCards[0]!.contentHash);
+    expect(r.lage!.contentHash).toBe(record!.lage!.contentHash);
+  });
+
   it('exports opted-in cards only and passes the training-opt-in cross-check unchanged', () => {
     expect(record).toBeDefined();
     expect(crossCheck('training-export-record.schema.json', record)).toEqual([]);

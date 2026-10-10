@@ -6,7 +6,12 @@
 // by id. Pure: the service decides the export through the disclosure gate under cloud_model
 // semantics with a per-export confirmation before anything leaves the device.
 
-import { SCHEMAS, computeContentHash, isKnownOutcome } from '@worldbuilder/core';
+import {
+  SCHEMAS,
+  computeContentHash,
+  isKnownOutcome,
+  withoutPrivateRefs,
+} from '@worldbuilder/core';
 import type { Card, Proposal, TrainingExportRecord } from '@worldbuilder/core';
 import { Ajv2020 } from 'ajv/dist/2020.js';
 import addFormatsModule from 'ajv-formats';
@@ -64,7 +69,7 @@ type Mutable = Record<string, unknown>;
 
 /** A used card with edges and player entries that name other cards reduced to `allowed`. */
 function trimCard(card: Card, allowed: ReadonlySet<string>): Card | undefined {
-  const c: Mutable = structuredClone(card) as unknown as Mutable;
+  const c: Mutable = withoutPrivateRefs(structuredClone(card)) as unknown as Mutable;
   if (typeof c['source'] === 'string' && ULID_EXACT.test(c['source']) && !allowed.has(c['source']))
     return undefined;
   if (Array.isArray(c['edges'])) {
@@ -89,7 +94,7 @@ function trimCard(card: Card, allowed: ReadonlySet<string>): Card | undefined {
 
 /** A decision or Lage card is exported by its structure only (`TrainingStructuredCard`). */
 function withoutBody(card: Card): Card {
-  const c: Mutable = structuredClone(card) as unknown as Mutable;
+  const c: Mutable = withoutPrivateRefs(structuredClone(card)) as unknown as Mutable;
   delete c['body'];
   return c as unknown as Card;
 }
