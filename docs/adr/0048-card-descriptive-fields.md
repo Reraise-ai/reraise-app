@@ -4,21 +4,28 @@ date: 2026-10-10
 decision-makers: "Owner (product), CTO/orchestrator (technical)"
 ---
 
-# ADR-0048: Optional descriptive card fields stay out of the hash and out of shares
+# ADR-0048: Optional descriptive card fields stay out of the hash and follow the card's disclosure rules
+
+> Corrected in place on 2026-10-10, before this ADR was released. The first text of the same
+> day said that `refs` never leaves the device and that none of the four fields is shared.
+> The owner restated the rule the same day. The sections below are that corrected decision.
 
 ## Context and Problem Statement
 
 A card can now say which language its `title` and `body` are in, the period in which its
 statement applies, other names for its subject, and where the same thing lives in the owner's
 other systems. The card format stays v2 (`format: 2`). How are these four fields added so that
-existing cards stay valid, their content hashes stay the same, and a pointer into a private
-system never leaves the device?
+existing cards stay valid, their content hashes stay the same, and a copy of a card follows
+the same disclosure rules as the rest of the card?
 
 ## Decision Drivers
 
 - Existing cards stay valid. No migration, no new format number.
 - Hashes of existing cards must not change ([ADR-0034](0034-content-hash.md)).
-- `refs` names the owner's private systems and must never leave the device.
+- The owner's own cloud agent gets an allowed card as it is. The lock is the gate, not a
+  per-field rule.
+- Sharing with other people depends on whether the information is public and can be pointed
+  to, not on the kind of field ([ADR-0036](0036-conclusions-are-private.md)).
 - `validUntil` must not be earlier than `validFrom`. JSON Schema cannot compare the two dates.
 - The legacy German format has no equivalents. Do not invent legacy names
   ([ADR-0023](0023-core-domain-model.md)).
@@ -26,7 +33,8 @@ system never leaves the device?
 ## Considered Options
 
 - A new format version that requires the fields
-- Optional fields on format v2, excluded from the content hash and from the share projection (chosen)
+- Optional fields on format v2, excluded from the content hash, and disclosed like the rest of
+  the card (chosen)
 - A sidecar file for `refs`, with the other three on the card
 
 ## Decision Outcome
@@ -45,58 +53,76 @@ Decisions already taken, recorded here:
 
 1. **Content hash.** None of the four fields enters `contentHash`. They are not added to
    `CONTENT_HASH_FIELDS`. Adding any of them to an existing card leaves the hash unchanged.
-2. **Sharing.** None of the four is part of the share projection or of `shared-card.schema.json`.
-   `refs` must never leave the device. Sharing `language` and the validity period later is a
-   possible follow-up; it is not built here. `refs` stays private.
-3. **Validity period.** `validUntil` must not be earlier than `validFrom`. Equal dates are
+2. **The owner's own cloud agent.** When the disclosure gate allows a card for a cloud
+   target, the card goes as it is. `language`, `validFrom`, `validUntil`, `aliases` and
+   `refs` are not stripped from a cloud preview, the release of that preview, a level-1
+   envelope, a training export, or any other card copy for the owner's own models and
+   agents. Whoever wants nothing in the cloud uses the existing lock. That is the gate's
+   job. What the user confirms is exactly what is sent
+   ([ADR-0031](0031-gate-rules-and-confirmation-binding.md)).
+3. **Sharing with other people.** Whether something may be shared does not depend on the
+   kind of field. It depends on whether it is public information one can point to. The
+   share projection already keeps `source` only as a public http or https address
+   (`isPublicSourceUri`). The same principle applies to the four fields. `language`,
+   `validFrom`, `validUntil` and `aliases` travel with a card that is shared. A `refs`
+   entry is kept only when it has a public `url` under that same rule, and the entry then
+   keeps `system`, `id` and `url`. An entry without a public `url` (an id only, or a
+   non-public address) is dropped. If no entry remains, the shared card has no `refs`.
+   There is one definition of a public address; the projection reuses it.
+4. **Validity period.** `validUntil` must not be earlier than `validFrom`. Equal dates are
    allowed. `validityPeriodError` in `@worldbuilder/core` is the rule. The schema cross-check
    `validity-period` walks every object and reports it. Storage adapters reject a create or a
    patch that would store an inverted period, so the card is not written.
-4. **Legacy names.** The legacy format has no equivalents. The mapping tables say so and do
+5. **Legacy names.** The legacy format has no equivalents. The mapping tables say so and do
    not invent German field names.
 
 Further consequences of the same choice:
 
 - The fields do not join `FORMAT_2_FIELDS`. Like `tags`, they do not turn a legacy card into
-  a format-2 card and do not impose format-2 author or layer rules.
+  a card of format 2 and do not impose format-2 author or layer rules.
 - A new markdown-files card writes them in a stable order: `language` and `aliases` after
   `title`, `validFrom` and `validUntil` after `date`, `refs` after `originSystem`. Ref object
   keys are written `system`, then `id`, then `url`, omitting an absent end.
 - `refs.id` is not a card id. `referencedIds` does not follow it.
-- The fields are not added as properties of context packages or disclosure transfers. A card
-  embedded in those envelopes still carries whatever the copy kept.
-- Any copy of a whole card that can leave the device drops `refs` and nothing else of these
-  four: the cloud disclosure preview (and therefore confirm, redeem and a cloud context
-  package), the level-1 envelope (`level1EnvelopeFor`, so its hash matches the preview), and
-  the training export. Screen and `local_model` copies stay on the device and keep `refs`.
-  The user confirms the stripped cloud preview, so the confirmed hash is the hash of what
-  actually leaves ([ADR-0031](0031-gate-rules-and-confirmation-binding.md)).
-- `language`, the validity period and `aliases` may remain on a cloud card copy. They are
-  still absent from the share projection.
+- The fields are not separate properties of a context package or a disclosure transfer. A
+  card embedded in those envelopes carries whatever that copy kept.
+- The training export treats the four fields the way it already treats other non-hashed
+  card metadata: it keeps them. It still drops a card that names a card which did not opt
+  in, and that walk reads every string outside `worlds`, including a `refs.id` that happens
+  to be a card id.
+- The System One HTTP adapter still renders a released card as text from a fixed list of
+  content lines. That text is not a card copy. The confirmed level-1 envelope holds the
+  cards themselves, including `refs`.
 
 ### Consequences
 
 - Good, because existing cards stay valid and their hashes do not change.
-- Good, because a private system pointer cannot ride out on a cloud transfer or a training export.
+- Good, because the lock stays the only control on what reaches the owner's own cloud agent,
+  and the confirmed envelope is the envelope that is sent.
+- Good, because a share can carry a public page, a language, a period and a public alias
+  without a special case per field, and a private pointer does not ride along.
 - Good, because an inverted period is rejected before it is stored.
-- Bad, because `language` and the validity period are not yet shareable. That follow-up needs
-  its own decision; `refs` is not part of it.
-- Bad, because a cloud copy of a card is not byte-identical to the stored card: `refs` is gone.
-  The copy stays schema-valid, because the field is optional.
+- Neutral, because a shared card can list fewer `refs` than the stored card. The stored card
+  is unchanged.
+- Bad, because readers that ignore unknown fields will not show the four fields until they
+  are updated. The reference adapter and the generated types do know them.
 
 ### Confirmation
 
-- Schema fixtures: one valid card with all four fields; invalid language tag, empty alias,
-  duplicate alias, ref without `id` and `url`, ref with an unknown property; inverted period
-  expected as the cross-check `validity-period`.
+- Schema fixtures: one valid card with all four fields; one valid shared card with all four
+  and a public `refs` url; invalid language tag, empty alias, duplicate alias, ref without
+  `id` and `url`, ref with an unknown property; a shared `refs` entry whose url is not a
+  public address; inverted period expected as the cross-check `validity-period`.
 - `packages/core/src/content-hash.test.ts`: adding any of the four leaves `contentHash` unchanged.
-- `packages/core/src/sharing.test.ts`: the share projection of a card with all four contains none.
-- `packages/core/src/card-descriptive.test.ts`: period order and `withoutPrivateRefs`.
-- Conformance kit: round trip of all four, either end alone, equal dates, hash unchanged, inverted
-  create and patch rejected.
+- `packages/core/src/sharing.test.ts`: `language`, the validity period and `aliases` travel;
+  a `refs` entry travels only with a public url, and `refs` is omitted when none remain.
+- `packages/core/src/card-descriptive.test.ts`: period order.
+- Conformance kit: round trip of all four, either end alone, equal dates, hash unchanged,
+  inverted create and patch rejected. A cloud preview and its release contain the card's
+  `refs`. A share carries the descriptive fields and only the public `refs` entries.
 - Codec test: stable front-matter order, and `refs.id` is not a referenced card id.
-- Disclosure-gate, level-1 envelope and training-export tests: `refs` is absent from the copy
-  that can leave, and the caller's card is unchanged.
+- Disclosure-gate, level-1 envelope and training-export tests: `refs` is present on the
+  owner's own copy, and the caller's stored card is unchanged.
 
 ## Pros and Cons of the Options
 
@@ -108,16 +134,15 @@ Further consequences of the same choice:
 ### Optional fields on format v2 (chosen)
 
 - Good, because the format number stays 2 and cards without the fields stay valid.
-- Good, because the hash and the share projection stay stable for cards that do not use them,
-  and for cards that do.
+- Good, because the hash stays the same whether or not a card uses the fields.
 - Bad, because readers that ignore unknown fields will not show them until they are updated.
   The reference adapter and the generated types do know them.
 
 ### A sidecar file for refs
 
-- Good, because the card file would not mention private systems at all.
+- Good, because the card file would not mention other systems at all.
 - Bad, because a second file can drift from the card, and the other three fields would still
-  need a home on the card. One optional field with a hard egress rule is simpler.
+  need a home on the card. One optional field on the card is simpler.
 
 ## More Information
 
@@ -125,4 +150,4 @@ Further consequences of the same choice:
 - Related: [ADR-0023](0023-core-domain-model.md), [ADR-0028](0028-json-schema-contract-conventions.md),
   [ADR-0031](0031-gate-rules-and-confirmation-binding.md),
   [ADR-0034](0034-content-hash.md), [ADR-0036](0036-conclusions-are-private.md).
-- Follow-up, not built: sharing `language` and the validity period. `refs` is not a candidate.
+- The two disclosure rules above are this decision. They are not a later follow-up.

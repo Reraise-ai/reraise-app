@@ -34,7 +34,7 @@ C4Context
   Rel(wb, localllm, "Context package, Level 1 request", "ModelConnector, Level1Engine")
   Rel(wb, cloudllm, "Gate-cleared context package", "ModelConnector")
   Rel(wb, jev, "Gate-cleared Level 1 request", "Level1Engine")
-  Rel(wb, platform, "Share single cards: content and provenance only", "later")
+  Rel(wb, platform, "Share single cards: public content and provenance", "later")
 
   UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")
 ```
@@ -53,7 +53,7 @@ reaches it over HTTPS or the store's own interface, as in the
 | Local model | Gate-cleared context packages or Level 1 requests; answers come back as proposals or per-player Level 1 predictions | both | planned (M2+); the default local level-1 engine right after M1 |
 | Cloud model | Same as local model, but only after per-transfer confirmation | both | planned (M2+) |
 | Jev | One `Level1Engine` adapter among several: the Level 1 request with gate-cleared, confirmed cards; a per-player prediction with calibrated confidence | both | adapter after the level-1 slice; interface to be defined by the owner ([ADR-0035](../adr/0035-level1-engine-socket.md)) |
-| Platform | Single shared cards, content and provenance only, never stances; peer-to-peer exchange between users is end-to-end encrypted | out | later ([ADR-0021](../adr/0021-privacy-and-sharing-model.md)) |
+| Platform | Single shared cards: content, provenance and public descriptive fields, never stances; peer-to-peer exchange between users is end-to-end encrypted | out | later ([ADR-0021](../adr/0021-privacy-and-sharing-model.md), [ADR-0036](../adr/0036-conclusions-are-private.md), [ADR-0048](../adr/0048-card-descriptive-fields.md)) |
 
 Out of scope by decision: ingestion of podcasts and articles
 ([ADR-0014](../adr/0014-no-ingestion-inbox-of-findings.md)), fine-tuning itself

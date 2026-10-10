@@ -68,9 +68,9 @@ sample size shows "insufficient data" ([ADR-0018](../adr/0018-multidimensional-s
 
 If worlds are ever shared, the same discipline applies across people: identical content hashes
 count as one origin, and a second person's own experience is an origin of its own. Only
-content and provenance would travel. Stances and conclusions stay on the device. The sharing
-platform is out of scope for this repository, but the model keeps unique ids, a content hash
-and a reserved `signature` field so nothing needs to be redone later.
+content, provenance and public descriptive fields would travel. Stances and conclusions stay
+on the device. The sharing platform is out of scope for this repository, but the model keeps
+unique ids, a content hash and a reserved `signature` field so nothing needs to be redone later.
 
 ## Related
 

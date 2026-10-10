@@ -9,9 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Added
 
 - Optional descriptive card fields (ADR-0048): `language` (BCP 47), `validFrom` and `validUntil`,
-  `aliases`, and private `refs`. The format stays v2. None of them changes `contentHash` or the
-  share projection. `refs` is dropped from cloud transfers and training exports. `validUntil`
-  must not be earlier than `validFrom`. The legacy format has no names for these fields.
+  `aliases`, and `refs`. The format stays v2. None of them changes `contentHash`. When the
+  disclosure gate allows a card for the owner's own cloud agent, the card goes as it is,
+  including `refs`; the lock is the gate. A share carries public information whatever field it
+  is in: `language`, the validity period and `aliases` travel, and a `refs` entry is kept only
+  when its `url` is a public address under the same rule as `source`. `validUntil` must not be
+  earlier than `validFrom`. The legacy format has no names for these fields.
 - End-to-end test of the M1 walking skeleton (`e2e/`, Playwright with Chromium, `pnpm test:e2e`):
   the built service and board on loopback ports over a temporary copy of the synthetic Hormuz
   store, a scripted MCP agent that consults the knowledge and proposes a card, the human accepting

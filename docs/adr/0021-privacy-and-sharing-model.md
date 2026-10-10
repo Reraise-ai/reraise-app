@@ -9,6 +9,10 @@ decision-makers: "Owner (product), CTO/orchestrator (technical)"
 > Refined by [ADR-0036](0036-conclusions-are-private.md): the owner confirmed a broader meaning
 > of "conclusions" (everything user-originated without a public external source); the gate
 > target `share` enforces it.
+>
+> Amended by [ADR-0048](0048-card-descriptive-fields.md): a shared card also carries public
+> descriptive fields. `language`, the validity period and `aliases` travel. A `refs` entry
+> travels only when its `url` is a public address, under the same rule as `source`.
 
 ## Context and Problem Statement
 

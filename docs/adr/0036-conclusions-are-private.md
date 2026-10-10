@@ -9,8 +9,10 @@ decision-makers: "Owner (product), CTO/orchestrator (technical)"
 > Refined by [ADR-0039](0039-knowledge-loop-receipts.md): an accepted `record_outcome` proposal
 > patches the outcome section of a decision card; it can never touch `release` or other metadata.
 >
-> Amended by [ADR-0048](0048-card-descriptive-fields.md): `language`, `validFrom`, `validUntil`,
-> `aliases` and `refs` are not part of the share projection. `refs` never leaves the device.
+> Amended by [ADR-0048](0048-card-descriptive-fields.md): public information is shareable
+> whatever field it is in. `language`, `validFrom`, `validUntil` and `aliases` travel with a
+> shared card. A `refs` entry travels only when its `url` is a public address under the same
+> rule as `source`. A card the gate allows for the owner's own cloud agent goes as it is.
 
 ## Context and Problem Statement
 
@@ -120,17 +122,23 @@ cites the article it assesses.
 - `DisclosureGate.prepareShare(cards)` returns a `ShareBundle`: the share projections of the
   allowed cards and the ids and reasons of the others. It sends nothing.
 - The share projection (`shareProjection` in `packages/core`, schema
-  `shared-card.schema.json`, type `SharedCard`) holds content and provenance only:
-  `id`, `format`, `collection`, `type`, `title`, `body`, `date`, `layer`, `source` (only
-  when it is a public address, whatever the layer; a released experience citing private notes
-  is shared without a source), `sourceDate`, `sourceChecksum`, `author` (always `human`), and
-  the player entries whose source is a public address. It never holds the store identity
-  (`uri`, `externalId`), `originSystem` (it names the user's own tooling), `worlds`, `tags`,
-  `class`, `visibility`, `release`, `training`,
+  `shared-card.schema.json`, type `SharedCard`) holds content, provenance, and public
+  descriptive fields ([ADR-0048](0048-card-descriptive-fields.md)): `id`, `format`,
+  `collection`, `type`, `title`, `language`, `aliases`, `body`, `date`, `validFrom`,
+  `validUntil`, `layer`, `source` (only when it is a public address, whatever the layer; a
+  released experience citing private notes is shared without a source), `sourceDate`,
+  `sourceChecksum`, `author` (always `human`), the player entries whose source is a public
+  address, and `refs` entries whose `url` is a public address under that same rule
+  (`isPublicSourceUri`). Such an entry keeps `system`, `id` and `url`. If none remain,
+  `refs` is absent. `language`, the validity period and `aliases` travel when the card has
+  them. It never holds the store identity (`uri`, `externalId`), `originSystem` (it names
+  the user's own tooling), `worlds`, `tags`, `class`, `visibility`, `release`, `training`,
   `status`, `rating`, `edges`, structured state, or `personalityType`
   ([ADR-0038](0038-player-fields-red-lines-goals-personality.md)). Its `contentHash` is
-  recomputed over the projection ([ADR-0034](0034-content-hash.md)), so identical shared
-  content is recognisable across users ([ADR-0021](0021-privacy-and-sharing-model.md)).
+  recomputed over the hashed content of the projection
+  ([ADR-0034](0034-content-hash.md)) and does not cover the descriptive fields, so identical
+  shared content is recognisable across users
+  ([ADR-0021](0021-privacy-and-sharing-model.md)).
 - No share egress is built in this phase. The sharing slice must send only `prepareShare`
   objects and add a hash-bound confirmation per share, like exports
   ([ADR-0031](0031-gate-rules-and-confirmation-binding.md)).
@@ -166,23 +174,26 @@ cites the article it assesses.
 - `packages/core/src/sharing.test.ts`: public-address detection with a case for every
   rejected form (user information, trailing dot, single label, numeric last label, IP
   literals, every special-use suffix, IP-embedding wildcard names); every origin-class row,
-  including unknown, padded and mixed-case types; the projection keeps content and provenance
-  only, drops a non-public source on every layer, the origin system, private player entries and
-  the personality type, and rehashes.
+  including unknown, padded and mixed-case types; the projection keeps content, provenance and
+  public descriptive fields, drops a non-public source on every layer, drops a `refs` entry
+  without a public url, drops the origin system, private player entries and the personality
+  type, and rehashes.
 - Gate conformance kit (`describeDisclosureGateConformance`), run by the reference gate: with
   an allow-all rule and a release, a decision, a rule, a rating, an assumption, agent output,
   an own classification without a public source, a card citing an own card and an unclassified
   card are all denied for `share`, as are unknown and mixed-case conclusion types and cards
   citing a private host, a user-information address or an IP-embedding name; own experience is shared only after release; an
   external-source card only after release and an allow rule, and a deny rule still wins;
-  `prepareShare` carries content and provenance only, without origin system or a private
-  source (also for an experience), and validates against `SharedCard`;
+  `prepareShare` carries content, provenance and public descriptive fields, without origin
+  system or a private source (also for an experience), keeps a `refs` entry only when its url
+  is public, and validates against `SharedCard`;
   decision and rule cards are denied for `share`, need a confirmation for `cloud_model`, and
   are released by a confirmed transfer; stance data is denied for `share`.
 - Schema fixtures: valid share bundle, shared card and share decision; invalid shared cards
   with tags, a personality type, store identity, an origin system, a goal citing an own
-  assessment, an agent author, no public source, a source with user information or an
-  experience with a private source; a full card in a share bundle; stance to `share`; a context
+  assessment, an agent author, no public source, a source with user information, a `refs`
+  entry without a public url, or an experience with a private source; a full card in a share
+  bundle; stance to `share`; a context
   package for `share`; an agent proposal that releases a card.
 
 ## Pros and Cons of the Options

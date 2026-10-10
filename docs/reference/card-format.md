@@ -88,11 +88,11 @@ contain a comma or square brackets.
 | `title` | string | yes | short title |
 | `body` | Markdown | no | the Markdown after the front matter |
 | `date` | ISO date | no | date of the card: when it happened. Not the validity period. |
-| `language` | BCP 47 tag | no | Language of `title` and `body`, for example `de`, `en`, `es-AR`. Descriptive metadata ([ADR-0048](../adr/0048-card-descriptive-fields.md)): not hashed, not shared, and it does not make a card format 2. |
-| `validFrom` | ISO date | no | First day the card's statement applies, inclusive. Not `date` and not `sourceDate`. Either end may stand alone. Not hashed, not shared. |
-| `validUntil` | ISO date | no | Last day the card's statement applies, inclusive. Must not be earlier than `validFrom` when both are set. Not hashed, not shared. |
-| `aliases` | list of text | no | Other names for the subject: spellings, former names, abbreviations. Unique and non-empty; at least one when the field is present. Not hashed, not shared. |
-| `refs` | list of `{system, id?, url?}` | no | Pointers to the same thing in the owner's other systems. `system` is a lower-case slug (`^[a-z0-9][a-z0-9._-]*$`). At least one of `id` (non-empty text) and `url` (a URI) is required. `id` is not a card id and is not resolved. Private: stored on the card, omitted from shares and from every copy that can leave the device. Not hashed. |
+| `language` | BCP 47 tag | no | Language of `title` and `body`, for example `de`, `en`, `es-AR`. Not hashed ([ADR-0048](../adr/0048-card-descriptive-fields.md)). It travels with a shared card and with a card sent to the owner's own cloud agent. It does not make a card format 2. |
+| `validFrom` | ISO date | no | First day the card's statement applies, inclusive. Not `date` and not `sourceDate`. Either end may stand alone. Not hashed. It travels with a shared card and with a cloud copy. |
+| `validUntil` | ISO date | no | Last day the card's statement applies, inclusive. Must not be earlier than `validFrom` when both are set. Not hashed. It travels with a shared card and with a cloud copy. |
+| `aliases` | list of text | no | Other names for the subject: spellings, former names, abbreviations. Unique and non-empty; at least one when the field is present. Not hashed. The list travels with a shared card and with a cloud copy. |
+| `refs` | list of `{system, id?, url?}` | no | Pointers to the same thing in the owner's other systems. `system` is a lower-case slug (`^[a-z0-9][a-z0-9._-]*$`). At least one of `id` (non-empty text) and `url` (a URI) is required. `id` is not a card id and is not resolved. Not hashed. A cloud preview, its release, a level-1 envelope and a training export keep them. A share keeps an entry only when its `url` is a public http or https address under the same rule as `source`; if none remain, the shared card has no `refs`. |
 | `source` | string | see rules | text, URI or card id |
 | `sourceDate` | ISO date | no | date of the source |
 | `sourceChecksum` | string | no | SHA-256 of the **original source document**. Must be SHA-256 on `collection: evidence`. On other cards any string is accepted with a warning only. |
@@ -385,12 +385,17 @@ versions, not an event log.
   ([ADR-0011](../adr/0011-agent-moves-are-proposals.md)).
 - **Derived data.** A search index, an origin count or a rule evaluation can always be rebuilt
   from the files and is never the truth.
-- **External refs on a copy that leaves.** `refs` is stored on the card. It is omitted from the
-  share projection, from cloud disclosure objects, from level-1 envelopes and from training
-  exports ([ADR-0048](../adr/0048-card-descriptive-fields.md)). `language`, `validFrom`,
-  `validUntil` and `aliases` are also omitted from the share projection. They are not separate
-  fields of a context package or a disclosure transfer. Sharing the language and the validity
-  period later is a possible follow-up; `refs` is not.
+- **Descriptive fields on a copy.** `language`, `validFrom`, `validUntil`, `aliases` and
+  `refs` are stored on the card and none of them is part of the content hash
+  ([ADR-0048](../adr/0048-card-descriptive-fields.md)). When the disclosure gate allows a card
+  for the owner's own cloud agent, the card goes as it is: the preview, the release, a
+  level-1 envelope and a training export keep `refs`. Whoever wants nothing in the cloud uses
+  the lock. A share with other people carries public information whatever field it is in.
+  `language`, the validity period and `aliases` travel. A `refs` entry is kept only when its
+  `url` is a public http or https address under the same rule as `source`
+  (`isPublicSourceUri`); an entry without a public url is dropped, and if none remain the
+  shared card has no `refs`. These fields are not separate fields of a context package or a
+  disclosure transfer. A card embedded there carries whatever that copy kept.
 
 ## Mapping from the legacy German field names
 
