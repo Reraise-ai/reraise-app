@@ -72,6 +72,8 @@ export interface OpenOptions {
   readonly watch?: boolean;
   /** Safety-net rescan interval while watching (default 60 s). */
   readonly rescanIntervalMs?: number;
+  /** Start-up window in which queries rescan until both watchers have reported (default 3 s). */
+  readonly watchWarmupMs?: number;
   /** Delay between a watcher event and the refresh it triggers (default 30 ms). */
   readonly debounceMs?: number;
   readonly lock?: LockOptions;
@@ -572,7 +574,8 @@ export class MarkdownFilesAdapter implements StorageAdapter {
   }
 
   private async ensureFresh(): Promise<void> {
-    if (!this.watching || this.dirty) await this.sync();
+    const warming = !(this.cardsLive && this.rootLive) && Date.now() < this.warmUntil;
+    if (!this.watching || this.dirty || warming) await this.sync();
   }
 
   private startWatching(): void {
@@ -591,14 +594,31 @@ export class MarkdownFilesAdapter implements StorageAdapter {
         // Platforms differ in what they report: without a working watcher, check on every query.
         this.watching = false;
       };
-      const cards = watch(this.cardsDir, { recursive: true, persistent: false }, hint);
+      const cards = watch(this.cardsDir, { recursive: true, persistent: false }, () => {
+        this.cardsLive = true;
+        hint();
+      });
       const rootDir = watch(this.root, { persistent: false }, (_e, name) => {
+        if (!this.rootLive) {
+          this.rootLive = true;
+          this.dirty = true;
+        }
         if (name && (name.startsWith('world') || name === CONFIG_FILE)) hint();
       });
       cards.on('error', onError);
       rootDir.on('error', onError);
       this.watchers.push(cards, rootDir);
       this.watching = true;
+      // Native watchers start asynchronously (FSEvents on macOS) and miss changes made right after
+      // watch() returns. Until both have delivered an event, or the warm-up window ends, queries
+      // rescan; one forced rescan closes the window. Nothing is written to the store for this.
+      const warmupMs = this.options.watchWarmupMs ?? 3000;
+      this.warmUntil = Date.now() + warmupMs;
+      const warm = setTimeout(() => {
+        this.dirty = true;
+      }, warmupMs);
+      warm.unref();
+      this.timers.push(warm);
       const timer = setInterval(() => {
         this.dirty = true;
       }, this.options.rescanIntervalMs ?? 60_000);
@@ -610,7 +630,9 @@ export class MarkdownFilesAdapter implements StorageAdapter {
   }
 
   private debounce: NodeJS.Timeout | undefined;
-
+  private warmUntil = 0;
+  private cardsLive = false;
+  private rootLive = false;
   /** Bring the index in line with the files. `full` re-reads every file. */
   private sync(full = false): Promise<void> {
     const run = this.syncChain.then(() => this.doSync(full));

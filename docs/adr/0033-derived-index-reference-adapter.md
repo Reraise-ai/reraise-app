@@ -53,6 +53,13 @@ Conformance tests (M1): deleting and rebuilding the index yields identical query
 changed outside the product is reflected after the watcher event or a rescan; no index state is
 needed to derive canonical ids ([ADR-0023](0023-core-domain-model.md)).
 
+Start-up warm-up: native watchers (FSEvents on macOS) start asynchronously and can miss changes
+made right after they are created. Without writing any probe file to the store, the adapter
+rescans on every query until both the cards and the root watcher have delivered an event or the
+warm-up window (`watchWarmupMs`, default 3 s) ends, and forces one rescan at the end of the window.
+Tests: a card or world file written right after open is visible to the very next query, also
+through a symlinked root; the warm-up ends and the forced rescan happens.
+
 ## Pros and Cons of the Options
 
 ### In-memory with watcher
