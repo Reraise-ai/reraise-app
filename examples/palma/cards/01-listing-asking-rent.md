@@ -4,7 +4,7 @@ format: 2
 collection: evidence
 type: evidence
 title: Listing states an asking rent of 1450 EUR per month
-language: es
+language: en
 layer: evidenced
 author: human
 source: https://example.org/flat-listings/palma-old-town-2b
