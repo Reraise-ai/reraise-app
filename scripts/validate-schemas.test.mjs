@@ -322,6 +322,36 @@ describe('cross-checks', () => {
   });
 });
 
+describe('language tag and validity period (ADR-0048)', () => {
+  const { ajv, problems } = loadSchemas(repoRoot);
+  const tag = `${schemaId('common.schema.json')}#/$defs/languageTag`;
+
+  it('accepts well-formed BCP 47 tags and rejects malformed ones', () => {
+    expect(problems, problems.join('\n')).toEqual([]);
+    for (const value of ['de', 'en', 'es-AR', 'zh-Hans', 'zh-Hans-CN', 'x-local']) {
+      expect(ajv.validate(tag, value), value).toBe(true);
+    }
+    for (const value of ['de_DE', 'e', 'en-', '123', 'not a tag', '']) {
+      expect(ajv.validate(tag, value), value).toBe(false);
+    }
+  });
+
+  it('rejects a validity period whose end is earlier than its start', () => {
+    const ok = { validFrom: '2026-10-01', validUntil: '2026-10-31' };
+    expect(crossCheck('card.schema.json', ok)).toEqual([]);
+    expect(crossCheck('card.schema.json', { validFrom: '2026-10-01' })).toEqual([]);
+    expect(crossCheck('card.schema.json', { validUntil: '2026-10-31' })).toEqual([]);
+    expect(
+      crossCheck('card.schema.json', { validFrom: '2026-06-01', validUntil: '2026-06-01' }),
+    ).toEqual([]);
+    expect(
+      crossCheck('card.schema.json', { validFrom: '2026-10-31', validUntil: '2026-10-01' }).map(
+        (f) => f.check,
+      ),
+    ).toEqual(['validity-period']);
+  });
+});
+
 describe('content-hash cross-check (ADR-0034)', () => {
   it('flags a card in an envelope whose contentHash is stale', () => {
     const card = {

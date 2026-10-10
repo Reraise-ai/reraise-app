@@ -159,6 +159,12 @@
       "type": "string",
       "format": "date"
     },
+    "languageTag": {
+      "title": "LanguageTag",
+      "description": "A well-formed BCP 47 language tag (RFC 5646), for example de, en or es-AR. Grandfathered irregular tags (such as i-enochian) are not accepted. Case follows the usual convention but is not enforced.",
+      "type": "string",
+      "pattern": "^(?:(?:[a-zA-Z]{2,3}(?:-[a-zA-Z]{3}){0,3}|[a-zA-Z]{4}|[a-zA-Z]{5,8})(?:-[a-zA-Z]{4})?(?:-(?:[a-zA-Z]{2}|[0-9]{3}))?(?:-(?:[a-zA-Z0-9]{5,8}|[0-9][a-zA-Z0-9]{3}))*(?:-[0-9A-WY-Za-wy-z](?:-[a-zA-Z0-9]{2,8})+)*(?:-x(?:-[a-zA-Z0-9]{1,8})+)?|x(?:-[a-zA-Z0-9]{1,8})+)$"
+    },
     "dateTime": {
       "title": "DateTime",
       "type": "string",

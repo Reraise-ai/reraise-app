@@ -11,6 +11,9 @@ import { sha256 } from './ids.js';
  * The substantive card fields that identify the information itself (ADR-0034). Everything
  * else is identity, the hash itself, reserved, or user and organisational metadata, which
  * differs between stores holding the same information; stance data is never a card field.
+ * Descriptive metadata (`language`, `validFrom`, `validUntil`, `aliases`, `refs`) is absent
+ * on purpose (ADR-0048): it does not identify the information, so adding it must not change
+ * the hash of an existing card.
  */
 export const CONTENT_HASH_FIELDS = [
   'type',

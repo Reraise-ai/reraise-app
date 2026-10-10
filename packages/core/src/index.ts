@@ -10,6 +10,7 @@ export type * from './adapters/index.js';
 export { GATE_LOG_REASONS } from './adapters/local-state.js';
 export { STORAGE_ERROR_CODES, StorageError, isStorageError } from './adapters/storage-error.js';
 export type { StorageErrorCode } from './adapters/storage-error.js';
+export { validityPeriodError, withoutPrivateRefs } from './card-descriptive.js';
 export {
   CONTENT_HASH_FIELDS,
   canonicalJson,

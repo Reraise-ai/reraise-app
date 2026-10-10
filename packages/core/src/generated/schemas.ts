@@ -476,6 +476,37 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
           title: { $ref: 'common.schema.json#/$defs/text' },
           body: { description: 'Markdown body.', type: 'string' },
           date: { $ref: 'common.schema.json#/$defs/isoDate' },
+          language: {
+            description:
+              "BCP 47 language of the card's title and body (ADR-0048). Descriptive metadata: it does not enter the content hash and it is not shared.",
+            $ref: 'common.schema.json#/$defs/languageTag',
+          },
+          validFrom: {
+            description:
+              "First day the card's statement applies, inclusive (ADR-0048). Not the day it happened (`date`) and not the day the source said it (`sourceDate`). Either end of the period may stand alone. Descriptive metadata: not hashed, not shared. `validUntil` must not be earlier (checked beyond this schema).",
+            $ref: 'common.schema.json#/$defs/isoDate',
+          },
+          validUntil: {
+            description:
+              "Last day the card's statement applies, inclusive (ADR-0048). Either end of the period may stand alone. Descriptive metadata: not hashed, not shared.",
+            $ref: 'common.schema.json#/$defs/isoDate',
+          },
+          aliases: {
+            description:
+              "Other names for the card's subject: spellings, former names, abbreviations (ADR-0048). Unique and non-empty. Descriptive metadata: not hashed, not shared.",
+            type: 'array',
+            items: { $ref: 'common.schema.json#/$defs/text' },
+            minItems: 1,
+            uniqueItems: true,
+          },
+          refs: {
+            description:
+              "Pointers to the same thing in the owner's other systems (ADR-0048). Private: never shared, and dropped from every copy that can leave the device.",
+            type: 'array',
+            items: { $ref: '#/$defs/externalRef' },
+            minItems: 1,
+            uniqueItems: true,
+          },
           source: {
             description: 'Source as text, URI or card id.',
             $ref: 'common.schema.json#/$defs/text',
@@ -677,6 +708,34 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
         description: 'Player-field entries; each needs a source (ADR-0009).',
         type: 'array',
         items: { $ref: '#/$defs/playerEntry' },
+      },
+      externalRef: {
+        title: 'ExternalRef',
+        description:
+          'A pointer to the same thing in another system (ADR-0048). `system` is a lower-case slug. At least one of `id` and `url` is required.',
+        type: 'object',
+        properties: {
+          system: {
+            description: 'Lower-case slug of the other system.',
+            type: 'string',
+            pattern: '^[a-z0-9][a-z0-9._-]*$',
+          },
+          id: {
+            description: "The thing's identifier in that system.",
+            $ref: 'common.schema.json#/$defs/text',
+          },
+          url: {
+            description: 'A URI for the thing in that system.',
+            type: 'string',
+            format: 'uri',
+          },
+        },
+        required: ['system'],
+        anyOf: [
+          { properties: { id: true }, required: ['id'] },
+          { properties: { url: true }, required: ['url'] },
+        ],
+        additionalProperties: false,
       },
       playerEntry: {
         title: 'PlayerEntry',
@@ -883,6 +942,14 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
         enum: ['place_card', 'move_card', 'add_edge', 'create_card', 'comment', 'record_outcome'],
       },
       isoDate: { title: 'IsoDate', type: 'string', format: 'date' },
+      languageTag: {
+        title: 'LanguageTag',
+        description:
+          'A well-formed BCP 47 language tag (RFC 5646), for example de, en or es-AR. Grandfathered irregular tags (such as i-enochian) are not accepted. Case follows the usual convention but is not enforced.',
+        type: 'string',
+        pattern:
+          '^(?:(?:[a-zA-Z]{2,3}(?:-[a-zA-Z]{3}){0,3}|[a-zA-Z]{4}|[a-zA-Z]{5,8})(?:-[a-zA-Z]{4})?(?:-(?:[a-zA-Z]{2}|[0-9]{3}))?(?:-(?:[a-zA-Z0-9]{5,8}|[0-9][a-zA-Z0-9]{3}))*(?:-[0-9A-WY-Za-wy-z](?:-[a-zA-Z0-9]{2,8})+)*(?:-x(?:-[a-zA-Z0-9]{1,8})+)?|x(?:-[a-zA-Z0-9]{1,8})+)$',
+      },
       dateTime: { title: 'DateTime', type: 'string', format: 'date-time' },
       sha256: {
         title: 'Sha256',
@@ -2625,7 +2692,7 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
     $id: 'https://worldbuilder.invalid/schemas/v0/shared-card.schema.json',
     title: 'SharedCard',
     description:
-      'What leaves the device when a card is shared with other people (target share, ADR-0036): content and provenance only. No store identity (uri, externalId), no origin system, no source other than a public address, no worlds, tags, class, visibility, release, training, status, rating, edges, structured state or private player field (personalityType), and no player entry without a public source. contentHash is the hash of this projection (ADR-0034). Built by shareProjection in packages/core after the gate allowed the card for share.',
+      'What leaves the device when a card is shared with other people (target share, ADR-0036): content and provenance only. No store identity (uri, externalId), no origin system, no source other than a public address, no worlds, tags, class, visibility, release, training, status, rating, edges, structured state or private player field (personalityType), no language, validity period, aliases or external refs (ADR-0048), and no player entry without a public source. contentHash is the hash of this projection (ADR-0034). Built by shareProjection in packages/core after the gate allowed the card for share.',
     type: 'object',
     properties: {
       id: { $ref: 'common.schema.json#/$defs/cardId' },

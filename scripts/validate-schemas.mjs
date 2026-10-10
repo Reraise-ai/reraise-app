@@ -15,7 +15,7 @@ import Ajv2020Module from 'ajv/dist/2020.js';
 import addFormatsModule from 'ajv-formats';
 import { isDeepStrictEqual } from 'node:util';
 import { parse as parseYaml } from 'yaml';
-import { hashJcs } from '@worldbuilder/core';
+import { hashJcs, validityPeriodError } from '@worldbuilder/core';
 import { toPosix, walk } from './lib.mjs';
 import { computeContentHash, splitFrontMatter, toCanonicalCard } from './markdown-cards.mjs';
 
@@ -268,6 +268,26 @@ export const CROSS_CHECKS = {
         if (seen.has(id)) out.push(`player ${id} is named twice`);
         seen.add(id);
       }
+      return out;
+    },
+  },
+  /**
+   * ADR-0048: when both ends of a validity period are dates, `validUntil` is not earlier than
+   * `validFrom`. Either end may stand alone. Equal dates are allowed.
+   */
+  'validity-period': {
+    schema: '*',
+    run(data) {
+      const out = [];
+      const visit = (v) => {
+        if (Array.isArray(v)) v.forEach(visit);
+        else if (v !== null && typeof v === 'object') {
+          const problem = validityPeriodError(v);
+          if (problem) out.push(problem);
+          Object.values(v).forEach(visit);
+        }
+      };
+      visit(data);
       return out;
     },
   },

@@ -145,6 +145,14 @@ describe('shareProjection (ADR-0036)', () => {
     redLines: [{ text: 'No night convoys', source: PUBLIC }],
     assumedGoals: [{ text: 'Raise fees', source: '01M2MYHHT07BBT348TS317FFBD' }],
     personalityType: { text: 'ISTJ', source: PUBLIC },
+    language: 'es-AR',
+    validFrom: '2026-01-01',
+    validUntil: '2026-12-31',
+    aliases: ['Harbour master', 'HM'],
+    refs: [
+      { system: 'archive', id: 'CLIP-0001' },
+      { system: 'erp', url: 'https://example.org/v/1' },
+    ],
   });
 
   it('carries content and provenance only', () => {
@@ -155,6 +163,9 @@ describe('shareProjection (ADR-0036)', () => {
       expect(shared, k).not.toHaveProperty(k);
     }
     for (const k of ['training', 'status', 'rating', 'edges', 'personalityType']) {
+      expect(shared, k).not.toHaveProperty(k);
+    }
+    for (const k of ['language', 'validFrom', 'validUntil', 'aliases', 'refs']) {
       expect(shared, k).not.toHaveProperty(k);
     }
     expect(shared.source).toBe(actor.source);

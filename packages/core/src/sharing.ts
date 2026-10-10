@@ -153,7 +153,9 @@ const publicEntries = (entries: readonly PlayerEntry[] | undefined): SharedPlaye
 
 /**
  * What a share carries (ADR-0036): content and provenance only, a source and player entries
- * only with a public address, no origin system, never the personality type, the user's metadata, edges or store identity. The
+ * only with a public address, no origin system, never the personality type, the user's metadata, edges or store identity.
+ * Language, the validity period, aliases and external refs are descriptive metadata and are
+ * not part of the projection (ADR-0048); `refs` names the owner's private systems. The
  * content hash is recomputed over the projection. Call it only for a card the gate allowed
  * for `share`.
  */

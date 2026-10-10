@@ -61,6 +61,36 @@
         "date": {
           "$ref": "common.schema.json#/$defs/isoDate"
         },
+        "language": {
+          "description": "BCP 47 language of the card's title and body (ADR-0048). Descriptive metadata: it does not enter the content hash and it is not shared.",
+          "$ref": "common.schema.json#/$defs/languageTag"
+        },
+        "validFrom": {
+          "description": "First day the card's statement applies, inclusive (ADR-0048). Not the day it happened (`date`) and not the day the source said it (`sourceDate`). Either end of the period may stand alone. Descriptive metadata: not hashed, not shared. `validUntil` must not be earlier (checked beyond this schema).",
+          "$ref": "common.schema.json#/$defs/isoDate"
+        },
+        "validUntil": {
+          "description": "Last day the card's statement applies, inclusive (ADR-0048). Either end of the period may stand alone. Descriptive metadata: not hashed, not shared.",
+          "$ref": "common.schema.json#/$defs/isoDate"
+        },
+        "aliases": {
+          "description": "Other names for the card's subject: spellings, former names, abbreviations (ADR-0048). Unique and non-empty. Descriptive metadata: not hashed, not shared.",
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/text"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "refs": {
+          "description": "Pointers to the same thing in the owner's other systems (ADR-0048). Private: never shared, and dropped from every copy that can leave the device.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/externalRef"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
         "source": {
           "description": "Source as text, URI or card id.",
           "$ref": "common.schema.json#/$defs/text"
@@ -487,6 +517,33 @@
       "items": {
         "$ref": "#/$defs/playerEntry"
       }
+    },
+    "externalRef": {
+      "title": "ExternalRef",
+      "description": "A pointer to the same thing in another system (ADR-0048). `system` is a lower-case slug. At least one of `id` and `url` is required.",
+      "type": "object",
+      "properties": {
+        "system": {
+          "description": "Lower-case slug of the other system.",
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._-]*$"
+        },
+        "id": {
+          "description": "The thing's identifier in that system.",
+          "$ref": "common.schema.json#/$defs/text"
+        },
+        "url": {
+          "description": "A URI for the thing in that system.",
+          "type": "string",
+          "format": "uri"
+        }
+      },
+      "required": ["system"],
+      "anyOf": [
+        { "properties": { "id": true }, "required": ["id"] },
+        { "properties": { "url": true }, "required": ["url"] }
+      ],
+      "additionalProperties": false
     },
     "playerEntry": {
       "title": "PlayerEntry",

@@ -69,6 +69,21 @@ export type WbUri = string;
 export type Collection = 'actors' | 'evidence' | 'decisions';
 export type IsoDate = string;
 /**
+ * A well-formed BCP 47 language tag (RFC 5646), for example de, en or es-AR. Grandfathered irregular tags (such as i-enochian) are not accepted. Case follows the usual convention but is not enforced.
+ */
+export type LanguageTag = string;
+/**
+ * A pointer to the same thing in another system (ADR-0048). `system` is a lower-case slug. At least one of `id` and `url` is required.
+ */
+export type ExternalRef = ExternalRef1 & ExternalRef2;
+export type ExternalRef1 =
+  | {
+      id: unknown;
+    }
+  | {
+      url: unknown;
+    };
+/**
  * sha256:<lower-case hex> over the RFC 8785 (JCS) serialisation of the hashed card content (ADR-0034).
  */
 export type ContentHash = string;
@@ -450,6 +465,21 @@ export interface CardContent {
    */
   body?: string;
   date?: IsoDate;
+  language?: LanguageTag;
+  validFrom?: IsoDate;
+  validUntil?: IsoDate;
+  /**
+   * Other names for the card's subject: spellings, former names, abbreviations (ADR-0048). Unique and non-empty. Descriptive metadata: not hashed, not shared.
+   *
+   * @minItems 1
+   */
+  aliases?: Text[];
+  /**
+   * Pointers to the same thing in the owner's other systems (ADR-0048). Private: never shared, and dropped from every copy that can leave the device.
+   *
+   * @minItems 1
+   */
+  refs?: ExternalRef[];
   source?: Text;
   sourceDate?: IsoDate;
   /**
@@ -507,6 +537,17 @@ export interface CardContent {
    * Reserved for an author key-pair signature (ADR-0021). Must not be used until an ADR defines it.
    */
   signature?: never;
+}
+export interface ExternalRef2 {
+  /**
+   * Lower-case slug of the other system.
+   */
+  system: string;
+  id?: Text;
+  /**
+   * A URI for the thing in that system.
+   */
+  url?: string;
 }
 /**
  * A directed, typed edge from the card that holds it to `target` (ADR-0023). `by` records who drew it (ADR-0009); `unknown` only for edges read from legacy links.
@@ -1116,7 +1157,7 @@ export interface ShareBundle {
   denied: DeniedCard[];
 }
 /**
- * What leaves the device when a card is shared with other people (target share, ADR-0036): content and provenance only. No store identity (uri, externalId), no origin system, no source other than a public address, no worlds, tags, class, visibility, release, training, status, rating, edges, structured state or private player field (personalityType), and no player entry without a public source. contentHash is the hash of this projection (ADR-0034). Built by shareProjection in packages/core after the gate allowed the card for share.
+ * What leaves the device when a card is shared with other people (target share, ADR-0036): content and provenance only. No store identity (uri, externalId), no origin system, no source other than a public address, no worlds, tags, class, visibility, release, training, status, rating, edges, structured state or private player field (personalityType), no language, validity period, aliases or external refs (ADR-0048), and no player entry without a public source. contentHash is the hash of this projection (ADR-0034). Built by shareProjection in packages/core after the gate allowed the card for share.
  */
 export interface SharedCard {
   id: CardId;

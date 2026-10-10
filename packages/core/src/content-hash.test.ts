@@ -109,6 +109,33 @@ describe('computeContentHash (ADR-0034)', () => {
     expect(computeContentHash(withIdentity)).toBe(computeContentHash(card));
   });
 
+  it('ignores descriptive metadata, field by field (ADR-0048)', () => {
+    const base = computeContentHash(card);
+    const oneByOne = [
+      { language: 'de' },
+      { validFrom: '2026-01-01' },
+      { validUntil: '2026-12-31' },
+      { aliases: ['Former name', 'ABB'] },
+      { refs: [{ system: 'archive', id: 'CLIP-0001' }] },
+    ];
+    for (const extra of oneByOne) {
+      expect(computeContentHash({ ...card, ...extra }), JSON.stringify(extra)).toBe(base);
+    }
+    expect(
+      computeContentHash({
+        ...card,
+        language: 'es-AR',
+        validFrom: '2026-01-01',
+        validUntil: '2026-12-31',
+        aliases: ['Former name'],
+        refs: [
+          { system: 'archive', id: 'CLIP-0001' },
+          { system: 'erp', url: 'https://example.org/v/1' },
+        ],
+      }),
+    ).toBe(base);
+  });
+
   it('hashes red lines and assumed goals as content, not the private personality type (ADR-0038)', () => {
     const entry = [{ text: 'No foreign warships', source: 'https://example.org/statement' }];
     expect(computeContentHash({ ...card, redLines: entry })).not.toBe(computeContentHash(card));
