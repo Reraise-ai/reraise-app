@@ -200,6 +200,18 @@ describe('examples', () => {
     expect(out).toContain('examples/w/thing.json: needs "synthetic": true');
   });
 
+  it('runs the validity-period cross-check on markdown example cards', () => {
+    const root = makeTree({
+      ...copySchemas(),
+      'examples/w/worldbuilder-store.yaml': store,
+      'examples/w/cards/a.md': cardFile('validFrom: 2026-12-31\nvalidUntil: 2026-01-01\n'),
+    });
+    const problems = validateSchemas(root).problems.filter((p) => p.startsWith('examples/'));
+    expect(problems).toEqual([
+      'examples/w/cards/a.md: validity-period: validUntil 2026-01-01 is earlier than validFrom 2026-12-31',
+    ]);
+  });
+
   it('requires a store configuration for cards', () => {
     const root = makeTree({ ...copySchemas(), 'examples/w/cards/a.md': cardFile() });
     expect(validateSchemas(root).problems.join('\n')).toContain('missing worldbuilder-store.yaml');

@@ -418,6 +418,9 @@ function validateExamples(repoRoot, ajv, names, coverage, problems) {
         examples++;
         if (!marked) problems.push(`${rel}: needs synthetic: true`);
         if (!check('card.schema.json', card, rel)) continue;
+        // Same cross-checks as a JSON card, including validity-period (ADR-0048).
+        for (const f of crossCheck('card.schema.json', card))
+          problems.push(`${rel}: ${f.check}: ${f.message}`);
         if (card.type === 'decision' && card.format === 2) check('decision.schema.json', card, rel);
         if (card.lage) check('lage.schema.json', card.lage, rel, ' (lage)');
         if (card.rule) check('rule.schema.json', card.rule, rel, ' (rule)');
