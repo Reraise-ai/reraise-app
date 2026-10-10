@@ -743,6 +743,8 @@ export class MarkdownFilesAdapter implements StorageAdapter {
       const { card, worldNames } = parseCardText(text, this.ctx);
       const validate = validateCard();
       if (!validate(card)) throw new Error(describeErrors(validate));
+      const period = validityPeriodError(card);
+      if (period) throw new Error(period);
       this.problems.delete(rel);
       const title = fold(card.title);
       this.entries.set(rel, {

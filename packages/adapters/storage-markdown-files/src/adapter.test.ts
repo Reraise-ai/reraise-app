@@ -640,6 +640,30 @@ describe('the derived index', () => {
     expect(adapter.diagnostics().map((d) => d.path)).not.toContain('cards/broken.md');
   });
 
+  it('reports an inverted validity period as an invalid card and leaves it unindexed', async () => {
+    const dir = await tempDir();
+    const adapter = await openStore(dir, { createIfMissing: true });
+    const id = newId();
+    await writeCardFile(
+      dir,
+      'inverted.md',
+      [
+        '---',
+        `id: ${id}`,
+        'type: topic',
+        'title: Inverted',
+        'validFrom: 2026-12-31',
+        'validUntil: 2026-01-01',
+        '---',
+        '',
+      ].join('\n'),
+    );
+    expect(await adapter.read(id)).toBeUndefined();
+    expect(adapter.diagnostics().find((d) => d.path.endsWith('inverted.md'))?.message).toBe(
+      'validUntil 2026-01-01 is earlier than validFrom 2026-12-31',
+    );
+  });
+
   it('picks up files changed, added and removed behind its back', async () => {
     const dir = await copyHormuz();
     const adapter = await openStore(dir);
