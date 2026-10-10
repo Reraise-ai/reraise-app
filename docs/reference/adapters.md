@@ -57,7 +57,10 @@ cards/**/_archive/<file>.v<n>.md   archived versions, next to the card; never cu
   Watcher events are hints: a changed file is re-read and a miss triggers a rescan
   ([ADR-0033](../adr/0033-derived-index-reference-adapter.md)). `rebuildIndex()` throws the
   index away and rebuilds it. Files that cannot be used are listed by `diagnostics()` and
-  stay out of every result.
+  stay out of every result. Native watchers can miss changes made just after they start, so
+  for a start-up window (`watchWarmupMs`, default 3 s) queries rescan until both the cards and
+  the root watcher have delivered an event, and one rescan is forced when the window ends; the
+  adapter writes nothing besides `.worldbuilder/write.lock`.
 - **Search** matches all words case- and accent-insensitively in title, body and tags, and
   filters by `type`, `layer`, `worldId` and `tags`; a title match ranks first.
 - **Lage save.** A patch with a `lage` needs the next version number; the previous version is

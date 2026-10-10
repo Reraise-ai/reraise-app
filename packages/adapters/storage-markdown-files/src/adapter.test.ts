@@ -3,6 +3,7 @@
 
 import {
   mkdir,
+  mkdtemp,
   readFile,
   readdir,
   rm,
@@ -12,6 +13,7 @@ import {
   utimes,
   writeFile,
 } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { CardDraft } from '@worldbuilder/core';
 import { describe, expect, it, vi } from 'vitest';
@@ -845,22 +847,80 @@ describe('watching', () => {
     expect((await adapter.list()).items.map((c) => c.id)).toContain(id3);
   });
 
-  it('sees changes right after open, also when the store is reached through a symlink', async () => {
+  it('sees a card written right after open, without waiting, also through a symlinked root', async () => {
     const dir = await copyHormuz({ cards: false });
-    const link = `${dir}-link`;
-    await symlink(dir, link, 'dir');
-    const adapter = await openStore(link, {
+    const holder = await mkdtemp(path.join(tmpdir(), 'wb-link-'));
+    try {
+      const link = path.join(holder, 'store');
+      await symlink(dir, link, 'dir');
+      const adapter = await openStore(link, {
+        watch: true,
+        debounceMs: 5,
+        rescanIntervalMs: 3_600_000,
+      });
+      const id = newId();
+      await writeCardFile(dir, 'early.md', `---\nid: ${id}\ntype: topic\ntitle: Early\n---\n`);
+      expect((await adapter.list()).items.map((c) => c.id)).toContain(id);
+    } finally {
+      await rm(holder, { recursive: true, force: true });
+    }
+  });
+
+  it('sees a world file written right after open (root watcher window)', async () => {
+    const dir = await copyHormuz({ cards: false });
+    const adapter = await openStore(dir, { watch: true, rescanIntervalMs: 3_600_000 });
+    await writeFile(path.join(dir, 'world.json'), '{ not json', 'utf8');
+    await adapter.list();
+    expect(adapter.diagnostics().map((d) => d.path)).toContain('world.json');
+  });
+
+  it('stops rescanning every query once both watchers delivered an event', async () => {
+    const dir = await copyHormuz({ cards: false });
+    const adapter = await openStore(dir, {
       watch: true,
       debounceMs: 5,
       rescanIntervalMs: 3_600_000,
+      watchWarmupMs: 600_000,
     });
-    // open() resolved only after the watcher proved it is live, so this write cannot be missed
-    const id = newId();
-    await writeCardFile(dir, 'early.md', `---\nid: ${id}\ntype: topic\ntitle: Early\n---\n`);
-    await vi.waitFor(
-      async () => expect((await adapter.list()).items.map((c) => c.id)).toContain(id),
-      { timeout: 5000, interval: 20 },
-    );
-    adapter.close();
+    const sync = vi.spyOn(adapter as unknown as { sync: () => Promise<void> }, 'sync');
+    await adapter.list();
+    expect(sync).toHaveBeenCalled(); // warming: queries rescan
+    // one event on each watcher proves both live
+    await writeCardFile(dir, 'a.md', `---\nid: ${newId()}\ntype: topic\ntitle: A\n---\n`);
+    await writeFile(path.join(dir, 'world.json'), '{}', 'utf8');
+    await vi.waitFor(() => {
+      const a = adapter as unknown as { cardsLive: boolean; rootLive: boolean };
+      expect(a.cardsLive && a.rootLive).toBe(true);
+    });
+    await new Promise((r) => setTimeout(r, 100)); // let the debounced refresh finish
+    await adapter.list();
+    sync.mockClear();
+    await adapter.list();
+    await adapter.list();
+    expect(sync).not.toHaveBeenCalled();
+  });
+
+  it('ends the warm-up after its window and forces one rescan then', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'Date'] });
+    try {
+      const dir = await copyHormuz({ cards: false });
+      const adapter = await openStore(dir, {
+        watch: true,
+        rescanIntervalMs: 3_600_000,
+        watchWarmupMs: 1000,
+      });
+      const a = adapter as unknown as { dirty: boolean; warmUntil: number };
+      a.dirty = false;
+      expect(Date.now()).toBeLessThan(a.warmUntil);
+      await vi.advanceTimersByTimeAsync(1001);
+      expect(a.dirty).toBe(true); // the forced rescan at the end of the window
+      const sync = vi.spyOn(adapter as unknown as { sync: () => Promise<void> }, 'sync');
+      await adapter.list();
+      expect(sync).toHaveBeenCalledTimes(1);
+      await adapter.list();
+      expect(sync).toHaveBeenCalledTimes(1); // window over, watchers quiet: no more rescans
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
