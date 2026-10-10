@@ -440,3 +440,34 @@ button.wb-link {
 .wb-check {
   display: block;
 }
+
+/* Quiet credit. Not a control: no button chrome, muted type, the name is the link. */
+
+.wb-powered-by {
+  flex: 0 0 auto;
+  margin-top: auto;
+  padding: var(--wb-space-half) var(--wb-space-2);
+  text-align: end;
+  border-top: var(--wb-stroke) solid var(--wb-line);
+}
+
+.wb-powered-by p {
+  margin: 0;
+  color: var(--wb-text-muted);
+  font-size: var(--wb-text-s);
+}
+
+.wb-powered-by a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-thickness: var(--wb-stroke);
+}
+
+.wb-powered-by a:hover {
+  color: var(--wb-text);
+}
+
+.wb-powered-by a:focus-visible {
+  outline: var(--wb-stroke-strong) solid var(--wb-focus);
+  outline-offset: 2px;
+}

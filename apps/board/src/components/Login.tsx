@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from 'react';
 import { createClient } from '../api/client.js';
 import { DEFAULT_BASE_URL, type Session } from '../api/session.js';
+import { PoweredBy } from './PoweredBy.js';
 
 interface Props {
   initialBaseUrl?: string;
@@ -43,44 +44,47 @@ export function Login({ initialBaseUrl = DEFAULT_BASE_URL, onSignIn, fetchImpl }
   }
 
   return (
-    <main className="wb-page">
-      <h1>The Worldbuilder</h1>
-      <form onSubmit={submit} data-testid="login-form" aria-label="Sign in">
-        <p className="wb-muted">
-          Start the service with <code>worldbuilder serve</code> and paste the session token it
-          prints. The token stays in this tab only.
-        </p>
-        <div className="wb-field">
-          <label htmlFor="login-base-url">Service address</label>
-          <input
-            id="login-base-url"
-            data-testid="login-base-url"
-            value={baseUrl}
-            onChange={(e) => setBaseUrl(e.target.value)}
-            autoComplete="off"
-          />
-        </div>
-        <div className="wb-field">
-          <label htmlFor="login-token">Session token</label>
-          <input
-            id="login-token"
-            data-testid="login-token"
-            type="password"
-            value={token}
-            onChange={(e) => setToken(e.target.value)}
-            autoComplete="off"
-            spellCheck={false}
-          />
-        </div>
-        <button type="submit" className="wb-primary" data-testid="login-submit" disabled={busy}>
-          Open the board
-        </button>
-        {error && (
-          <p role="alert" className="wb-error" data-testid="login-error">
-            {error}
+    <div className="wb-shell">
+      <main className="wb-page">
+        <h1>The Worldbuilder</h1>
+        <form onSubmit={submit} data-testid="login-form" aria-label="Sign in">
+          <p className="wb-muted">
+            Start the service with <code>worldbuilder serve</code> and paste the session token it
+            prints. The token stays in this tab only.
           </p>
-        )}
-      </form>
-    </main>
+          <div className="wb-field">
+            <label htmlFor="login-base-url">Service address</label>
+            <input
+              id="login-base-url"
+              data-testid="login-base-url"
+              value={baseUrl}
+              onChange={(e) => setBaseUrl(e.target.value)}
+              autoComplete="off"
+            />
+          </div>
+          <div className="wb-field">
+            <label htmlFor="login-token">Session token</label>
+            <input
+              id="login-token"
+              data-testid="login-token"
+              type="password"
+              value={token}
+              onChange={(e) => setToken(e.target.value)}
+              autoComplete="off"
+              spellCheck={false}
+            />
+          </div>
+          <button type="submit" className="wb-primary" data-testid="login-submit" disabled={busy}>
+            Open the board
+          </button>
+          {error && (
+            <p role="alert" className="wb-error" data-testid="login-error">
+              {error}
+            </p>
+          )}
+        </form>
+      </main>
+      <PoweredBy />
+    </div>
   );
 }

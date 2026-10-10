@@ -7,6 +7,7 @@ import { LageList } from './components/LageList.js';
 import { ProposalsInbox } from './components/ProposalsInbox.js';
 import { UsagePanel } from './components/UsagePanel.js';
 import { Login } from './components/Login.js';
+import { PoweredBy } from './components/PoweredBy.js';
 import { Workbench } from './components/Workbench.js';
 
 interface Props {
@@ -125,6 +126,7 @@ function Signed(props: {
           </aside>
         </>
       )}
+      <PoweredBy />
     </div>
   );
 }
