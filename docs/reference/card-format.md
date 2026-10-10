@@ -113,6 +113,13 @@ Their presence does not make a card format 2. A new file writes them in this ord
 `aliases` after `title`, `validFrom` and `validUntil` after `date`, `refs` after `originSystem`.
 Each ref is written with keys `system`, then `id`, then `url`, and an absent end is omitted.
 
+On read, the markdown-files codec accepts two spellings of `aliases` that notes vaults already
+use. A single non-empty string becomes a one-item list. An empty list is treated as absent. On
+write, the codec always emits the list form. The JSON Schema of the canonical card stays a
+non-empty list of unique non-empty strings. `language`, `validFrom`, `validUntil` and `refs` are
+read and written as that schema requires. A file that already carries one of those four with a
+value the schema rejects is reported as an invalid card.
+
 #### Identity
 
 The reference `markdown-files` adapter stores the canonical ULID natively in `id`. A foreign
@@ -340,10 +347,17 @@ For every v2 card:
 4. A `lage` card has readable JSON and names only existing cards.
 5. A v2 decision card has all eleven sections.
 6. The [provenance rules](#5-provenance-rules) hold.
-7. When both `validFrom` and `validUntil` are set, `validUntil` is not earlier than `validFrom`
-   ([ADR-0048](../adr/0048-card-descriptive-fields.md)). Equal dates are allowed. Either end alone
-   is allowed. The schema checks each date; this comparison is the `validity-period` cross-check
-   and the same check on every adapter write.
+7. When both `validFrom` and `validUntil` are ISO dates, `validUntil` is the same day or a later
+   day than `validFrom` ([ADR-0048](../adr/0048-card-descriptive-fields.md)). Equal dates are
+   allowed. Either end alone is allowed. Where this is checked:
+   - JSON Schema checks each date on its own.
+   - The `validity-period` cross-check compares the two ends. It runs on JSON fixtures and on
+     every markdown example card that matches the card schema (`examples/**/cards/*.md`).
+   - Every adapter create and every adapter patch runs the same comparison and refuses the write
+     before the card is stored and before a previous version is archived.
+   - A markdown-files read reports an inverted period as an invalid card: the message is a
+     diagnostic and the file stays out of the index. That is the same report the adapter gives
+     for any other card that fails validation on read.
 
 Hints only, no error and no failing exit code: dangling targets in the legacy link list, and
 a `sourceChecksum` on a card outside `collection: evidence` that is not a SHA-256 value.
