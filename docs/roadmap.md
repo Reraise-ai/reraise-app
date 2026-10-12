@@ -45,6 +45,9 @@ the docs build.
 
 Status: not started.
 
+The board context package lists findings and origins per layer (AC-01). The check is in
+[verification](./verification.md).
+
 Components: Board UI, Board API, the reference `markdown-files` storage adapter (same file
 conventions as the [card format](./reference/card-format.md), synthetic data), and an MCP
 server.

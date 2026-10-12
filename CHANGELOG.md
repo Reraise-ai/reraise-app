@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- The context package on the board lists findings and origins per layer (`evidenced`, `said`,
+  `experience`, and `unclassified` only when a card has no layer). A layer with nothing in it
+  stays on the list as zero. There is no summed card total. The cloud preview uses the same
+  split for "this would be sent" and "withheld by the gate". A stance is not a layer and does
+  not change the figures (AC-01).
 - Quiet attribution "Powered by Private Executive" on the board (the login screen and the working
   screens), in the README, and in the documentation footer. "Private Executive" is a link that
   opens in a new tab. The address is the constant `PRIVATE_EXECUTIVE_URL` in

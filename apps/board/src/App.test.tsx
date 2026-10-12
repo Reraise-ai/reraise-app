@@ -497,6 +497,16 @@ describe('disclosure', () => {
     );
     await userEvent.click(screen.getByTestId('context-run'));
     await screen.findByTestId('context-preview');
+    expect(
+      screen.getByRole('heading', {
+        name: 'This would be sent: Evidenced 1, Said 1, Experience 0',
+      }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole('heading', {
+        name: 'Withheld by the gate: Evidenced 0, Said 0, Experience 1',
+      }),
+    ).toBeTruthy();
     expect(screen.getByTestId(`context-send-${C1}`)).toBeTruthy();
     expect(screen.getByTestId(`context-send-${C2}`)).toBeTruthy();
     expect(screen.queryByTestId(`context-send-${C3}`)).toBeNull();
@@ -525,7 +535,15 @@ describe('disclosure', () => {
     await userEvent.click(screen.getByTestId('context-confirm'));
     const pkg = await screen.findByTestId('context-package');
     expect(pkg.dataset['target']).toBe('cloud_model');
-    expect(screen.getByTestId('context-independence').textContent).toBe('2 findings · 2 origins');
+    expect(screen.getByTestId('context-layer-evidenced').textContent).toBe(
+      'Evidenced: 1 finding · 1 origin',
+    );
+    expect(screen.getByTestId('context-layer-said').textContent).toBe('Said: 1 finding · 1 origin');
+    expect(screen.getByTestId('context-layer-experience').textContent).toBe(
+      'Experience: 0 findings · 0 origins',
+    );
+    expect(screen.getByTestId('context-independence').textContent).not.toMatch(/2 findings/);
+    expect(screen.queryByTestId('context-layer-believed')).toBeNull();
     expect(screen.getByTestId('context-transfer')).toBeTruthy();
     expect(screen.queryByTestId(`context-item-${C3}`)).toBeNull();
     const send = api.calls.filter((c) => c.path === '/context-packages').at(-1)!.body as Record<
@@ -585,6 +603,14 @@ describe('disclosure', () => {
     await screen.findByTestId('context-package');
     expect(screen.getByTestId('context-package-target').textContent).toBe('screen');
     expect(screen.getByTestId('context-target-note').textContent).toMatch(/screen caller/);
+    expect(screen.getByTestId('context-layer-evidenced').textContent).toBe(
+      'Evidenced: 1 finding · 1 origin',
+    );
+    expect(screen.getByTestId('context-layer-said').textContent).toBe('Said: 1 finding · 1 origin');
+    expect(screen.getByTestId('context-layer-experience').textContent).toBe(
+      'Experience: 1 finding · 1 origin',
+    );
+    expect(screen.getByTestId('context-independence').textContent).not.toMatch(/3 findings/);
     const text = screen.getByTestId('context-package').textContent!;
     expect(text).not.toMatch(/believed/);
     expect(screen.getByTestId(`context-item-${C3}`)).toBeTruthy();

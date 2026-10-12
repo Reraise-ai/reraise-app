@@ -12,6 +12,7 @@ import type { BoardClient } from '../api/client.js';
 import { ApiError } from '../api/client.js';
 import { describeError } from '../errors.js';
 import { canonicalJson } from '../canonicalJson.js';
+import { layerCounts, layerFigures, type CountedLayer, type LayerFigure } from '../layerFigures.js';
 import { LAYER_LABEL, layerOf } from './CardNode.js';
 
 interface Props {
@@ -36,6 +37,21 @@ type View =
   | { step: 'error'; message: string };
 
 const NOT_CLEARED = 'not cleared for cloud_model by the gate rules';
+
+function layerName(layer: CountedLayer): string {
+  return layer === 'unclassified' ? 'Unclassified' : LAYER_LABEL[layer];
+}
+
+function countWord(count: number, one: string, many: string): string {
+  return `${count} ${count === 1 ? one : many}`;
+}
+
+/** One line per layer. There is no summed total (AC-01). */
+function layerCountText(layers: readonly (Card['layer'] | undefined)[]): string {
+  return layerCounts(layers)
+    .map((row) => `${layerName(row.layer)} ${row.count}`)
+    .join(', ');
+}
 
 /** Denied ids for a cloud transfer: what was asked for minus what the gate cleared. */
 export function deniedFor(requested: readonly string[], cleared: readonly string[]): DeniedCard[] {
@@ -199,7 +215,9 @@ function DeniedList({
   if (denied.length === 0) return <p className="wb-muted">No card was withheld.</p>;
   return (
     <>
-      <h3>Withheld by the gate ({denied.length})</h3>
+      <h3>
+        Withheld by the gate: {layerCountText(denied.map((d) => titles.get(d.cardId)?.layer))}
+      </h3>
       <ul className="wb-list" aria-label="Withheld cards">
         {denied.map((d) => (
           <li key={d.cardId} data-testid={`context-denied-${d.cardId}`}>
@@ -223,7 +241,9 @@ function TransferPreview(props: {
   const { transfer, denied, titles } = props;
   return (
     <div data-testid="context-preview">
-      <h3>This would be sent ({transfer.cardIds.length})</h3>
+      <h3>
+        This would be sent: {layerCountText(transfer.preview.objects.map((card) => card.layer))}
+      </h3>
       <p className="wb-muted">
         This is the complete envelope. Nothing else leaves, and only after you confirm.
       </p>
@@ -276,6 +296,20 @@ function TransferPreview(props: {
   );
 }
 
+/** Findings and origins per layer. The list is the whole figure; it has no summed total. */
+function LayerFigures({ figures }: { figures: readonly LayerFigure[] }) {
+  return (
+    <ul className="wb-list" data-testid="context-independence" aria-label="Findings by layer">
+      {figures.map((figure) => (
+        <li key={figure.layer} data-testid={`context-layer-${figure.layer}`}>
+          {layerName(figure.layer)}: {countWord(figure.findings, 'finding', 'findings')} ·{' '}
+          {countWord(figure.origins, 'origin', 'origins')}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 /** The gate result of a package. It never shows stances: they are for this screen only. */
 export function PackageResult({
   pkg,
@@ -287,12 +321,16 @@ export function PackageResult({
   return (
     <div data-testid="context-package" data-target={pkg.target}>
       <p>
-        Target <strong data-testid="context-package-target">{pkg.target}</strong>:{' '}
-        <span data-testid="context-independence">
-          {pkg.independence.findings} findings · {pkg.independence.origins} origins
-        </span>
-        , {pkg.withheld} withheld.
+        Target <strong data-testid="context-package-target">{pkg.target}</strong>
       </p>
+      <LayerFigures
+        figures={layerFigures(
+          pkg.items.map((item) => ({
+            layer: item.card.layer,
+            originRoot: item.provenance.originRoot,
+          })),
+        )}
+      />
       {pkg.confirmationRequired && (
         <p role="alert" className="wb-warning" data-testid="context-confirmation-required">
           Confirmation required: the transfer {pkg.confirmationRequired.transferId} must be
