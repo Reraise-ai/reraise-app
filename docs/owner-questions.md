@@ -53,3 +53,13 @@ offline and nothing leaves the device without a confirmed transfer. This fills t
 generic/jev preset slot (wire format still OD-4). The board's engine picker (Level1Panel,
 right column) is where a Lage selects this engine; per-field seat assignment (human / agent
 A1,A2,... / compute model) is a separate planspiel feature still to build.
+
+## Owner decision 2026-10-13 — gate default for an on-device model
+
+The shipped default gate rules let a LOCAL on-device model (`local_model`) see private cards:
+nothing leaves the device, so no per-transfer confirmation. `screen` is unchanged (sees all).
+`cloud_model` is unchanged: default deny, only after a per-transfer confirmation (ADR-0031);
+`demo` stays strict. Stance stays screen-only (no rule can widen). This updates the earlier
+strict default behind AC-16/AC-18 for the `local_model` target — update the ADR/AC and the tests
+to match. Owner's words: "local yes, cloud only with confirmation, otherwise it makes no sense."
+A "not even locally" bucket remains available later as an explicit deny rule if the owner asks.
