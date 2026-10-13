@@ -87,6 +87,11 @@ describe('the Hormuz example store', () => {
     expect(await titles({ text: 'wire report' })).toContain(WIRE);
     expect(await titles({ text: 'WIRE  Réport' })).toContain(WIRE); // case and accents fold
     expect(await titles({ type: 'lage' })).toEqual([LAGE]);
+    expect(await titles({ type: 'assumption' })).toEqual(['01M1F8X7G0TTV1CC1FNKTNN0TJ']);
+    expect([...(await titles({ type: 'rating' }))].sort()).toEqual([
+      '01M2MY8CV00ZV7GMSF29143S19',
+      '01M2MYHHT07BBT348TS317FFBD',
+    ]);
     expect(await titles({ tags: ['shipping'] })).toEqual([WIRE]);
     expect(await titles({ tags: ['shipping', 'nope'] })).toEqual([]);
     expect(await titles({ layer: 'evidenced' })).toContain(WIRE);

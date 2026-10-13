@@ -7,6 +7,7 @@ import type { Layer } from './generated/contracts.js';
 export type * from './generated/contracts.js';
 /** Adapter interfaces (ADR-0005). */
 export type * from './adapters/index.js';
+export { LOCAL_QUOTE_ENGINE, createLocalQuoteModel } from './adapters/local-quote.js';
 export { GATE_LOG_REASONS } from './adapters/local-state.js';
 export { STORAGE_ERROR_CODES, StorageError, isStorageError } from './adapters/storage-error.js';
 export type { StorageErrorCode } from './adapters/storage-error.js';
@@ -39,6 +40,10 @@ export {
   personalDataKinds,
 } from './personal-data.js';
 export type { PersonalDataKind } from './personal-data.js';
+export { independenceOf, originRoots } from './independence.js';
+export { cardsForPackage } from './package-view.js';
+export type { PackageView } from './package-view.js';
+export type { OriginRoot } from './independence.js';
 export { OPEN_OUTCOME, OPEN_OUTCOME_SCHEMA_PATTERN, isKnownOutcome } from './outcome.js';
 export {
   EXTERNAL_TYPES,

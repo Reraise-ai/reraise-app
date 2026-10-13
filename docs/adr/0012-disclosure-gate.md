@@ -9,6 +9,10 @@ decision-makers: "Owner (product), CTO/orchestrator (technical)"
 > Refined by [ADR-0036](0036-conclusions-are-private.md): a fifth target `share` (other people);
 > conclusions are everything user-originated without a public external source, not stance data
 > only, and are never allowed for `share`.
+>
+> Refined 2026-10-13 by [ADR-0031](0031-gate-rules-and-confirmation-binding.md): the file written
+> on first start also allows every card for `local_model`. `cloud_model` and `demo` stay default
+> deny. Stance stays on the screen.
 
 ## Context and Problem Statement
 
@@ -44,8 +48,9 @@ a news claim in the same world, and default deny fails safe.
   reason}` with `target ∈ {screen, local_model, cloud_model, demo}`.
   Lives in `packages/disclosure-gate`.
 - Default deny: no matching allow rule means deny, for every target. The
-  reference configuration contains an explicit allow rule for `screen`
-  for the local user; adapters add rules for their sensitive classes.
+  file written on first start allows every card for `screen` and for
+  `local_model` ([ADR-0031](0031-gate-rules-and-confirmation-binding.md));
+  adapters add deny rules for their sensitive classes.
 - `cloud_model` additionally requires a per-transfer confirmation by the
   user (human-only endpoint), showing exactly which cards will be sent.
   No standing consent.
@@ -77,8 +82,8 @@ a news claim in the same world, and default deny fails safe.
 - Good, because a missing rule cannot leak data.
 - Good, because the "cloud warning for private cards" requirement is met
   by construction.
-- Bad, because a fresh installation shows little to models until the user
-  writes allow rules; onboarding must explain this.
+- Bad, because a fresh installation shows nothing to a cloud model or a demo
+  until the user writes an allow rule; onboarding must explain this.
 - Bad, because per-transfer confirmation adds friction to cloud use, by
   design.
 

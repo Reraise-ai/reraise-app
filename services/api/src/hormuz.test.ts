@@ -2,10 +2,21 @@
 // Copyright The Worldbuilder contributors
 //
 // `worldbuilder serve` over the real markdown-files adapter and a temporary copy of the
-// synthetic Hormuz store: open the Lage, place a card, and see it again after a restart.
+// synthetic Hormuz store: open the Lage, place a card, draw an edge, set a stance, and see
+// them again after the process restarts (AC-05). A reversed `supports` edge stays and a
+// deleted `refutes` edge does not come back (AC-08). The quote model answers from the
+// context package the API built. The shipped default puts the private cost card in a
+// local_model package and leaves it out of an unconfirmed cloud_model package (AC-16).
+// A local_model package keeps a relation only when both cards are in the package, and
+// still leaves out a rule that states a stance (AC-18).
 
-import type { Card, Lage } from '@worldbuilder/core';
-import { cp, mkdtemp, rm } from 'node:fs/promises';
+import {
+  createLocalQuoteModel,
+  type Card,
+  type ContextPackage,
+  type Lage,
+} from '@worldbuilder/core';
+import { cp, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -13,7 +24,7 @@ import { fileURLToPath } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { addAgent } from './agent-registry.js';
 import { main } from './main.js';
-import type { Service } from './service.js';
+import { DEFAULT_GATE_RULES, type Service } from './service.js';
 
 const HORMUZ = fileURLToPath(new URL('../../../examples/hormuz', import.meta.url));
 
@@ -73,6 +84,20 @@ async function serve() {
   return { service, call };
 }
 
+/** Every file under `root`, as text. Used to show a stance note never landed in the card store. */
+async function textsUnder(root: string): Promise<string[]> {
+  const out: string[] = [];
+  const walk = async (current: string): Promise<void> => {
+    for (const entry of await readdir(current, { withFileTypes: true })) {
+      const full = path.join(current, entry.name);
+      if (entry.isDirectory()) await walk(full);
+      else out.push(await readFile(full, 'utf8'));
+    }
+  };
+  await walk(root);
+  return out;
+}
+
 describe('worldbuilder serve on the Hormuz example store', () => {
   let lageId: string;
   let loose: Card;
@@ -128,6 +153,106 @@ describe('worldbuilder serve on the Hormuz example store', () => {
       expect(reloaded.lage?.cards.find((c) => c.id === loose.id)).toMatchObject({ x: 321, y: 123 });
     } finally {
       await second.service.close();
+    }
+  });
+
+  it('keeps a drawn edge and a private stance after the process restarts (AC-05)', async () => {
+    const note = 'synthetic restart note';
+    const first = await serve();
+    let fromId = '';
+    let toId = '';
+    try {
+      const lagen = await first.call('GET', '/cards?type=lage');
+      const listed = (lagen.json['cards'] as unknown as Card[])[0]!;
+      const current = (await first.call('GET', `/lagen/${listed.id}`)).json as unknown as Card;
+      const lage = current.lage as Lage;
+      fromId = lage.cards[0]!.id;
+      toId = lage.cards[1]!.id;
+      const saved = await first.call('PUT', `/lagen/${listed.id}`, {
+        ...lage,
+        edges: [...lage.edges, { from: fromId, to: toId, kind: 'supports', by: 'human' }],
+        version: lage.version + 1,
+        updatedAt: new Date().toISOString(),
+      });
+      expect(saved.status).toBe(200);
+      const stance = await first.call('PUT', `/cards/${fromId}/stance`, {
+        position: 'rejected',
+        weight: 2,
+        note,
+      });
+      expect(stance.status).toBe(200);
+    } finally {
+      await first.service.close();
+    }
+
+    const second = await serve();
+    try {
+      const lagen = await second.call('GET', '/cards?type=lage');
+      const listed = (lagen.json['cards'] as unknown as Card[])[0]!;
+      const reloaded = (await second.call('GET', `/lagen/${listed.id}`)).json as unknown as Card;
+      expect(reloaded.lage?.edges).toContainEqual({
+        from: fromId,
+        to: toId,
+        kind: 'supports',
+        by: 'human',
+      });
+      const stance = await second.call('GET', `/cards/${fromId}/stance`);
+      expect(stance.status).toBe(200);
+      expect(stance.json).toMatchObject({
+        cardId: fromId,
+        position: 'rejected',
+        weight: 2,
+        note,
+      });
+      const onDisk = await readFile(path.join(dir, 'state', 'stances', `${fromId}.json`), 'utf8');
+      expect(onDisk).toContain(note);
+      expect((await textsUnder(path.join(dir, 'store'))).some((text) => text.includes(note))).toBe(
+        false,
+      );
+    } finally {
+      await second.service.close();
+    }
+  });
+});
+
+describe('a card removed from the Lage (AC-22)', () => {
+  it('drops that card from the next context package and leaves the card in the store', async () => {
+    const { service, call } = await serve();
+    try {
+      const worlds = await call('GET', '/worlds');
+      const worldId = (worlds.json['worlds'] as unknown as { id: string; name: string }[]).find(
+        (w) => w.name === 'Hormuz',
+      )!.id;
+      const lagen = await call('GET', '/cards?type=lage');
+      const lageCard = (lagen.json['cards'] as unknown as Card[])[0]!;
+      const lage = lageCard.lage as Lage;
+      const gone = lage.cards[0]!;
+      const kept = lage.cards[1]!;
+      const saved = await call('PUT', `/lagen/${lageCard.id}`, {
+        ...lage,
+        cards: lage.cards.filter((c) => c.id !== gone.id),
+        edges: lage.edges.filter((e) => e.from !== gone.id && e.to !== gone.id),
+        version: lage.version + 1,
+        updatedAt: new Date().toISOString(),
+      });
+      expect(saved.status).toBe(200);
+      const pkg = await call('POST', '/context-packages', { worldId, lageId: lageCard.id });
+      expect(pkg.status).toBe(200);
+      const ids = (pkg.json['items'] as unknown as { card: { id: string } }[]).map(
+        (item) => item.card.id,
+      );
+      expect(ids).not.toContain(gone.id);
+      expect(ids).toContain(kept.id);
+      expect((await call('GET', `/cards/${gone.id}`)).status).toBe(200);
+      // Put the card back so the later tests in this file see the example Lage.
+      const back = await call('PUT', `/lagen/${lageCard.id}`, {
+        ...lage,
+        version: lage.version + 2,
+        updatedAt: new Date().toISOString(),
+      });
+      expect(back.status).toBe(200);
+    } finally {
+      await service.close();
     }
   });
 });
@@ -192,6 +317,230 @@ describe('rule cards of the Hormuz store (a "## Rule" section in the file)', () 
       }[];
       expect(results.length).toBeGreaterThanOrEqual(2);
       expect(results.every((r) => typeof r.rule.then === 'string')).toBe(true);
+    } finally {
+      await service.close();
+    }
+  });
+});
+
+/** A new Lage as the board sends it: the user's question and their options. */
+function createdLage(question: string, options: string[]) {
+  return {
+    question,
+    options,
+    cards: [],
+    seats: [{ name: 'You', kind: 'human' as const }],
+    edges: [],
+    version: 1,
+    updatedAt: '2026-10-13T00:00:00.000Z',
+  };
+}
+
+describe('a Lage the user creates (AC-07)', () => {
+  it('keeps the question and any number of options after the process restarts', async () => {
+    const first = await serve();
+    let noneId = '';
+    let manyId = '';
+    try {
+      const worlds = await first.call('GET', '/worlds');
+      const worldId = (worlds.json['worlds'] as unknown as { id: string; name: string }[]).find(
+        (w) => w.name === 'Hormuz',
+      )!.id;
+      const none = await first.call('POST', '/lagen', {
+        title: 'No options',
+        worlds: [worldId],
+        lage: createdLage('Is the strait open?', []),
+      });
+      expect(none.status).toBe(201);
+      noneId = (none.json as unknown as Card).id;
+      const many = await first.call('POST', '/lagen', {
+        title: 'Three options',
+        worlds: [worldId],
+        lage: createdLage('Which route?', ['Reroute', 'Wait', 'Negotiate']),
+      });
+      expect(many.status).toBe(201);
+      manyId = (many.json as unknown as Card).id;
+      const duplicate = await first.call('POST', '/lagen', {
+        title: 'Duplicate option',
+        worlds: [worldId],
+        lage: createdLage('Which route?', ['Wait', 'Wait']),
+      });
+      expect(duplicate.status).toBe(400);
+    } finally {
+      await first.service.close();
+    }
+
+    const second = await serve();
+    try {
+      const none = (await second.call('GET', `/lagen/${noneId}`)).json as unknown as Card;
+      expect(none.lage?.question).toBe('Is the strait open?');
+      expect(none.lage?.options).toEqual([]);
+      const many = (await second.call('GET', `/lagen/${manyId}`)).json as unknown as Card;
+      expect(many.lage?.question).toBe('Which route?');
+      expect(many.lage?.options).toEqual(['Reroute', 'Wait', 'Negotiate']);
+      const onDisk = await textsUnder(path.join(dir, 'store'));
+      expect(
+        onDisk.some((text) => text.includes('Which route?') && text.includes('Negotiate')),
+      ).toBe(true);
+    } finally {
+      await second.service.close();
+    }
+  });
+});
+
+describe('edges the user draws, reverses and deletes (AC-08)', () => {
+  it('keeps a reversed supports edge and does not restore a deleted refutes edge after a restart', async () => {
+    const first = await serve();
+    let lageId = '';
+    let a = '';
+    let b = '';
+    let placed: Lage['cards'] = [];
+    try {
+      const worlds = await first.call('GET', '/worlds');
+      const worldId = (worlds.json['worlds'] as unknown as { id: string; name: string }[]).find(
+        (w) => w.name === 'Hormuz',
+      )!.id;
+      const cards = await first.call('GET', '/cards?limit=200');
+      const plain = (cards.json['cards'] as unknown as Card[]).filter((c) => c.type !== 'lage');
+      expect(plain.length).toBeGreaterThanOrEqual(2);
+      a = plain[0]!.id;
+      b = plain[1]!.id;
+      const created = await first.call('POST', '/lagen', {
+        title: 'Which claim holds?',
+        worlds: [worldId],
+        lage: createdLage('Which claim holds?', []),
+      });
+      expect(created.status).toBe(201);
+      lageId = (created.json as unknown as Card).id;
+      const current = (await first.call('GET', `/lagen/${lageId}`)).json as unknown as Card;
+      const lage = current.lage as Lage;
+      placed = [
+        { id: a, x: 10, y: 10 },
+        { id: b, x: 40, y: 10 },
+      ];
+      const drawnEdges = [
+        { from: a, to: b, kind: 'supports', by: 'human' },
+        { from: a, to: b, kind: 'refutes', by: 'human' },
+      ];
+      const drawn = await first.call('PUT', `/lagen/${lageId}`, {
+        ...lage,
+        cards: placed,
+        edges: drawnEdges,
+        version: lage.version + 1,
+        updatedAt: new Date().toISOString(),
+      });
+      expect(drawn.status).toBe(200);
+      expect((drawn.json as unknown as Card).lage?.edges).toEqual(drawnEdges);
+    } finally {
+      await first.service.close();
+    }
+
+    const second = await serve();
+    try {
+      const kept = (await second.call('GET', `/lagen/${lageId}`)).json as unknown as Card;
+      expect(kept.lage?.edges).toEqual([
+        { from: a, to: b, kind: 'supports', by: 'human' },
+        { from: a, to: b, kind: 'refutes', by: 'human' },
+      ]);
+      const revised = await second.call('PUT', `/lagen/${lageId}`, {
+        ...kept.lage,
+        cards: placed,
+        edges: [{ from: b, to: a, kind: 'supports', by: 'human' }],
+        version: kept.lage!.version + 1,
+        updatedAt: new Date().toISOString(),
+      });
+      expect(revised.status).toBe(200);
+    } finally {
+      await second.service.close();
+    }
+
+    const third = await serve();
+    try {
+      const reloaded = (await third.call('GET', `/lagen/${lageId}`)).json as unknown as Card;
+      expect(reloaded.lage?.edges).toEqual([{ from: b, to: a, kind: 'supports', by: 'human' }]);
+      const onDisk = await textsUnder(path.join(dir, 'store'));
+      expect(onDisk.some((text) => text.includes('Which claim holds?'))).toBe(true);
+    } finally {
+      await third.service.close();
+    }
+  });
+});
+
+const PRIVATE_CARD_ID = '01M1F8X7G0TTV1CC1FNKTNN0TJ';
+const WIRE_REPORT_ID = '01M1E34QM03WVTE8T1RYS3AM18';
+const NAVY_ID = '01M1EDEAG082WZ7T7D204BHZDC';
+const INSURANCE_ID = '01M1EMA1R0AH9ZTK3YJK33TNER';
+const LAGE_ID = '01M1F21G80R816A1T0V2P6RACH';
+const DECISION_ID = '01M1F5FBW0DPQND9KSXC12WHJW';
+const REROUTE_RULE_ID = '01M1EV5S00YXKKGEG772AZM7P9';
+const STANCE_RULE_ID = '01M1EYKMM0PW82HRM7RY5175E7';
+const HORMUZ_WORLD_ID = '01M1DZPW00JGXPRPG4179ZPNB8';
+
+describe('a model answers from the Hormuz context package (AC-16)', () => {
+  it('includes the private cost card for a local model and leaves it out of an unconfirmed cloud package', async () => {
+    await mkdir(path.join(dir, 'state'), { recursive: true });
+    await writeFile(path.join(dir, 'state', 'gate-rules.yaml'), DEFAULT_GATE_RULES);
+    const { service, call } = await serve();
+    try {
+      const stored = await call('GET', `/cards/${PRIVATE_CARD_ID}`);
+      expect(stored.status).toBe(200);
+      expect(stored.json['title']).toBe('Own estimate of the rerouting cost');
+
+      const port = (service.app.server.address() as { port: number }).port;
+      const ask = async (name: string, target: 'local_model' | 'cloud_model') => {
+        const { token } = await addAgent(service.stateDir, { name, target });
+        const res = await fetch(`http://127.0.0.1:${port}/context-packages`, {
+          method: 'POST',
+          headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+          body: JSON.stringify({ worldId: HORMUZ_WORLD_ID }),
+        });
+        expect(res.status).toBe(200);
+        return (await res.json()) as ContextPackage;
+      };
+
+      const context = await ask('quote-reader', 'local_model');
+      const cleared = context.items.map((item) => item.card.id);
+      expect(cleared).toContain(WIRE_REPORT_ID);
+      expect(cleared).toContain(PRIVATE_CARD_ID);
+      expect(cleared).toContain(INSURANCE_ID);
+      expect(JSON.stringify(context)).toContain('invented internal cost estimate');
+      expect(context.items.every((item) => item.stance === undefined)).toBe(true);
+
+      const items = JSON.stringify(context.items);
+      const lage = context.items.find((item) => item.card.id === LAGE_ID)?.card;
+      const edges = lage?.lage?.edges ?? [];
+      // Earlier tests in this file draw edges on the same copy of the store. The
+      // package keeps those edges only when both ends are cards the model may see.
+      expect(edges).toContainEqual({
+        from: NAVY_ID,
+        to: WIRE_REPORT_ID,
+        kind: 'represents',
+        by: 'human',
+      });
+      for (const edge of edges) {
+        expect(cleared).toContain(edge.from);
+        expect(cleared).toContain(edge.to);
+      }
+      const decision = context.items.find((item) => item.card.id === DECISION_ID)?.card;
+      expect(decision?.sections?.cardsUsed).toEqual([WIRE_REPORT_ID, NAVY_ID, INSURANCE_ID]);
+      expect(cleared).toContain(REROUTE_RULE_ID);
+      expect(cleared).not.toContain(STANCE_RULE_ID);
+      expect(items).not.toContain('"kind":"stance"');
+
+      const answer = await createLocalQuoteModel().ask(context, 'What may a local model see?');
+      expect(answer.proposals).toEqual([]);
+      expect(answer.text).toBe(`local-quote\n${[...cleared].sort().join('\n')}`);
+      expect(answer.text).toContain(PRIVATE_CARD_ID);
+      expect(answer.text).toContain(INSURANCE_ID);
+      expect(answer.text).not.toContain(STANCE_RULE_ID);
+      expect(answer.text).not.toContain('Own estimate of the rerouting cost');
+
+      const cloud = await ask('cloud-reader', 'cloud_model');
+      expect(cloud.target).toBe('cloud_model');
+      expect(cloud.items).toEqual([]);
+      const cloudText = JSON.stringify(cloud);
+      expect(cloudText).not.toContain(PRIVATE_CARD_ID);
+      expect(cloudText).not.toContain('invented internal cost estimate');
     } finally {
       await service.close();
     }

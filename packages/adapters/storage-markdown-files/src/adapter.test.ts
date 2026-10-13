@@ -877,7 +877,12 @@ describe('watching', () => {
     const holder = await mkdtemp(path.join(tmpdir(), 'wb-link-'));
     try {
       const link = path.join(holder, 'store');
-      await symlink(dir, link, 'dir');
+      try {
+        await symlink(dir, link, 'dir');
+      } catch (e) {
+        if ((e as NodeJS.ErrnoException).code === 'EPERM') return; // Windows without privilege
+        throw e;
+      }
       const adapter = await openStore(link, {
         watch: true,
         debounceMs: 5,

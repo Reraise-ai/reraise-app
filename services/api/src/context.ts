@@ -5,13 +5,15 @@
 // cloud model may know about a world, built after the gate. Stances appear only on the screen;
 // a cloud_model caller gets content only from a confirmed transfer, released to that caller.
 
-import type {
-  Card,
-  ContextItem,
-  ContextPackage,
-  ContextPackageRequest,
-  ContextProvenance,
-  DisclosureTransfer,
+import {
+  cardsForPackage,
+  independenceOf,
+  originRoots,
+  type Card,
+  type ContextItem,
+  type ContextPackage,
+  type ContextPackageRequest,
+  type DisclosureTransfer,
 } from '@worldbuilder/core';
 import { connectionIdOf, targetOf, type Principal } from './auth.js';
 import { readLage } from './lage.js';
@@ -20,40 +22,6 @@ import { collect, stanceFor, type Services } from './services.js';
 import { newUlid } from './util.js';
 
 const DEFAULT_MAX_ITEMS = 100;
-
-/**
- * Provenance of one card (ADR-0009): its origin root is found by following cites and based_on
- * edges within the cleared cards until a card cites nothing further. A root with a source is
- * identified by that source, so two cards quoting one source share a root. A card whose chain
- * cannot be followed to a source is its own root and flagged as unknown.
- */
-export function provenanceOf(card: Card, byId: ReadonlyMap<string, Card>): ContextProvenance {
-  let root = card;
-  const seen = new Set<string>([card.id]);
-  for (;;) {
-    const next = (root.edges ?? [])
-      .filter((e) => e.kind === 'cites' || e.kind === 'based_on')
-      .map((e) => byId.get(e.target))
-      .find((c): c is Card => c !== undefined && !seen.has(c.id));
-    if (!next) break;
-    seen.add(next.id);
-    root = next;
-  }
-  const known = root.source !== undefined;
-  return {
-    uri: card.uri,
-    ...(card.source !== undefined ? { source: card.source } : {}),
-    ...(card.sourceDate !== undefined ? { sourceDate: card.sourceDate } : {}),
-    ...(card.originSystem !== undefined ? { originSystem: card.originSystem } : {}),
-    originRoot: known ? root.source! : root.id,
-    originKnown: known,
-  };
-}
-
-const independenceOf = (items: readonly ContextItem[]) => ({
-  findings: items.length,
-  origins: new Set(items.map((i) => i.provenance.originRoot)).size,
-});
 
 const connectorIdOf = (name: string): string =>
   `agent-${name.toLowerCase().replace(/[^a-z0-9._-]/g, '-')}`.slice(0, 64);
@@ -107,12 +75,22 @@ async function pendingProposals(s: Services, lageId: string | undefined) {
 }
 
 function itemsOf(cards: readonly Card[], reason: (c: Card) => string): ContextItem[] {
-  const byId = new Map(cards.map((c) => [c.id, c] as const));
-  return cards.map((card) => ({
-    card,
-    provenance: provenanceOf(card, byId),
-    gate: { decision: 'allow' as const, reason: reason(card) },
-  }));
+  const roots = originRoots(cards);
+  return cards.map((card) => {
+    const root = roots.get(card.id)!;
+    return {
+      card,
+      provenance: {
+        uri: card.uri,
+        ...(card.source !== undefined ? { source: card.source } : {}),
+        ...(card.sourceDate !== undefined ? { sourceDate: card.sourceDate } : {}),
+        ...(card.originSystem !== undefined ? { originSystem: card.originSystem } : {}),
+        originRoot: root.originRoot,
+        originKnown: root.originKnown,
+      },
+      gate: { decision: 'allow' as const, reason: reason(card) },
+    };
+  });
 }
 
 export async function buildContextPackage(
@@ -165,7 +143,9 @@ export async function buildContextPackage(
   // an unknown world (no count, no ids). A Lage was already checked above.
   const denied =
     target !== 'screen' && req.lageId === undefined && allowed.length === 0 ? [] : filtered.denied;
-  const items = itemsOf(allowed, () => 'cleared by the gate rules');
+  // A model package names only cards it contains. The screen keeps the stored cards.
+  const view = cardsForPackage(allowed, target);
+  const items = itemsOf(view.cards, () => 'cleared by the gate rules');
   if (target === 'screen') {
     for (const item of items) {
       const stance = await stanceFor(s, item.card.id);
@@ -180,14 +160,19 @@ export async function buildContextPackage(
     target,
     ...(req.question !== undefined ? { question: req.question } : {}),
     items,
-    independence: independenceOf(items),
+    independence: independenceOf(items.map((item) => item.provenance)),
     pendingProposals: await pendingProposals(s, req.lageId),
-    withheld: denied.length,
+    withheld: denied.length + view.withheld,
     ...(denied.length > 0 ? { denied } : {}),
   };
 }
 
-/** The content of one released transfer: exactly the confirmed objects, nothing else. */
+/**
+ * The content of one released transfer: exactly the confirmed objects, nothing else.
+ * shortcut: those objects are the stored cards, so a Lage edge can still name a card the
+ * transfer does not include. Project the cards before the preview hash when a cloud
+ * package must not name a card outside the transfer.
+ */
 function released(
   base: Pick<ContextPackage, 'id' | 'worldId' | 'createdAt'> & { lageId?: string },
   req: ContextPackageRequest,
@@ -202,7 +187,7 @@ function released(
     target: 'cloud_model',
     ...(req.question !== undefined ? { question: req.question } : {}),
     items,
-    independence: independenceOf(items),
+    independence: independenceOf(items.map((item) => item.provenance)),
     pendingProposals: [],
     withheld: 0,
     transfer: release.confirmation,

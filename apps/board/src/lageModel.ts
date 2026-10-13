@@ -66,6 +66,7 @@ export function moveCard(lage: Lage, cardId: string, x: number, y: number, now =
 }
 
 export function removeCard(lage: Lage, cardId: string, now = new Date()): Lage {
+  if (!isPlaced(lage, cardId)) return lage;
   return bump(
     {
       ...lage,

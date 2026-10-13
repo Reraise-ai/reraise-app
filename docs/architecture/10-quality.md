@@ -39,7 +39,7 @@ verification row or the planned test.
 | ID | Scenario | Expected response | Check | Status |
 | --- | --- | --- | --- | --- |
 | QS-P1 | A context package for `cloud_model` is requested for a Lage containing a card with `visibility: private` and no allow rule. | The card is denied with a reason, shown as denied in the preview, and not in the package. | M1-01, AC-26, ADR-C13 | planned (M1) |
-| QS-P2 | A user with a fresh installation asks for any context package. | Every card is denied for every target except `screen` (default deny). | ADR-C13 | not started |
+| QS-P2 | A user with a fresh installation asks for any context package. | Every card is allowed for `screen` and `local_model`, including a private card. `cloud_model` and `demo` deny it. Stance data is allowed for `screen` only. | ADR-0031, AC-16 | in progress (Hormuz service test; no CI run yet) |
 | QS-P3 | An agent calls any MCP tool or the Board API to read or write a stance. | No such tool or endpoint exists for agents; stance data never appears in an MCP response, context package or export. | ADR-C14, schema and contract tests | not started |
 | QS-P4 | A user confirms a cloud transfer, then a card, the engine, the question or the output schema changes before sending, or the token is replayed or expired. | The confirmation no longer matches; nothing is sent until the user previews and confirms again. | unit tests of [ADR-0031](../adr/0031-gate-rules-and-confirmation-binding.md) | not started |
 | QS-P5 | The service starts with default configuration. | Board API and MCP HTTP listen only on `127.0.0.1`; a request without a token is rejected. | ADR-C15 | not started (default bind exists in the skeleton, untested) |
@@ -52,7 +52,7 @@ verification row or the planned test.
 | QS-V2 | An adapter patches one field of a store card that also contains fields the product does not know. | The file is byte-identical except for that field. | conformance kit (M1-02) | not started |
 | QS-V3 | Ten cards quote the same agency report. | The board shows "10 findings · 1 origin". | AC-29 | not started |
 | QS-V4 | A player-field entry without a source is saved. | Rejected by schema validation. | AC-28 | not started |
-| QS-V5 | A board shows evidenced, said and experience cards and the user's stances. | No number on screen combines layers or folds a stance into a layer. | AC-01 | not started |
+| QS-V5 | A board shows evidenced, said and experience cards and the user's stances. | No number on screen combines layers or folds a stance into a layer. | AC-01 | in progress (context package and cloud preview; board unit tests) |
 
 ### Replaceability
 

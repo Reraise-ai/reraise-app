@@ -19,7 +19,7 @@ Until then this page is the plan of record.
 | Milestone | Goal | Status | Done when |
 | --- | --- | --- | --- |
 | **M0** Repository foundation and contracts | Monorepo, tooling, CI, docs, ADRs, contracts as code. No features. | in progress | CI is green, schemas validate the examples, the ADR log is complete, the docs build |
-| **M1** Walking skeleton | Thinnest end-to-end path, everything real, nothing pretty | in progress: the e2e passes locally on Linux; awaiting CI on three operating systems | one Playwright end-to-end test runs the scenario below in CI |
+| **M1** Walking skeleton | Thinnest end-to-end path, everything real, nothing pretty | in progress: the e2e passes locally on Linux and on Windows (2026-10-13); awaiting a green CI run on three operating systems | one Playwright end-to-end test runs the scenario below in CI |
 | **M2+** Vertical slices | One pull request per slice: UI, API, adapter and tests together | not started | per slice, see [below](#m2-vertical-slices) |
 
 ## M0: repository foundation and contracts
@@ -43,7 +43,10 @@ the docs build.
 
 ## M1: walking skeleton
 
-Status: not started.
+Status: in progress. A restart of `worldbuilder serve` on the Hormuz store keeps a drawn edge and a private stance (AC-05). The same restart keeps a Lage the user created, with their question and any number of options, including none (AC-07). A restart keeps a reversed `supports` edge, and a deleted `refutes` edge stays gone (AC-08). `local-quote` answers a Hormuz context package with the ids the gate cleared. Under the shipped default it names the private cost card; a `cloud_model` package with no confirmation does not contain that card (AC-16). A `local_model` package of that store keeps a relation only when both cards are in the package, so the decision's `cardsUsed` list keeps the wire report, the navy and the insurance card. A rule that states a stance, or that names a card outside the package, is left out. The Hormuz stance rule is absent. The reroute rule, which names only the wire report, stays (AC-18). The page reload of the walking skeleton is the end-to-end test.
+
+The board context package lists findings and origins per layer (AC-01). A card shows its stored origin system on the canvas, in the card list and in the inspector (AC-06). Removing a placed card takes it off the Lage and out of the next context package. The card file stays in the store (AC-22). The checks are in
+[verification](./verification.md).
 
 Components: Board UI, Board API, the reference `markdown-files` storage adapter (same file
 conventions as the [card format](./reference/card-format.md), synthetic data), and an MCP

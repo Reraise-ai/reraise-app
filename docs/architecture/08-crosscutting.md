@@ -105,9 +105,10 @@ classDiagram
   ([ADR-0009](../adr/0009-mandatory-provenance.md)).
 - Legacy format-1 cards are read as stored; a missing author is `unknown`, never guessed
   ([ADR-0023](../adr/0023-core-domain-model.md)).
-- The independence count ("N findings · M origins") is computed in `core` by following
-  `cites` and `based_on` edges and source identity to their roots. Same `contentHash` or same
-  source URI is one root. It is never typed in (AC-29). See
+- The independence count ("N findings · M origins") is computed in `core` by `originRoots` and
+  `independenceOf` (`packages/core/src/independence.ts`), following `cites` and `based_on` edges
+  and source identity to their roots. Same `contentHash` or same source URI is one root. It is
+  never typed in (AC-29). See
   [provenance and independence](../explanation/provenance-and-independence.md).
 - Agent-originated content keeps `author: agent:<name>` after acceptance.
 
@@ -133,8 +134,9 @@ Privacy is structural, not a setting ([ADR-0012](../adr/0012-disclosure-gate.md)
   added with the contracts). Adapter-supplied rule fragments (deny rules only) join the effective rule set, which
   the board shows with each rule's source. Deny rules win over allow rules; an invalid rule file
   means deny everywhere ([ADR-0031](../adr/0031-gate-rules-and-confirmation-binding.md)).
-- **Default deny.** No matching allow rule means deny. The reference configuration allows
-  `screen` for the local user. `cloud_model` additionally needs a per-transfer confirmation by
+- **Default deny.** No matching allow rule means deny. The file written on first start allows
+  every card for `screen` and for `local_model`, including private cards, and nothing for
+  `cloud_model` or `demo`. `cloud_model` additionally needs a per-transfer confirmation by
   the human that lists exactly which cards leave. The preview shows the whole transfer envelope
   (target, connector, request parameters, canonical objects) and creates a server-side transfer
   record with its SHA-256. Confirming yields a single-use, session-bound token valid for

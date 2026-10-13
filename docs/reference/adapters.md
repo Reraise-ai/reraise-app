@@ -91,6 +91,14 @@ context package ([ADR-0015](../adr/0015-two-thinking-levels.md)).
 A `cloud_model` connector is called only with the `DisclosureRelease` of one confirmed transfer
 and sends nothing but its objects ([ADR-0031](../adr/0031-gate-rules-and-confirmation-binding.md)).
 
+The M1 stand-in is `createLocalQuoteModel` in `packages/core` (`LOCAL_QUOTE_ENGINE` is
+`local-quote`, target `local_model`). Given a non-blank question it returns `local-quote`,
+then the sorted ids of the package items, one per line. With no items the text is
+`local-quote` alone. `proposals` is empty. A blank question returns `local-quote: no question`
+and no ids. It reads ids only, so a title, a body, a stance or a denied id is not in the
+answer. The package it receives is already gate-cleared. A networked model connector is a
+later slice.
+
 ## Level1Engine
 
 The level-1 socket ([ADR-0035](../adr/0035-level1-engine-socket.md)): a fast engine that

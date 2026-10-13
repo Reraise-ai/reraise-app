@@ -1230,7 +1230,7 @@ export interface Finding2 {
   retrievedAt: DateTime;
 }
 /**
- * Disclosure-gate configuration (ADR-0012, ADR-0031): the user's rule file (`<state>/gate-rules.yaml`), with allow and deny rules per target. A card is allowed for a target only if at least one allow rule matches it and no deny rule does: deny wins, and without a matching allow rule the decision is deny. Rules match card fields only; nothing matches stance data, which stays on the screen whatever the rules say (ADR-0008).
+ * Disclosure-gate configuration (ADR-0012, ADR-0031): the user's rule file (`<state>/gate-rules.yaml`), with allow and deny rules per target. A card is allowed for a target only if at least one allow rule matches it and no deny rule does: deny wins, and without a matching allow rule the decision is deny. Rules match card fields only; nothing matches stance data, which stays on the screen whatever the rules say (ADR-0008). The file `worldbuilder serve` writes on first start allows every card for `screen` and for `local_model`, including private cards, and allows nothing for `cloud_model` or `demo`.
  */
 export interface GateRules {
   rules: GateRule[];

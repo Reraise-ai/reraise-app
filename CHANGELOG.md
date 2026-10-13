@@ -6,8 +6,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- The gate rules `worldbuilder serve` writes on first start allow every card for the screen and for a local model on this device, including private cards. Nothing leaves the device and no transfer confirmation is required. Stance stays on the screen; no rule can release it. `cloud_model` and `demo` stay deny until you add an allow rule. A cloud transfer still needs the per-transfer confirmation (ADR-0031, owner 2026-10-13).
+
 ### Added
 
+- A context package for any target other than the screen leaves out a rule card that states a stance, or that names a card outside the package. The rule is counted and not rewritten. On the Hormuz store a `local_model` package under the shipped default still contains the reroute rule, which names only the wire report, and does not contain the stance rule (AC-18).
+- A context package for any target other than the screen keeps a relation only when both cards are in that package. An edge, a Lage placement, or a decision `cardsUsed` id that names another card is dropped. The rendered body of a changed Lage or decision is dropped with it, and `contentHash` is the hash of the view. On the Hormuz store a `local_model` package under the shipped default has the navy `represents` edge to the wire report, and the decision's `cardsUsed` list keeps the wire report, the navy and the insurance card, because the local model may see them. The screen package is unchanged. A confirmed cloud transfer still sends the stored cards (AC-18).
+- A deterministic local model, `local-quote`, answers a context package by naming the card ids it was given. It writes no proposals and uses no network. On the Hormuz store the private cost card stays in the file store. The shipped default puts it in a `local_model` context package, and `local-quote` names its id. A `cloud_model` package with no confirmation does not contain it (AC-16).
+- The user can draw, reverse and delete `supports` and `refutes` edges. A restart of
+  `worldbuilder serve` on the Hormuz store keeps the reversed `supports` edge, and a deleted
+  `refutes` edge stays gone (AC-08).
+- The user can create a Lage with their own question and any number of options, including none.
+  A repeated option line is stored once. The open board shows the question and each option.
+  A restart of `worldbuilder serve` on the Hormuz store still has that Lage (AC-07).
+- A restart of `worldbuilder serve` on the Hormuz store keeps a drawn `supports` edge and a
+  private stance. The stance is a file under the state directory (`stances/<cardId>.json`) and
+  is not written into the card store. A page reload already showed the same board (AC-05).
+- The board can take one placed card off a Lage ("Remove from board"). The card file stays in
+  the store. Edges that used the card leave with it. The next context package is built from
+  the cards still on the Lage, so the removed card is not in it (AC-22).
+- Origin roots are counted in `@worldbuilder/core` (`originRoots`, `independenceOf`). A `cites`
+  or `based_on` chain, the same `contentHash`, or the same source URI is one root. A root with
+  no source is unknown and keeps its own id. The count is derived at read time and never stored
+  (ADR-0009, AC-29). The Board API context package uses this count.
+- The board shows which system a card came from (`originSystem`) on the canvas, in the card
+  list and in the inspector. A card with no origin system shows no system line (AC-06).
+- The board shows each card's stored content type (`card.type`) on the canvas, in the card
+  list and in the inspector. A premise stays an `assumption` and an own assessment stays a
+  `rating`. The type is not rewritten as a layer (AC-04).
+- The context package on the board lists findings and origins per layer (`evidenced`, `said`,
+  `experience`, and `unclassified` only when a card has no layer). A layer with nothing in it
+  stays on the list as zero. There is no summed card total. The cloud preview uses the same
+  split for "this would be sent" and "withheld by the gate". A stance is not a layer and does
+  not change the figures (AC-01).
 - Quiet attribution "Powered by Private Executive" on the board (the login screen and the working
   screens), in the README, and in the documentation footer. "Private Executive" is a link that
   opens in a new tab. The address is the constant `PRIVATE_EXECUTIVE_URL` in
@@ -63,6 +96,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- Origin roots no longer depend on card order. A quote of a cite cycle keeps that cycle's root, and two cycles one card cites stay two origins. The quote keeps the smaller root (ADR-0009).
 - Board: the open board has one main landmark and no skipped heading level (found by axe).
 - Board: the canvas fills the board area (it had collapsed to a thin strip, so cards were clipped).
 - Board: the stance weight slider sends an integer from 1 to 3 as the contract requires (it sent

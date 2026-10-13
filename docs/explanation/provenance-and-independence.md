@@ -47,10 +47,12 @@ Rules that follow from this:
   origin root and is flagged as such. One speaker quoted by many media is one root.
 - The count is derived from the edges at read time. It is never typed in.
 
-::: warning Status
-The origin counter and chain walk are planned (M1) for the counter and (M2+) for the full
-chain view. The algorithm will be specified as a schema-level contract and tested in
-`packages/core`. Until then this page describes the intended behaviour, not shipped code.
+::: info Status
+The counter is shipped. `originRoots` and `independenceOf` in `packages/core` derive each
+card's origin root. The context package stores the count for the whole package in
+`independence`. On the board each layer line reads "N findings · M origins" from those
+roots, and there is no single summed total (AC-01). A view that draws the chain itself is
+still planned.
 :::
 
 ## Why this is not a credibility score

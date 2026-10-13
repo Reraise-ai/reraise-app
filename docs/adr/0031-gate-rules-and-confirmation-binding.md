@@ -6,6 +6,10 @@ decision-makers: "Owner (product), CTO/orchestrator (technical)"
 
 # ADR-0031: Declarative gate rules and hash-bound cloud confirmations
 
+> Amended 2026-10-13 (owner): the file written on first start allows every card for
+> `local_model`, including private cards. `cloud_model` and `demo` stay default deny.
+> Stance stays on the screen; no rule can release it.
+
 ## Context and Problem Statement
 
 [ADR-0012](0012-disclosure-gate.md) decides that a disclosure gate allows or denies each card per
@@ -55,7 +59,34 @@ execute code, and make a confirmation worthless for any other payload.
 - Stance data is not a card field and cannot be matched. Stance data is allowed for `screen`
   only, independent of any rule ([ADR-0012](0012-disclosure-gate.md)).
 
-Example (synthetic):
+### Shipped default
+
+`worldbuilder serve` writes this file on first start when `<state>/gate-rules.yaml` is
+absent, and does not overwrite a file the user already has. It is the product default,
+not an example. An empty `match` matches every card. It does not match stance data.
+
+```yaml
+rules:
+  - id: screen-all
+    effect: allow
+    targets: [screen]
+    match: {}
+  - id: local-model-on-device
+    effect: allow
+    targets: [local_model]
+    match: {}
+```
+
+- `screen` sees every card.
+- `local_model` sees every card, including private cards. Nothing leaves the device, so
+  no per-transfer confirmation is required.
+- `cloud_model` has no allow rule, so the decision stays deny. Card content leaves only
+  through the hash-bound confirmation below, and only for cards an allow rule clears.
+- `demo` has no allow rule.
+- Stance data is still allowed for `screen` only. The allow rule for `local_model` does
+  not release it, and no other rule can.
+
+Example of a narrower file (synthetic, not the shipped default):
 
 ```yaml
 rules:
@@ -128,6 +159,9 @@ rules:
 Rule tests: no rules → deny for every target; deny beats allow; an invalid rule file → deny
 everywhere; an adapter fragment cannot override a user deny; an adapter fragment containing an allow rule is rejected; no rule can allow stance data
 beyond `screen`; the rule schema accepts its valid examples and rejects its invalid ones.
+The shipped default allows a private card for `local_model` and denies it for `cloud_model`
+and `demo`. On the Hormuz store that card is in a `local_model` context package and absent
+from a `cloud_model` package that has no confirmation.
 
 Confirmation tests: the send is rejected when, after the preview, the engine differs, the
 question or options or output schema changed, or a card was added, removed or edited; a confirm

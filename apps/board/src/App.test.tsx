@@ -11,6 +11,7 @@ import {
   LAGE_ID,
   TOKEN,
   createMockApi,
+  makeCard,
   makeLage,
   type MockApi,
 } from './testing/mockApi.js';
@@ -116,6 +117,40 @@ describe('Lage list and creation', () => {
       lage: { question: 'Add a route?', options: ['Yes', 'No'], version: 1, cards: [], edges: [] },
     });
     expect(screen.getByTestId('board-title').textContent).toBe('Palma ferries');
+    expect(screen.getByTestId('board-question').textContent).toBe('Add a route?');
+    expect(
+      within(screen.getByTestId('board-options'))
+        .getAllByRole('listitem')
+        .map((item) => item.textContent),
+    ).toEqual(['Yes', 'No']);
+  });
+
+  it('creates a Lage with no options, and keeps a repeated option once', async () => {
+    const api = createMockApi();
+    signedIn(api);
+    await screen.findByTestId('lage-list');
+    await userEvent.type(screen.getByTestId('lage-create-title'), 'Empty options');
+    await userEvent.type(screen.getByTestId('lage-create-question'), 'Anything new?');
+    await userEvent.click(screen.getByTestId('lage-create-submit'));
+    await screen.findByTestId('workbench');
+    expect(screen.getByTestId('board-question').textContent).toBe('Anything new?');
+    expect(screen.queryByTestId('board-options')).toBeNull();
+    expect(api.calls.find((c) => c.method === 'POST' && c.path === '/lagen')?.body).toMatchObject({
+      lage: { question: 'Anything new?', options: [] },
+    });
+
+    await userEvent.click(screen.getByTestId('board-close'));
+    await screen.findByTestId('lage-create-form');
+    await userEvent.type(screen.getByTestId('lage-create-title'), 'Repeated');
+    await userEvent.type(screen.getByTestId('lage-create-question'), 'Which?');
+    await userEvent.type(screen.getByTestId('lage-create-options'), 'Wait{Enter}Wait{Enter}Go');
+    await userEvent.click(screen.getByTestId('lage-create-submit'));
+    await screen.findByTestId('workbench');
+    expect(
+      within(screen.getByTestId('board-options'))
+        .getAllByRole('listitem')
+        .map((item) => item.textContent),
+    ).toEqual(['Wait', 'Go']);
   });
 });
 
@@ -137,6 +172,51 @@ describe('board canvas', () => {
     expect(screen.getByTestId(`card-author-${C4}`).textContent).toBe('agent:scout');
     expect(screen.queryByTestId(`card-author-${C1}`)).toBeNull();
     expect(screen.queryByTestId(`card-stance-${C1}`)).toBeNull();
+  });
+
+  it('shows the stored content type, including a premise and an own assessment', async () => {
+    const api = createMockApi();
+    const premise = makeCard({
+      id: '01JA0000000000000000000P01',
+      title: 'Geopolitics beats markets',
+      type: 'assumption',
+      layer: 'said',
+    });
+    const own = makeCard({
+      id: '01JA0000000000000000000R01',
+      title: 'Own reading of the navy',
+      type: 'rating',
+      layer: 'said',
+    });
+    api.cards.set(premise.id!, premise);
+    api.cards.set(own.id!, own);
+    await openLage(api);
+    expect(screen.getByTestId(`card-type-${C1}`).textContent).toBe('evidence');
+    expect((await screen.findByTestId(`search-type-${premise.id}`)).textContent).toBe('assumption');
+    expect(screen.getByTestId(`search-type-${own.id}`).textContent).toBe('rating');
+    fireEvent.click(screen.getByTestId(`card-node-${C1}`));
+    await waitFor(() => expect(screen.getByTestId('inspector-type').textContent).toBe('evidence'));
+  });
+
+  it('shows the system a card came from, and no system line when the card has none', async () => {
+    const api = createMockApi();
+    const placed = api.cards.get(C1)!;
+    api.cards.set(C1, { ...placed, originSystem: 'Synthetic desk' });
+    await openLage(api);
+    expect((await screen.findByTestId(`card-origin-${C1}`)).textContent).toBe(
+      'System: Synthetic desk',
+    );
+    expect(screen.queryByTestId(`card-origin-${C2}`)).toBeNull();
+    expect((await screen.findByTestId(`search-origin-${C1}`)).textContent).toBe(
+      'System: Synthetic desk',
+    );
+    expect(screen.queryByTestId(`search-origin-${C2}`)).toBeNull();
+    fireEvent.click(screen.getByTestId(`card-node-${C1}`));
+    await waitFor(() =>
+      expect(screen.getByTestId('inspector-origin').textContent).toBe('System: Synthetic desk'),
+    );
+    fireEvent.click(screen.getByTestId(`card-node-${C2}`));
+    await waitFor(() => expect(screen.queryByTestId('inspector-origin')).toBeNull());
   });
 
   it('shows the own stance of the user as an overlay on the card, from the screen package', async () => {
@@ -273,6 +353,31 @@ describe('edges', () => {
     await openLage(api);
     expect(await screen.findByTestId(`edge-row-${C1}>${C2}:supports`)).toBeTruthy();
     expect(screen.getByTestId('board-version').textContent).toBe('2');
+  });
+});
+
+describe('remove a card from the board (AC-22)', () => {
+  it('takes the card off the Lage and out of the next context package, and keeps the card', async () => {
+    const api = createMockApi();
+    await openLage(api);
+    await userEvent.selectOptions(screen.getByTestId('edge-from'), C1);
+    await userEvent.selectOptions(screen.getByTestId('edge-to'), C2);
+    await userEvent.click(screen.getByTestId('edge-add'));
+    await waitFor(() => expect(lageOf(api).edges).toHaveLength(1));
+
+    fireEvent.click(screen.getByTestId(`card-node-${C1}`));
+    await userEvent.click(await screen.findByTestId('card-remove'));
+
+    await waitFor(() => expect(screen.queryByTestId(`card-node-${C1}`)).toBeNull());
+    expect(lageOf(api).cards.map((c) => c.id)).toEqual([C2]);
+    expect(lageOf(api).edges).toEqual([]);
+    expect(api.cards.has(C1)).toBe(true);
+    expect(screen.getByTestId('board-version').textContent).toBe('3');
+
+    await userEvent.click(screen.getByTestId('context-run'));
+    await screen.findByTestId('context-package');
+    expect(screen.queryByTestId(`context-item-${C1}`)).toBeNull();
+    expect(screen.getByTestId(`context-item-${C2}`)).toBeTruthy();
   });
 });
 
@@ -497,6 +602,16 @@ describe('disclosure', () => {
     );
     await userEvent.click(screen.getByTestId('context-run'));
     await screen.findByTestId('context-preview');
+    expect(
+      screen.getByRole('heading', {
+        name: 'This would be sent: Evidenced 1, Said 1, Experience 0',
+      }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole('heading', {
+        name: 'Withheld by the gate: Evidenced 0, Said 0, Experience 1',
+      }),
+    ).toBeTruthy();
     expect(screen.getByTestId(`context-send-${C1}`)).toBeTruthy();
     expect(screen.getByTestId(`context-send-${C2}`)).toBeTruthy();
     expect(screen.queryByTestId(`context-send-${C3}`)).toBeNull();
@@ -525,7 +640,15 @@ describe('disclosure', () => {
     await userEvent.click(screen.getByTestId('context-confirm'));
     const pkg = await screen.findByTestId('context-package');
     expect(pkg.dataset['target']).toBe('cloud_model');
-    expect(screen.getByTestId('context-independence').textContent).toBe('2 findings · 2 origins');
+    expect(screen.getByTestId('context-layer-evidenced').textContent).toBe(
+      'Evidenced: 1 finding · 1 origin',
+    );
+    expect(screen.getByTestId('context-layer-said').textContent).toBe('Said: 1 finding · 1 origin');
+    expect(screen.getByTestId('context-layer-experience').textContent).toBe(
+      'Experience: 0 findings · 0 origins',
+    );
+    expect(screen.getByTestId('context-independence').textContent).not.toMatch(/2 findings/);
+    expect(screen.queryByTestId('context-layer-believed')).toBeNull();
     expect(screen.getByTestId('context-transfer')).toBeTruthy();
     expect(screen.queryByTestId(`context-item-${C3}`)).toBeNull();
     const send = api.calls.filter((c) => c.path === '/context-packages').at(-1)!.body as Record<
@@ -585,6 +708,14 @@ describe('disclosure', () => {
     await screen.findByTestId('context-package');
     expect(screen.getByTestId('context-package-target').textContent).toBe('screen');
     expect(screen.getByTestId('context-target-note').textContent).toMatch(/screen caller/);
+    expect(screen.getByTestId('context-layer-evidenced').textContent).toBe(
+      'Evidenced: 1 finding · 1 origin',
+    );
+    expect(screen.getByTestId('context-layer-said').textContent).toBe('Said: 1 finding · 1 origin');
+    expect(screen.getByTestId('context-layer-experience').textContent).toBe(
+      'Experience: 1 finding · 1 origin',
+    );
+    expect(screen.getByTestId('context-independence').textContent).not.toMatch(/3 findings/);
     const text = screen.getByTestId('context-package').textContent!;
     expect(text).not.toMatch(/believed/);
     expect(screen.getByTestId(`context-item-${C3}`)).toBeTruthy();

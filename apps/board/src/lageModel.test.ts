@@ -72,6 +72,7 @@ describe('Lage edits', () => {
     const l = removeCard(addEdge(base(), 'A', 'B', 'supports', NOW), 'A', NOW);
     expect(l.cards.map((c) => c.id)).toEqual(['B']);
     expect(l.edges).toEqual([]);
+    expect(removeCard(l, 'A', NOW)).toBe(l);
   });
 
   it('finds the next free grid slot', () => {

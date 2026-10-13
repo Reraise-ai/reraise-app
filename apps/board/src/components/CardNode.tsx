@@ -26,13 +26,16 @@ export const isAgentAuthor = (author: string | undefined): author is string =>
   typeof author === 'string' && author.startsWith('agent:');
 
 /**
- * A card on the board. The layer is shown by a text badge and a border style (never by colour
- * alone); an agent-authored card carries its author; the stance is the user's own overlay.
+ * A card on the board. The stored content type and the layer are each a text badge (never colour
+ * alone); an agent-authored card carries its author; the origin system is the store's
+ * `originSystem` when the card has one; the stance is the user's own overlay.
  */
 export function CardNode({ data, selected }: NodeProps<CardNodeType>) {
   const { card, cardId, stance } = data;
   const layer = layerOf(card);
+  const layerLabel = layer === 'unclassified' ? 'unclassified' : LAYER_LABEL[layer];
   const title = card?.title ?? 'Card not shown on this screen';
+  const system = card?.originSystem ? `, ${card.originSystem}` : '';
   return (
     <div
       className="wb-card"
@@ -41,11 +44,18 @@ export function CardNode({ data, selected }: NodeProps<CardNodeType>) {
       data-withheld={card ? undefined : 'true'}
       data-selected={selected ? 'true' : 'false'}
       role="group"
-      aria-label={`${title}, ${layer === 'unclassified' ? 'unclassified' : LAYER_LABEL[layer]}`}
+      aria-label={
+        card ? `${title}, ${card.type}, ${layerLabel}${system}` : `${title}, ${layerLabel}`
+      }
     >
       <Handle type="target" position={Position.Left} aria-hidden="true" />
       <div className="wb-card-title">{title}</div>
       <div>
+        {card && (
+          <span className="wb-badge" data-testid={`card-type-${cardId}`}>
+            {card.type}
+          </span>
+        )}
         <span className="wb-badge" data-kind={layer} data-testid={`card-layer-${cardId}`}>
           {layer === 'unclassified' ? 'Unclassified' : LAYER_LABEL[layer]}
         </span>
@@ -56,6 +66,11 @@ export function CardNode({ data, selected }: NodeProps<CardNodeType>) {
         )}
       </div>
       {card?.source && <div className="wb-muted">{card.source}</div>}
+      {card?.originSystem && (
+        <div className="wb-muted" data-testid={`card-origin-${cardId}`}>
+          System: {card.originSystem}
+        </div>
+      )}
       {stance && (
         <div className="wb-stance" data-testid={`card-stance-${cardId}`}>
           You: {stance.position}, weight {stance.weight}
