@@ -4,10 +4,16 @@
 // `worldbuilder serve` over the real markdown-files adapter and a temporary copy of the
 // synthetic Hormuz store: open the Lage, place a card, draw an edge, set a stance, and see
 // them again after the process restarts (AC-05). A reversed `supports` edge stays and a
-// deleted `refutes` edge does not come back (AC-08).
+// deleted `refutes` edge does not come back (AC-08). The quote model answers from the
+// context package the API built, and does not name the private card (AC-16).
 
-import type { Card, Lage } from '@worldbuilder/core';
-import { cp, mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
+import {
+  createLocalQuoteModel,
+  type Card,
+  type ContextPackage,
+  type Lage,
+} from '@worldbuilder/core';
+import { cp, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -453,6 +459,62 @@ describe('edges the user draws, reverses and deletes (AC-08)', () => {
       expect(onDisk.some((text) => text.includes('Which claim holds?'))).toBe(true);
     } finally {
       await third.service.close();
+    }
+  });
+});
+
+const PRIVATE_CARD_ID = '01M1F8X7G0TTV1CC1FNKTNN0TJ';
+const WIRE_REPORT_ID = '01M1E34QM03WVTE8T1RYS3AM18';
+const HORMUZ_WORLD_ID = '01M1DZPW00JGXPRPG4179ZPNB8';
+
+/** Screen sees everything. A local model sees class C evidence, actors and decisions only. */
+const LOCAL_MODEL_RULES = `rules:
+  - id: screen-all
+    effect: allow
+    targets: [screen]
+    match: {}
+  - id: local-open-evidence
+    effect: allow
+    targets: [local_model]
+    match:
+      class: [C]
+      collection: [evidence, actors, decisions]
+`;
+
+describe('a model answers from the Hormuz context package (AC-16)', () => {
+  it('keeps the private card in the store, leaves it out of the package, and the model does not name it', async () => {
+    await mkdir(path.join(dir, 'state'), { recursive: true });
+    await writeFile(path.join(dir, 'state', 'gate-rules.yaml'), LOCAL_MODEL_RULES);
+    const { service, call } = await serve();
+    try {
+      const stored = await call('GET', `/cards/${PRIVATE_CARD_ID}`);
+      expect(stored.status).toBe(200);
+      expect(stored.json['title']).toBe('Own estimate of the rerouting cost');
+
+      const { token } = await addAgent(service.stateDir, {
+        name: 'quote-reader',
+        target: 'local_model',
+      });
+      const port = (service.app.server.address() as { port: number }).port;
+      const res = await fetch(`http://127.0.0.1:${port}/context-packages`, {
+        method: 'POST',
+        headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+        body: JSON.stringify({ worldId: HORMUZ_WORLD_ID }),
+      });
+      expect(res.status).toBe(200);
+      const context = (await res.json()) as ContextPackage;
+      const cleared = context.items.map((item) => item.card.id);
+      expect(cleared).toContain(WIRE_REPORT_ID);
+      expect(cleared).not.toContain(PRIVATE_CARD_ID);
+      expect(JSON.stringify(context)).not.toContain('invented internal cost estimate');
+
+      const answer = await createLocalQuoteModel().ask(context, 'What may a local model see?');
+      expect(answer.proposals).toEqual([]);
+      expect(answer.text).toBe(`local-quote\n${[...cleared].sort().join('\n')}`);
+      expect(answer.text).not.toContain(PRIVATE_CARD_ID);
+      expect(answer.text).not.toContain('Own estimate of the rerouting cost');
+    } finally {
+      await service.close();
     }
   });
 });

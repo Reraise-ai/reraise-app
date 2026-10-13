@@ -43,7 +43,7 @@ the docs build.
 
 ## M1: walking skeleton
 
-Status: in progress. A restart of `worldbuilder serve` on the Hormuz store keeps a drawn edge and a private stance (AC-05). The same restart keeps a Lage the user created, with their question and any number of options, including none (AC-07). A restart keeps a reversed `supports` edge, and a deleted `refutes` edge stays gone (AC-08). The page reload of the walking skeleton is the end-to-end test.
+Status: in progress. A restart of `worldbuilder serve` on the Hormuz store keeps a drawn edge and a private stance (AC-05). The same restart keeps a Lage the user created, with their question and any number of options, including none (AC-07). A restart keeps a reversed `supports` edge, and a deleted `refutes` edge stays gone (AC-08). `local-quote` answers a Hormuz context package with the ids the gate cleared and does not name the private cost card (AC-16). The page reload of the walking skeleton is the end-to-end test.
 
 The board context package lists findings and origins per layer (AC-01). A card shows its stored origin system on the canvas, in the card list and in the inspector (AC-06). Removing a placed card takes it off the Lage and out of the next context package. The card file stays in the store (AC-22). The checks are in
 [verification](./verification.md).

@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- A deterministic local model, `local-quote`, answers a context package by naming the card ids it was given. It writes no proposals and uses no network. On the Hormuz store the private cost card stays in the file store, the Board API leaves it out of a `local_model` context package, and the model does not name it (AC-16).
 - The user can draw, reverse and delete `supports` and `refutes` edges. A restart of
   `worldbuilder serve` on the Hormuz store keeps the reversed `supports` edge, and a deleted
   `refutes` edge stays gone (AC-08).
