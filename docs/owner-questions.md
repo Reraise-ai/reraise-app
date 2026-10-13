@@ -40,3 +40,16 @@ When the owner answers, the row moves to "Answered" and the linked ADR is update
 | OQ-25 | Which of the user's rule cards go into a level-1 request? | Rule cards with no worlds or a world in common with the Lage, cleared by the gate, at most 50 (ordered by id). | A rule from an unrelated world says nothing about this board, and a request must stay small enough to preview. | [ADR-0045](./adr/0045-level1-service-seam.md) |
 | OQ-26 | Which cloud engines exist by default? | None. They are listed in `<state>/level1-engines.yaml`; the Jev preset is shown as unavailable until an enabled entry exists. No credential is stored in the file, only the path of an owner-only file. | Nothing may leave the device before the user configured a destination and then confirmed the transfer. | [ADR-0045](./adr/0045-level1-service-seam.md) |
 | OQ-27 | Are predictions kept? | Only the latest per Lage, in memory, lost at a restart; never in a card, a store or the gate log. The board re-runs the local engine by itself after a change (debounced); a cloud engine only after a click and a confirmation. | A prediction is not a card and not a record of what the user believed; staleness is shown instead of history. | [ADR-0045](./adr/0045-level1-service-seam.md) |
+
+## Owner answer OQ-28 (2026-10-13)
+
+The M1 stand-in `local-quote` is confirmed as the zero-config default and stays offline.
+The real model binding, from M2, is a passthrough to a default multi-agent system (owner's
+reference: a Nous/Hermes-style orchestration, "route their default multi-agent system
+through"). It is wired as a `cloud_model`/`local_model` engine behind the existing
+Level1Engine socket (ADR-0035) and the `level1-engines.yaml` registry (ADR-0045), gated and
+confirmed per transfer. It is NOT the zero-config default, because the default must work
+offline and nothing leaves the device without a confirmed transfer. This fills the
+generic/jev preset slot (wire format still OD-4). The board's engine picker (Level1Panel,
+right column) is where a Lage selects this engine; per-field seat assignment (human / agent
+A1,A2,... / compute model) is a separate planspiel feature still to build.
