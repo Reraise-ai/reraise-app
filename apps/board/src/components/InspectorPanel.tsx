@@ -9,6 +9,9 @@ interface Props {
   cardId: string | null;
   stance: Stance | undefined;
   onSaveStance(cardId: string, input: StanceInput): Promise<void>;
+  /** Takes the card off this Lage. The card file stays in the store. */
+  onRemove?(): void;
+  removeDisabled?: boolean;
 }
 
 const POSITIONS: StancePosition[] = ['believed', 'rejected', 'undecided'];
@@ -17,7 +20,14 @@ const POSITIONS: StancePosition[] = ['believed', 'rejected', 'undecided'];
  * The selected card in full and the user's own stance on it (stance_save, human-only). The
  * stance is a private overlay for this screen: it is never a layer, never in a count, never sent.
  */
-export function InspectorPanel({ card, cardId, stance, onSaveStance }: Props) {
+export function InspectorPanel({
+  card,
+  cardId,
+  stance,
+  onSaveStance,
+  onRemove,
+  removeDisabled,
+}: Props) {
   const [position, setPosition] = useState<StancePosition>('undecided');
   const [weight, setWeight] = useState(2);
   const [note, setNote] = useState('');
@@ -77,7 +87,22 @@ export function InspectorPanel({ card, cardId, stance, onSaveStance }: Props) {
         <span className="wb-muted">{card?.visibility}</span>
       </div>
       {card?.source && <p className="wb-muted">Source: {card.source}</p>}
+      {card?.originSystem && (
+        <p className="wb-muted" data-testid="inspector-origin">
+          System: {card.originSystem}
+        </p>
+      )}
       {card?.body && <p>{card.body}</p>}
+      {onRemove && (
+        <button
+          type="button"
+          data-testid="card-remove"
+          disabled={removeDisabled}
+          onClick={onRemove}
+        >
+          Remove from board
+        </button>
+      )}
 
       {card && (
         <form onSubmit={save} aria-label="Your stance" data-testid="stance-form">

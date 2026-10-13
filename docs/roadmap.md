@@ -19,7 +19,7 @@ Until then this page is the plan of record.
 | Milestone | Goal | Status | Done when |
 | --- | --- | --- | --- |
 | **M0** Repository foundation and contracts | Monorepo, tooling, CI, docs, ADRs, contracts as code. No features. | in progress | CI is green, schemas validate the examples, the ADR log is complete, the docs build |
-| **M1** Walking skeleton | Thinnest end-to-end path, everything real, nothing pretty | in progress: the e2e passes locally on Linux; awaiting CI on three operating systems | one Playwright end-to-end test runs the scenario below in CI |
+| **M1** Walking skeleton | Thinnest end-to-end path, everything real, nothing pretty | in progress: the e2e passes locally on Linux and on Windows (2026-10-13); awaiting a green CI run on three operating systems | one Playwright end-to-end test runs the scenario below in CI |
 | **M2+** Vertical slices | One pull request per slice: UI, API, adapter and tests together | not started | per slice, see [below](#m2-vertical-slices) |
 
 ## M0: repository foundation and contracts
@@ -43,9 +43,9 @@ the docs build.
 
 ## M1: walking skeleton
 
-Status: not started.
+Status: in progress.
 
-The board context package lists findings and origins per layer (AC-01). The check is in
+The board context package lists findings and origins per layer (AC-01). A card shows its stored origin system on the canvas, in the card list and in the inspector (AC-06). Removing a placed card takes it off the Lage and out of the next context package. The card file stays in the store (AC-22). The checks are in
 [verification](./verification.md).
 
 Components: Board UI, Board API, the reference `markdown-files` storage adapter (same file

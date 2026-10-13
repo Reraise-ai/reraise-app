@@ -39,6 +39,8 @@ export {
   personalDataKinds,
 } from './personal-data.js';
 export type { PersonalDataKind } from './personal-data.js';
+export { independenceOf, originRoots } from './independence.js';
+export type { OriginRoot } from './independence.js';
 export { OPEN_OUTCOME, OPEN_OUTCOME_SCHEMA_PATTERN, isKnownOutcome } from './outcome.js';
 export {
   EXTERNAL_TYPES,

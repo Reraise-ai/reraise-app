@@ -71,6 +71,10 @@ test('hormuz walking skeleton', async ({ page }) => {
     await expect(page.getByTestId('board-version')).toHaveText(String(INITIAL_VERSION));
     await expect(page.getByTestId(`card-node-${HORMUZ.wireReportId}`)).toBeVisible();
     await expect(page.getByTestId(`card-type-${HORMUZ.wireReportId}`)).toHaveText('event');
+    await expect(page.getByTestId(`card-origin-${HORMUZ.wireReportId}`)).toHaveCount(0);
+    await expect(page.getByTestId(`card-origin-${HORMUZ.navyCardId}`)).toHaveText(
+      'System: Example analyst wiki',
+    );
     await expect(page.getByTestId(`card-node-${HORMUZ.privateCardId}`)).toHaveCount(0);
   });
 
@@ -79,6 +83,9 @@ test('hormuz walking skeleton', async ({ page }) => {
     await page.getByTestId('search-submit').click();
     await expect(page.getByTestId(`search-result-${HORMUZ.privateCardId}`)).toBeVisible();
     await expect(page.getByTestId(`search-type-${HORMUZ.privateCardId}`)).toHaveText('assumption');
+    await expect(page.getByTestId(`search-origin-${HORMUZ.privateCardId}`)).toHaveText(
+      'System: Example cost spreadsheet',
+    );
     await page.getByTestId(`search-place-${HORMUZ.privateCardId}`).click();
     await expect(page.getByTestId(`card-node-${HORMUZ.privateCardId}`)).toBeVisible();
     await expect(page.getByTestId(`card-type-${HORMUZ.privateCardId}`)).toHaveText('assumption');
@@ -108,6 +115,7 @@ test('hormuz walking skeleton', async ({ page }) => {
   await test.step('set a private stance through the inspector; it shows on screen only', async () => {
     await page.getByTestId(`card-node-${HORMUZ.navyCardId}`).click();
     await expect(page.getByTestId('inspector-type')).toHaveText('organisation');
+    await expect(page.getByTestId('inspector-origin')).toHaveText('System: Example analyst wiki');
     await expect(page.getByTestId('stance-form')).toBeVisible();
     await page.getByTestId('stance-position').selectOption('rejected');
     await page.getByTestId('stance-note').fill(STANCE_NOTE);
@@ -341,5 +349,27 @@ test('hormuz walking skeleton', async ({ page }) => {
     const log = await readFile(path.join(env.stateDir, 'receipt-log.jsonl'), 'utf8');
     expect(log.trim().split('\n').length).toBeGreaterThanOrEqual(2);
     expect(log).not.toContain('insurance spike');
+  });
+
+  await test.step('removing a card takes it off the board and out of the next package; the card file stays', async () => {
+    await page.getByTestId(`card-node-${HORMUZ.wireReportId}`).click();
+    await page.getByTestId('card-remove').click();
+    await expect(page.getByTestId(`card-node-${HORMUZ.wireReportId}`)).toHaveCount(0);
+    await expect(page.getByTestId('board-version')).toHaveText(String(INITIAL_VERSION + 4));
+    await page.getByTestId('context-target').selectOption('local_model');
+    await page.getByTestId('context-run').click();
+    await expect(page.getByTestId('context-package')).toBeVisible();
+    await expect(page.getByTestId(`context-item-${HORMUZ.wireReportId}`)).toHaveCount(0);
+    await expect(page.getByTestId(`context-item-${HORMUZ.privateCardId}`)).toBeVisible();
+    const removed = await readLage(lageFile);
+    expect(removed.version).toBe(INITIAL_VERSION + 4);
+    expect(removed.position.cards.map((c) => c.id)).not.toContain(HORMUZ.wireReportId);
+    const files = await readdir(path.join(env.storeDir, 'cards'));
+    const bodies = await Promise.all(
+      files
+        .filter((n) => n.endsWith('.md'))
+        .map(async (n) => readFile(path.join(env.storeDir, 'cards', n), 'utf8')),
+    );
+    expect(bodies.some((t) => t.includes(HORMUZ.wireReportId))).toBe(true);
   });
 });

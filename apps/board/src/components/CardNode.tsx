@@ -27,13 +27,15 @@ export const isAgentAuthor = (author: string | undefined): author is string =>
 
 /**
  * A card on the board. The stored content type and the layer are each a text badge (never colour
- * alone); an agent-authored card carries its author; the stance is the user's own overlay.
+ * alone); an agent-authored card carries its author; the origin system is the store's
+ * `originSystem` when the card has one; the stance is the user's own overlay.
  */
 export function CardNode({ data, selected }: NodeProps<CardNodeType>) {
   const { card, cardId, stance } = data;
   const layer = layerOf(card);
   const layerLabel = layer === 'unclassified' ? 'unclassified' : LAYER_LABEL[layer];
   const title = card?.title ?? 'Card not shown on this screen';
+  const system = card?.originSystem ? `, ${card.originSystem}` : '';
   return (
     <div
       className="wb-card"
@@ -42,7 +44,9 @@ export function CardNode({ data, selected }: NodeProps<CardNodeType>) {
       data-withheld={card ? undefined : 'true'}
       data-selected={selected ? 'true' : 'false'}
       role="group"
-      aria-label={card ? `${title}, ${card.type}, ${layerLabel}` : `${title}, ${layerLabel}`}
+      aria-label={
+        card ? `${title}, ${card.type}, ${layerLabel}${system}` : `${title}, ${layerLabel}`
+      }
     >
       <Handle type="target" position={Position.Left} aria-hidden="true" />
       <div className="wb-card-title">{title}</div>
@@ -62,6 +66,11 @@ export function CardNode({ data, selected }: NodeProps<CardNodeType>) {
         )}
       </div>
       {card?.source && <div className="wb-muted">{card.source}</div>}
+      {card?.originSystem && (
+        <div className="wb-muted" data-testid={`card-origin-${cardId}`}>
+          System: {card.originSystem}
+        </div>
+      )}
       {stance && (
         <div className="wb-stance" data-testid={`card-stance-${cardId}`}>
           You: {stance.position}, weight {stance.weight}

@@ -132,6 +132,48 @@ describe('worldbuilder serve on the Hormuz example store', () => {
   });
 });
 
+describe('a card removed from the Lage (AC-22)', () => {
+  it('drops that card from the next context package and leaves the card in the store', async () => {
+    const { service, call } = await serve();
+    try {
+      const worlds = await call('GET', '/worlds');
+      const worldId = (worlds.json['worlds'] as unknown as { id: string; name: string }[]).find(
+        (w) => w.name === 'Hormuz',
+      )!.id;
+      const lagen = await call('GET', '/cards?type=lage');
+      const lageCard = (lagen.json['cards'] as unknown as Card[])[0]!;
+      const lage = lageCard.lage as Lage;
+      const gone = lage.cards[0]!;
+      const kept = lage.cards[1]!;
+      const saved = await call('PUT', `/lagen/${lageCard.id}`, {
+        ...lage,
+        cards: lage.cards.filter((c) => c.id !== gone.id),
+        edges: lage.edges.filter((e) => e.from !== gone.id && e.to !== gone.id),
+        version: lage.version + 1,
+        updatedAt: new Date().toISOString(),
+      });
+      expect(saved.status).toBe(200);
+      const pkg = await call('POST', '/context-packages', { worldId, lageId: lageCard.id });
+      expect(pkg.status).toBe(200);
+      const ids = (pkg.json['items'] as unknown as { card: { id: string } }[]).map(
+        (item) => item.card.id,
+      );
+      expect(ids).not.toContain(gone.id);
+      expect(ids).toContain(kept.id);
+      expect((await call('GET', `/cards/${gone.id}`)).status).toBe(200);
+      // Put the card back so the later tests in this file see the example Lage.
+      const back = await call('PUT', `/lagen/${lageCard.id}`, {
+        ...lage,
+        version: lage.version + 2,
+        updatedAt: new Date().toISOString(),
+      });
+      expect(back.status).toBe(200);
+    } finally {
+      await service.close();
+    }
+  });
+});
+
 describe('proposals the real adapter refuses', () => {
   it('a rule card whose body has its own "## Rule" heading cannot be written: accept is 409 and the proposal stays pending', async () => {
     const { service, call } = await serve();

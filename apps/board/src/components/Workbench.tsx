@@ -10,6 +10,7 @@ import {
   moveCard,
   nextFreePosition,
   placeCard,
+  removeCard,
   removeEdge,
   reverseEdge,
   setEdgeKind,
@@ -315,6 +316,16 @@ export function Workbench({
           cardId={selectedCardId}
           stance={selectedCardId ? loaded.stances.get(selectedCardId) : undefined}
           onSaveStance={saveStance}
+          removeDisabled={saving}
+          {...(selectedCardId
+            ? {
+                onRemove: () => {
+                  const id = selectedCardId;
+                  setSelectedCardId(null);
+                  void edit((l) => removeCard(l, id), 'Card removed from the board.');
+                },
+              }
+            : {})}
         />
         <Level1Panel
           client={client}

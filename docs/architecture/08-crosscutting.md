@@ -105,9 +105,10 @@ classDiagram
   ([ADR-0009](../adr/0009-mandatory-provenance.md)).
 - Legacy format-1 cards are read as stored; a missing author is `unknown`, never guessed
   ([ADR-0023](../adr/0023-core-domain-model.md)).
-- The independence count ("N findings · M origins") is computed in `core` by following
-  `cites` and `based_on` edges and source identity to their roots. Same `contentHash` or same
-  source URI is one root. It is never typed in (AC-29). See
+- The independence count ("N findings · M origins") is computed in `core` by `originRoots` and
+  `independenceOf` (`packages/core/src/independence.ts`), following `cites` and `based_on` edges
+  and source identity to their roots. Same `contentHash` or same source URI is one root. It is
+  never typed in (AC-29). See
   [provenance and independence](../explanation/provenance-and-independence.md).
 - Agent-originated content keeps `author: agent:<name>` after acceptance.
 

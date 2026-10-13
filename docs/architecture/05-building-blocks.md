@@ -69,10 +69,10 @@ C4Container
 
 | Container | Path | Licence | Exists today | Planned |
 | --- | --- | --- | --- | --- |
-| Board app | `apps/board` | AGPL-3.0-or-later | exists: client of the Board API. The context package lists findings and origins per layer and shows no merged card total (AC-01). A card shows its stored content type on the canvas, in the card list and in the inspector, including `assumption` (a premise) and `rating` (an own assessment) (AC-04) | M1: open a Lage, place cards, draw edges, review proposals, context package preview with gate result. M2+: rules panel, decision card, Level 1, inbox, time slider |
+| Board app | `apps/board` | AGPL-3.0-or-later | exists: client of the Board API. The context package lists findings and origins per layer and shows no merged card total (AC-01). A card shows its stored content type on the canvas, in the card list and in the inspector, including `assumption` (a premise) and `rating` (an own assessment) (AC-04). The same three places show `originSystem` when the store recorded one, and show no system line when it did not (AC-06). Removing a placed card drops it, and the edges that used it, from the Lage. The card file stays. The next context package is built from the cards still placed (AC-22) | M1: open a Lage, place cards, draw edges, review proposals, context package preview with gate result. M2+: rules panel, decision card, Level 1, inbox, time slider |
 | Board API | `services/api` | AGPL-3.0-or-later | exists (M0 skeleton): Fastify app with a `/health` route; binds `127.0.0.1` unless `HOST` is set. OpenAPI contract in progress (M0) | M1: endpoints of the walking skeleton, session token, human-only endpoints; the `worldbuilder` command (service start and the `mcp --stdio` bridge) as the package binary ([ADR-0029](../adr/0029-process-topology.md)) |
 | MCP server | `packages/mcp-server` | AGPL-3.0-or-later | implemented (M1): the thirteen agent tools of `tools.ts` on the official MCP SDK with self-contained schemas bundled from the contracts, per-agent sessions over Streamable HTTP, and the stdio bridge; the service mounts it at `/mcp` and every tool runs the operation code of the HTTP route of the same name ([ADR-0029](../adr/0029-process-topology.md)) | live notifications (proposals, Lage changes) over the same connection |
-| core | `packages/core` | Apache-2.0 | exists (M0 skeleton): the `layer` value set. Contract types generated from the schemas and the port interfaces in progress (M0) | M1: Lage, proposal lifecycle, context package, independence count. M2+: rules evaluation, Level 1 requests, outcome loop, source profiles |
+| core | `packages/core` | Apache-2.0 | exists: the `layer` value set, contract types, port interfaces, and origin-root counting (`originRoots`, `independenceOf`, AC-29) | M1: Lage, proposal lifecycle, context package. M2+: rules evaluation, outcome loop, source profiles |
 | disclosure-gate | `packages/disclosure-gate` | Apache-2.0 | exists (M0 skeleton): a default-deny function, no rules | M1: rule evaluation per card and target, decision log, blocks a private card for `cloud_model` |
 | Storage adapter (reference) | `packages/adapters/storage-markdown-files` | Apache-2.0 | exists (M0 skeleton): adapter id only | M1: reads and patches the reference card format, archive on rewrite, derived index |
 | Source and model connectors | `packages/adapters/*` | Apache-2.0 | not started | M2+: local model, cloud model, Jev stub; Obsidian vault, HTTP/JSON, document management, paid news |
@@ -157,15 +157,15 @@ An arrow means "depends on". `services/api` depends on `packages/mcp-server` bec
 service mounts the MCP server at `/mcp` ([ADR-0029](../adr/0029-process-topology.md)). The board app talks to the Board API over HTTP and imports no
 server package; it may import generated contract types from `core`.
 
-## 5.5 Level 2: inside core (planned)
+## 5.5 Level 2: inside core
 
-`core` is where the product's rules live. Planned modules, none implemented yet:
+`core` is where the product's rules live. Provenance counting exists. The other rows are the planned scope of that module.
 
 | Module | Content | Milestone |
 | --- | --- | --- |
 | Contract types | Card, Edge, World, Lage, Stance, Proposal, Decision, Rule, SourceProfile, ContextPackage, Level 1 prediction; generated from the JSON Schemas | M0 (in progress) |
 | Ports | `StorageAdapter`, `SourceConnector`, `ModelConnector`, `Level1Engine`, `DisclosureGate` interfaces (M0, in progress), plus the local-state interface of [ADR-0030](../adr/0030-local-state-on-the-device.md) (M1) | M0 / M1 |
-| Provenance | Provenance rules per layer, the independence count over `cites` and `based_on` edges and source identity | M1 |
+| Provenance | `originRoots` and `independenceOf` in `packages/core/src/independence.ts`. Distinct origin roots over `cites` and `based_on`, the same `contentHash` and the same source URI. Never typed in (AC-29) | exists |
 | Proposals | Lifecycle from `pending` to `accepted` or `rejected`, the non-counting rule | M1 |
 | Context package | Selection from request, active world, cards, relations, decisions and provenance; per-card gate decision; pending proposals in a separate section | M1 |
 | Rules | `rules_evaluate(lage)`: fired or not fired, triggering card ids, `withheld: n` for non-screen targets | M2+ |

@@ -83,6 +83,11 @@ export function SearchPanel({ client, worldId, placedIds, disabled, onPlace }: P
           return (
             <li key={c.id} data-testid={`search-result-${c.id}`}>
               <div>{c.title}</div>
+              {c.originSystem && (
+                <div className="wb-muted" data-testid={`search-origin-${c.id}`}>
+                  System: {c.originSystem}
+                </div>
+              )}
               <div className="wb-row">
                 <span className="wb-badge" data-testid={`search-type-${c.id}`}>
                   {c.type}

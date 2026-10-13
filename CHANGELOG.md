@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- The board can take one placed card off a Lage ("Remove from board"). The card file stays in
+  the store. Edges that used the card leave with it. The next context package is built from
+  the cards still on the Lage, so the removed card is not in it (AC-22).
+- Origin roots are counted in `@worldbuilder/core` (`originRoots`, `independenceOf`). A `cites`
+  or `based_on` chain, the same `contentHash`, or the same source URI is one root. A root with
+  no source is unknown and keeps its own id. The count is derived at read time and never stored
+  (ADR-0009, AC-29). The Board API context package uses this count.
+- The board shows which system a card came from (`originSystem`) on the canvas, in the card
+  list and in the inspector. A card with no origin system shows no system line (AC-06).
 - The board shows each card's stored content type (`card.type`) on the canvas, in the card
   list and in the inspector. A premise stays an `assumption` and an own assessment stays a
   `rating`. The type is not rewritten as a layer (AC-04).

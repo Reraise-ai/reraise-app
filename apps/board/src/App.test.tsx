@@ -164,6 +164,27 @@ describe('board canvas', () => {
     await waitFor(() => expect(screen.getByTestId('inspector-type').textContent).toBe('evidence'));
   });
 
+  it('shows the system a card came from, and no system line when the card has none', async () => {
+    const api = createMockApi();
+    const placed = api.cards.get(C1)!;
+    api.cards.set(C1, { ...placed, originSystem: 'Synthetic desk' });
+    await openLage(api);
+    expect((await screen.findByTestId(`card-origin-${C1}`)).textContent).toBe(
+      'System: Synthetic desk',
+    );
+    expect(screen.queryByTestId(`card-origin-${C2}`)).toBeNull();
+    expect((await screen.findByTestId(`search-origin-${C1}`)).textContent).toBe(
+      'System: Synthetic desk',
+    );
+    expect(screen.queryByTestId(`search-origin-${C2}`)).toBeNull();
+    fireEvent.click(screen.getByTestId(`card-node-${C1}`));
+    await waitFor(() =>
+      expect(screen.getByTestId('inspector-origin').textContent).toBe('System: Synthetic desk'),
+    );
+    fireEvent.click(screen.getByTestId(`card-node-${C2}`));
+    await waitFor(() => expect(screen.queryByTestId('inspector-origin')).toBeNull());
+  });
+
   it('shows the own stance of the user as an overlay on the card, from the screen package', async () => {
     const api = createMockApi();
     api.stances.set(C1, {
@@ -298,6 +319,31 @@ describe('edges', () => {
     await openLage(api);
     expect(await screen.findByTestId(`edge-row-${C1}>${C2}:supports`)).toBeTruthy();
     expect(screen.getByTestId('board-version').textContent).toBe('2');
+  });
+});
+
+describe('remove a card from the board (AC-22)', () => {
+  it('takes the card off the Lage and out of the next context package, and keeps the card', async () => {
+    const api = createMockApi();
+    await openLage(api);
+    await userEvent.selectOptions(screen.getByTestId('edge-from'), C1);
+    await userEvent.selectOptions(screen.getByTestId('edge-to'), C2);
+    await userEvent.click(screen.getByTestId('edge-add'));
+    await waitFor(() => expect(lageOf(api).edges).toHaveLength(1));
+
+    fireEvent.click(screen.getByTestId(`card-node-${C1}`));
+    await userEvent.click(await screen.findByTestId('card-remove'));
+
+    await waitFor(() => expect(screen.queryByTestId(`card-node-${C1}`)).toBeNull());
+    expect(lageOf(api).cards.map((c) => c.id)).toEqual([C2]);
+    expect(lageOf(api).edges).toEqual([]);
+    expect(api.cards.has(C1)).toBe(true);
+    expect(screen.getByTestId('board-version').textContent).toBe('3');
+
+    await userEvent.click(screen.getByTestId('context-run'));
+    await screen.findByTestId('context-package');
+    expect(screen.queryByTestId(`context-item-${C1}`)).toBeNull();
+    expect(screen.getByTestId(`context-item-${C2}`)).toBeTruthy();
   });
 });
 
