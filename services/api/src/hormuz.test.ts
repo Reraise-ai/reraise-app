@@ -470,6 +470,8 @@ const NAVY_ID = '01M1EDEAG082WZ7T7D204BHZDC';
 const INSURANCE_ID = '01M1EMA1R0AH9ZTK3YJK33TNER';
 const LAGE_ID = '01M1F21G80R816A1T0V2P6RACH';
 const DECISION_ID = '01M1F5FBW0DPQND9KSXC12WHJW';
+const REROUTE_RULE_ID = '01M1EV5S00YXKKGEG772AZM7P9';
+const STANCE_RULE_ID = '01M1EYKMM0PW82HRM7RY5175E7';
 const HORMUZ_WORLD_ID = '01M1DZPW00JGXPRPG4179ZPNB8';
 
 /** Screen sees everything. A local model sees class C evidence, actors and decisions only. */
@@ -532,12 +534,16 @@ describe('a model answers from the Hormuz context package (AC-16)', () => {
       }
       const decision = context.items.find((item) => item.card.id === DECISION_ID)?.card;
       expect(decision?.sections?.cardsUsed).toEqual([WIRE_REPORT_ID, NAVY_ID]);
+      expect(cleared).toContain(REROUTE_RULE_ID);
+      expect(cleared).not.toContain(STANCE_RULE_ID);
+      expect(items).not.toContain('"kind":"stance"');
 
       const answer = await createLocalQuoteModel().ask(context, 'What may a local model see?');
       expect(answer.proposals).toEqual([]);
       expect(answer.text).toBe(`local-quote\n${[...cleared].sort().join('\n')}`);
       expect(answer.text).not.toContain(PRIVATE_CARD_ID);
       expect(answer.text).not.toContain(INSURANCE_ID);
+      expect(answer.text).not.toContain(STANCE_RULE_ID);
       expect(answer.text).not.toContain('Own estimate of the rerouting cost');
     } finally {
       await service.close();

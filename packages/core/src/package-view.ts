@@ -2,17 +2,15 @@
 // Copyright The Worldbuilder contributors
 //
 // A context package for anyone but the screen names only cards that are in the package
-// (AC-18). The screen keeps the stored cards.
-// shortcut: a rule card that states a stance, or that names a card outside the package, still
-// travels. rules_evaluate already withholds that rule. Drop it here when the local_model
-// package contract no longer requires the stance-rule card.
+// (AC-18). The screen keeps the stored cards. A rule that states a stance, or that names a
+// card outside the package, is left out and only counted.
 
-import type { Card, DisclosureTarget } from './generated/contracts.js';
+import type { Card, DisclosureTarget, RuleCondition } from './generated/contracts.js';
 import { computeContentHash } from './content-hash.js';
 
 export interface PackageView {
   readonly cards: Card[];
-  /** Decision cards left out because they would name no remaining card. A count only. */
+  /** Cards left out. A count only, never their ids. */
   readonly withheld: number;
 }
 
@@ -54,7 +52,38 @@ function viewOf(card: Card): Card {
   return { ...next, contentHash: computeContentHash(next) };
 }
 
+function conditionNames(condition: RuleCondition): readonly string[] {
+  switch (condition.kind) {
+    case 'card_on_lage':
+    case 'stance':
+      return [condition.card];
+    case 'card_field':
+    case 'tag':
+      return condition.card === undefined ? [] : [condition.card];
+    case 'edge':
+      return [condition.from, condition.to].filter((id): id is string => id !== undefined);
+    default: {
+      const unexpected: never = condition;
+      throw new Error(`Unhandled rule condition: ${JSON.stringify(unexpected)}`);
+    }
+  }
+}
+
+/**
+ * A rule is withheld whole. Dropping one condition would state a different rule (ADR-0013).
+ * A stance condition is withheld even when the card it names is in the package.
+ */
+function ruleWithheld(card: Card, visible: ReadonlySet<string>): boolean {
+  const rule = card.rule;
+  if (rule === undefined) return false;
+  return [...rule.when, ...(rule.unless ?? [])].some(
+    (condition) =>
+      condition.kind === 'stance' || conditionNames(condition).some((id) => !visible.has(id)),
+  );
+}
+
 function project(card: Card, visible: ReadonlySet<string>): Card | null {
+  if (ruleWithheld(card, visible)) return null;
   const withEdges = projectEdges(card, visible);
   const withLage = projectLage(withEdges, visible);
   const withDecision = projectDecision(withLage, visible);
@@ -68,6 +97,7 @@ function project(card: Card, visible: ReadonlySet<string>): Card | null {
  * The cards a context package may carry for `target`. The screen receives the stored cards.
  * Any other target receives a view. An edge, a placement or a `cardsUsed` id outside that
  * view is dropped. A decision that would then name no card is left out and only counted.
+ * So is a rule that states a stance, or that names a card outside the view.
  */
 export function cardsForPackage(cards: readonly Card[], target: DisclosureTarget): PackageView {
   if (target === 'screen') return { cards: [...cards], withheld: 0 };
