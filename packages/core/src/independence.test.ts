@@ -197,4 +197,78 @@ describe('originRoots (ADR-0009)', () => {
     expect(independenceOf([])).toEqual({ findings: 0, origins: 0 });
     expect(originRoots([]).size).toBe(0);
   });
+
+  it('gives a quote of a cycle that cycle root, in either card order', () => {
+    const quoted = [
+      card('A', { edges: [{ target: 'B', kind: 'cites' }] }),
+      card('B', { edges: [{ target: 'A', kind: 'cites' }] }),
+      card('media', { edges: [{ target: 'A', kind: 'cites' }] }),
+    ];
+    for (const cards of [quoted, [...quoted].reverse()]) {
+      const roots = rootsOf(cards);
+      expect(roots.A).toEqual({ originRoot: 'A', originKnown: false });
+      expect(roots.B).toEqual(roots.A);
+      expect(roots.media).toEqual(roots.A);
+      expect(independenceOf([...originRoots(cards).values()])).toEqual({
+        findings: 3,
+        origins: 1,
+      });
+    }
+  });
+
+  it('keeps two cited cycles apart and gives the quote the smaller root', () => {
+    const quoted = [
+      card('X', {
+        edges: [
+          { target: 'A', kind: 'cites' },
+          { target: 'C', kind: 'cites' },
+        ],
+      }),
+      card('A', { edges: [{ target: 'B', kind: 'cites' }] }),
+      card('B', { edges: [{ target: 'A', kind: 'cites' }] }),
+      card('C', { edges: [{ target: 'D', kind: 'cites' }] }),
+      card('D', { edges: [{ target: 'C', kind: 'cites' }] }),
+    ];
+    const cyclesFirst = [
+      card('A', { edges: [{ target: 'B', kind: 'cites' }] }),
+      card('B', { edges: [{ target: 'A', kind: 'cites' }] }),
+      card('C', { edges: [{ target: 'D', kind: 'cites' }] }),
+      card('D', { edges: [{ target: 'C', kind: 'cites' }] }),
+      card('X', {
+        edges: [
+          { target: 'A', kind: 'cites' },
+          { target: 'C', kind: 'cites' },
+        ],
+      }),
+    ];
+    for (const cards of [quoted, cyclesFirst]) {
+      const roots = rootsOf(cards);
+      expect(roots.A).toEqual({ originRoot: 'A', originKnown: false });
+      expect(roots.B).toEqual(roots.A);
+      expect(roots.C).toEqual({ originRoot: 'C', originKnown: false });
+      expect(roots.D).toEqual(roots.C);
+      expect(roots.X).toEqual(roots.A);
+      expect(independenceOf([...originRoots(cards).values()]).origins).toBe(2);
+    }
+  });
+
+  it('gives a card that cites a cycle and a sourced sink the smaller root', () => {
+    const cards = [
+      card('A', {
+        edges: [
+          { target: 'B', kind: 'cites' },
+          { target: 'S', kind: 'cites' },
+        ],
+      }),
+      card('B', { edges: [{ target: 'C', kind: 'cites' }] }),
+      card('C', { edges: [{ target: 'B', kind: 'cites' }] }),
+      card('S', { source: 'https://example.org/s' }),
+    ];
+    const roots = rootsOf(cards);
+    expect(roots.B).toEqual({ originRoot: 'B', originKnown: false });
+    expect(roots.C).toEqual(roots.B);
+    expect(roots.S).toEqual({ originRoot: 'https://example.org/s', originKnown: true });
+    expect(roots.A).toEqual(roots.B);
+    expect(independenceOf([...originRoots(cards).values()]).origins).toBe(2);
+  });
 });

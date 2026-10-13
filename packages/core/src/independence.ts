@@ -21,6 +21,47 @@ function isChain(kind: string): boolean {
   return kind === 'cites' || kind === 'based_on';
 }
 
+/** Strongly connected components, sinks first. Membership does not depend on node order. */
+function sinkFirstComponents(
+  nodes: readonly string[],
+  outgoing: ReadonlyMap<string, ReadonlySet<string>>,
+): string[][] {
+  let index = 0;
+  const indices = new Map<string, number>();
+  const low = new Map<string, number>();
+  const stack: string[] = [];
+  const onStack = new Set<string>();
+  const components: string[][] = [];
+  const visit = (node: string): void => {
+    indices.set(node, index);
+    low.set(node, index);
+    index += 1;
+    stack.push(node);
+    onStack.add(node);
+    for (const next of outgoing.get(node) ?? []) {
+      if (!indices.has(next)) {
+        visit(next);
+        low.set(node, Math.min(low.get(node)!, low.get(next)!));
+      } else if (onStack.has(next)) {
+        low.set(node, Math.min(low.get(node)!, indices.get(next)!));
+      }
+    }
+    if (low.get(node) !== indices.get(node)) return;
+    const component: string[] = [];
+    for (;;) {
+      const found = stack.pop()!;
+      onStack.delete(found);
+      component.push(found);
+      if (found === node) break;
+    }
+    components.push(component);
+  };
+  for (const node of nodes) {
+    if (!indices.has(node)) visit(node);
+  }
+  return components;
+}
+
 /**
  * Origin root of every card in `cards`. The caller passes the cards in scope,
  * for example the cards a disclosure gate has already cleared.
@@ -91,42 +132,24 @@ export function originRoots(cards: readonly Card[]): Map<string, OriginRoot> {
     const ids = grouped.map((card) => card.id).sort();
     return { originRoot: ids[0]!, originKnown: false };
   };
-
-  const label = new Map<string, OriginRoot>();
-  for (const rep of members.keys()) {
-    if ((outgoing.get(rep)?.size ?? 0) === 0) label.set(rep, labelOf([rep]));
-  }
-
-  const rootLabels = (rep: string, stack: Set<string>): OriginRoot[] => {
-    const outs = outgoing.get(rep);
-    if (!outs || outs.size === 0) return [label.get(rep)!];
-    if (stack.has(rep)) return [];
-    stack.add(rep);
-    const found = [...outs].flatMap((next) => rootLabels(next, stack));
-    stack.delete(rep);
-    return found;
-  };
   const smaller = (found: readonly OriginRoot[]): OriginRoot =>
     found.reduce((best, cur) => (cur.originRoot < best.originRoot ? cur : best));
 
-  for (const rep of members.keys()) {
-    if (label.has(rep)) continue;
-    const found = rootLabels(rep, new Set());
-    if (found.length > 0) label.set(rep, smaller(found));
-  }
-
-  for (const rep of members.keys()) {
-    if (label.has(rep)) continue;
-    const seen = new Set<string>();
-    const pile = [rep];
-    while (pile.length > 0) {
-      const current = pile.pop()!;
-      if (seen.has(current) || label.has(current)) continue;
-      seen.add(current);
-      for (const next of outgoing.get(current) ?? []) pile.push(next);
-    }
-    const made = labelOf([...seen]);
-    for (const id of seen) label.set(id, made);
+  // Sinks first, so a quote of a cycle keeps that root in either card order.
+  const components = sinkFirstComponents([...members.keys()], outgoing);
+  const label = new Map<string, OriginRoot>();
+  for (const component of components) {
+    const inside = new Set(component);
+    const outs = [
+      ...new Set(
+        component
+          .flatMap((rep) => [...(outgoing.get(rep) ?? [])])
+          .filter((next) => !inside.has(next)),
+      ),
+    ];
+    const made =
+      outs.length === 0 ? labelOf(component) : smaller(outs.map((next) => label.get(next)!));
+    for (const rep of component) label.set(rep, made);
   }
 
   const assigned = new Map<string, OriginRoot>();

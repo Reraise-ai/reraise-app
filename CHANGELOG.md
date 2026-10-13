@@ -80,6 +80,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- Origin roots no longer depend on card order. A quote of a cite cycle keeps that cycle's root, and two cycles one card cites stay two origins. The quote keeps the smaller root (ADR-0009).
 - Board: the open board has one main landmark and no skipped heading level (found by axe).
 - Board: the canvas fills the board area (it had collapsed to a thin strip, so cards were clipped).
 - Board: the stance weight slider sends an integer from 1 to 3 as the contract requires (it sent
