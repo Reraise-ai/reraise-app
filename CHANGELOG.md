@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- A context package for any target other than the screen keeps a relation only when both cards are in that package. An edge, a Lage placement, or a decision `cardsUsed` id that names another card is dropped. The rendered body of a changed Lage or decision is dropped with it, and `contentHash` is the hash of the view. On the Hormuz store a `local_model` package still has the navy `represents` edge to the wire report, and the items do not name the insurance card the gate withholds. The screen package is unchanged. A confirmed cloud transfer still sends the stored cards (AC-18).
 - A deterministic local model, `local-quote`, answers a context package by naming the card ids it was given. It writes no proposals and uses no network. On the Hormuz store the private cost card stays in the file store, the Board API leaves it out of a `local_model` context package, and the model does not name it (AC-16).
 - The user can draw, reverse and delete `supports` and `refutes` edges. A restart of
   `worldbuilder serve` on the Hormuz store keeps the reversed `supports` edge, and a deleted

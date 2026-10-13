@@ -6,6 +6,7 @@
 // a cloud_model caller gets content only from a confirmed transfer, released to that caller.
 
 import {
+  cardsForPackage,
   independenceOf,
   originRoots,
   type Card,
@@ -142,7 +143,9 @@ export async function buildContextPackage(
   // an unknown world (no count, no ids). A Lage was already checked above.
   const denied =
     target !== 'screen' && req.lageId === undefined && allowed.length === 0 ? [] : filtered.denied;
-  const items = itemsOf(allowed, () => 'cleared by the gate rules');
+  // A model package names only cards it contains. The screen keeps the stored cards.
+  const view = cardsForPackage(allowed, target);
+  const items = itemsOf(view.cards, () => 'cleared by the gate rules');
   if (target === 'screen') {
     for (const item of items) {
       const stance = await stanceFor(s, item.card.id);
@@ -159,12 +162,17 @@ export async function buildContextPackage(
     items,
     independence: independenceOf(items.map((item) => item.provenance)),
     pendingProposals: await pendingProposals(s, req.lageId),
-    withheld: denied.length,
+    withheld: denied.length + view.withheld,
     ...(denied.length > 0 ? { denied } : {}),
   };
 }
 
-/** The content of one released transfer: exactly the confirmed objects, nothing else. */
+/**
+ * The content of one released transfer: exactly the confirmed objects, nothing else.
+ * shortcut: those objects are the stored cards, so a Lage edge can still name a card the
+ * transfer does not include. Project the cards before the preview hash when a cloud
+ * package must not name a card outside the transfer.
+ */
 function released(
   base: Pick<ContextPackage, 'id' | 'worldId' | 'createdAt'> & { lageId?: string },
   req: ContextPackageRequest,

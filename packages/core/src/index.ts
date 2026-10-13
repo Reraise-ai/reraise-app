@@ -41,6 +41,8 @@ export {
 } from './personal-data.js';
 export type { PersonalDataKind } from './personal-data.js';
 export { independenceOf, originRoots } from './independence.js';
+export { cardsForPackage } from './package-view.js';
+export type { PackageView } from './package-view.js';
 export type { OriginRoot } from './independence.js';
 export { OPEN_OUTCOME, OPEN_OUTCOME_SCHEMA_PATTERN, isKnownOutcome } from './outcome.js';
 export {

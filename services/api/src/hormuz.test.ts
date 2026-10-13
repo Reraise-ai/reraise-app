@@ -6,6 +6,7 @@
 // them again after the process restarts (AC-05). A reversed `supports` edge stays and a
 // deleted `refutes` edge does not come back (AC-08). The quote model answers from the
 // context package the API built, and does not name the private card (AC-16).
+// A local_model package keeps a relation only when both cards are in the package (AC-18).
 
 import {
   createLocalQuoteModel,
@@ -465,6 +466,10 @@ describe('edges the user draws, reverses and deletes (AC-08)', () => {
 
 const PRIVATE_CARD_ID = '01M1F8X7G0TTV1CC1FNKTNN0TJ';
 const WIRE_REPORT_ID = '01M1E34QM03WVTE8T1RYS3AM18';
+const NAVY_ID = '01M1EDEAG082WZ7T7D204BHZDC';
+const INSURANCE_ID = '01M1EMA1R0AH9ZTK3YJK33TNER';
+const LAGE_ID = '01M1F21G80R816A1T0V2P6RACH';
+const DECISION_ID = '01M1F5FBW0DPQND9KSXC12WHJW';
 const HORMUZ_WORLD_ID = '01M1DZPW00JGXPRPG4179ZPNB8';
 
 /** Screen sees everything. A local model sees class C evidence, actors and decisions only. */
@@ -508,10 +513,31 @@ describe('a model answers from the Hormuz context package (AC-16)', () => {
       expect(cleared).not.toContain(PRIVATE_CARD_ID);
       expect(JSON.stringify(context)).not.toContain('invented internal cost estimate');
 
+      const items = JSON.stringify(context.items);
+      expect(items).not.toContain(INSURANCE_ID);
+      expect(items).not.toContain(PRIVATE_CARD_ID);
+      const lage = context.items.find((item) => item.card.id === LAGE_ID)?.card;
+      const edges = lage?.lage?.edges ?? [];
+      // Earlier tests in this file draw edges on the same copy of the store. The
+      // package keeps those edges only when both ends are cards the model may see.
+      expect(edges).toContainEqual({
+        from: NAVY_ID,
+        to: WIRE_REPORT_ID,
+        kind: 'represents',
+        by: 'human',
+      });
+      for (const edge of edges) {
+        expect(cleared).toContain(edge.from);
+        expect(cleared).toContain(edge.to);
+      }
+      const decision = context.items.find((item) => item.card.id === DECISION_ID)?.card;
+      expect(decision?.sections?.cardsUsed).toEqual([WIRE_REPORT_ID, NAVY_ID]);
+
       const answer = await createLocalQuoteModel().ask(context, 'What may a local model see?');
       expect(answer.proposals).toEqual([]);
       expect(answer.text).toBe(`local-quote\n${[...cleared].sort().join('\n')}`);
       expect(answer.text).not.toContain(PRIVATE_CARD_ID);
+      expect(answer.text).not.toContain(INSURANCE_ID);
       expect(answer.text).not.toContain('Own estimate of the rerouting cost');
     } finally {
       await service.close();
