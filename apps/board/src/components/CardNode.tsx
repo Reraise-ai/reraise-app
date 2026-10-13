@@ -26,12 +26,13 @@ export const isAgentAuthor = (author: string | undefined): author is string =>
   typeof author === 'string' && author.startsWith('agent:');
 
 /**
- * A card on the board. The layer is shown by a text badge and a border style (never by colour
+ * A card on the board. The stored content type and the layer are each a text badge (never colour
  * alone); an agent-authored card carries its author; the stance is the user's own overlay.
  */
 export function CardNode({ data, selected }: NodeProps<CardNodeType>) {
   const { card, cardId, stance } = data;
   const layer = layerOf(card);
+  const layerLabel = layer === 'unclassified' ? 'unclassified' : LAYER_LABEL[layer];
   const title = card?.title ?? 'Card not shown on this screen';
   return (
     <div
@@ -41,11 +42,16 @@ export function CardNode({ data, selected }: NodeProps<CardNodeType>) {
       data-withheld={card ? undefined : 'true'}
       data-selected={selected ? 'true' : 'false'}
       role="group"
-      aria-label={`${title}, ${layer === 'unclassified' ? 'unclassified' : LAYER_LABEL[layer]}`}
+      aria-label={card ? `${title}, ${card.type}, ${layerLabel}` : `${title}, ${layerLabel}`}
     >
       <Handle type="target" position={Position.Left} aria-hidden="true" />
       <div className="wb-card-title">{title}</div>
       <div>
+        {card && (
+          <span className="wb-badge" data-testid={`card-type-${cardId}`}>
+            {card.type}
+          </span>
+        )}
         <span className="wb-badge" data-kind={layer} data-testid={`card-layer-${cardId}`}>
           {layer === 'unclassified' ? 'Unclassified' : LAYER_LABEL[layer]}
         </span>

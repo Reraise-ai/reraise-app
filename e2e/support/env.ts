@@ -24,15 +24,18 @@ export interface E2eEnv {
 export const HORMUZ = {
   worldId: '01M1DZPW00JGXPRPG4179ZPNB8',
   lageId: '01M1F21G80R816A1T0V2P6RACH',
-  /** Class A: "Own estimate of the rerouting cost", denied for every model target. */
+  /** Class A premise (`type: assumption`): "Own estimate of the rerouting cost", denied for every model target. */
   privateCardId: '01M1F8X7G0TTV1CC1FNKTNN0TJ',
   privateCardTitle: 'Own estimate of the rerouting cost',
   /** Text of its body: it must never reach a model target or an agent. */
   privateCardBodyText: 'invented internal cost estimate',
   /** On the Lage already: the wire report (evidenced) and the insurance experience. */
   wireReportId: '01M1E34QM03WVTE8T1RYS3AM18',
-  /** Coastal navy (actors): clear of the board's status strip, so it can be clicked. */
+  /** Coastal navy (actors, `type: organisation`): clear of the board's status strip, so it can be clicked. */
   navyCardId: '01M1EDEAG082WZ7T7D204BHZDC',
+  /** Own assessments (`type: rating`): the user's derivations, stored and not placed on the Lage. */
+  ratingHarbourMasterId: '01M2MY8CV00ZV7GMSF29143S19',
+  ratingNavyId: '01M2MYHHT07BBT348TS317FFBD',
   experienceCardId: '01M1EMA1R0AH9ZTK3YJK33TNER',
 } as const;
 

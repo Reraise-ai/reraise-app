@@ -61,6 +61,11 @@ export function InspectorPanel({ card, cardId, stance, onSaveStance }: Props) {
       <h2 id="inspector-h">Selected card</h2>
       <h3 data-testid="inspector-title">{card?.title ?? 'Card not shown on this screen'}</h3>
       <div className="wb-row">
+        {card && (
+          <span className="wb-badge" data-testid="inspector-type">
+            {card.type}
+          </span>
+        )}
         <span className="wb-badge" data-kind={layer}>
           {layer === 'unclassified' ? 'Unclassified' : LAYER_LABEL[layer]}
         </span>

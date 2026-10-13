@@ -11,6 +11,7 @@ import {
   LAGE_ID,
   TOKEN,
   createMockApi,
+  makeCard,
   makeLage,
   type MockApi,
 } from './testing/mockApi.js';
@@ -137,6 +138,30 @@ describe('board canvas', () => {
     expect(screen.getByTestId(`card-author-${C4}`).textContent).toBe('agent:scout');
     expect(screen.queryByTestId(`card-author-${C1}`)).toBeNull();
     expect(screen.queryByTestId(`card-stance-${C1}`)).toBeNull();
+  });
+
+  it('shows the stored content type, including a premise and an own assessment', async () => {
+    const api = createMockApi();
+    const premise = makeCard({
+      id: '01JA0000000000000000000P01',
+      title: 'Geopolitics beats markets',
+      type: 'assumption',
+      layer: 'said',
+    });
+    const own = makeCard({
+      id: '01JA0000000000000000000R01',
+      title: 'Own reading of the navy',
+      type: 'rating',
+      layer: 'said',
+    });
+    api.cards.set(premise.id!, premise);
+    api.cards.set(own.id!, own);
+    await openLage(api);
+    expect(screen.getByTestId(`card-type-${C1}`).textContent).toBe('evidence');
+    expect((await screen.findByTestId(`search-type-${premise.id}`)).textContent).toBe('assumption');
+    expect(screen.getByTestId(`search-type-${own.id}`).textContent).toBe('rating');
+    fireEvent.click(screen.getByTestId(`card-node-${C1}`));
+    await waitFor(() => expect(screen.getByTestId('inspector-type').textContent).toBe('evidence'));
   });
 
   it('shows the own stance of the user as an overlay on the card, from the screen package', async () => {

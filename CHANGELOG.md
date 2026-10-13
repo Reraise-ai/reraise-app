@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- The board shows each card's stored content type (`card.type`) on the canvas, in the card
+  list and in the inspector. A premise stays an `assumption` and an own assessment stays a
+  `rating`. The type is not rewritten as a layer (AC-04).
 - The context package on the board lists findings and origins per layer (`evidenced`, `said`,
   `experience`, and `unclassified` only when a card has no layer). A layer with nothing in it
   stays on the list as zero. There is no summed card total. The cloud preview uses the same

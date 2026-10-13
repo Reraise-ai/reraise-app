@@ -70,6 +70,7 @@ test('hormuz walking skeleton', async ({ page }) => {
     await expect(page.getByTestId('board-title')).toHaveText('Q4 tanker routing');
     await expect(page.getByTestId('board-version')).toHaveText(String(INITIAL_VERSION));
     await expect(page.getByTestId(`card-node-${HORMUZ.wireReportId}`)).toBeVisible();
+    await expect(page.getByTestId(`card-type-${HORMUZ.wireReportId}`)).toHaveText('event');
     await expect(page.getByTestId(`card-node-${HORMUZ.privateCardId}`)).toHaveCount(0);
   });
 
@@ -77,9 +78,20 @@ test('hormuz walking skeleton', async ({ page }) => {
     await page.getByTestId('search-input').fill('rerouting cost');
     await page.getByTestId('search-submit').click();
     await expect(page.getByTestId(`search-result-${HORMUZ.privateCardId}`)).toBeVisible();
+    await expect(page.getByTestId(`search-type-${HORMUZ.privateCardId}`)).toHaveText('assumption');
     await page.getByTestId(`search-place-${HORMUZ.privateCardId}`).click();
     await expect(page.getByTestId(`card-node-${HORMUZ.privateCardId}`)).toBeVisible();
+    await expect(page.getByTestId(`card-type-${HORMUZ.privateCardId}`)).toHaveText('assumption');
     await expect(page.getByTestId('board-version')).toHaveText(String(INITIAL_VERSION + 1));
+  });
+
+  await test.step('the card list shows the stored type of an own assessment', async () => {
+    await page.getByTestId('search-input').fill('Own assessment');
+    await page.getByTestId('search-submit').click();
+    await expect(page.getByTestId(`search-type-${HORMUZ.ratingHarbourMasterId}`)).toHaveText(
+      'rating',
+    );
+    await expect(page.getByTestId(`search-type-${HORMUZ.ratingNavyId}`)).toHaveText('rating');
   });
 
   await test.step('draw a supports edge', async () => {
@@ -95,6 +107,7 @@ test('hormuz walking skeleton', async ({ page }) => {
 
   await test.step('set a private stance through the inspector; it shows on screen only', async () => {
     await page.getByTestId(`card-node-${HORMUZ.navyCardId}`).click();
+    await expect(page.getByTestId('inspector-type')).toHaveText('organisation');
     await expect(page.getByTestId('stance-form')).toBeVisible();
     await page.getByTestId('stance-position').selectOption('rejected');
     await page.getByTestId('stance-note').fill(STANCE_NOTE);

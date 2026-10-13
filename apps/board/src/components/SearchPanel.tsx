@@ -84,6 +84,9 @@ export function SearchPanel({ client, worldId, placedIds, disabled, onPlace }: P
             <li key={c.id} data-testid={`search-result-${c.id}`}>
               <div>{c.title}</div>
               <div className="wb-row">
+                <span className="wb-badge" data-testid={`search-type-${c.id}`}>
+                  {c.type}
+                </span>
                 <span className="wb-badge" data-kind={layer}>
                   {layer === 'unclassified' ? 'Unclassified' : LAYER_LABEL[layer]}
                 </span>
