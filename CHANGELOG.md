@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- The user can create a Lage with their own question and any number of options, including none.
+  A repeated option line is stored once. The open board shows the question and each option.
+  A restart of `worldbuilder serve` on the Hormuz store still has that Lage (AC-07).
 - A restart of `worldbuilder serve` on the Hormuz store keeps a drawn `supports` edge and a
   private stance. The stance is a file under the state directory (`stances/<cardId>.json`) and
   is not written into the card store. A page reload already showed the same board (AC-05).

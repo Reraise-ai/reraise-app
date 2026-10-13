@@ -235,8 +235,11 @@ export function Workbench({
           <button type="button" onClick={onClose} data-testid="board-close">
             Lagen
           </button>{' '}
-          <strong data-testid="board-title">{loaded.card.title}</strong>
-          <span className="wb-muted"> {lage.question} · version </span>
+          <strong data-testid="board-title">{loaded.card.title}</strong>{' '}
+          <span className="wb-muted" data-testid="board-question">
+            {lage.question}
+          </span>
+          <span className="wb-muted"> · version </span>
           <span className="wb-muted" data-testid="board-version">
             {lage.version}
           </span>
@@ -266,6 +269,16 @@ export function Workbench({
         />
       </main>
       <aside className="wb-sidebar" aria-label="Board tools">
+        {lage.options.length > 0 && (
+          <section aria-labelledby="options-h">
+            <h2 id="options-h">Options</h2>
+            <ul className="wb-list" data-testid="board-options">
+              {lage.options.map((option) => (
+                <li key={option}>{option}</li>
+              ))}
+            </ul>
+          </section>
+        )}
         <ProposalsPanel
           proposals={proposals}
           currentLageId={lageId}

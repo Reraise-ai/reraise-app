@@ -117,6 +117,40 @@ describe('Lage list and creation', () => {
       lage: { question: 'Add a route?', options: ['Yes', 'No'], version: 1, cards: [], edges: [] },
     });
     expect(screen.getByTestId('board-title').textContent).toBe('Palma ferries');
+    expect(screen.getByTestId('board-question').textContent).toBe('Add a route?');
+    expect(
+      within(screen.getByTestId('board-options'))
+        .getAllByRole('listitem')
+        .map((item) => item.textContent),
+    ).toEqual(['Yes', 'No']);
+  });
+
+  it('creates a Lage with no options, and keeps a repeated option once', async () => {
+    const api = createMockApi();
+    signedIn(api);
+    await screen.findByTestId('lage-list');
+    await userEvent.type(screen.getByTestId('lage-create-title'), 'Empty options');
+    await userEvent.type(screen.getByTestId('lage-create-question'), 'Anything new?');
+    await userEvent.click(screen.getByTestId('lage-create-submit'));
+    await screen.findByTestId('workbench');
+    expect(screen.getByTestId('board-question').textContent).toBe('Anything new?');
+    expect(screen.queryByTestId('board-options')).toBeNull();
+    expect(api.calls.find((c) => c.method === 'POST' && c.path === '/lagen')?.body).toMatchObject({
+      lage: { question: 'Anything new?', options: [] },
+    });
+
+    await userEvent.click(screen.getByTestId('board-close'));
+    await screen.findByTestId('lage-create-form');
+    await userEvent.type(screen.getByTestId('lage-create-title'), 'Repeated');
+    await userEvent.type(screen.getByTestId('lage-create-question'), 'Which?');
+    await userEvent.type(screen.getByTestId('lage-create-options'), 'Wait{Enter}Wait{Enter}Go');
+    await userEvent.click(screen.getByTestId('lage-create-submit'));
+    await screen.findByTestId('workbench');
+    expect(
+      within(screen.getByTestId('board-options'))
+        .getAllByRole('listitem')
+        .map((item) => item.textContent),
+    ).toEqual(['Wait', 'Go']);
   });
 });
 

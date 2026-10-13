@@ -312,3 +312,68 @@ describe('rule cards of the Hormuz store (a "## Rule" section in the file)', () 
     }
   });
 });
+
+/** A new Lage as the board sends it: the user's question and their options. */
+function createdLage(question: string, options: string[]) {
+  return {
+    question,
+    options,
+    cards: [],
+    seats: [{ name: 'You', kind: 'human' as const }],
+    edges: [],
+    version: 1,
+    updatedAt: '2026-10-13T00:00:00.000Z',
+  };
+}
+
+describe('a Lage the user creates (AC-07)', () => {
+  it('keeps the question and any number of options after the process restarts', async () => {
+    const first = await serve();
+    let noneId = '';
+    let manyId = '';
+    try {
+      const worlds = await first.call('GET', '/worlds');
+      const worldId = (worlds.json['worlds'] as unknown as { id: string; name: string }[]).find(
+        (w) => w.name === 'Hormuz',
+      )!.id;
+      const none = await first.call('POST', '/lagen', {
+        title: 'No options',
+        worlds: [worldId],
+        lage: createdLage('Is the strait open?', []),
+      });
+      expect(none.status).toBe(201);
+      noneId = (none.json as unknown as Card).id;
+      const many = await first.call('POST', '/lagen', {
+        title: 'Three options',
+        worlds: [worldId],
+        lage: createdLage('Which route?', ['Reroute', 'Wait', 'Negotiate']),
+      });
+      expect(many.status).toBe(201);
+      manyId = (many.json as unknown as Card).id;
+      const duplicate = await first.call('POST', '/lagen', {
+        title: 'Duplicate option',
+        worlds: [worldId],
+        lage: createdLage('Which route?', ['Wait', 'Wait']),
+      });
+      expect(duplicate.status).toBe(400);
+    } finally {
+      await first.service.close();
+    }
+
+    const second = await serve();
+    try {
+      const none = (await second.call('GET', `/lagen/${noneId}`)).json as unknown as Card;
+      expect(none.lage?.question).toBe('Is the strait open?');
+      expect(none.lage?.options).toEqual([]);
+      const many = (await second.call('GET', `/lagen/${manyId}`)).json as unknown as Card;
+      expect(many.lage?.question).toBe('Which route?');
+      expect(many.lage?.options).toEqual(['Reroute', 'Wait', 'Negotiate']);
+      const onDisk = await textsUnder(path.join(dir, 'store'));
+      expect(
+        onDisk.some((text) => text.includes('Which route?') && text.includes('Negotiate')),
+      ).toBe(true);
+    } finally {
+      await second.service.close();
+    }
+  });
+});

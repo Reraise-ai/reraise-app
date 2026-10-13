@@ -12,6 +12,19 @@ interface Props {
   onOpen(lageId: string): void;
 }
 
+/** Option lines in order. Blanks and repeats drop out. The Lage schema rejects a duplicate. */
+function optionLines(text: string): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const line of text.split('\n')) {
+    const option = line.trim();
+    if (!option || seen.has(option)) continue;
+    seen.add(option);
+    out.push(option);
+  }
+  return out;
+}
+
 /** The Lagen of the world (cards of type lage) and the form that creates one (lage_create). */
 export function LageList({ client, worldId, onOpen }: Props) {
   const [lagen, setLagen] = useState<Card[] | null>(null);
@@ -40,10 +53,7 @@ export function LageList({ client, worldId, onOpen }: Props) {
     if (!title.trim() || !question.trim()) return;
     setBusy(true);
     try {
-      const opts = options
-        .split('\n')
-        .map((o) => o.trim())
-        .filter(Boolean);
+      const opts = optionLines(options);
       const card = await client.lage_create({
         title: title.trim(),
         ...(worldId ? { worlds: [worldId] } : {}),
