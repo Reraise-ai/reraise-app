@@ -425,7 +425,13 @@ describe('session token and start-up', () => {
     await expect(
       createService({ storage, stateDir: path.join(dir, 'repo', 'state'), port: PORT }),
     ).rejects.toMatchObject({ code: 'unsafe_state_dir' });
-    await symlink(path.join(dir, 'repo'), path.join(dir, 'link'));
+    try {
+      await symlink(path.join(dir, 'repo'), path.join(dir, 'link'));
+    } catch (e) {
+      await rm(dir, { recursive: true, force: true });
+      if ((e as NodeJS.ErrnoException).code === 'EPERM') return; // Windows without privilege
+      throw e;
+    }
     await expect(
       createService({ storage, stateDir: path.join(dir, 'link', 'state'), port: PORT }),
     ).rejects.toMatchObject({ code: 'unsafe_state_dir' });

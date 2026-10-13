@@ -106,16 +106,22 @@ describe('context package for a local_model', () => {
     expect(res.body).not.toContain('"stance":');
     expect(res.body).not.toContain('rejected');
   });
-  it('blocks the private card, counts it as withheld and names it as denied', async () => {
+  it('blocks the private card and leaves the stance rule out, counting both', async () => {
     const res = await f.agent('scripted', 'POST', '/context-packages', { worldId: f.worldId });
     const p = pkg(res);
-    expect(p.items.map((i) => i.card.title).sort()).toEqual([...PUBLIC_TITLES].sort());
-    expect(p.withheld).toBe(1);
+    // Fixture rules allow public cards only. The package view then leaves a stance rule out
+    // and only counts it (AC-18), so its id is not a denied entry.
+    expect(p.items.map((i) => i.card.title).sort()).toEqual(
+      PUBLIC_TITLES.filter((title) => title !== 'Synthetic stance rule').sort(),
+    );
+    expect(p.withheld).toBe(2);
     expect(p.denied).toEqual([
       { cardId: f.ids.evPrivate, reason: 'default deny: no allow rule matches' },
     ]);
     expect(res.body).not.toContain(PRIVATE_TEXT);
     expect(res.body).not.toContain('Synthetic private note');
+    expect(res.body).not.toContain(f.ids.stanceRule);
+    expect(res.body).not.toContain('Synthetic stance rule');
   });
   it('refuses a transferId or a token from a local_model or an agent', async () => {
     const t = '01ARZ3NDEKTSV4RRFFQ69G5FAV';
