@@ -252,6 +252,26 @@ describe('originRoots (ADR-0009)', () => {
     }
   });
 
+  it('follows two cite paths that meet at one sourced card', () => {
+    const cards = [
+      card('A', {
+        edges: [
+          { target: 'B', kind: 'cites' },
+          { target: 'C', kind: 'cites' },
+        ],
+      }),
+      card('B', { edges: [{ target: 'D', kind: 'based_on' }] }),
+      card('C', { edges: [{ target: 'D', kind: 'cites' }] }),
+      card('D', { source: 'https://example.org/d' }),
+    ];
+    const roots = rootsOf(cards);
+    expect(roots.D).toEqual({ originRoot: 'https://example.org/d', originKnown: true });
+    expect(roots.A).toEqual(roots.D);
+    expect(roots.B).toEqual(roots.D);
+    expect(roots.C).toEqual(roots.D);
+    expect(independenceOf([...originRoots(cards).values()]).origins).toBe(1);
+  });
+
   it('gives a card that cites a cycle and a sourced sink the smaller root', () => {
     const cards = [
       card('A', {
