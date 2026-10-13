@@ -1,0 +1,21 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/gate-rules.schema.json",
+  "description": "The gate rules worldbuilder serve writes on first start (ADR-0031). Every card, including a private one, is allowed for the screen and for a local model on this device. cloud_model and demo have no allow rule. Stance is not a card field.",
+  "data": {
+    "rules": [
+      {
+        "id": "screen-all",
+        "effect": "allow",
+        "targets": ["screen"],
+        "match": {}
+      },
+      {
+        "id": "local-model-on-device",
+        "effect": "allow",
+        "targets": ["local_model"],
+        "match": {}
+      }
+    ]
+  }
+}

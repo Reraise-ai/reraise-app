@@ -424,7 +424,7 @@ describe('worldbuilder serve', () => {
       await service?.close();
     }
   });
-  it('starts on loopback, prints the token once, seeds screen-only rules and answers over HTTP', async () => {
+  it('starts on loopback, prints the token once, seeds the shipped gate rules and answers over HTTP', async () => {
     const out = sink();
     const port = await freePort();
     let service: Service | undefined;
@@ -569,7 +569,7 @@ describe('worldbuilder serve', () => {
 });
 
 describe('createService', () => {
-  it('the seeded default rules validate, allow the screen and nothing else', async () => {
+  it('the seeded default rules are the shipped rule file and allow only screen and local_model', async () => {
     const state = path.join(dir, 'state');
     const service = await createService({
       storage: new MemoryStorageAdapter(new MemoryStore(crypto.randomUUID())),
@@ -583,7 +583,15 @@ describe('createService', () => {
     expect(load.ok).toBe(true);
     expect(load.effective.map((r) => [r.id, r.effect, r.targets])).toEqual([
       ['screen-all', 'allow', ['screen']],
+      ['local-model-on-device', 'allow', ['local_model']],
     ]);
+    const fixture = JSON.parse(
+      await readFile(
+        new URL('../../../schemas/fixtures/valid/gate-rules-shipped-default.json', import.meta.url),
+        'utf8',
+      ),
+    ) as { data: unknown };
+    expect(parse(DEFAULT_GATE_RULES)).toEqual(fixture.data);
   });
   it('does not overwrite rules the user wrote', async () => {
     const state = path.join(dir, 'state');

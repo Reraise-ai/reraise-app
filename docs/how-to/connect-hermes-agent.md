@@ -119,10 +119,10 @@ it prints "session expired" and exits non-zero, so the host can restart it.
 ## 4. Check the connection
 
 Ask the agent to call `world_list` (no arguments). It returns the worlds of your store, as far
-as your gate rules let this agent's target class see them; a fresh installation allows cards on
-your own screen only, so the list is empty until you add an `allow` rule for `local_model` or
-`cloud_model` in `gate-rules.yaml` of the state directory
-([ADR-0031](../adr/0031-gate-rules-and-confirmation-binding.md)). If it fails:
+as your gate rules let this agent's target class see them. A fresh installation allows every
+card for `local_model`, including private cards, and none for `cloud_model` until you add an
+`allow` rule in `gate-rules.yaml` of the state directory
+([ADR-0031](../adr/0031-gate-rules-and-confirmation-binding.md)). Stance stays on the screen. If it fails:
 
 | Symptom | Cause |
 | --- | --- |

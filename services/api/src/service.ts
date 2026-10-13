@@ -34,7 +34,7 @@ export interface ServiceOptions {
   readonly syntheticStores?: readonly string[];
   /** Level 1 test seams: an injected `fetch` for cloud engines, a replacement local engine. */
   readonly level1?: AppOptions['level1'];
-  /** Write a rule file that allows every card on the screen if none exists (the CLI does). */
+  /** Write the shipped default rules if none exist (the CLI does). */
   readonly seedDefaultGateRules?: boolean;
   readonly logger?: boolean | object;
   readonly now?: () => Date;
@@ -54,13 +54,20 @@ export interface Service {
   close(): Promise<void>;
 }
 
-export const DEFAULT_GATE_RULES = `# Written by "worldbuilder serve" on first start. Without a rule the gate denies everything
-# (ADR-0012): this one lets the board show your cards on your own screen. Nothing here lets a
-# card leave the device. Add allow rules for local_model or cloud_model deliberately.
+export const DEFAULT_GATE_RULES = `# Written by "worldbuilder serve" on first start (ADR-0031). Without a matching
+# allow rule the gate denies the card. The screen sees every card. A local model on
+# this device sees every card too, including private ones: nothing leaves the device
+# and no transfer confirmation is required. Stance stays on the screen; no rule can
+# release it. cloud_model and demo stay deny until you add an allow rule. A cloud
+# transfer still needs the per-transfer confirmation.
 rules:
   - id: screen-all
     effect: allow
     targets: [screen]
+    match: {}
+  - id: local-model-on-device
+    effect: allow
+    targets: [local_model]
     match: {}
 `;
 

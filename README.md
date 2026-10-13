@@ -87,8 +87,9 @@ pnpm --filter @worldbuilder/board dev              # the board; paste the sessio
 pnpm test:e2e
 ```
 
-A fresh installation lets the gate show cards on your own screen only, so an agent sees no
-cards until you add an `allow` rule for its target class (see
+A fresh installation lets the gate show every card on your own screen and to a local model
+on this device, including private cards. A cloud model sees nothing until you add an `allow`
+rule and confirm each transfer. Stance stays on the screen (see
 [Connect a Hermes agent](docs/how-to/connect-hermes-agent.md), which also lists the tools).
 
 To work on the foundations:

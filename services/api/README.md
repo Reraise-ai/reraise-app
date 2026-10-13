@@ -25,8 +25,11 @@ worldbuilder agent remove <name> [--state <dir>]
 example, `src/hormuz.test.ts`) and binds `127.0.0.1` by default, creates a fresh human session token at every start, writes
 it to `<state>/session-token` (owner-only) and prints it once. It refuses to start when the state
 directory lies inside the store or a Git working tree (symbolic links followed) or when
-`agents.yaml` is invalid or readable by others. On first start it writes a gate rule file that
-allows cards on the screen only; without a rule the gate denies everything, also on the screen.
+`agents.yaml` is invalid or readable by others. On first start it writes the shipped gate rules
+([ADR-0031](../../docs/adr/0031-gate-rules-and-confirmation-binding.md)): every card for the screen
+and for a local model on this device, including private cards. Stance stays on the screen.
+`cloud_model` and `demo` stay deny until you add an allow rule. Without a rule the gate denies
+everything, also on the screen.
 Binding another host prints a warning: put your own access control in front.
 
 `agent add` registers one agent connection in `<state>/agents.yaml` (schema

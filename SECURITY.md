@@ -6,9 +6,10 @@ The Worldbuilder is local-first. These properties are design rules, not options:
 
 - **Files are the truth.** A world is stored as Markdown files with YAML front matter on
   your own device. Any database or index is derived and rebuildable.
-- **Disclosure gate, default deny.** Nothing leaves the screen unless the disclosure gate
-  allows it. Sending a card to a cloud model additionally requires your explicit
-  confirmation per transfer.
+- **Disclosure gate, default deny.** A card leaves the screen only when a gate rule allows
+  that target. The rules written on first start let a local model on this device see your
+  cards, including private ones. Sending a card to a cloud model still requires your explicit
+  confirmation per transfer. `demo` stays deny until you allow it.
 - **Stances never leave the device.** Your position on a card (believed, rejected,
   undecided) and your conclusions are private. A shared card is content plus provenance only.
 - **Agents propose, humans decide.** Agents write only via proposals; nothing an agent

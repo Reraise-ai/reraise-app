@@ -15,6 +15,7 @@ When the owner answers, the row moves to "Answered" and the linked ADR is update
 | OQ-5 | Does "5 agent cards per week" count proposed or accepted cards? | Only accepted agent cards count; proposed ones are reported next to it (owner, 2026-10-08, the default confirmed). | [ADR-0041](./adr/0041-usage-ledger-and-metrics.md) |
 | OQ-9 | Where does an unclear agent memory go? | It stays in the agent's memory (`ephemeral_ops_fact`) (owner, 2026-10-08, the default confirmed). | [ADR-0042](./adr/0042-memory-route-classification.md) |
 | OQ-16 | When the Worldbuilder cannot be reached, is an agent's memory write allowed? | "If the Worldbuilder is unreachable, the agent may write to its own memory, but every such entry must be marked 'pending write-back' and offered as a card proposal automatically once the Worldbuilder is reachable again. Nothing may bypass the loop silently." (owner, 2026-10-08; replaces the default `allow`) | [ADR-0046](./adr/0046-pending-write-back-outbox.md) |
+| OQ-29 | Does a local model on the device see private cards by default? | Yes (owner, 2026-10-13). The shipped gate rules allow every card for `local_model`, including private cards. Nothing leaves the device and no transfer confirmation is required. Stance stays on the screen; no rule can release it. `cloud_model` stays default deny and leaves only through the per-transfer confirmation. `demo` stays deny until the user writes an allow rule. | [ADR-0031](./adr/0031-gate-rules-and-confirmation-binding.md) |
 
 ## Open, with the default in force
 

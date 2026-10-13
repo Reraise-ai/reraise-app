@@ -5,8 +5,10 @@
 // synthetic Hormuz store: open the Lage, place a card, draw an edge, set a stance, and see
 // them again after the process restarts (AC-05). A reversed `supports` edge stays and a
 // deleted `refutes` edge does not come back (AC-08). The quote model answers from the
-// context package the API built, and does not name the private card (AC-16).
-// A local_model package keeps a relation only when both cards are in the package (AC-18).
+// context package the API built. The shipped default puts the private cost card in a
+// local_model package and leaves it out of an unconfirmed cloud_model package (AC-16).
+// A local_model package keeps a relation only when both cards are in the package, and
+// still leaves out a rule that states a stance (AC-18).
 
 import {
   createLocalQuoteModel,
@@ -22,7 +24,7 @@ import { fileURLToPath } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { addAgent } from './agent-registry.js';
 import { main } from './main.js';
-import type { Service } from './service.js';
+import { DEFAULT_GATE_RULES, type Service } from './service.js';
 
 const HORMUZ = fileURLToPath(new URL('../../../examples/hormuz', import.meta.url));
 
@@ -474,50 +476,37 @@ const REROUTE_RULE_ID = '01M1EV5S00YXKKGEG772AZM7P9';
 const STANCE_RULE_ID = '01M1EYKMM0PW82HRM7RY5175E7';
 const HORMUZ_WORLD_ID = '01M1DZPW00JGXPRPG4179ZPNB8';
 
-/** Screen sees everything. A local model sees class C evidence, actors and decisions only. */
-const LOCAL_MODEL_RULES = `rules:
-  - id: screen-all
-    effect: allow
-    targets: [screen]
-    match: {}
-  - id: local-open-evidence
-    effect: allow
-    targets: [local_model]
-    match:
-      class: [C]
-      collection: [evidence, actors, decisions]
-`;
-
 describe('a model answers from the Hormuz context package (AC-16)', () => {
-  it('keeps the private card in the store, leaves it out of the package, and the model does not name it', async () => {
+  it('includes the private cost card for a local model and leaves it out of an unconfirmed cloud package', async () => {
     await mkdir(path.join(dir, 'state'), { recursive: true });
-    await writeFile(path.join(dir, 'state', 'gate-rules.yaml'), LOCAL_MODEL_RULES);
+    await writeFile(path.join(dir, 'state', 'gate-rules.yaml'), DEFAULT_GATE_RULES);
     const { service, call } = await serve();
     try {
       const stored = await call('GET', `/cards/${PRIVATE_CARD_ID}`);
       expect(stored.status).toBe(200);
       expect(stored.json['title']).toBe('Own estimate of the rerouting cost');
 
-      const { token } = await addAgent(service.stateDir, {
-        name: 'quote-reader',
-        target: 'local_model',
-      });
       const port = (service.app.server.address() as { port: number }).port;
-      const res = await fetch(`http://127.0.0.1:${port}/context-packages`, {
-        method: 'POST',
-        headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
-        body: JSON.stringify({ worldId: HORMUZ_WORLD_ID }),
-      });
-      expect(res.status).toBe(200);
-      const context = (await res.json()) as ContextPackage;
+      const ask = async (name: string, target: 'local_model' | 'cloud_model') => {
+        const { token } = await addAgent(service.stateDir, { name, target });
+        const res = await fetch(`http://127.0.0.1:${port}/context-packages`, {
+          method: 'POST',
+          headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+          body: JSON.stringify({ worldId: HORMUZ_WORLD_ID }),
+        });
+        expect(res.status).toBe(200);
+        return (await res.json()) as ContextPackage;
+      };
+
+      const context = await ask('quote-reader', 'local_model');
       const cleared = context.items.map((item) => item.card.id);
       expect(cleared).toContain(WIRE_REPORT_ID);
-      expect(cleared).not.toContain(PRIVATE_CARD_ID);
-      expect(JSON.stringify(context)).not.toContain('invented internal cost estimate');
+      expect(cleared).toContain(PRIVATE_CARD_ID);
+      expect(cleared).toContain(INSURANCE_ID);
+      expect(JSON.stringify(context)).toContain('invented internal cost estimate');
+      expect(context.items.every((item) => item.stance === undefined)).toBe(true);
 
       const items = JSON.stringify(context.items);
-      expect(items).not.toContain(INSURANCE_ID);
-      expect(items).not.toContain(PRIVATE_CARD_ID);
       const lage = context.items.find((item) => item.card.id === LAGE_ID)?.card;
       const edges = lage?.lage?.edges ?? [];
       // Earlier tests in this file draw edges on the same copy of the store. The
@@ -533,7 +522,7 @@ describe('a model answers from the Hormuz context package (AC-16)', () => {
         expect(cleared).toContain(edge.to);
       }
       const decision = context.items.find((item) => item.card.id === DECISION_ID)?.card;
-      expect(decision?.sections?.cardsUsed).toEqual([WIRE_REPORT_ID, NAVY_ID]);
+      expect(decision?.sections?.cardsUsed).toEqual([WIRE_REPORT_ID, NAVY_ID, INSURANCE_ID]);
       expect(cleared).toContain(REROUTE_RULE_ID);
       expect(cleared).not.toContain(STANCE_RULE_ID);
       expect(items).not.toContain('"kind":"stance"');
@@ -541,10 +530,17 @@ describe('a model answers from the Hormuz context package (AC-16)', () => {
       const answer = await createLocalQuoteModel().ask(context, 'What may a local model see?');
       expect(answer.proposals).toEqual([]);
       expect(answer.text).toBe(`local-quote\n${[...cleared].sort().join('\n')}`);
-      expect(answer.text).not.toContain(PRIVATE_CARD_ID);
-      expect(answer.text).not.toContain(INSURANCE_ID);
+      expect(answer.text).toContain(PRIVATE_CARD_ID);
+      expect(answer.text).toContain(INSURANCE_ID);
       expect(answer.text).not.toContain(STANCE_RULE_ID);
       expect(answer.text).not.toContain('Own estimate of the rerouting cost');
+
+      const cloud = await ask('cloud-reader', 'cloud_model');
+      expect(cloud.target).toBe('cloud_model');
+      expect(cloud.items).toEqual([]);
+      const cloudText = JSON.stringify(cloud);
+      expect(cloudText).not.toContain(PRIVATE_CARD_ID);
+      expect(cloudText).not.toContain('invented internal cost estimate');
     } finally {
       await service.close();
     }
