@@ -3,7 +3,8 @@
 //
 // `worldbuilder serve` over the real markdown-files adapter and a temporary copy of the
 // synthetic Hormuz store: open the Lage, place a card, draw an edge, set a stance, and see
-// them again after the process restarts (AC-05).
+// them again after the process restarts (AC-05). A reversed `supports` edge stays and a
+// deleted `refutes` edge does not come back (AC-08).
 
 import type { Card, Lage } from '@worldbuilder/core';
 import { cp, mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
@@ -374,6 +375,84 @@ describe('a Lage the user creates (AC-07)', () => {
       ).toBe(true);
     } finally {
       await second.service.close();
+    }
+  });
+});
+
+describe('edges the user draws, reverses and deletes (AC-08)', () => {
+  it('keeps a reversed supports edge and does not restore a deleted refutes edge after a restart', async () => {
+    const first = await serve();
+    let lageId = '';
+    let a = '';
+    let b = '';
+    let placed: Lage['cards'] = [];
+    try {
+      const worlds = await first.call('GET', '/worlds');
+      const worldId = (worlds.json['worlds'] as unknown as { id: string; name: string }[]).find(
+        (w) => w.name === 'Hormuz',
+      )!.id;
+      const cards = await first.call('GET', '/cards?limit=200');
+      const plain = (cards.json['cards'] as unknown as Card[]).filter((c) => c.type !== 'lage');
+      expect(plain.length).toBeGreaterThanOrEqual(2);
+      a = plain[0]!.id;
+      b = plain[1]!.id;
+      const created = await first.call('POST', '/lagen', {
+        title: 'Which claim holds?',
+        worlds: [worldId],
+        lage: createdLage('Which claim holds?', []),
+      });
+      expect(created.status).toBe(201);
+      lageId = (created.json as unknown as Card).id;
+      const current = (await first.call('GET', `/lagen/${lageId}`)).json as unknown as Card;
+      const lage = current.lage as Lage;
+      placed = [
+        { id: a, x: 10, y: 10 },
+        { id: b, x: 40, y: 10 },
+      ];
+      const drawnEdges = [
+        { from: a, to: b, kind: 'supports', by: 'human' },
+        { from: a, to: b, kind: 'refutes', by: 'human' },
+      ];
+      const drawn = await first.call('PUT', `/lagen/${lageId}`, {
+        ...lage,
+        cards: placed,
+        edges: drawnEdges,
+        version: lage.version + 1,
+        updatedAt: new Date().toISOString(),
+      });
+      expect(drawn.status).toBe(200);
+      expect((drawn.json as unknown as Card).lage?.edges).toEqual(drawnEdges);
+    } finally {
+      await first.service.close();
+    }
+
+    const second = await serve();
+    try {
+      const kept = (await second.call('GET', `/lagen/${lageId}`)).json as unknown as Card;
+      expect(kept.lage?.edges).toEqual([
+        { from: a, to: b, kind: 'supports', by: 'human' },
+        { from: a, to: b, kind: 'refutes', by: 'human' },
+      ]);
+      const revised = await second.call('PUT', `/lagen/${lageId}`, {
+        ...kept.lage,
+        cards: placed,
+        edges: [{ from: b, to: a, kind: 'supports', by: 'human' }],
+        version: kept.lage!.version + 1,
+        updatedAt: new Date().toISOString(),
+      });
+      expect(revised.status).toBe(200);
+    } finally {
+      await second.service.close();
+    }
+
+    const third = await serve();
+    try {
+      const reloaded = (await third.call('GET', `/lagen/${lageId}`)).json as unknown as Card;
+      expect(reloaded.lage?.edges).toEqual([{ from: b, to: a, kind: 'supports', by: 'human' }]);
+      const onDisk = await textsUnder(path.join(dir, 'store'));
+      expect(onDisk.some((text) => text.includes('Which claim holds?'))).toBe(true);
+    } finally {
+      await third.service.close();
     }
   });
 });

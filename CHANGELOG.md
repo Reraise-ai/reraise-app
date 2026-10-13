@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- The user can draw, reverse and delete `supports` and `refutes` edges. A restart of
+  `worldbuilder serve` on the Hormuz store keeps the reversed `supports` edge, and a deleted
+  `refutes` edge stays gone (AC-08).
 - The user can create a Lage with their own question and any number of options, including none.
   A repeated option line is stored once. The open board shows the question and each option.
   A restart of `worldbuilder serve` on the Hormuz store still has that Lage (AC-07).
