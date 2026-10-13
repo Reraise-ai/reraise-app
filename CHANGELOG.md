@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- A restart of `worldbuilder serve` on the Hormuz store keeps a drawn `supports` edge and a
+  private stance. The stance is a file under the state directory (`stances/<cardId>.json`) and
+  is not written into the card store. A page reload already showed the same board (AC-05).
 - The board can take one placed card off a Lage ("Remove from board"). The card file stays in
   the store. Edges that used the card leave with it. The next context package is built from
   the cards still on the Lage, so the removed card is not in it (AC-22).

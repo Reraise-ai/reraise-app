@@ -76,12 +76,12 @@ C4Container
 | disclosure-gate | `packages/disclosure-gate` | Apache-2.0 | exists (M0 skeleton): a default-deny function, no rules | M1: rule evaluation per card and target, decision log, blocks a private card for `cloud_model` |
 | Storage adapter (reference) | `packages/adapters/storage-markdown-files` | Apache-2.0 | exists (M0 skeleton): adapter id only | M1: reads and patches the reference card format, archive on rewrite, derived index |
 | Source and model connectors | `packages/adapters/*` | Apache-2.0 | not started | M2+: local model, cloud model, Jev stub; Obsidian vault, HTTP/JSON, document management, paid news |
-| local-state | `packages/local-state` | Apache-2.0 | M1: implemented (store, state-directory resolution and safety check, gate log, rules loader); service wiring pending | M1: proposals, stances, gate log and gate rules in the per-user state directory behind a core interface ([ADR-0030](../adr/0030-local-state-on-the-device.md)) |
+| local-state | `packages/local-state` | Apache-2.0 | M1: implemented (store, state-directory resolution and safety check, gate log, rules loader). The service writes a stance there and reads it back after a restart (AC-05) | M1: proposals, stances, gate log and gate rules in the per-user state directory behind a core interface ([ADR-0030](../adr/0030-local-state-on-the-device.md)) |
 | training-export | `packages/training-export` | Apache-2.0 | exists (M0 skeleton): the `training: true` eligibility predicate | M2+: JSONL export behind the gate with per-export confirmation |
 | conformance | `packages/conformance` | Apache-2.0 | exists (M0 skeleton): version constant. Kit skeleton with mapping-rule tests against an in-memory fake in progress (M0) | M1: full kit run against the reference adapter |
 | Card files | user-chosen folder | user data | none (the synthetic example worlds are in progress, M0) | M1 |
 | Derived index | in memory, per adapter | derived | none | M1: rebuilt at start, file-watcher refresh ([ADR-0033](../adr/0033-derived-index-reference-adapter.md)) |
-| State directory | per-user OS state directory (or a configured path), never inside a store root or Git working tree | private | none | M1: `proposals/<ulid>.json`, `stances/`, `gate-log.jsonl`, `gate-rules.yaml` ([ADR-0030](../adr/0030-local-state-on-the-device.md)) |
+| State directory | per-user OS state directory (or a configured path), never inside a store root or Git working tree | private | exists: `stances/<cardId>.json` survives a service restart and is not copied into the card store (AC-05) | M1: `proposals/<ulid>.json`, `stances/`, `gate-log.jsonl`, `gate-rules.yaml` ([ADR-0030](../adr/0030-local-state-on-the-device.md)) |
 
 `schemas/` (JSON Schema and `openapi/`) and `examples/` are contracts and data, not
 containers. They are in progress (M0) and not yet on the trunk.

@@ -2,10 +2,11 @@
 // Copyright The Worldbuilder contributors
 //
 // `worldbuilder serve` over the real markdown-files adapter and a temporary copy of the
-// synthetic Hormuz store: open the Lage, place a card, and see it again after a restart.
+// synthetic Hormuz store: open the Lage, place a card, draw an edge, set a stance, and see
+// them again after the process restarts (AC-05).
 
 import type { Card, Lage } from '@worldbuilder/core';
-import { cp, mkdtemp, rm } from 'node:fs/promises';
+import { cp, mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -73,6 +74,20 @@ async function serve() {
   return { service, call };
 }
 
+/** Every file under `root`, as text. Used to show a stance note never landed in the card store. */
+async function textsUnder(root: string): Promise<string[]> {
+  const out: string[] = [];
+  const walk = async (current: string): Promise<void> => {
+    for (const entry of await readdir(current, { withFileTypes: true })) {
+      const full = path.join(current, entry.name);
+      if (entry.isDirectory()) await walk(full);
+      else out.push(await readFile(full, 'utf8'));
+    }
+  };
+  await walk(root);
+  return out;
+}
+
 describe('worldbuilder serve on the Hormuz example store', () => {
   let lageId: string;
   let loose: Card;
@@ -126,6 +141,64 @@ describe('worldbuilder serve on the Hormuz example store', () => {
     try {
       const reloaded = (await second.call('GET', `/lagen/${lageId}`)).json as unknown as Card;
       expect(reloaded.lage?.cards.find((c) => c.id === loose.id)).toMatchObject({ x: 321, y: 123 });
+    } finally {
+      await second.service.close();
+    }
+  });
+
+  it('keeps a drawn edge and a private stance after the process restarts (AC-05)', async () => {
+    const note = 'synthetic restart note';
+    const first = await serve();
+    let fromId = '';
+    let toId = '';
+    try {
+      const lagen = await first.call('GET', '/cards?type=lage');
+      const listed = (lagen.json['cards'] as unknown as Card[])[0]!;
+      const current = (await first.call('GET', `/lagen/${listed.id}`)).json as unknown as Card;
+      const lage = current.lage as Lage;
+      fromId = lage.cards[0]!.id;
+      toId = lage.cards[1]!.id;
+      const saved = await first.call('PUT', `/lagen/${listed.id}`, {
+        ...lage,
+        edges: [...lage.edges, { from: fromId, to: toId, kind: 'supports', by: 'human' }],
+        version: lage.version + 1,
+        updatedAt: new Date().toISOString(),
+      });
+      expect(saved.status).toBe(200);
+      const stance = await first.call('PUT', `/cards/${fromId}/stance`, {
+        position: 'rejected',
+        weight: 2,
+        note,
+      });
+      expect(stance.status).toBe(200);
+    } finally {
+      await first.service.close();
+    }
+
+    const second = await serve();
+    try {
+      const lagen = await second.call('GET', '/cards?type=lage');
+      const listed = (lagen.json['cards'] as unknown as Card[])[0]!;
+      const reloaded = (await second.call('GET', `/lagen/${listed.id}`)).json as unknown as Card;
+      expect(reloaded.lage?.edges).toContainEqual({
+        from: fromId,
+        to: toId,
+        kind: 'supports',
+        by: 'human',
+      });
+      const stance = await second.call('GET', `/cards/${fromId}/stance`);
+      expect(stance.status).toBe(200);
+      expect(stance.json).toMatchObject({
+        cardId: fromId,
+        position: 'rejected',
+        weight: 2,
+        note,
+      });
+      const onDisk = await readFile(path.join(dir, 'state', 'stances', `${fromId}.json`), 'utf8');
+      expect(onDisk).toContain(note);
+      expect((await textsUnder(path.join(dir, 'store'))).some((text) => text.includes(note))).toBe(
+        false,
+      );
     } finally {
       await second.service.close();
     }
