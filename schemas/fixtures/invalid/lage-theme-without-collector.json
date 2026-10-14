@@ -1,0 +1,22 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/lage.schema.json",
+  "description": "A theme Lage needs its one collector card (e-52).",
+  "expect": {
+    "keyword": "required",
+    "instancePath": ""
+  },
+  "data": {
+    "question": "Vitamin D",
+    "questions": [
+      { "text": "Two trials, two answers?", "for": [], "against": [] },
+      { "text": "20 or 60?", "for": [], "against": [] }
+    ],
+    "options": [],
+    "cards": [],
+    "seats": [{ "name": "You", "kind": "human" }],
+    "edges": [],
+    "version": 1,
+    "updatedAt": "2026-10-14T12:00:00Z"
+  }
+}

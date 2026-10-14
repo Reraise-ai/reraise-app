@@ -19,6 +19,9 @@ export default defineConfig({
       '@worldbuilder/core/source-profile': fileURLToPath(
         new URL('../../packages/core/src/source-profile.ts', import.meta.url),
       ),
+      '@worldbuilder/core/theme': fileURLToPath(
+        new URL('../../packages/core/src/theme.ts', import.meta.url),
+      ),
       // Only the display formatter of the level-1 package (pure text, no runtime imports): the
       // board shows exactly the text of the contract and does not bundle the engines.
       '@worldbuilder/level1-engines/format': fileURLToPath(

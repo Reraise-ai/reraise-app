@@ -943,3 +943,26 @@ describe('unauthorized', () => {
     await screen.findByTestId('login-form');
   });
 });
+
+describe('theme Lage (e-52, e-58)', () => {
+  it('lists questions with votes and opens the collector card', async () => {
+    const api = createMockApi({
+      lage: makeLage({
+        question: 'Vitamin D',
+        questions: [
+          { text: 'Two trials, two answers?', for: [C1], against: [C2] },
+          { text: '20 or 60?', for: [C1, C2], against: [] },
+        ],
+        collectorCardId: C1,
+      }),
+    });
+    await openLage(api);
+    expect(screen.getByTestId('theme-question-0').textContent).toMatch(/Two trials/);
+    expect(screen.getByTestId('theme-votes-0').textContent).toBe('1 for · 1 against');
+    expect(screen.getByTestId('theme-votes-1').textContent).toBe('2 for · 0 against');
+    await userEvent.click(screen.getByTestId('theme-collector'));
+    await waitFor(() =>
+      expect(screen.getByTestId('inspector-title').textContent).toBe('Strait traffic report'),
+    );
+  });
+});

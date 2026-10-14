@@ -1,0 +1,19 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/lage.schema.json",
+  "description": "A collector card is only on a theme Lage.",
+  "expect": {
+    "keyword": "required",
+    "instancePath": ""
+  },
+  "data": {
+    "question": "Does the strait close?",
+    "collectorCardId": "01M1EMA1R0AH9ZTK3YJK33TNER",
+    "options": [],
+    "cards": [],
+    "seats": [{ "name": "You", "kind": "human" }],
+    "edges": [],
+    "version": 1,
+    "updatedAt": "2026-10-14T12:00:00Z"
+  }
+}

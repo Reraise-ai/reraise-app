@@ -402,6 +402,14 @@ export interface LageCreateRequest {
 export interface Lage {
   question: Text;
   /**
+   * Playable questions of a theme field (e-58, ADR-0051). 2 to 4 items. Each lists the cards arguing for and against. A single-question Lage omits this.
+   *
+   * @minItems 2
+   * @maxItems 4
+   */
+  questions?: ThemeQuestion[];
+  collectorCardId?: CardId;
+  /**
    * The options under consideration.
    */
   options: Text[];
@@ -425,6 +433,14 @@ export interface Lage {
    * Time (or date, as some stores record it) of the last change.
    */
   updatedAt: string;
+}
+/**
+ * One playable question of a theme, with the cards arguing for and against (e-58).
+ */
+export interface ThemeQuestion {
+  text: Text;
+  for: CardId[];
+  against: CardId[];
 }
 export interface LagePlacement {
   id: CardId;

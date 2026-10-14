@@ -10,6 +10,7 @@ import type {
   Stance,
   StanceInput,
 } from '@worldbuilder/core';
+import { actorCardForSource, isThemeLage, themeVoteText } from '@worldbuilder/core/theme';
 import { ApiError, type BoardClient } from '../api/client.js';
 import { describeError } from '../errors.js';
 import { useLiveFeed } from '../liveFeed.js';
@@ -321,6 +322,26 @@ export function Workbench({
         />
       </main>
       <aside className="wb-sidebar" aria-label="Board tools">
+        {isThemeLage(viewed) && (
+          <section className="wb-panel" aria-labelledby="theme-h" data-testid="theme-panel">
+            <h2 id="theme-h">Theme questions</h2>
+            <ul data-testid="theme-questions">
+              {viewed.questions.map((item, index) => (
+                <li key={item.text} data-testid={`theme-question-${index}`}>
+                  {item.text}{' '}
+                  <span data-testid={`theme-votes-${index}`}>{themeVoteText(item)}</span>
+                </li>
+              ))}
+            </ul>
+            <button
+              type="button"
+              data-testid="theme-collector"
+              onClick={() => setSelectedCardId(viewed.collectorCardId)}
+            >
+              Collector card
+            </button>
+          </section>
+        )}
         {viewed.options.length > 0 && (
           <section aria-labelledby="options-h">
             <h2 id="options-h">Options</h2>
@@ -395,6 +416,10 @@ export function Workbench({
             (c) => c.id !== undefined && placedIds.has(c.id),
           )}
           stance={selectedCardId ? loaded.stances.get(selectedCardId) : undefined}
+          onOpenSource={(source) => {
+            const actor = actorCardForSource([...loaded.cards.values()], source);
+            if (actor?.id) setSelectedCardId(actor.id);
+          }}
           onSaveStance={saveStance}
           removeDisabled={saving || frozen}
           {...(selectedCardId

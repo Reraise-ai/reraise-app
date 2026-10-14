@@ -48,6 +48,9 @@ export default defineConfig({
             '@worldbuilder/core/source-profile': fileURLToPath(
               new URL('./packages/core/src/source-profile.ts', import.meta.url),
             ),
+            '@worldbuilder/core/theme': fileURLToPath(
+              new URL('./packages/core/src/theme.ts', import.meta.url),
+            ),
             '@worldbuilder/level1-engines/format': fileURLToPath(
               new URL('./packages/level1-engines/src/format.ts', import.meta.url),
             ),

@@ -32,6 +32,8 @@ interface Props {
   removeDisabled?: boolean;
   /** Cards on this board. The source pass counts origins among them. */
   boardCards?: readonly Card[];
+  /** Open the person or organisation card this source belongs to (e-52). */
+  onOpenSource?(source: string): void;
 }
 
 const POSITIONS: StancePosition[] = ['believed', 'rejected', 'undecided'];
@@ -65,6 +67,7 @@ export function InspectorPanel({
   onRemove,
   removeDisabled,
   boardCards,
+  onOpenSource,
 }: Props) {
   const [position, setPosition] = useState<StancePosition>('undecided');
   const [weight, setWeight] = useState(2);
@@ -154,7 +157,21 @@ export function InspectorPanel({
         )}
         <span className="wb-muted">{card?.visibility}</span>
       </div>
-      {card?.source && <p className="wb-muted">Source: {card.source}</p>}
+      {card?.source &&
+        (onOpenSource ? (
+          <p className="wb-muted">
+            Source:{' '}
+            <button
+              type="button"
+              data-testid="inspector-source"
+              onClick={() => onOpenSource(card.source as string)}
+            >
+              {card.source}
+            </button>
+          </p>
+        ) : (
+          <p className="wb-muted">Source: {card.source}</p>
+        ))}
       {card && <SourceProfileList profile={profile} error={profileError} />}
       {card?.originSystem && (
         <p className="wb-muted" data-testid="inspector-origin">

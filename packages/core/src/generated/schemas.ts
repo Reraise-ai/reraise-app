@@ -2078,8 +2078,22 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
     type: 'object',
     properties: {
       question: {
-        description: 'The guiding question of the Lage (required).',
+        description:
+          'The guiding question of the Lage (required). On a theme Lage this is the theme line; the playable questions live in `questions`.',
         $ref: 'common.schema.json#/$defs/text',
+      },
+      questions: {
+        description:
+          'Playable questions of a theme field (e-58, ADR-0051). 2 to 4 items. Each lists the cards arguing for and against. A single-question Lage omits this.',
+        type: 'array',
+        minItems: 2,
+        maxItems: 4,
+        items: { $ref: '#/$defs/themeQuestion' },
+      },
+      collectorCardId: {
+        description:
+          'The one collector card of this theme (e-52, ADR-0051). Required when `questions` is present.',
+        $ref: 'common.schema.json#/$defs/cardId',
       },
       options: {
         description: 'The options under consideration.',
@@ -2116,7 +2130,38 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
     },
     required: ['question', 'options', 'cards', 'seats', 'edges', 'version', 'updatedAt'],
     additionalProperties: false,
+    allOf: [
+      {
+        if: { properties: { questions: true }, required: ['questions'] },
+        then: { properties: { collectorCardId: true }, required: ['collectorCardId'] },
+      },
+      {
+        if: { properties: { collectorCardId: true }, required: ['collectorCardId'] },
+        then: { properties: { questions: true }, required: ['questions'] },
+      },
+    ],
     $defs: {
+      themeQuestion: {
+        title: 'ThemeQuestion',
+        description:
+          'One playable question of a theme, with the cards arguing for and against (e-58).',
+        type: 'object',
+        properties: {
+          text: { $ref: 'common.schema.json#/$defs/text' },
+          for: {
+            type: 'array',
+            items: { $ref: 'common.schema.json#/$defs/cardId' },
+            uniqueItems: true,
+          },
+          against: {
+            type: 'array',
+            items: { $ref: 'common.schema.json#/$defs/cardId' },
+            uniqueItems: true,
+          },
+        },
+        required: ['text', 'for', 'against'],
+        additionalProperties: false,
+      },
       placement: {
         title: 'LagePlacement',
         type: 'object',

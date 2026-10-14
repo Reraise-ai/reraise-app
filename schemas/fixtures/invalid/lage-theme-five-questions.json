@@ -1,0 +1,26 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/lage.schema.json",
+  "description": "A theme carries at most four questions.",
+  "expect": {
+    "keyword": "maxItems",
+    "instancePath": "/questions"
+  },
+  "data": {
+    "question": "Vitamin D",
+    "questions": [
+      { "text": "Q1?", "for": [], "against": [] },
+      { "text": "Q2?", "for": [], "against": [] },
+      { "text": "Q3?", "for": [], "against": [] },
+      { "text": "Q4?", "for": [], "against": [] },
+      { "text": "Q5?", "for": [], "against": [] }
+    ],
+    "collectorCardId": "01M1EMA1R0AH9ZTK3YJK33TNER",
+    "options": [],
+    "cards": [],
+    "seats": [{ "name": "You", "kind": "human" }],
+    "edges": [],
+    "version": 1,
+    "updatedAt": "2026-10-14T12:00:00Z"
+  }
+}
