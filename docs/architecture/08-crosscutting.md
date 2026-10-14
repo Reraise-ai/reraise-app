@@ -266,8 +266,8 @@ library stays replaceable.
 | Unit | Domain logic in `core` with a coverage gate (90 % lines) | `packages/*/src/*.test.ts`, `vitest.config.ts` | gate configured (M0); little logic to cover yet |
 | Conformance | Every `StorageAdapter` against the kit | `packages/conformance` | skeleton (M0); full kit M1 |
 | Integration | Bind address, token separation, input limits | `services/api` | planned (M1) |
-| End to end | The walking-skeleton scenario in a browser, with a scripted MCP agent and the files on disk checked | Playwright, `e2e/` | passes locally on Linux; CI job `e2e` on three operating systems has not run yet |
-| Accessibility | axe on the main screens of the board | `e2e/tests/a11y.spec.ts` | passes locally on Linux; no CI run yet |
+| End to end | The walking-skeleton scenario in a browser, with a scripted MCP agent and the files on disk checked | Playwright, `e2e/` | passing in CI job `e2e` on Linux, Windows and macOS (commit `4e0ebf8`) |
+| Accessibility | axe on the main screens of the board | `e2e/tests/a11y.spec.ts` | passing in the same CI job `e2e` (commit `4e0ebf8`) |
 
 The record of what is proven is [verification](../verification.md).
 

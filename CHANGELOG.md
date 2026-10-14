@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- M1 is done. CI job `e2e` runs the Hormuz walking skeleton (`e2e/tests/walking-skeleton.spec.ts`) on Linux, Windows and macOS. The green run is commit `4e0ebf8`.
 - The gate rules `worldbuilder serve` writes on first start allow every card for the screen and for a local model on this device, including private cards. Nothing leaves the device and no transfer confirmation is required. Stance stays on the screen; no rule can release it. `cloud_model` and `demo` stay deny until you add an allow rule. A cloud transfer still needs the per-transfer confirmation (ADR-0031, owner 2026-10-13).
 
 ### Added
@@ -58,7 +59,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   store, a scripted MCP agent that consults the knowledge and proposes a card, the human accepting
   it, persistence after a reload, a context package, the disclosure gate withholding the private
   card from a cloud target, and the files on disk (Lage version archived). axe-core runs on the
-  main board screens. CI job `e2e` on Linux, Windows and macOS (not run yet).
+  main board screens. CI job `e2e` on Linux, Windows and macOS was green at commit `4e0ebf8`.
 - Level-1 engines (ADR-0035) in the new package `@worldbuilder/level1-engines`: the deterministic
   local rules engine (`createLocalRulesEngine`, with a per-option basis), the what-if re-run and
   stale-prediction helpers, the level-2 escalation draft, the cloud System One HTTP adapter
