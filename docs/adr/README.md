@@ -75,3 +75,4 @@ MCP tool definitions, the adapter interfaces, or the product canon
 | [0046](0046-pending-write-back-outbox.md) | A memory write made while the Worldbuilder is unreachable is marked pending and offered as a card proposal later | accepted | 2026-10-08 |
 | [0047](0047-api-rate-limiting.md) | The Board API limits requests per credential and locks an address out after failed credentials | accepted | 2026-10-09 |
 | [0048](0048-card-descriptive-fields.md) | Optional descriptive card fields stay out of the hash and follow the card's disclosure rules | accepted | 2026-10-10 |
+| [0049](0049-lage-versions.md) | Archived Lage versions are a human-only read | accepted | 2026-10-14 |

@@ -1,7 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright The Worldbuilder contributors
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { Card, EdgeKind, Lage, Proposal, Stance, StanceInput } from '@worldbuilder/core';
+import type {
+  Card,
+  EdgeKind,
+  Lage,
+  LageVersion,
+  Proposal,
+  Stance,
+  StanceInput,
+} from '@worldbuilder/core';
 import { ApiError, type BoardClient } from '../api/client.js';
 import { createProposalPoller, mergeProposals } from '../api/proposalPoller.js';
 import { describeError } from '../errors.js';
@@ -63,8 +71,12 @@ export function Workbench({
   const [selectedEdgeKey, setSelectedEdgeKey] = useState<string | null>(null);
   const [edgeKind, setNextEdgeKind] = useState<DrawnEdgeKind>('supports');
   const [saving, setSaving] = useState(false);
+  const [history, setHistory] = useState<LageVersion[]>([]);
+  const [asOf, setAsOf] = useState<number | null>(null);
   const loadedRef = useRef<Loaded | null>(null);
+  const asOfRef = useRef<number | null>(null);
   loadedRef.current = loaded;
+  asOfRef.current = asOf;
   const queue = useRef<Promise<unknown>>(Promise.resolve());
   const alive = useRef(true);
   useEffect(() => {
@@ -90,6 +102,16 @@ export function Workbench({
         }
       }
       if (!alive.current) return;
+      let nextHistory: LageVersion[] = [];
+      try {
+        nextHistory = (await client.lage_versions(lageId)).versions;
+      } catch {
+        // A missing archive must not blank the current board.
+        nextHistory = [];
+      }
+      if (!alive.current) return;
+      setHistory(nextHistory);
+      setAsOf((index) => (index !== null && index < nextHistory.length ? index : null));
       setLoaded({ card, lage: card.lage, cards, stances });
     } catch (e) {
       if (alive.current) setMessage({ kind: 'error', text: describeError(e) });
@@ -123,6 +145,7 @@ export function Workbench({
   const edit = useCallback(
     (change: (lage: Lage) => Lage, done?: string) => {
       queue.current = queue.current.then(async () => {
+        if (asOfRef.current !== null) return;
         const current = loadedRef.current;
         if (!current) return;
         const next = change(current.lage);
@@ -183,7 +206,10 @@ export function Workbench({
     [client],
   );
 
-  const placedIds = useMemo(() => new Set(loaded?.lage.cards.map((c) => c.id) ?? []), [loaded]);
+  const placedIds = useMemo(() => {
+    const board = (asOf !== null ? history[asOf]?.lage : undefined) ?? loaded?.lage;
+    return new Set(board?.cards.map((c) => c.id) ?? []);
+  }, [loaded, history, asOf]);
   // Cards named by proposals but not on the board yet: fetched once so you see what you accept.
   const [extraCards, setExtraCards] = useState<Map<string, Card>>(new Map());
   const asked = useRef(new Set<string>());
@@ -229,6 +255,9 @@ export function Workbench({
     );
   }
   const { lage } = loaded;
+  const archived = asOf !== null ? history[asOf] : undefined;
+  const viewed = archived?.lage ?? lage;
+  const frozen = archived !== undefined;
 
   return (
     <div className="wb-workbench" data-testid="workbench">
@@ -239,12 +268,38 @@ export function Workbench({
           </button>{' '}
           <strong data-testid="board-title">{loaded.card.title}</strong>{' '}
           <span className="wb-muted" data-testid="board-question">
-            {lage.question}
+            {viewed.question}
           </span>
           <span className="wb-muted"> · version </span>
           <span className="wb-muted" data-testid="board-version">
-            {lage.version}
+            {viewed.version}
           </span>
+          {history.length > 0 && (
+            <label className="wb-muted">
+              {' '}
+              Board date{' '}
+              <input
+                type="range"
+                min={0}
+                max={history.length}
+                step={1}
+                value={asOf === null ? history.length : asOf}
+                data-testid="time-slider"
+                aria-label="Board date"
+                aria-valuetext={archived ? archived.archivedAt : 'Now'}
+                onChange={(e) => {
+                  const n = Number(e.target.value);
+                  setAsOf(n >= history.length ? null : n);
+                }}
+              />{' '}
+              {archived ? archived.archivedAt : 'Now'}
+            </label>
+          )}
+          {archived && (
+            <p className="wb-muted" data-testid="time-banner" role="status">
+              Showing the board as of {archived.archivedAt}. This view is not saved.
+            </p>
+          )}
           {saving && <span className="wb-muted"> · saving</span>}
           {message && (
             <div
@@ -257,7 +312,8 @@ export function Workbench({
           )}
         </div>
         <BoardCanvas
-          lage={lage}
+          lage={viewed}
+          readOnly={frozen}
           cards={loaded.cards}
           stances={loaded.stances}
           selectedCardId={selectedCardId}
@@ -271,11 +327,11 @@ export function Workbench({
         />
       </main>
       <aside className="wb-sidebar" aria-label="Board tools">
-        {lage.options.length > 0 && (
+        {viewed.options.length > 0 && (
           <section aria-labelledby="options-h">
             <h2 id="options-h">Options</h2>
             <ul className="wb-list" data-testid="board-options">
-              {lage.options.map((option) => (
+              {viewed.options.map((option) => (
                 <li key={option}>{option}</li>
               ))}
             </ul>
@@ -303,7 +359,7 @@ export function Workbench({
           client={client}
           worldId={worldId ?? loaded.card.worlds?.[0]}
           placedIds={placedIds}
-          disabled={saving}
+          disabled={saving || frozen}
           onPlace={(card) => {
             if (!card.id) return;
             const id = card.id;
@@ -314,13 +370,13 @@ export function Workbench({
           }}
         />
         <EdgePanel
-          lage={lage}
+          lage={viewed}
           cards={loaded.cards}
           edgeKind={edgeKind}
           onEdgeKind={setNextEdgeKind}
           selectedEdgeKey={selectedEdgeKey}
           onSelectEdge={setSelectedEdgeKey}
-          disabled={saving}
+          disabled={saving || frozen}
           onAdd={(from, to, kind: EdgeKind) =>
             void edit((l) => addEdge(l, from, to, kind), 'Edge drawn.')
           }
@@ -346,7 +402,7 @@ export function Workbench({
           )}
           stance={selectedCardId ? loaded.stances.get(selectedCardId) : undefined}
           onSaveStance={saveStance}
-          removeDisabled={saving}
+          removeDisabled={saving || frozen}
           {...(selectedCardId
             ? {
                 onRemove: () => {
@@ -362,8 +418,9 @@ export function Workbench({
           cards={[...loaded.cards.values()].filter(
             (c) => c.id !== undefined && placedIds.has(c.id),
           )}
-          disabled={saving}
+          disabled={saving || frozen}
         />
+        {/* Level 1 stays on the stored Lage. The slider only changes the board view. */}
         <Level1Panel
           client={client}
           lageId={lageId}

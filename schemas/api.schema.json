@@ -57,6 +57,31 @@
       "required": ["title", "lage"],
       "additionalProperties": false
     },
+    "lageVersion": {
+      "title": "LageVersion",
+      "description": "One archived board state of a Lage. version is the archive number. archivedAt is when this state was replaced. The current state is not an entry (ADR-0006, ADR-0049).",
+      "type": "object",
+      "properties": {
+        "version": { "type": "integer", "minimum": 1 },
+        "archivedAt": { "type": "string", "format": "date-time" },
+        "lage": { "$ref": "lage.schema.json" }
+      },
+      "required": ["version", "archivedAt", "lage"],
+      "additionalProperties": false
+    },
+    "lageVersionList": {
+      "title": "LageVersionList",
+      "description": "Archived board states of one Lage, oldest first. The current state is not included (ADR-0049).",
+      "type": "object",
+      "properties": {
+        "versions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/lageVersion" }
+        }
+      },
+      "required": ["versions"],
+      "additionalProperties": false
+    },
     "cardGetRequest": {
       "title": "CardGetRequest",
       "type": "object",

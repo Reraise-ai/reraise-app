@@ -400,9 +400,9 @@ Every number links to the cards behind it. The profile is derived, never edited 
 
 These ideas come from a second UX study and fit the canon.
 
-- **Time slider** (planned (M2+)). Move the board to an earlier date and see it as it was,
-  from real timestamps and archived Lage versions, not from replaying a log
-  ([ADR-0006](../adr/0006-files-are-the-truth.md)).
+- **Time slider**. The open board shows an earlier archived Lage (question, options, placements
+  and edges) from `lage_versions`. Card text stays current. The view is not saved
+  ([ADR-0049](../adr/0049-lage-versions.md), [ADR-0006](../adr/0006-files-are-the-truth.md)).
 - **What-if layer** (planned (M2+)). A non-persisting scenario layer with your own
   assumptions, savable and attachable to a decision. It never changes real cards.
 - **World collision** (planned (M2+)). Two local worlds overlaid on one question: shared

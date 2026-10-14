@@ -172,8 +172,9 @@ Privacy is structural, not a setting ([ADR-0012](../adr/0012-disclosure-gate.md)
 
 - One card per Markdown file with YAML front matter. Files are the truth; every index is
   derived and may be deleted ([ADR-0006](../adr/0006-files-are-the-truth.md)).
-- History is archived versions (`_archive/<file>.v<n>.md`), not an event log. The time slider
-  (M2+) reads timestamps and archived versions.
+- History is archived versions (`_archive/<file>.v<n>.md`), not an event log. The board reads
+  them through `lage_versions` and can show an earlier board
+  ([ADR-0049](../adr/0049-lage-versions.md)).
 - Every write goes through one write path per store that validates, locks and writes.
   Concurrent writers use optimistic concurrency on `version` or `contentHash`.
 - Writes are patches: only the canonical fields the product changed are written; everything

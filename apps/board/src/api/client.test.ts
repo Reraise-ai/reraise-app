@@ -62,6 +62,24 @@ describe('board client', () => {
     expect(api.calls[8]!.path).toBe(`/proposals?lageId=${LAGE_ID}&changedSince=5&limit=200`);
   });
 
+  it('reads archived Lage versions', async () => {
+    const { api, client } = setup();
+    api.versions = [
+      {
+        version: 1,
+        archivedAt: '2026-01-01T00:00:00.000Z',
+        lage: makeLage({ question: 'Earlier?' }),
+      },
+    ];
+    await expect(client.lage_versions(LAGE_ID)).resolves.toMatchObject({
+      versions: [{ version: 1, lage: { question: 'Earlier?' } }],
+    });
+    expect(api.calls.at(-1)).toMatchObject({
+      method: 'GET',
+      path: `/lagen/${LAGE_ID}/versions`,
+    });
+  });
+
   it('maps the level-1 operations to their paths and bodies', async () => {
     const { api, client } = setup();
     const trigger = { kind: 'manual' } as const;

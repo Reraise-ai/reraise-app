@@ -94,6 +94,10 @@ A player entry without a source is rejected. An empty player field is allowed. T
 shows a source pass, "N findings · M origins", on each placed card, on an actor's seat
 entries and on its moves, on each edge, and on the cards a decision uses (AC-28, AC-30).
 
+The board can be shown as of an earlier date. `lage_versions` returns archived Lage
+versions, oldest first, and the current state is not included. The slider shows that
+board and does not save the view (ADR-0049).
+
 | Slice | Done when |
 | --- | --- |
 | Decision card, protocol and outcome | A decision stores all 11 sections, reloads intact, rejects a `cardsUsed` id that does not exist, and entering the outcome creates a linked experience card. |

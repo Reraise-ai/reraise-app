@@ -11,6 +11,7 @@ import type {
   Card,
   ContextPackage,
   Lage,
+  LageVersion,
   Level1EngineInfo,
   Level1Prediction,
   Level1Trigger,
@@ -206,6 +207,8 @@ export interface MockApi {
   usage: UsageMetrics;
   /** Simulates another writer bumping the Lage version. */
   bumpLage(lageId: string): void;
+  /** Archived board states returned by GET /lagen/:id/versions. Empty means no slider. */
+  versions: LageVersion[];
   /** The next request whose "METHOD /path" matches (default: any) answers with this problem. */
   failNext(status: number, title?: string, match?: RegExp, detail?: string): void;
 }
@@ -254,6 +257,7 @@ export function createMockApi(initial: { lage?: Lage; cards?: Card[] } = {}): Mo
     transfers: new Map(),
     usage: makeUsage(),
     level1: { engines: [LEVEL1_LOCAL, LEVEL1_JEV], predicts: [], cloudSends: 0 },
+    versions: [],
     fetch: undefined as unknown as typeof fetch,
     addProposal(p) {
       const full = {
@@ -575,6 +579,11 @@ export function createMockApi(initial: { lage?: Lage; cards?: Card[] } = {}): Mo
       });
       cards.set(card.id!, card);
       return json(201, card);
+    }
+    if ((m = p.match(/^\/lagen\/([^/]+)\/versions$/)) && method === 'GET') {
+      const card = cards.get(m[1]!);
+      if (!card?.lage) return problem(404, 'Not found');
+      return json(200, { versions: api.versions });
     }
     if ((m = p.match(/^\/lagen\/([^/]+)$/))) {
       const lageId = m[1]!;

@@ -41,6 +41,7 @@ const body = {
 const HUMAN_ONLY: { id: string; method: string; url: string; payload?: unknown }[] = [
   { id: 'lage_create', method: 'POST', url: '/lagen', payload: body },
   { id: 'lage_save', method: 'PUT', url: `/lagen/${ULID}`, payload: body.lage },
+  { id: 'lage_versions', method: 'GET', url: `/lagen/${ULID}/versions` },
   { id: 'level1_get', method: 'GET', url: `/lagen/${ULID}/level1` },
   {
     id: 'level1_predict',

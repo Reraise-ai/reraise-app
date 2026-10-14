@@ -196,6 +196,7 @@ describe('MCP / Board API parity', () => {
       'disclosure_transfer_preview',
       'lage_create',
       'lage_save',
+      'lage_versions',
       'level1_escalate',
       'level1_get',
       'level1_predict',

@@ -99,6 +99,29 @@ describe('Lage list and creation', () => {
     await openLage(api);
     expect(screen.getByTestId('board-title').textContent).toBe('Hormuz reroute');
     expect(screen.getByTestId('board-version').textContent).toBe('1');
+    expect(screen.queryByTestId('time-slider')).toBeNull();
+  });
+
+  it('shows an archived board and does not save that view', async () => {
+    const api = createMockApi();
+    api.versions = [
+      {
+        version: 1,
+        archivedAt: '2026-01-01T00:00:00.000Z',
+        lage: makeLage({ question: 'Earlier question?', options: ['Hold'] }),
+      },
+    ];
+    await openLage(api);
+    expect(screen.getByTestId('board-question').textContent).toBe('Should the buyer reroute?');
+    const before = puts(api).length;
+    fireEvent.change(screen.getByTestId('time-slider'), { target: { value: '0' } });
+    expect(screen.getByTestId('board-question').textContent).toBe('Earlier question?');
+    expect(screen.getByTestId('time-banner').textContent).toContain('2026-01-01T00:00:00.000Z');
+    expect(within(screen.getByTestId('board-options')).getByText('Hold')).toBeTruthy();
+    expect(puts(api).length).toBe(before);
+    fireEvent.change(screen.getByTestId('time-slider'), { target: { value: '1' } });
+    expect(screen.getByTestId('board-question').textContent).toBe('Should the buyer reroute?');
+    expect(screen.queryByTestId('time-banner')).toBeNull();
   });
 
   it('creates a Lage (lage_create) and opens its board', async () => {

@@ -155,6 +155,42 @@ paths:
         '413':
           $ref: '#/components/responses/TooLarge'
 
+  /lagen/{lageId}/versions:
+    parameters:
+      - name: lageId
+        in: path
+        required: true
+        schema:
+          $ref: '../api.schema.json#/$defs/lageGetRequest/properties/lageId'
+    get:
+      operationId: lage_versions
+      summary: Archived board states of a Lage, oldest first
+      description: >-
+        Human-only. Each entry is a board state that was replaced, with the time it was
+        archived. The current state is not included. Card text stays the current file;
+        only the Lage (question, placements, edges) is the archived one (ADR-0006, ADR-0049).
+      tags: [human-only]
+      x-human-only: true
+      security:
+        - sessionToken: []
+      responses:
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: Archived board states, oldest first.
+          content:
+            application/json:
+              schema:
+                $ref: '../api.schema.json#/$defs/lageVersionList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/HumanOnly'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /lagen/{lageId}/level1:
     parameters:
       - name: lageId

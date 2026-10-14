@@ -109,6 +109,15 @@ describe('lage_create, lage_get, lage_save', () => {
     expectContract('lage_save', res, 200);
     expect(cardOf(res).lage?.version).toBe(2);
     expect((await f.adapter.versions(lageId)).map((v) => v.card.lage?.version)).toEqual([1]);
+    const archived = await f.human('GET', `/lagen/${lageId}/versions`);
+    expectContract('lage_versions', archived, 200);
+    expect(archived.json().versions).toEqual([
+      expect.objectContaining({
+        version: 1,
+        lage: expect.objectContaining({ version: 1, question: 'Synthetic question?' }),
+      }),
+    ]);
+    expectContract('lage_versions', await f.human('GET', `/lagen/${f.ids.evPublic}/versions`), 404);
     expectContract('lage_save', await f.human('PUT', `/lagen/${lageId}`, emptyLage(2)), 409);
     expectContract('lage_save', await f.human('PUT', `/lagen/${lageId}`, { question: 'x' }), 400);
     expectContract(

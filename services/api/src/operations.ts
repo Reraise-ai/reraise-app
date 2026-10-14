@@ -179,6 +179,19 @@ export const handlers: Readonly<Record<string, Handler>> = {
     return ok(await s.storage.read(lageId));
   },
 
+  async lage_versions(s, { principal, params }) {
+    const lage = await readLage(s, str(params['lageId']));
+    if (!lage) throw new HttpError(404, 'unknown Lage');
+    const visible = await visibleCard(s, principal, lage.id);
+    if (!visible) throw new HttpError(404, 'unknown Lage');
+    const archived = await s.storage.versions(lage.id);
+    // shortcut: card text is today's file; upgrade when a slice must show the archived card body.
+    const versions = archived.flatMap((v) =>
+      v.card.lage ? [{ version: v.version, archivedAt: v.archivedAt, lage: v.card.lage }] : [],
+    );
+    return ok({ versions });
+  },
+
   async cards_search(s, { principal, query }) {
     const target = targetOf(principal);
     const limit = (query['limit'] as number | undefined) ?? DEFAULT_SEARCH_LIMIT;

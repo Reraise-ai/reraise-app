@@ -1,0 +1,23 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/api.schema.json#/$defs/lageVersion",
+  "description": "An archived board state has no extra field for the live board.",
+  "expect": {
+    "keyword": "additionalProperties",
+    "instancePath": ""
+  },
+  "data": {
+    "version": 1,
+    "archivedAt": "2026-09-16T09:30:00Z",
+    "current": true,
+    "lage": {
+      "question": "Reroute laden tankers around the Cape for Q4?",
+      "options": [],
+      "cards": [],
+      "seats": [],
+      "edges": [],
+      "version": 1,
+      "updatedAt": "2026-09-01"
+    }
+  }
+}

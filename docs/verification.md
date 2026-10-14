@@ -48,6 +48,10 @@ It is updated as tests land.
 
 Not run that day: full lint, coverage, schema validation, the docs build, and the three-OS CI matrix.
 
+**Also checked 2026-10-14, Windows.** Time slider only. `pnpm exec vitest run services/api/src/contract.test.ts services/api/src/security.test.ts packages/mcp-server/src/tools.test.ts services/api/src/mcp.test.ts apps/board/src/App.test.tsx apps/board/src/api/client.test.ts` passed, 227 tests. The board shows an archived Lage and sends no save for that view (ADR-0049). Status stays in progress (passes locally) until CI runs this.
+
+Not run that day: full `pnpm test`, coverage, the Playwright e2e, axe, and the three-OS CI matrix.
+
 Status values:
 
 - **not started**: no test exists yet.

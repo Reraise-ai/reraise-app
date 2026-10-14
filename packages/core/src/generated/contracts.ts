@@ -424,6 +424,20 @@ export interface LageEdge {
   kind: EdgeKind;
   by: KnownAuthor;
 }
+/**
+ * One archived board state of a Lage. version is the archive number. archivedAt is when this state was replaced. The current state is not an entry (ADR-0006, ADR-0049).
+ */
+export interface LageVersion {
+  version: number;
+  archivedAt: string;
+  lage: Lage;
+}
+/**
+ * Archived board states of one Lage, oldest first. The current state is not included (ADR-0049).
+ */
+export interface LageVersionList {
+  versions: LageVersion[];
+}
 export interface CardGetRequest {
   cardId: CardId;
 }

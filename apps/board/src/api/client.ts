@@ -16,6 +16,7 @@ import type {
   DisclosureTransfer,
   Lage,
   LageCreateRequest,
+  LageVersionList,
   Level1PredictRequest,
   Level1Result,
   Level1State,
@@ -86,6 +87,8 @@ export interface BoardClient {
   decision_save(cardId: string, card: Card): Promise<Card>;
   lage_get(lageId: string): Promise<Card>;
   lage_save(lageId: string, lage: Lage): Promise<Card>;
+  /** Human-only (ADR-0049). Replaced board states, oldest first. The current state is absent. */
+  lage_versions(lageId: string): Promise<LageVersionList>;
   cards_search(params?: SearchParams): Promise<CardPage>;
   card_get(cardId: string): Promise<Card>;
   stance_get(cardId: string): Promise<Stance>;
@@ -172,6 +175,7 @@ export function createClient(options: ClientOptions): BoardClient {
     decision_save: (id, card) => call('PUT', `/decisions/${enc(id)}`, card),
     lage_get: (id) => call('GET', `/lagen/${enc(id)}`),
     lage_save: (id, lage) => call('PUT', `/lagen/${enc(id)}`, lage),
+    lage_versions: (id) => call('GET', `/lagen/${enc(id)}/versions`),
     cards_search: (p = {}) => call('GET', `/cards${query({ ...p })}`),
     card_get: (id) => call('GET', `/cards/${enc(id)}`),
     stance_get: (id) => call('GET', `/cards/${enc(id)}/stance`),
