@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright The Worldbuilder contributors
 //
-// Writes the static demo's start world from examples/hormuz. The board fetches this JSON.
+// Writes the static demo's start world from the example stores. The board fetches this JSON.
 // It does not read the markdown store.
 
 import { createHash } from 'node:crypto';
@@ -21,47 +21,56 @@ import { pathToFileURL, fileURLToPath } from 'node:url';
  *   close(): void,
  * }>} openStore
  */
+const DEMO_WORLDS = ['hormuz', 'gold', 'vitamin-d'];
+
 export async function writeDemoWorld(repoRoot, outFile, openStore) {
-  const store = await openStore(path.join(repoRoot, 'examples', 'hormuz'), { watch: false });
-  try {
-    const problems = store.diagnostics();
-    if (problems.length > 0) {
-      throw new Error(problems.map((p) => `${p.path}: ${p.message}`).join('\n'));
+  const cards = [];
+  /** @type {Record<string, { version: number, archivedAt: string, lage: unknown }[]>} */
+  const versions = {};
+  const worlds = [];
+  let storeInstanceId;
+  for (const name of DEMO_WORLDS) {
+    const store = await openStore(path.join(repoRoot, 'examples', name), { watch: false });
+    try {
+      const problems = store.diagnostics();
+      if (problems.length > 0) {
+        throw new Error(problems.map((p) => `${name}: ${p.path}: ${p.message}`).join('\n'));
+      }
+      const mine = [];
+      let cursor;
+      do {
+        const page = await store.list({ limit: 200, ...(cursor ? { cursor } : {}) });
+        mine.push(...page.items);
+        cursor = page.nextCursor;
+      } while (cursor);
+      if (mine.length === 0) throw new Error(`the ${name} example has no cards`);
+      for (const card of mine) {
+        if (card.type !== 'lage' || !card.id) continue;
+        const archived = await store.versions(card.id);
+        versions[card.id] = archived.flatMap((entry) =>
+          entry.card.lage
+            ? [{ version: entry.version, archivedAt: entry.archivedAt, lage: entry.card.lage }]
+            : [],
+        );
+      }
+      cards.push(...mine);
+      worlds.push(...(await store.listWorlds()));
+      storeInstanceId ??= store.storeInstanceId;
+    } finally {
+      store.close();
     }
-    const cards = [];
-    let cursor;
-    do {
-      const page = await store.list({ limit: 200, ...(cursor ? { cursor } : {}) });
-      cards.push(...page.items);
-      cursor = page.nextCursor;
-    } while (cursor);
-    if (cards.length === 0) throw new Error('the Hormuz example has no cards');
-    /** @type {Record<string, { version: number, archivedAt: string, lage: unknown }[]>} */
-    const versions = {};
-    for (const card of cards) {
-      if (card.type !== 'lage' || !card.id) continue;
-      const archived = await store.versions(card.id);
-      versions[card.id] = archived.flatMap((entry) =>
-        entry.card.lage
-          ? [{ version: entry.version, archivedAt: entry.archivedAt, lage: entry.card.lage }]
-          : [],
-      );
-    }
-    const worlds = await store.listWorlds();
-    const body = {
-      synthetic: true,
-      storeInstanceId: store.storeInstanceId,
-      worlds,
-      cards,
-      versions,
-    };
-    const stamp = createHash('sha256').update(JSON.stringify(body)).digest('hex');
-    await mkdir(path.dirname(outFile), { recursive: true });
-    await writeFile(outFile, JSON.stringify({ ...body, stamp }));
-    return { cards: cards.length, stamp };
-  } finally {
-    store.close();
   }
+  const body = {
+    synthetic: true,
+    storeInstanceId,
+    worlds,
+    cards,
+    versions,
+  };
+  const stamp = createHash('sha256').update(JSON.stringify(body)).digest('hex');
+  await mkdir(path.dirname(outFile), { recursive: true });
+  await writeFile(outFile, JSON.stringify({ ...body, stamp }));
+  return { cards: cards.length, stamp };
 }
 
 const here = path.dirname(fileURLToPath(import.meta.url));

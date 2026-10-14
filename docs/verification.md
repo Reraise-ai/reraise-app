@@ -52,6 +52,8 @@ Not run that day: full lint, coverage, schema validation, the docs build, and th
 
 Not run that day: full `pnpm test`, coverage, the Playwright e2e, axe, and the three-OS CI matrix.
 
+**Also checked 2026-10-14, Windows.** Gold market and vitamin D example worlds. `pnpm validate:schemas` passed (30 schemas, 143 examples). `node scripts/check-no-real-data.mjs` passed. `pnpm exec vitest run scripts/export-demo-world.test.mjs` passed: the demo JSON still contains the Hormuz Lage and now contains the gold-market world and the vitamin D theme with three questions, votes and a collector card.
+
 **Also checked 2026-10-14, Windows.** Static demo build. `pnpm format:check`, `pnpm lint`, `pnpm docs:build` and `pnpm test` passed (1627 tests, 6 skipped). `pnpm build:demo` wrote `apps/board/dist/demo`. Playwright `tests/demo-build.spec.ts` passed: `/board/` opens the Hormuz Lage with no Board API, a stance survives reload in that browser, and a second browser does not see it. The full `pnpm test:e2e` suite and the three-OS CI matrix were not run for this slice.
 
 **Also checked 2026-10-14, Windows.** What-if layer only. `pnpm test` passed, 1553 tests (6 skipped). `pnpm build` passed. `pnpm validate:schemas` passed (30 schemas, 77 valid and 189 invalid fixtures). `pnpm check:generated`, `pnpm check:spdx`, `pnpm check:board-tokens`, `pnpm check:licence-imports` and `pnpm lint:openapi` passed. Replacing the layer writes no card. Attaching it writes `scenario-attachments/<decisionId>.json` and leaves the decision card hash unchanged (ADR-0050). No browser pass. The Playwright e2e and the three-OS CI matrix were not run.

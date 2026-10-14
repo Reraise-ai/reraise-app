@@ -19,7 +19,7 @@ out.
 ## Demo build
 
 `pnpm build:demo` (from the repo root) writes `apps/board/dist/demo`. Serve that folder at
-`/board/`. The page loads the Hormuz example from `world.json` and keeps edits in
+`/board/`. The page loads the Hormuz, gold-market and vitamin D examples from `world.json` and keeps edits in
 `localStorage`. It does not call a Board API. Sign out drops those edits.
 
 ## What the screen does

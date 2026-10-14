@@ -26,6 +26,21 @@ describe('export-demo-world', () => {
       expect(lage?.type).toBe('lage');
       expect(lage?.title).toBe('Q4 tanker routing');
       expect(world.worlds.some((w) => w.name === 'Hormuz')).toBe(true);
+      expect(world.worlds.some((w) => w.name === 'Gold market')).toBe(true);
+      const theme = world.cards.find(
+        (card) => card.type === 'lage' && card.lage?.question === 'Vitamin D',
+      );
+      expect(theme?.lage?.questions?.map((q) => q.text)).toEqual([
+        'Two trials, two answers',
+        '20 or 60?',
+        'Instead of the vaccine?',
+      ]);
+      expect(theme?.lage?.questions?.every((q) => q.for.length > 0 && q.against.length > 0)).toBe(
+        true,
+      );
+      expect(theme?.lage?.collectorCardId).toMatch(/^[0-7][0-9A-HJKMNP-TV-Z]{25}$/);
+      const ids = world.cards.map((card) => card.id);
+      expect(new Set(ids).size).toBe(ids.length);
     } finally {
       await rm(dir, { recursive: true, force: true });
     }

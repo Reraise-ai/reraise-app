@@ -1,0 +1,12 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/world.schema.json",
+  "description": "Cards copied from the public board demonstration (Gold market).",
+  "data": {
+    "id": "01M4X4H7G000000000000004X1",
+    "name": "Gold market",
+    "description": "The Gold market field of the public board demonstration.",
+    "visibility": "private",
+    "release": "private"
+  }
+}

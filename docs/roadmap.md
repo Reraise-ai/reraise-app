@@ -38,7 +38,7 @@ Scope:
    the adapter interfaces `StorageAdapter`, `SourceConnector`, `ModelConnector` and
    `DisclosureGate`.
 4. Architecture documentation: arc42 and C4 diagrams.
-5. Example synthetic worlds (`hormuz`, `palma`) that the schemas validate.
+5. Example synthetic worlds (`hormuz`, `palma`, `gold`, `vitamin-d`) that the schemas validate.
 
 **Done when:** CI is green, the schemas validate the examples, the ADR log is complete and
 the docs build.
