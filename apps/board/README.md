@@ -16,6 +16,12 @@ Paste the session token that `worldbuilder serve` prints into the login form. It
 `sessionStorage` (gone when the tab closes) and sent as `X-Worldbuilder-Session`. A 401 signs you
 out.
 
+## Demo build
+
+`pnpm build:demo` (from the repo root) writes `apps/board/dist/demo`. Serve that folder at
+`/board/`. The page loads the Hormuz example from `world.json` and keeps edits in
+`localStorage`. It does not call a Board API. Sign out drops those edits.
+
 ## What the screen does
 
 - Lagen: list, open, create (`cards_search type=lage`, `lage_create`, `lage_get`).

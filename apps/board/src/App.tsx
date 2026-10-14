@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright The Worldbuilder contributors
 import { useEffect, useMemo, useState } from 'react';
-import { createClient } from './api/client.js';
+import { createClient, type BoardClient } from './api/client.js';
 import { clearSession, loadSession, saveSession, type Session } from './api/session.js';
 import { LageList } from './components/LageList.js';
 import { ProposalsInbox } from './components/ProposalsInbox.js';
@@ -18,12 +18,35 @@ interface Props {
   pollIntervalMs?: number;
   /** For tests: the wait before the local level-1 engine re-runs after an assumption change. */
   level1DebounceMs?: number;
+  /** Static demo: this client is the board. There is no Board API. */
+  client?: BoardClient;
+  onSignOut?: () => void;
 }
 
-export function App({ fetchImpl, storage, pollIntervalMs, level1DebounceMs }: Props = {}) {
-  const [session, setSession] = useState<Session | null>(() => loadSession(storage));
+export function App({
+  fetchImpl,
+  storage,
+  pollIntervalMs,
+  level1DebounceMs,
+  client,
+  onSignOut,
+}: Props = {}) {
+  const [session, setSession] = useState<Session | null>(() =>
+    client ? null : loadSession(storage),
+  );
+  if (client) {
+    return (
+      <Signed
+        client={client}
+        demo
+        pollIntervalMs={pollIntervalMs}
+        level1DebounceMs={level1DebounceMs}
+        onSignOut={() => onSignOut?.()}
+      />
+    );
+  }
   return session ? (
-    <Signed
+    <SignedSession
       session={session}
       fetchImpl={fetchImpl}
       pollIntervalMs={pollIntervalMs}
@@ -44,7 +67,7 @@ export function App({ fetchImpl, storage, pollIntervalMs, level1DebounceMs }: Pr
   );
 }
 
-function Signed(props: {
+function SignedSession(props: {
   session: Session;
   fetchImpl: typeof fetch | undefined;
   pollIntervalMs: number | undefined;
@@ -62,6 +85,24 @@ function Signed(props: {
       }),
     [session, fetchImpl, onSignOut],
   );
+  return (
+    <Signed
+      client={client}
+      pollIntervalMs={props.pollIntervalMs}
+      level1DebounceMs={props.level1DebounceMs}
+      onSignOut={onSignOut}
+    />
+  );
+}
+
+function Signed(props: {
+  client: BoardClient;
+  demo?: boolean;
+  pollIntervalMs: number | undefined;
+  level1DebounceMs: number | undefined;
+  onSignOut(): void;
+}) {
+  const { client, onSignOut } = props;
   const [worldId, setWorldId] = useState<string | undefined>();
   const [openLage, setOpenLage] = useState<string | null>(null);
   const [view, setView] = useState<'boards' | 'usage'>('boards');
@@ -77,6 +118,11 @@ function Signed(props: {
     <div className="wb-shell">
       <header className="wb-header">
         <h1>The Worldbuilder</h1>
+        {props.demo && (
+          <p className="wb-muted" data-testid="demo-banner">
+            Demo. Changes stay in this browser.
+          </p>
+        )}
         <nav aria-label="Views" className="wb-row">
           <button
             type="button"

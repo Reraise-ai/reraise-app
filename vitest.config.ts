@@ -51,6 +51,9 @@ export default defineConfig({
             '@worldbuilder/core/theme': fileURLToPath(
               new URL('./packages/core/src/theme.ts', import.meta.url),
             ),
+            '@worldbuilder/core/ids': fileURLToPath(
+              new URL('./packages/core/src/ids.ts', import.meta.url),
+            ),
             '@worldbuilder/level1-engines/format': fileURLToPath(
               new URL('./packages/level1-engines/src/format.ts', import.meta.url),
             ),

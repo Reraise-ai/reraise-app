@@ -14,6 +14,7 @@
       "@worldbuilder/core/independence": ["../../packages/core/src/independence.ts"],
       "@worldbuilder/core/source-profile": ["../../packages/core/src/source-profile.ts"],
       "@worldbuilder/core/theme": ["../../packages/core/src/theme.ts"],
+      "@worldbuilder/core/ids": ["../../packages/core/src/ids.ts"],
       "@worldbuilder/level1-engines/format": ["../../packages/level1-engines/src/format.ts"]
     }
   },

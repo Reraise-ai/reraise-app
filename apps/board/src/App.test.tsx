@@ -4,6 +4,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { App } from './App.js';
+import { createMemoryClient, type DemoSeed } from './demo/memoryClient.js';
 import { saveSession } from './api/session.js';
 import {
   BASE,
@@ -963,6 +964,46 @@ describe('theme Lage (e-52, e-58)', () => {
     await userEvent.click(screen.getByTestId('theme-collector'));
     await waitFor(() =>
       expect(screen.getByTestId('inspector-title').textContent).toBe('Strait traffic report'),
+    );
+  });
+});
+
+describe('demo client', () => {
+  it('skips login and lists the start world', async () => {
+    const seed: DemoSeed = {
+      synthetic: true,
+      stamp: 'demo-test',
+      storeInstanceId: '00000000-0000-4000-8000-000000000001',
+      worlds: [{ id: '01JA0000000000000000000W01', name: 'Hormuz' }],
+      cards: [
+        {
+          id: '01JA0000000000000000000L01',
+          externalId: '01JA0000000000000000000L01',
+          uri: 'wb:00000000-0000-4000-8000-000000000001/01JA0000000000000000000L01',
+          format: 2,
+          type: 'lage',
+          title: 'Q4 tanker routing',
+          author: 'human',
+          contentHash: `sha256:${'ab'.repeat(32)}`,
+          visibility: 'public',
+          lage: {
+            question: 'Reroute?',
+            options: [],
+            cards: [],
+            seats: [],
+            edges: [],
+            version: 1,
+            updatedAt: '2026-09-16T09:30:00.000Z',
+          },
+        },
+      ],
+      versions: {},
+    };
+    render(<App client={createMemoryClient(seed)} pollIntervalMs={30} />);
+    expect(screen.getByTestId('demo-banner').textContent).toMatch(/this browser/);
+    expect(screen.queryByTestId('login-form')).toBeNull();
+    expect((await screen.findByTestId('lage-item-01JA0000000000000000000L01')).textContent).toMatch(
+      /Q4 tanker routing/,
     );
   });
 });
