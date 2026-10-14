@@ -56,9 +56,16 @@ export function createProposalPoller(options: PollerOptions): Poller {
   let generation = 0;
   let failures = 0;
   let inFlight: Promise<void> | undefined;
+  // A notice that arrives while a poll is running must be fetched too. The interval is paused
+  // then, so nothing else would come back for it.
+  let followUp = false;
 
   function pollOnce(): Promise<void> {
-    if (inFlight) return inFlight;
+    if (inFlight) {
+      followUp = true;
+      return inFlight;
+    }
+    followUp = false;
     const mine = generation;
     const current = (): boolean => mine === generation;
     const run = (async () => {
@@ -85,7 +92,11 @@ export function createProposalPoller(options: PollerOptions): Poller {
       }
     })();
     inFlight = run;
-    return run;
+    return run.finally(() => {
+      if (!current() || !followUp) return;
+      followUp = false;
+      return pollOnce();
+    });
   }
 
   function schedule(mine: number): void {
