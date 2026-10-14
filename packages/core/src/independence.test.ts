@@ -3,13 +3,14 @@
 
 import { describe, expect, it } from 'vitest';
 import type { Card, EdgeKind } from './generated/contracts.js';
-import { independenceOf, originRoots } from './independence.js';
+import { independenceOf, originRoots, sourceMark } from './independence.js';
 
 function card(
   id: string,
   extra: {
     source?: string;
     contentHash?: string;
+    body?: string;
     edges?: { target: string; kind: EdgeKind }[];
   } = {},
 ): Card {
@@ -290,5 +291,46 @@ describe('originRoots (ADR-0009)', () => {
     expect(roots.S).toEqual({ originRoot: 'https://example.org/s', originKnown: true });
     expect(roots.A).toEqual(roots.B);
     expect(independenceOf([...originRoots(cards).values()]).origins).toBe(2);
+  });
+});
+
+describe('sourceMark (Entscheidung 125)', () => {
+  const statement = 'Transits fell by a third.';
+
+  it('marks one known source and leaves a card with no source unmarked', () => {
+    const sourced = card('A', { source: 'https://example.org/a', body: statement });
+    const bare = card('B', { body: 'Something else.' });
+    expect(sourceMark([sourced, bare], 'A')).toBe('one-source');
+    expect(sourceMark([sourced, bare], 'B')).toBeUndefined();
+  });
+
+  it('marks the same statement from two sources that do not repeat each other', () => {
+    const cards = [
+      card('A', { source: 'https://example.org/a', body: statement }),
+      card('B', { source: 'https://example.org/b', body: statement }),
+    ];
+    expect(sourceMark(cards, 'A')).toBe('journalistic-standard');
+    expect(sourceMark(cards, 'B')).toBe('journalistic-standard');
+  });
+
+  it('does not count a card that only repeats another source', () => {
+    const cards = [
+      card('A', { source: 'https://example.org/a', body: statement }),
+      card('B', {
+        source: 'https://example.org/b',
+        body: statement,
+        edges: [{ target: 'A', kind: 'cites' }],
+      }),
+    ];
+    expect(sourceMark(cards, 'A')).toBe('one-source');
+    expect(sourceMark(cards, 'B')).toBe('one-source');
+  });
+
+  it('keeps identical text as one copy for the origin count', () => {
+    const copies = [
+      card('A', { contentHash: 'sha256:aa', source: 'https://example.org/a' }),
+      card('B', { contentHash: 'sha256:aa', source: 'https://example.org/b' }),
+    ];
+    expect(originRoots(copies).get('A')).toEqual(originRoots(copies).get('B'));
   });
 });

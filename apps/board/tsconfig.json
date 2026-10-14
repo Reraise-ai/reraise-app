@@ -11,6 +11,7 @@
     "paths": {
       "@worldbuilder/core": ["../../packages/core/src/generated/contracts.ts"],
       "@worldbuilder/core/outcome": ["../../packages/core/src/outcome.ts"],
+      "@worldbuilder/core/independence": ["../../packages/core/src/independence.ts"],
       "@worldbuilder/level1-engines/format": ["../../packages/level1-engines/src/format.ts"]
     }
   },

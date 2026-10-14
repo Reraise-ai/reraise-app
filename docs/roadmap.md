@@ -80,6 +80,9 @@ card. Source hit counts stay in the source-profile slice.
 The rules panel lists each rule as fired or not fired, with the rule's own text and the
 triggering cards, and shows no percentage. Creating and editing rule cards stays open (AC-10).
 
+A card with one known origin is marked on the board. The same statement from two origins
+that do not repeat each other is marked as meeting the journalistic standard (Entscheidung 125).
+
 | Slice | Done when |
 | --- | --- |
 | Decision card, protocol and outcome | A decision stores all 11 sections, reloads intact, rejects a `cardsUsed` id that does not exist, and entering the outcome creates a linked experience card. |

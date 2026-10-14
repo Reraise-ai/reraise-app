@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- A card with one known origin is marked "One source". The same statement from two origins that do not repeat each other is marked "Journalistic standard". A card that only cites another source does not count as a second source (Entscheidung 125).
 - The open board lists each rule as fired or not fired, with that rule's own text and the cards that triggered it. It shows no percentage (AC-03).
 - The open board records a decision (eleven sections, cards on the board) and its outcome. A known outcome shows the experience card the service stored.
 - Recording a known outcome stores one private experience card. Its edges are `based_on` the decision and each id in `cardsUsed`. An outcome of `open` stores none. A later change of the outcome text does not store a second card. A restart of `worldbuilder serve` on the Hormuz store still has the decision's eleven sections and that experience card. An unknown `cardsUsed` id is rejected (AC-09, AC-11, AC-13). Source statistics are unchanged.

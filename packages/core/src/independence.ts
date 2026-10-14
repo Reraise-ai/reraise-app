@@ -62,11 +62,22 @@ function sinkFirstComponents(
   return components;
 }
 
+export interface OriginRootOptions {
+  /**
+   * Identical `contentHash` is one copy (ADR-0009). Set false when the same statement from
+   * two sources must stay two cards until a source URI or a cite chain joins them (e-54).
+   */
+  sameTextIsOneCopy?: boolean;
+}
+
 /**
  * Origin root of every card in `cards`. The caller passes the cards in scope,
  * for example the cards a disclosure gate has already cleared.
  */
-export function originRoots(cards: readonly Card[]): Map<string, OriginRoot> {
+export function originRoots(
+  cards: readonly Card[],
+  options: OriginRootOptions = {},
+): Map<string, OriginRoot> {
   const byId = new Map<string, Card>();
   for (const card of cards) byId.set(card.id, card);
 
@@ -102,7 +113,7 @@ export function originRoots(cards: readonly Card[]): Map<string, OriginRoot> {
   };
 
   for (const id of byId.keys()) find(id);
-  uniteBy((card) => card.contentHash);
+  if (options.sameTextIsOneCopy !== false) uniteBy((card) => card.contentHash);
   uniteBy((card) => card.source);
 
   const members = new Map<string, Card[]>();
@@ -158,6 +169,38 @@ export function originRoots(cards: readonly Card[]): Map<string, OriginRoot> {
     for (const card of group) assigned.set(card.id, root);
   }
   return assigned;
+}
+
+export type SourceMark = 'one-source' | 'journalistic-standard';
+
+function statementOf(card: Card): string | undefined {
+  const text = card.body?.trim();
+  return text ? text : undefined;
+}
+
+/**
+ * How a card is marked for its sources (Entscheidung 125). One known origin is `one-source`.
+ * The same statement from two known origins that do not merely repeat each other is
+ * `journalistic-standard`. A card with no known origin is unmarked.
+ * shortcut: the same statement is the same trimmed body; a cites or based_on edge is a repeat.
+ */
+export function sourceMark(cards: readonly Card[], cardId: string): SourceMark | undefined {
+  const card = cards.find((item) => item.id === cardId);
+  if (!card) return undefined;
+  const roots = originRoots(cards, { sameTextIsOneCopy: false });
+  const mine = roots.get(cardId);
+  if (!mine?.originKnown) return undefined;
+  const statement = statementOf(card);
+  if (statement) {
+    const known = new Set<string>();
+    for (const other of cards) {
+      if (statementOf(other) !== statement) continue;
+      const root = roots.get(other.id);
+      if (root?.originKnown) known.add(root.originRoot);
+    }
+    if (known.size >= 2) return 'journalistic-standard';
+  }
+  return 'one-source';
 }
 
 /** 'N findings · M origins' over derived roots. M is the number of distinct roots. */
