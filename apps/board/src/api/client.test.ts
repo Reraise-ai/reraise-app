@@ -238,4 +238,31 @@ describe('board client', () => {
     expect(err.status).toBe(502);
     expect(err.problem).toBeUndefined();
   });
+
+  it('posts model_ask on the Lage', async () => {
+    const seen: { method?: string; path?: string; body?: unknown; token?: string } = {};
+    const client = createClient({
+      baseUrl: BASE,
+      token: TOKEN,
+      fetch: (async (input: RequestInfo | URL, init?: RequestInit) => {
+        seen.method = init?.method;
+        seen.path = String(input).replace(BASE, '');
+        seen.body = init?.body ? JSON.parse(String(init.body)) : undefined;
+        seen.token = new Headers(init?.headers).get('x-worldbuilder-session') ?? '';
+        return new Response(JSON.stringify({ status: 'nothing_cleared', engine: 'ollama' }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      }) as typeof fetch,
+    });
+    await expect(
+      client.model_ask(LAGE_ID, { engine: 'ollama', question: 'What is claimed?' }),
+    ).resolves.toEqual({ status: 'nothing_cleared', engine: 'ollama' });
+    expect(seen).toEqual({
+      method: 'POST',
+      path: `/lagen/${LAGE_ID}/model`,
+      body: { engine: 'ollama', question: 'What is claimed?' },
+      token: TOKEN,
+    });
+  });
 });

@@ -26,6 +26,7 @@ import { targetOf, type Principal } from './auth.js';
 import { assertAgentProposal } from './agent-checks.js';
 import { knowledgeHandlers } from './knowledge-ops.js';
 import { level1Handlers } from './level1-ops.js';
+import { modelHandlers } from './model-ops.js';
 import { scenarioHandlers } from './scenario-ops.js';
 import { buildContextPackage } from './context.js';
 import { readLage } from './lage.js';
@@ -128,6 +129,7 @@ export const handlers: Readonly<Record<string, Handler>> = {
   ...knowledgeHandlers,
   ...level1Handlers,
   ...scenarioHandlers,
+  ...modelHandlers,
 
   async world_list(s, { principal }) {
     const worlds = await s.storage.listWorlds();

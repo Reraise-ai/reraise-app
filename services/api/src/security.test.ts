@@ -58,6 +58,12 @@ const HUMAN_ONLY: { id: string; method: string; url: string; payload?: unknown }
   { id: 'scenario_attachment_get', method: 'GET', url: `/decisions/${ULID}/scenario` },
   { id: 'level1_get', method: 'GET', url: `/lagen/${ULID}/level1` },
   {
+    id: 'model_ask',
+    method: 'POST',
+    url: `/lagen/${ULID}/model`,
+    payload: { engine: 'ollama', question: 'What is claimed?' },
+  },
+  {
     id: 'level1_predict',
     method: 'POST',
     url: `/lagen/${ULID}/level1`,

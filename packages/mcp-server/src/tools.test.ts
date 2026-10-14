@@ -201,6 +201,7 @@ describe('MCP / Board API parity', () => {
       'level1_escalate',
       'level1_get',
       'level1_predict',
+      'model_ask',
       'proposal_accept',
       'proposal_reject',
       'rule_create',

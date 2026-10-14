@@ -34,6 +34,8 @@ export interface ServiceOptions {
   readonly syntheticStores?: readonly string[];
   /** Level 1 test seams: an injected `fetch` for cloud engines, a replacement local engine. */
   readonly level1?: AppOptions['level1'];
+  /** Model connectors. Tests inject `fetch` so a call never leaves the process. */
+  readonly models?: AppOptions['models'];
   /** Write the shipped default rules if none exist (the CLI does). */
   readonly seedDefaultGateRules?: boolean;
   readonly logger?: boolean | object;
@@ -128,6 +130,7 @@ async function assemble(
     ...(options.rateLimit !== undefined ? { rateLimit: options.rateLimit } : {}),
     ...(options.syntheticStores ? { syntheticStores: options.syntheticStores } : {}),
     ...(options.level1 ? { level1: options.level1 } : {}),
+    ...(options.models ? { models: options.models } : {}),
     ...(options.logger !== undefined ? { logger: options.logger } : {}),
     ...(options.now ? { now: options.now } : {}),
   });

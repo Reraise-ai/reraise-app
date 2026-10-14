@@ -20,6 +20,8 @@ import type {
   Level1PredictRequest,
   Level1Result,
   Level1State,
+  ModelAskRequest,
+  ModelAskResult,
   Problem,
   Proposal,
   RuleDraft,
@@ -108,6 +110,8 @@ export interface BoardClient {
   level1_predict(lageId: string, body: Level1PredictRequest): Promise<Level1Result>;
   /** Human-only: open a level-2 board analysis for one player of the latest estimate. */
   level1_escalate(lageId: string, playerCardId: string): Promise<Card>;
+  /** Human-only. Ask one model. A cloud engine returns a transfer until the human confirms it. */
+  model_ask(lageId: string, body: ModelAskRequest): Promise<ModelAskResult>;
   /** Human-only (ADR-0041). Without `week` the rolling 7 days. */
   usage_metrics_get(week?: string): Promise<UsageMetrics>;
   /** Which of the user's rules fire on a Lage. No percentage (ADR-0013). */
@@ -210,6 +214,7 @@ export function createClient(options: ClientOptions): BoardClient {
     level1_predict: (id, body) => call('POST', `/lagen/${enc(id)}/level1`, body),
     level1_escalate: (id, playerCardId) =>
       call('POST', `/lagen/${enc(id)}/level1/escalate`, { playerCardId }),
+    model_ask: (id, body) => call('POST', `/lagen/${enc(id)}/model`, body),
     usage_metrics_get: (week) => call('GET', `/metrics/usage${query({ week })}`),
     rules_evaluate: (body) => call('POST', '/rules/evaluate', body),
     rule_create: (body) => call('POST', '/rules', body),

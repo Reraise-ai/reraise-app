@@ -9,6 +9,7 @@ import type { Card, DisclosureTransfer, Proposal, RuleEvaluation } from '@worldb
 import { StorageError, type StorageErrorCode } from '@worldbuilder/core';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { loadOperations } from './contract.js';
+import { proveModelContract } from './model.contract.js';
 import { proveScenarioContract } from './scenario.contract.js';
 import { cardOf, covered, expectContract, makeFixture, type Fixture } from './test-helpers.js';
 
@@ -38,8 +39,14 @@ const sections = (cardsUsed: string[]) => ({
 
 let clock = Date.parse('2026-02-01T12:00:00Z');
 let f: Fixture;
+const modelFetch = vi.fn(
+  async () =>
+    new Response(JSON.stringify({ message: { content: 'Synthetic local answer.' } }), {
+      status: 200,
+    }),
+) as typeof fetch;
 beforeAll(async () => {
-  f = await makeFixture({ now: () => new Date(clock) });
+  f = await makeFixture({ now: () => new Date(clock), models: { fetch: modelFetch } });
 });
 afterAll(async () => {
   await f.close();
@@ -936,6 +943,10 @@ describe('source_profile_get', () => {
 describe('what-if layer (ADR-0050)', () => {
   it('changes no card and attaches the layer to a decision', () =>
     proveScenarioContract(f, sections));
+});
+
+describe('model_ask', () => {
+  it('stores the Ollama answer as a pending comment', () => proveModelContract(f));
 });
 
 describe('events_stream (ADR-0032)', () => {

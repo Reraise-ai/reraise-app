@@ -46,71 +46,9 @@ export type KnownAuthor = string;
  */
 export type Ulid = string;
 /**
- * Epistemic kind of a card (ADR-0007). believed is never a layer; it is a private stance (ADR-0008).
+ * Opaque single-use token, base64url of at least 16 random bytes (128 bits).
  */
-export type Layer = 'evidenced' | 'said' | 'experience';
-/**
- * Opaque pagination cursor.
- */
-export type Cursor = string;
-/**
- * Canonical card (ADR-0023). Every store maps to this model; card format v2 rules (layer, author, provenance, player fields, Lage, decision sections) apply to format-2 cards (ADR-0007, ADR-0009). Stance data is never part of a card (ADR-0008).
- */
-export type Card = CardContent &
-  Required<
-    Pick<
-      CardContent,
-      'id' | 'externalId' | 'uri' | 'format' | 'type' | 'title' | 'author' | 'contentHash'
-    >
-  >;
-/**
- * Reference to a card in its home store: wb:<storeInstanceId>/<externalId>, in canonical form only: the external id NFC-normalised, UTF-8, every unreserved character literal and every other byte %XX with upper-case hex (RFC 3986). A URI that differs from buildUri(storeInstanceId, externalId) is not a card URI (for example %2D for '-'). storeInstanceId is a random UUID, never a hostname, path or user name (ADR-0005, ADR-0023).
- */
-export type WbUri = string;
-/**
- * Store collection a card lives in (ADR-0023).
- */
-export type Collection = 'actors' | 'evidence' | 'decisions';
-export type IsoDate = string;
-/**
- * A well-formed BCP 47 language tag (RFC 5646), for example de, en or es-AR. Grandfathered irregular tags (such as i-enochian) are not accepted. Case follows the usual convention but is not enforced.
- */
-export type LanguageTag = string;
-/**
- * A pointer to the same thing in another system (ADR-0048). `system` is a lower-case slug. At least one of `id` and `url` is required.
- */
-export type ExternalRef = ExternalRef1 & ExternalRef2;
-export type ExternalRef1 =
-  | {
-      id: unknown;
-    }
-  | {
-      url: unknown;
-    };
-/**
- * sha256:<lower-case hex> over the RFC 8785 (JCS) serialisation of the hashed card content (ADR-0034).
- */
-export type ContentHash = string;
-export type CardStatus = 'draft' | 'checked' | 'released';
-/**
- * Sensitivity class; input to disclosure-gate rules (ADR-0023).
- */
-export type CardClass = 'A' | 'B' | 'C';
-/**
- * human, agent:<name>, or unknown. unknown is valid only on legacy format-1 cards and on edges read from legacy links (ADR-0009, ADR-0023).
- */
-export type Author = string;
-/**
- * A card id or an absolute URI (for example a wb: URI or a web address). Used where provenance must be machine-resolvable, e.g. player fields (ADR-0009).
- */
-export type SourceRef = Ulid;
-/**
- * Player-field entries; each needs a source (ADR-0009).
- */
-export type PlayerField = PlayerEntry[];
-export type RuleCondition =
-  CardOnLageCondition | CardFieldCondition | TagCondition | EdgeCondition | StanceCondition;
-export type StancePosition = 'believed' | 'rejected' | 'undecided';
+export type ConfirmationToken = string;
 /**
  * An agent move (ADR-0011). `proposal_create` is the only write path for agents; the server sets `id`, `author` (from the connection's agent identity), `status` and `createdAt`. Accept and reject are human-only. Pending or rejected proposals never count anywhere.
  */
@@ -168,6 +106,58 @@ export type CardDraft = CardContent &
     author?: never;
   };
 /**
+ * Reference to a card in its home store: wb:<storeInstanceId>/<externalId>, in canonical form only: the external id NFC-normalised, UTF-8, every unreserved character literal and every other byte %XX with upper-case hex (RFC 3986). A URI that differs from buildUri(storeInstanceId, externalId) is not a card URI (for example %2D for '-'). storeInstanceId is a random UUID, never a hostname, path or user name (ADR-0005, ADR-0023).
+ */
+export type WbUri = string;
+/**
+ * Store collection a card lives in (ADR-0023).
+ */
+export type Collection = 'actors' | 'evidence' | 'decisions';
+export type IsoDate = string;
+/**
+ * A well-formed BCP 47 language tag (RFC 5646), for example de, en or es-AR. Grandfathered irregular tags (such as i-enochian) are not accepted. Case follows the usual convention but is not enforced.
+ */
+export type LanguageTag = string;
+/**
+ * A pointer to the same thing in another system (ADR-0048). `system` is a lower-case slug. At least one of `id` and `url` is required.
+ */
+export type ExternalRef = ExternalRef1 & ExternalRef2;
+export type ExternalRef1 =
+  | {
+      id: unknown;
+    }
+  | {
+      url: unknown;
+    };
+/**
+ * sha256:<lower-case hex> over the RFC 8785 (JCS) serialisation of the hashed card content (ADR-0034).
+ */
+export type ContentHash = string;
+export type CardStatus = 'draft' | 'checked' | 'released';
+/**
+ * Sensitivity class; input to disclosure-gate rules (ADR-0023).
+ */
+export type CardClass = 'A' | 'B' | 'C';
+/**
+ * Epistemic kind of a card (ADR-0007). believed is never a layer; it is a private stance (ADR-0008).
+ */
+export type Layer = 'evidenced' | 'said' | 'experience';
+/**
+ * human, agent:<name>, or unknown. unknown is valid only on legacy format-1 cards and on edges read from legacy links (ADR-0009, ADR-0023).
+ */
+export type Author = string;
+/**
+ * A card id or an absolute URI (for example a wb: URI or a web address). Used where provenance must be machine-resolvable, e.g. player fields (ADR-0009).
+ */
+export type SourceRef = Ulid;
+/**
+ * Player-field entries; each needs a source (ADR-0009).
+ */
+export type PlayerField = PlayerEntry[];
+export type RuleCondition =
+  CardOnLageCondition | CardFieldCondition | TagCondition | EdgeCondition | StanceCondition;
+export type StancePosition = 'believed' | 'rejected' | 'undecided';
+/**
  * A known outcome: non-empty text that is not `open`.
  */
 export type OutcomeText = Text;
@@ -181,6 +171,24 @@ export type ProposalKind =
  * The local human user. Human-only operations record this value.
  */
 export type HumanAuthor = 'human';
+/**
+ * sha256:<lower-case hex> over the RFC 8785 (JCS) serialisation of the preview envelope (ADR-0031, ADR-0034).
+ */
+export type PayloadHash = string;
+/**
+ * Canonical card (ADR-0023). Every store maps to this model; card format v2 rules (layer, author, provenance, player fields, Lage, decision sections) apply to format-2 cards (ADR-0007, ADR-0009). Stance data is never part of a card (ADR-0008).
+ */
+export type Card = CardContent &
+  Required<
+    Pick<
+      CardContent,
+      'id' | 'externalId' | 'uri' | 'format' | 'type' | 'title' | 'author' | 'contentHash'
+    >
+  >;
+/**
+ * Opaque pagination cursor.
+ */
+export type Cursor = string;
 /**
  * Body of the human-only decision create operation: a decision card without identity or author (the store assigns the id; the author is the human).
  */
@@ -196,10 +204,6 @@ export type IsoWeek = string;
  * Engine id, e.g. local-rules, a local model, or an external decision service. Shown as '<engine> estimates ...' and used as the proposal author agent:<engine>.
  */
 export type Level1EngineId = string;
-/**
- * Opaque single-use token, base64url of at least 16 random bytes (128 bits).
- */
-export type ConfirmationToken = string;
 /**
  * Answer of level1_predict. `predicted`: the engine ran and `prediction` is the latest for the Lage (an attributed estimate, never a verdict, not a card; ADR-0035, ADR-0036). `confirmation_required`: a cloud engine; `transfer` is the previewed envelope the human must confirm, nothing was sent. `no_players`: no actor card is on the Lage (or none is cleared for the engine), so there is nothing to predict. `superseded`: the board changed while the engine ran, or a later call started; the answer was dropped and nothing is stored (latest wins). `no_players` and `superseded` carry neither a prediction nor a transfer.
  */
@@ -225,10 +229,6 @@ export type Level1Result1 =
  * @minItems 2
  */
 export type Level1MoveOptions = Text[];
-/**
- * sha256:<lower-case hex> over the RFC 8785 (JCS) serialisation of the preview envelope (ADR-0031, ADR-0034).
- */
-export type PayloadHash = string;
 /**
  * A lower-case RFC 9562 UUID.
  */
@@ -486,27 +486,68 @@ export interface ScenarioAttachment {
    */
   assumptions: ScenarioAssumption[];
 }
-export interface CardGetRequest {
-  cardId: CardId;
-}
-export interface CardsSearchRequest {
-  worldId?: WorldId;
-  text?: string;
-  type?: string;
-  layer?: Layer;
-  limit?: number;
-  cursor?: Cursor;
+/**
+ * Body of the human-only model_ask. `engine` is `ollama` (on this device), `cloud-chat` or `decision-stub`. A cloud engine needs the transfer flow: the first call (without `transferId`) answers `confirmation_required` with the previewed envelope and sends nothing; after `disclosure_confirm` the call is repeated with the `transferId` and the single-use `confirmationToken`.
+ */
+export interface ModelAskRequest {
+  engine: 'ollama' | 'cloud-chat' | 'decision-stub';
+  question: Text;
+  transferId?: Ulid;
+  confirmationToken?: ConfirmationToken;
 }
 /**
- * Gate-cleared cards for the caller's target; denied cards are omitted.
+ * Answer of model_ask. `proposed`: the model answered and `proposal` is a pending comment whose text is that answer. Nothing is a card until a human accepts it (ADR-0011). `confirmation_required`: a cloud model; `transfer` is the preview and nothing was sent (ADR-0031). `nothing_cleared`: the gate cleared no card on this Lage for that cloud model. `proposed` carries no transfer. `confirmation_required` carries no proposal. `nothing_cleared` carries neither.
  */
-export interface CardPage {
-  cards: Card[];
-  nextCursor?: Cursor;
+export interface ModelAskResult {
+  status: 'proposed' | 'confirmation_required' | 'nothing_cleared';
+  engine: 'ollama' | 'cloud-chat' | 'decision-stub';
+  proposal?: Proposal;
+  transfer?: DisclosureTransfer;
+}
+/**
+ * Place an existing card on a Lage.
+ */
+export interface PlaceCardPayload {
+  lageId: CardId;
+  cardId: CardId;
+  x: number;
+  y: number;
+}
+/**
+ * Move a card that is already on a Lage.
+ */
+export interface MoveCardPayload {
+  lageId: CardId;
+  cardId: CardId;
+  x: number;
+  y: number;
+}
+/**
+ * Draw an edge: on a Lage if `lageId` is given, otherwise as a card edge on `from`. `by` becomes the proposal author on accept.
+ */
+export interface AddEdgePayload {
+  lageId?: CardId;
+  from: CardId;
+  to: CardId;
+  kind: EdgeKind;
+}
+/**
+ * Create a new card (for example a reference card for a finding, ADR-0014), optionally placed on a Lage.
+ */
+export interface CreateCardPayload {
   /**
-   * Cards the gate withheld for the caller's target, by id and reason (ADR-0031).
+   * The card to create. An agent cannot release it for sharing: `release` is private or absent, and only the human changes it (ADR-0036).
    */
-  denied?: DeniedCard[];
+  card: CardDraft & {
+    release?: 'private';
+    /**
+     * An agent cannot opt a card in to the training export; only the human sets training (ADR-0017, ADR-0039).
+     */
+    training?: false;
+  };
+  lageId?: CardId;
+  x?: number;
+  y?: number;
 }
 /**
  * All card fields with the format v2 rules. Shared by Card (identity required) and CardDraft (identity forbidden).
@@ -715,6 +756,83 @@ export interface StanceCondition {
   card: CardId;
   position: StancePosition;
 }
+export interface CommentPayload {
+  text: Text;
+  cardId?: CardId;
+  lageId?: CardId;
+}
+/**
+ * Propose the outcome of a decision card (ADR-0039). On accept the service patches only sections.outcome, and only if the card still has expectedContentHash; never release or other metadata.
+ */
+export interface RecordOutcomePayload {
+  decisionId: CardId;
+  outcome: OutcomeText;
+  expectedContentHash: ContentHash;
+}
+/**
+ * A previewed cloud_model transfer awaiting the user's confirmation (ADR-0012, ADR-0031). The record lives in memory on the service, expires 5 minutes after the preview, and is void after a restart. `cardIds` lists the ids of the objects in the envelope; `payloadHash` must be echoed by the confirmation.
+ */
+export interface DisclosureTransfer {
+  transferId: Ulid;
+  purpose: 'context_package' | 'level1' | 'export';
+  /**
+   * @minItems 1
+   */
+  cardIds: CardId[];
+  payloadHash: PayloadHash;
+  preview: DisclosurePreviewEnvelope;
+  createdAt: DateTime;
+  expiresAt: DateTime;
+  /**
+   * Who will send: the board session (token flow) or a registered MCP connection (released to that connection only).
+   */
+  requestedBy: 'board' | 'mcp_connection';
+}
+/**
+ * Exactly what would leave the device: the target, the connector, the request parameters and the canonical objects after the gate decision. The payload hash covers this envelope.
+ */
+export interface DisclosurePreviewEnvelope {
+  target: 'cloud_model';
+  connectorId: string;
+  request: DisclosureModelRequest;
+  /**
+   * @minItems 1
+   */
+  objects: Card[];
+}
+/**
+ * The request parameters that go to the model with the objects.
+ */
+export interface DisclosureModelRequest {
+  question?: Text;
+  options?: Text[];
+  /**
+   * JSON Schema the answer must follow (level 1).
+   */
+  outputSchema?: Record<string, unknown>;
+}
+export interface CardGetRequest {
+  cardId: CardId;
+}
+export interface CardsSearchRequest {
+  worldId?: WorldId;
+  text?: string;
+  type?: string;
+  layer?: Layer;
+  limit?: number;
+  cursor?: Cursor;
+}
+/**
+ * Gate-cleared cards for the caller's target; denied cards are omitted.
+ */
+export interface CardPage {
+  cards: Card[];
+  nextCursor?: Cursor;
+  /**
+   * Cards the gate withheld for the caller's target, by id and reason (ADR-0031).
+   */
+  denied?: DeniedCard[];
+}
 /**
  * A card the gate withheld from this response, with the reason; never its content.
  */
@@ -732,64 +850,6 @@ export interface ProposalListRequest {
 export interface ProposalPage {
   proposals: Proposal[];
   nextCursor?: Cursor;
-}
-/**
- * Place an existing card on a Lage.
- */
-export interface PlaceCardPayload {
-  lageId: CardId;
-  cardId: CardId;
-  x: number;
-  y: number;
-}
-/**
- * Move a card that is already on a Lage.
- */
-export interface MoveCardPayload {
-  lageId: CardId;
-  cardId: CardId;
-  x: number;
-  y: number;
-}
-/**
- * Draw an edge: on a Lage if `lageId` is given, otherwise as a card edge on `from`. `by` becomes the proposal author on accept.
- */
-export interface AddEdgePayload {
-  lageId?: CardId;
-  from: CardId;
-  to: CardId;
-  kind: EdgeKind;
-}
-/**
- * Create a new card (for example a reference card for a finding, ADR-0014), optionally placed on a Lage.
- */
-export interface CreateCardPayload {
-  /**
-   * The card to create. An agent cannot release it for sharing: `release` is private or absent, and only the human changes it (ADR-0036).
-   */
-  card: CardDraft & {
-    release?: 'private';
-    /**
-     * An agent cannot opt a card in to the training export; only the human sets training (ADR-0017, ADR-0039).
-     */
-    training?: false;
-  };
-  lageId?: CardId;
-  x?: number;
-  y?: number;
-}
-export interface CommentPayload {
-  text: Text;
-  cardId?: CardId;
-  lageId?: CardId;
-}
-/**
- * Propose the outcome of a decision card (ADR-0039). On accept the service patches only sections.outcome, and only if the card still has expectedContentHash; never release or other metadata.
- */
-export interface RecordOutcomePayload {
-  decisionId: CardId;
-  outcome: OutcomeText;
-  expectedContentHash: ContentHash;
 }
 /**
  * Error response (RFC 9457). Never contains card content (ADR-0026).
@@ -916,48 +976,6 @@ export interface Level1PlayerPrediction {
    * @minItems 1
    */
   cardIds: CardId[];
-}
-/**
- * A previewed cloud_model transfer awaiting the user's confirmation (ADR-0012, ADR-0031). The record lives in memory on the service, expires 5 minutes after the preview, and is void after a restart. `cardIds` lists the ids of the objects in the envelope; `payloadHash` must be echoed by the confirmation.
- */
-export interface DisclosureTransfer {
-  transferId: Ulid;
-  purpose: 'context_package' | 'level1' | 'export';
-  /**
-   * @minItems 1
-   */
-  cardIds: CardId[];
-  payloadHash: PayloadHash;
-  preview: DisclosurePreviewEnvelope;
-  createdAt: DateTime;
-  expiresAt: DateTime;
-  /**
-   * Who will send: the board session (token flow) or a registered MCP connection (released to that connection only).
-   */
-  requestedBy: 'board' | 'mcp_connection';
-}
-/**
- * Exactly what would leave the device: the target, the connector, the request parameters and the canonical objects after the gate decision. The payload hash covers this envelope.
- */
-export interface DisclosurePreviewEnvelope {
-  target: 'cloud_model';
-  connectorId: string;
-  request: DisclosureModelRequest;
-  /**
-   * @minItems 1
-   */
-  objects: Card[];
-}
-/**
- * The request parameters that go to the model with the objects.
- */
-export interface DisclosureModelRequest {
-  question?: Text;
-  options?: Text[];
-  /**
-   * JSON Schema the answer must follow (level 1).
-   */
-  outputSchema?: Record<string, unknown>;
 }
 /**
  * A card the engine request left out because the store returned it in a form that is not a valid card.

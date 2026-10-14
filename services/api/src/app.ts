@@ -25,6 +25,7 @@ import { describeError } from './errors.js';
 import { executeOperation } from './execute.js';
 import { GateService } from './gate.js';
 import { Level1EngineRegistry, type Level1EngineRegistryOptions } from './level1-engines.js';
+import { buildModels, type ModelOptions } from './models.js';
 import { Level1Service } from './level1.js';
 import { LiveBus, type LiveNotice } from './live.js';
 import { createMcpMount, type McpMount } from './mcp.js';
@@ -65,6 +66,8 @@ export interface AppOptions {
   readonly syntheticStores?: readonly string[];
   /** Level 1: an injected `fetch` for cloud engines and a replacement local engine (tests). */
   readonly level1?: Pick<Level1EngineRegistryOptions, 'fetch' | 'localEngine'>;
+  /** Model connectors. Tests inject `fetch`. Cloud URLs are optional. */
+  readonly models?: ModelOptions;
   /** Rate limits (ADR-0047); `false` switches them off. */
   readonly rateLimit?: RateLimitOptions | false;
   readonly logger?: FastifyBaseLogger | boolean | object;
@@ -152,6 +155,7 @@ export async function buildApp(options: AppOptions): Promise<BoardApp> {
   const services: Services = {
     level1,
     scenario: new ScenarioLayers(now),
+    models: buildModels(options.models),
     live: new LiveBus(),
     storage: options.storage,
     localState: options.localState,
@@ -205,6 +209,7 @@ export async function buildApp(options: AppOptions): Promise<BoardApp> {
       .send(problemOf(status, detail, slug));
 
   app.setErrorHandler((error, req, reply) => {
+    if (!(error instanceof HttpError)) console.error('UNCAUGHT', error);
     const { status, detail, slug, retryAfter, code } = describeError(error);
     if (retryAfter !== undefined) reply.header('retry-after', String(retryAfter));
     // Rejected requests are logged without their content (ADR-0026).

@@ -30,6 +30,7 @@ import { DisclosurePanel } from './DisclosurePanel.js';
 import { EdgePanel } from './EdgePanel.js';
 import { InspectorPanel } from './InspectorPanel.js';
 import { Level1Panel } from './Level1Panel.js';
+import { ModelAskPanel } from './ModelAskPanel.js';
 import { ProposalsPanel } from './ProposalsPanel.js';
 import { RulesPanel } from './RulesPanel.js';
 import { ScenarioPanel } from './ScenarioPanel.js';
@@ -428,6 +429,7 @@ export function Workbench({
           onOpenLage={(id) => onOpenLage?.(id)}
           {...(level1DebounceMs !== undefined ? { debounceMs: level1DebounceMs } : {})}
         />
+        <ModelAskPanel client={client} lageId={lageId} disabled={saving || frozen} />
         <DisclosurePanel
           client={client}
           worldId={worldId ?? loaded.card.worlds?.[0]}
