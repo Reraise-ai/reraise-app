@@ -21,6 +21,8 @@ import type {
   Level1State,
   Problem,
   Proposal,
+  RuleEvaluation,
+  RulesEvaluateRequest,
   ProposalPage,
   Stance,
   StanceInput,
@@ -100,6 +102,8 @@ export interface BoardClient {
   level1_escalate(lageId: string, playerCardId: string): Promise<Card>;
   /** Human-only (ADR-0041). Without `week` the rolling 7 days. */
   usage_metrics_get(week?: string): Promise<UsageMetrics>;
+  /** Which of the user's rules fire on a Lage. No percentage (ADR-0013). */
+  rules_evaluate(body: RulesEvaluateRequest): Promise<RuleEvaluation>;
 }
 
 function query(params: Record<string, string | number | undefined>): string {
@@ -179,6 +183,7 @@ export function createClient(options: ClientOptions): BoardClient {
     level1_escalate: (id, playerCardId) =>
       call('POST', `/lagen/${enc(id)}/level1/escalate`, { playerCardId }),
     usage_metrics_get: (week) => call('GET', `/metrics/usage${query({ week })}`),
+    rules_evaluate: (body) => call('POST', '/rules/evaluate', body),
   };
 }
 

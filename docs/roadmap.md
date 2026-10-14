@@ -77,6 +77,9 @@ The decision slice stores the eleven sections, rejects an unknown `cardsUsed` id
 board records the decision and its outcome. A known outcome stores one linked experience
 card. Source hit counts stay in the source-profile slice.
 
+The rules panel lists each rule as fired or not fired, with the rule's own text and the
+triggering cards, and shows no percentage. Creating and editing rule cards stays open (AC-10).
+
 | Slice | Done when |
 | --- | --- |
 | Decision card, protocol and outcome | A decision stores all 11 sections, reloads intact, rejects a `cardsUsed` id that does not exist, and entering the outcome creates a linked experience card. |

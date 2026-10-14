@@ -73,6 +73,9 @@ export const CARDS: Card[] = [
 ];
 
 export const LAGE_ID = id('L1');
+/** Two synthetic rules the rules panel shows. The service, not this stub, decides what fires. */
+export const RULE_FIRED = id('R1');
+export const RULE_QUIET = id('R2');
 
 /** Two fictional actors and an assumption, for the level-1 panel tests (not on the default Lage). */
 export const ORG_A = id('O1');
@@ -744,6 +747,37 @@ export function createMockApi(initial: { lage?: Lage; cards?: Card[] } = {}): Mo
         tokenExpiresAt: '2026-10-06T10:05:00.000Z',
         confirmedBy: 'human',
         confirmedAt: '2026-10-06T10:01:00.000Z',
+      });
+    }
+    if (p === '/rules/evaluate' && method === 'POST') {
+      const lageId = (body as { lageId?: string }).lageId;
+      const lage = lageId ? lageOf(lageId) : undefined;
+      if (!lage || !lageId) return problem(404, 'Not found');
+      const trigger = id('C1');
+      return json(200, {
+        lageId,
+        lageVersion: lage.version,
+        target: 'screen',
+        evaluatedAt: '2026-10-14T00:00:00.000Z',
+        withheld: 0,
+        results: [
+          {
+            ruleId: RULE_FIRED,
+            fired: true,
+            triggeringCardIds: cards.has(trigger) ? [trigger] : [],
+            unmet: [],
+            unknown: [],
+            rule: { when: [{ kind: 'card_on_lage', card: trigger }], then: 'Reroute' },
+          },
+          {
+            ruleId: RULE_QUIET,
+            fired: false,
+            triggeringCardIds: [],
+            unmet: [{ clause: 'when', index: 0 }],
+            unknown: [],
+            rule: { when: [{ kind: 'card_on_lage', card: id('C2') }], then: 'Wait' },
+          },
+        ],
       });
     }
     return problem(404, `no route ${method} ${p}`);

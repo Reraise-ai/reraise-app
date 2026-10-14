@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- The open board lists each rule as fired or not fired, with that rule's own text and the cards that triggered it. It shows no percentage (AC-03).
 - The open board records a decision (eleven sections, cards on the board) and its outcome. A known outcome shows the experience card the service stored.
 - Recording a known outcome stores one private experience card. Its edges are `based_on` the decision and each id in `cardsUsed`. An outcome of `open` stores none. A later change of the outcome text does not store a second card. A restart of `worldbuilder serve` on the Hormuz store still has the decision's eleven sections and that experience card. An unknown `cardsUsed` id is rejected (AC-09, AC-11, AC-13). Source statistics are unchanged.
 - A context package for any target other than the screen leaves out a rule card that states a stance, or that names a card outside the package. The rule is counted and not rewritten. On the Hormuz store a `local_model` package under the shipped default still contains the reroute rule, which names only the wire report, and does not contain the stance rule (AC-18).

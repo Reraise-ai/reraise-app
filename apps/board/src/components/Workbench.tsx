@@ -23,6 +23,7 @@ import { EdgePanel } from './EdgePanel.js';
 import { InspectorPanel } from './InspectorPanel.js';
 import { Level1Panel } from './Level1Panel.js';
 import { ProposalsPanel } from './ProposalsPanel.js';
+import { RulesPanel } from './RulesPanel.js';
 import { SearchPanel } from './SearchPanel.js';
 
 interface Props {
@@ -280,6 +281,16 @@ export function Workbench({
             </ul>
           </section>
         )}
+        <RulesPanel
+          client={client}
+          lageId={lageId}
+          lageVersion={lage.version}
+          cards={loaded.cards}
+          onFocusCard={(id) => {
+            setSelectedEdgeKey(null);
+            setSelectedCardId(id);
+          }}
+        />
         <ProposalsPanel
           proposals={proposals}
           currentLageId={lageId}

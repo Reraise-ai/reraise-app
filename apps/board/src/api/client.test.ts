@@ -134,6 +134,17 @@ describe('board client', () => {
     ]);
   });
 
+  it('evaluates the rules of a Lage', async () => {
+    const { api, client } = setup();
+    const evaluation = await client.rules_evaluate({ lageId: LAGE_ID });
+    expect(evaluation.results.map((r) => r.fired)).toEqual([true, false]);
+    expect(api.calls[0]).toMatchObject({
+      method: 'POST',
+      path: '/rules/evaluate',
+      body: { lageId: LAGE_ID },
+    });
+  });
+
   it('omits empty query parameters', async () => {
     const { api, client } = setup();
     await client.cards_search({ text: '', type: 'lage' });
