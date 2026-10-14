@@ -25,6 +25,24 @@ export type {
   ModelCallCode,
   OllamaModelOptions,
 } from './adapters/http-models.js';
+export {
+  DOCUMENTS_SOURCE,
+  HTTP_JSON_SOURCE,
+  OBSIDIAN_SOURCE,
+  SourceReadError,
+  createDocumentSource,
+  createHttpJsonSource,
+  createObsidianVaultSource,
+  referenceCard,
+  selectFindings,
+} from './adapters/sources.js';
+export type {
+  DocumentSourceOptions,
+  HttpJsonSourceOptions,
+  ObsidianVaultOptions,
+  SourceReadCode,
+  VaultFile,
+} from './adapters/sources.js';
 export { GATE_LOG_REASONS } from './adapters/local-state.js';
 export { STORAGE_ERROR_CODES, StorageError, isStorageError } from './adapters/storage-error.js';
 export type { StorageErrorCode } from './adapters/storage-error.js';

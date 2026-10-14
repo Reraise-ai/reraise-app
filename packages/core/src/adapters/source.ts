@@ -8,6 +8,8 @@ export interface FindingsQuery {
   readonly since?: string;
   readonly text?: string;
   readonly limit?: number;
+  /** Only this finding. A pin uses it so a list cap cannot hide the one the user chose. */
+  readonly uri?: string;
 }
 
 /**
