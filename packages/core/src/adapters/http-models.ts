@@ -8,13 +8,8 @@
 // only id, title, body and source from those objects. fetch is injected; nothing here
 // opens a connection by itself.
 
-import type {
-  Card,
-  ContextPackage,
-  DisclosureRelease,
-  ModelAnswer,
-} from '../generated/contracts.js';
-import type { ModelConnector } from './model.js';
+import type { Card, ContextPackage, DisclosureRelease } from '../generated/contracts.js';
+import type { ModelAnswer, ModelConnector } from './model.js';
 
 export const OLLAMA_ENGINE = 'ollama';
 export const CLOUD_CHAT_ENGINE = 'cloud-chat';
