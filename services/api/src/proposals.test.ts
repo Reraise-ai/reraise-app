@@ -344,6 +344,56 @@ describe('what an agent may put into a proposed card', () => {
       expect(res.json().detail).toContain(field);
     },
   );
+  it('rejects a player entry without a source and stores one that cites a source', async () => {
+    const unsourced = await create(
+      'scripted',
+      draft({
+        collection: 'actors',
+        type: 'organisation',
+        title: 'Unsourced seat',
+        interests: [{ text: 'Oil exports' }],
+      }),
+    );
+    expectContract('proposal_create', unsourced, 400);
+    expect(unsourced.json().detail).toContain('source');
+    await expect(
+      f.service.app.services.localState.createProposal(
+        {
+          kind: 'create_card',
+          payload: {
+            card: draft({
+              collection: 'actors',
+              type: 'organisation',
+              title: 'Unsourced seat',
+              interests: [{ text: 'Oil exports' }],
+            }),
+          },
+        } as never,
+        'agent:scripted',
+      ),
+    ).rejects.toThrow(/source/);
+    expect(
+      (await f.adapter.list({ limit: 500 })).items.some((c) => c.title === 'Unsourced seat'),
+    ).toBe(false);
+
+    const sourced = await create(
+      'scripted',
+      draft({
+        collection: 'actors',
+        type: 'organisation',
+        title: 'Sourced seat',
+        interests: [{ text: 'Oil exports', source: 'https://example.org/seat' }],
+      }),
+    );
+    expectContract('proposal_create', sourced, 201);
+    expectContract('proposal_accept', await accept(sourced.json()), 200);
+    const created = (await f.adapter.list({ limit: 500 })).items.find(
+      (c) => c.title === 'Sourced seat',
+    );
+    expect(created?.interests).toEqual([
+      { text: 'Oil exports', source: 'https://example.org/seat' },
+    ]);
+  });
   it('rejects a create_card whose validity period is inverted (400)', async () => {
     const res = await create(
       'scripted',
