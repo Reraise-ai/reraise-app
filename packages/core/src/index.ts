@@ -47,6 +47,11 @@ export type { PackageView } from './package-view.js';
 export type { OriginRoot } from './independence.js';
 export { OPEN_OUTCOME, OPEN_OUTCOME_SCHEMA_PATTERN, isKnownOutcome } from './outcome.js';
 export {
+  SOURCE_PROFILE_MINIMUM_N,
+  deriveSourceProfiles,
+  profileSourceOf,
+} from './source-profile.js';
+export {
   EXTERNAL_TYPES,
   SHARED_FIELDS,
   SHARED_PLAYER_FIELDS,
