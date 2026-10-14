@@ -8,6 +8,23 @@ export type * from './generated/contracts.js';
 /** Adapter interfaces (ADR-0005). */
 export type * from './adapters/index.js';
 export { LOCAL_QUOTE_ENGINE, createLocalQuoteModel } from './adapters/local-quote.js';
+export {
+  CLOUD_CHAT_ENGINE,
+  DECISION_STUB_ENGINE,
+  DEFAULT_CLOUD_MODEL,
+  DEFAULT_OLLAMA_MODEL,
+  OLLAMA_ENGINE,
+  ModelCallError,
+  createCloudChatModel,
+  createDecisionStub,
+  createOllamaModel,
+} from './adapters/http-models.js';
+export type {
+  CloudChatModelOptions,
+  DecisionStubOptions,
+  ModelCallCode,
+  OllamaModelOptions,
+} from './adapters/http-models.js';
 export { GATE_LOG_REASONS } from './adapters/local-state.js';
 export { STORAGE_ERROR_CODES, StorageError, isStorageError } from './adapters/storage-error.js';
 export type { StorageErrorCode } from './adapters/storage-error.js';
