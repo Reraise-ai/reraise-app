@@ -114,6 +114,11 @@ An HTTP/JSON list, an Obsidian vault and a document index report references. Pin
 stores a private card on the open Lage and does not copy the source text. A second pin
 returns the same card. Paid news stays later (ADR-0014, OQ-33).
 
+The training export writes a JSONL file of decision traces. A trace is exported only if
+the decision has `training: true` and a known outcome. Cards that did not opt in never
+appear, not even as ids. The first call shows the envelope; nothing leaves until that
+transfer is confirmed (ADR-0017).
+
 | Slice | Done when |
 | --- | --- |
 | Decision card, protocol and outcome | A decision stores all 11 sections, reloads intact, rejects a `cardsUsed` id that does not exist, and entering the outcome creates a linked experience card. |

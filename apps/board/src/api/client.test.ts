@@ -302,4 +302,29 @@ describe('board client', () => {
       { method: 'POST', path: '/findings/pin', body: pin, token: TOKEN },
     ]);
   });
+
+  it('posts training_export', async () => {
+    const seen: { method?: string; path?: string; body?: unknown; token?: string } = {};
+    const client = createClient({
+      baseUrl: BASE,
+      token: TOKEN,
+      fetch: (async (input: RequestInfo | URL, init?: RequestInit) => {
+        seen.method = init?.method;
+        seen.path = String(input).replace(BASE, '');
+        seen.body = init?.body ? JSON.parse(String(init.body)) : undefined;
+        seen.token = new Headers(init?.headers).get('x-worldbuilder-session') ?? '';
+        return new Response(JSON.stringify({ status: 'nothing_to_export' }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      }) as typeof fetch,
+    });
+    await expect(client.training_export()).resolves.toEqual({ status: 'nothing_to_export' });
+    expect(seen).toEqual({
+      method: 'POST',
+      path: '/training/export',
+      body: {},
+      token: TOKEN,
+    });
+  });
 });

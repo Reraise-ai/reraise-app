@@ -5,6 +5,7 @@ import { createClient } from './api/client.js';
 import { clearSession, loadSession, saveSession, type Session } from './api/session.js';
 import { LageList } from './components/LageList.js';
 import { ProposalsInbox } from './components/ProposalsInbox.js';
+import { TrainingExportPanel } from './components/TrainingExportPanel.js';
 import { UsagePanel } from './components/UsagePanel.js';
 import { Login } from './components/Login.js';
 import { PoweredBy } from './components/PoweredBy.js';
@@ -116,6 +117,7 @@ function Signed(props: {
       ) : (
         <>
           <LageList client={client} worldId={worldId} onOpen={setOpenLage} />
+          <TrainingExportPanel client={client} />
           <aside className="wb-page" aria-label="All proposals">
             <ProposalsInbox
               client={client}

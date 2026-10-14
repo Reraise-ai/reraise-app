@@ -1,0 +1,8 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/api.schema.json#/$defs/trainingExportResult",
+  "description": "No opted-in decision with a known outcome is cleared for a cloud model.",
+  "data": {
+    "status": "nothing_to_export"
+  }
+}

@@ -197,6 +197,23 @@ export type Finding1 =
       originSystem: unknown;
     };
 /**
+ * Answer of training_export. exported: jsonl is one decision trace per line, only cards with training true (ADR-0017). confirmation_required: transfer is the preview and nothing left the device (ADR-0031). nothing_to_export: no opted-in decision with a known outcome is cleared for a cloud model. exported carries no transfer. confirmation_required carries no jsonl. nothing_to_export carries neither.
+ */
+export type TrainingExportResult = TrainingExportResult1 & TrainingExportResult2;
+export type TrainingExportResult1 =
+  | {
+      status: 'exported';
+      jsonl: unknown;
+      traces: unknown;
+    }
+  | {
+      status: 'confirmation_required';
+      transfer: unknown;
+    }
+  | {
+      status: 'nothing_to_export';
+    };
+/**
  * Opaque pagination cursor.
  */
 export type Cursor = string;
@@ -857,6 +874,19 @@ export interface FindingPinRequest {
  */
 export interface FindingPinResult {
   card: Card;
+}
+/**
+ * Body of the human-only training_export (ADR-0017). The first call (without transferId) answers confirmation_required with the previewed envelope and writes nothing; after disclosure_confirm the call is repeated with the transferId and the single-use confirmationToken and returns the JSONL. An empty body is the first call.
+ */
+export interface TrainingExportRequest {
+  transferId?: Ulid;
+  confirmationToken?: ConfirmationToken;
+}
+export interface TrainingExportResult2 {
+  status: 'exported' | 'confirmation_required' | 'nothing_to_export';
+  jsonl?: string;
+  traces?: number;
+  transfer?: DisclosureTransfer;
 }
 export interface CardGetRequest {
   cardId: CardId;

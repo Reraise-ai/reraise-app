@@ -1579,6 +1579,49 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/HumanOnly'
+  /training/export:
+    post:
+      operationId: training_export
+      summary: Export opted-in decision traces as JSONL
+      description: >-
+        Human-only, and not an MCP tool. Builds one JSONL line per decision card that has
+        `training: true` and a known outcome. Cards that did not opt in never appear, not even
+        as ids. The first call answers `confirmation_required` with the previewed envelope
+        (purpose `export`) and writes nothing. After `disclosure_confirm`, the call is repeated
+        with the `transferId` and the single-use `confirmationToken` and returns the JSONL.
+        A change of the opted-in cards since the preview is a 409. Stance data is never
+        exported (ADR-0017, ADR-0031).
+      tags: [human-only]
+      x-human-only: true
+      security:
+        - sessionToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../api.schema.json#/$defs/trainingExportRequest'
+      responses:
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: The JSONL, a preview waiting for confirmation, or nothing to export.
+          content:
+            application/json:
+              schema:
+                $ref: '../api.schema.json#/$defs/trainingExportResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/HumanOnly'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '413':
+          $ref: '#/components/responses/TooLarge'
 components:
   securitySchemes:
     sessionToken:

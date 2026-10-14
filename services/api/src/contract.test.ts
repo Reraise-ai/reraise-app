@@ -9,6 +9,7 @@ import type { Card, DisclosureTransfer, Proposal, RuleEvaluation } from '@worldb
 import { StorageError, type StorageErrorCode } from '@worldbuilder/core';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { loadOperations } from './contract.js';
+import { proveTrainingExportContract } from './export.contract.js';
 import { proveModelContract } from './model.contract.js';
 import { proveFindingsContract } from './source.contract.js';
 import { proveScenarioContract } from './scenario.contract.js';
@@ -952,6 +953,11 @@ describe('model_ask', () => {
 
 describe('findings (ADR-0014)', () => {
   it('lists nothing when no source is connected', () => proveFindingsContract(f));
+});
+
+describe('training_export (ADR-0017)', () => {
+  it('previews an opted-in known outcome and lists nothing beforehand', () =>
+    proveTrainingExportContract(f));
 });
 
 describe('events_stream (ADR-0032)', () => {

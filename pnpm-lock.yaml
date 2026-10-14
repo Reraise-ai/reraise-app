@@ -281,6 +281,9 @@ importers:
       '@worldbuilder/storage-markdown-files':
         specifier: workspace:*
         version: link:../../packages/adapters/storage-markdown-files
+      '@worldbuilder/training-export':
+        specifier: workspace:*
+        version: link:../../packages/training-export
       ajv:
         specifier: ^8.20.0
         version: 8.20.0

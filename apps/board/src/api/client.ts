@@ -27,6 +27,8 @@ import type {
   ModelAskRequest,
   ModelAskResult,
   Problem,
+  TrainingExportRequest,
+  TrainingExportResult,
   Proposal,
   RuleDraft,
   RuleEvaluation,
@@ -138,6 +140,8 @@ export interface BoardClient {
   scenario_attach(lageId: string, decisionId: string): Promise<ScenarioAttachment>;
   /** Human-only. The snapshot attached to a decision, kept on this device. */
   scenario_attachment_get(decisionId: string): Promise<ScenarioAttachment>;
+  /** Human-only (ADR-0017). JSONL of opted-in traces; a cloud transfer until confirmed. */
+  training_export(body?: TrainingExportRequest): Promise<TrainingExportResult>;
   /**
    * Human-only live channel (ADR-0032). The body is the event stream, not JSON.
    * `lageId` limits notices to that Lage; omit it to hear every board.
@@ -236,6 +240,7 @@ export function createClient(options: ClientOptions): BoardClient {
     scenario_attach: (id, decisionId) =>
       call('POST', `/lagen/${enc(id)}/scenario/attach`, { decisionId }),
     scenario_attachment_get: (id) => call('GET', `/decisions/${enc(id)}/scenario`),
+    training_export: (body = {}) => call('POST', '/training/export', body),
     openEvents: (lageId, signal) => {
       const headers: Record<string, string> = {
         [SESSION_HEADER]: options.token,

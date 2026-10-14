@@ -267,6 +267,60 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
         required: ['card'],
         additionalProperties: false,
       },
+      trainingExportRequest: {
+        title: 'TrainingExportRequest',
+        description:
+          'Body of the human-only training_export (ADR-0017). The first call (without transferId) answers confirmation_required with the previewed envelope and writes nothing; after disclosure_confirm the call is repeated with the transferId and the single-use confirmationToken and returns the JSONL. An empty body is the first call.',
+        type: 'object',
+        properties: {
+          transferId: { $ref: 'common.schema.json#/$defs/ulid' },
+          confirmationToken: { $ref: 'disclosure-decision.schema.json#/$defs/confirmationToken' },
+        },
+        additionalProperties: false,
+        dependentRequired: { transferId: ['confirmationToken'], confirmationToken: ['transferId'] },
+      },
+      trainingExportResult: {
+        title: 'TrainingExportResult',
+        description:
+          'Answer of training_export. exported: jsonl is one decision trace per line, only cards with training true (ADR-0017). confirmation_required: transfer is the preview and nothing left the device (ADR-0031). nothing_to_export: no opted-in decision with a known outcome is cleared for a cloud model. exported carries no transfer. confirmation_required carries no jsonl. nothing_to_export carries neither.',
+        type: 'object',
+        properties: {
+          status: {
+            type: 'string',
+            enum: ['exported', 'confirmation_required', 'nothing_to_export'],
+          },
+          jsonl: { type: 'string', minLength: 1 },
+          traces: { type: 'integer', minimum: 1 },
+          transfer: { $ref: 'disclosure-decision.schema.json#/$defs/transfer' },
+        },
+        required: ['status'],
+        additionalProperties: false,
+        allOf: [
+          {
+            if: { properties: { status: { const: 'exported' } }, required: ['status'] },
+            then: { properties: { jsonl: true, traces: true }, required: ['jsonl', 'traces'] },
+          },
+          {
+            if: {
+              properties: { status: { const: 'confirmation_required' } },
+              required: ['status'],
+            },
+            then: { properties: { transfer: true }, required: ['transfer'] },
+          },
+          {
+            if: { properties: { status: { const: 'nothing_to_export' } }, required: ['status'] },
+            then: {
+              properties: {},
+              not: {
+                anyOf: [
+                  { properties: { jsonl: true }, required: ['jsonl'] },
+                  { properties: { transfer: true }, required: ['transfer'] },
+                ],
+              },
+            },
+          },
+        ],
+      },
       cardGetRequest: {
         title: 'CardGetRequest',
         type: 'object',

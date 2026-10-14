@@ -100,6 +100,7 @@ const HUMAN_ONLY: { id: string; method: string; url: string; payload?: unknown }
   { id: 'decision_create', method: 'POST', url: '/decisions', payload: {} },
   { id: 'decision_save', method: 'PUT', url: `/decisions/${ULID}`, payload: {} },
   { id: 'usage_metrics_get', method: 'GET', url: '/metrics/usage' },
+  { id: 'training_export', method: 'POST', url: '/training/export', payload: {} },
   {
     id: 'source_profile_get',
     method: 'GET',

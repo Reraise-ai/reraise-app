@@ -215,6 +215,7 @@ describe('MCP / Board API parity', () => {
       'source_profile_get',
       'stance_get',
       'stance_save',
+      'training_export',
       'usage_metrics_get',
     ]);
     for (const [id, { op }] of humanOnly) {

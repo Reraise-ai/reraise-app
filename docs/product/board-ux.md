@@ -349,7 +349,9 @@ Before anything leaves the screen, the gate decides per card and per target
 
 ## 11. Decision card
 
-Status: planned (M2+), decided in [ADR-0017](../adr/0017-decision-card-and-training-export.md).
+Status: on the board (ADR-0017). The Lagen list has a training export: the first click shows
+the envelope, confirming it downloads JSONL of opted-in traces, and cards that did not opt in
+never appear.
 
 A decision card has exactly eleven sections, each non-empty:
 
