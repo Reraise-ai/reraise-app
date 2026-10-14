@@ -26,6 +26,7 @@ import { executeOperation } from './execute.js';
 import { GateService } from './gate.js';
 import { Level1EngineRegistry, type Level1EngineRegistryOptions } from './level1-engines.js';
 import { Level1Service } from './level1.js';
+import { LiveBus, type LiveNotice } from './live.js';
 import { createMcpMount, type McpMount } from './mcp.js';
 import { handlers } from './operations.js';
 import { ReceiptStore } from './receipts.js';
@@ -151,6 +152,7 @@ export async function buildApp(options: AppOptions): Promise<BoardApp> {
   const services: Services = {
     level1,
     scenario: new ScenarioLayers(now),
+    live: new LiveBus(),
     storage: options.storage,
     localState: options.localState,
     gate: gateService,
@@ -325,11 +327,75 @@ export async function buildApp(options: AppOptions): Promise<BoardApp> {
     return reply.code(result.status).type('application/json').send(result.body);
   };
 
+  // Open event streams, ended when the server stops so close() does not wait on them.
+  const streams = new Set<() => void>();
+
+  /** SSE after the same access and query checks as every other operation. No card text. */
+  const streamEvents = async (op: Operation, req: FastifyRequest, reply: FastifyReply) => {
+    const principal = req.principal;
+    if (!principal) throw new HttpError(401, 'a credential is required');
+    await executeOperation(services, op, principal, {
+      params: req.params as Record<string, unknown>,
+      query: (req.query ?? {}) as Record<string, unknown>,
+      body: req.body,
+    });
+    const rawLage = (req.query as { lageId?: unknown } | undefined)?.lageId;
+    const lageId = typeof rawLage === 'string' ? rawLage : undefined;
+    const headers: Record<string, string> = {
+      'content-type': 'text/event-stream; charset=utf-8',
+      'cache-control': 'no-cache, no-transform',
+      'x-accel-buffering': 'no',
+    };
+    const origin = req.headers.origin;
+    if (typeof origin === 'string') {
+      headers['access-control-allow-origin'] = origin;
+      headers['access-control-expose-headers'] = EXPOSED_HEADERS;
+      headers['vary'] = 'Origin';
+    }
+    reply.hijack();
+    reply.raw.writeHead(200, headers);
+    let closed = false;
+    let unsubscribe = (): void => undefined;
+    const beat = setInterval(() => {
+      if (!closed) reply.raw.write(':\n\n');
+    }, 15_000);
+    beat.unref();
+    const close = () => {
+      if (closed) return;
+      closed = true;
+      clearInterval(beat);
+      unsubscribe();
+      streams.delete(close);
+      if (!reply.raw.writableEnded) reply.raw.end();
+    };
+    const send = (notice: LiveNotice | { kind: 'ready' }) => {
+      if (closed) return;
+      if (
+        notice.kind !== 'ready' &&
+        lageId !== undefined &&
+        notice.lageId !== undefined &&
+        notice.lageId !== lageId
+      ) {
+        return;
+      }
+      try {
+        reply.raw.write(`event: ${notice.kind}\ndata: ${JSON.stringify(notice)}\n\n`);
+      } catch {
+        close();
+      }
+    };
+    unsubscribe = services.live.subscribe(send);
+    streams.add(close);
+    req.raw.on('close', close);
+    send({ kind: 'ready' });
+  };
+
   for (const op of operations) {
     app.route({
       method: op.method.toUpperCase() as 'GET',
       url: op.route,
-      handler: (req, reply) => run(op, req, reply),
+      handler: (req, reply) =>
+        op.stream === 'sse' ? streamEvents(op, req, reply) : run(op, req, reply),
     });
   }
 
@@ -380,6 +446,7 @@ export async function buildApp(options: AppOptions): Promise<BoardApp> {
   // Close the sessions (and their streams) before the server stops accepting connections.
   app.addHook('preClose', async () => {
     clearInterval(sweep);
+    for (const close of streams) close();
     await mcp.sessions.close();
   });
 

@@ -938,11 +938,20 @@ describe('what-if layer (ADR-0050)', () => {
     proveScenarioContract(f, sections));
 });
 
+describe('events_stream (ADR-0032)', () => {
+  it('is human-only and rejects a bad Lage id before any stream starts', async () => {
+    expectContract('events_stream', await f.agent('scripted', 'GET', '/events'), 403);
+    expectContract('events_stream', await f.raw({ method: 'GET', url: '/events' }), 401);
+    expectContract('events_stream', await f.human('GET', '/events?lageId=not-an-id'), 400);
+  });
+});
+
 describe('contract coverage', () => {
   it('declares 503 for every operation that touches the store or the receipt log, and 404 for a hidden Lage', () => {
     const ops = loadOperations();
     for (const op of ops) {
-      if (op.id === 'memory_route') expect(op.responses.has(503)).toBe(false);
+      if (op.id === 'memory_route' || op.id === 'events_stream')
+        expect(op.responses.has(503), op.id).toBe(false);
       else expect(op.responses.has(503), op.id).toBe(true);
     }
     for (const id of ['context_package_get', 'knowledge_consult']) {

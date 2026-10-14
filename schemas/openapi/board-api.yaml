@@ -1364,6 +1364,41 @@ paths:
           $ref: '#/components/responses/TooLarge'
         '429':
           $ref: '#/components/responses/TooManyRequests'
+  /events:
+    get:
+      operationId: events_stream
+      summary: Live channel of moves and proposals
+      description: >-
+        Human-only server-sent events (ADR-0032). The first event is `{"kind":"ready"}`.
+        Each later event is `{"kind":"proposal"}` or `{"kind":"move"}`, with `lageId` when the
+        change belongs to one Lage. The stream carries no card text. The board reads the change
+        through the existing operations. An optional `lageId` keeps only notices for that Lage
+        and notices that name no Lage. `proposal_list` with `changedSince` stays the catch-up
+        after a dropped stream. The operation does not touch the store, so it has no 503.
+      tags: [human-only]
+      x-human-only: true
+      security:
+        - sessionToken: []
+      parameters:
+        - name: lageId
+          in: query
+          schema:
+            $ref: '../api.schema.json#/$defs/proposalListRequest/properties/lageId'
+      responses:
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: The event stream. It stays open.
+          content:
+            text/event-stream:
+              schema:
+                type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/HumanOnly'
   /metrics/usage:
     get:
       operationId: usage_metrics_get

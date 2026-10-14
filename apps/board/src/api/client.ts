@@ -126,6 +126,11 @@ export interface BoardClient {
   scenario_attach(lageId: string, decisionId: string): Promise<ScenarioAttachment>;
   /** Human-only. The snapshot attached to a decision, kept on this device. */
   scenario_attachment_get(decisionId: string): Promise<ScenarioAttachment>;
+  /**
+   * Human-only live channel (ADR-0032). The body is the event stream, not JSON.
+   * `lageId` limits notices to that Lage; omit it to hear every board.
+   */
+  openEvents(lageId: string | undefined, signal: AbortSignal): Promise<Response>;
 }
 
 function query(params: Record<string, string | number | undefined>): string {
@@ -215,6 +220,13 @@ export function createClient(options: ClientOptions): BoardClient {
     scenario_attach: (id, decisionId) =>
       call('POST', `/lagen/${enc(id)}/scenario/attach`, { decisionId }),
     scenario_attachment_get: (id) => call('GET', `/decisions/${enc(id)}/scenario`),
+    openEvents: (lageId, signal) => {
+      const headers: Record<string, string> = {
+        [SESSION_HEADER]: options.token,
+        accept: 'text/event-stream',
+      };
+      return doFetch(`${base}/events${query({ lageId })}`, { method: 'GET', headers, signal });
+    },
   };
 }
 

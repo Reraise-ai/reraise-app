@@ -62,6 +62,19 @@ describe('board client', () => {
     expect(api.calls[8]!.path).toBe(`/proposals?lageId=${LAGE_ID}&changedSince=5&limit=200`);
   });
 
+  it('opens the live channel as an event stream', async () => {
+    const { api, client } = setup();
+    const ac = new AbortController();
+    const res = await client.openEvents(LAGE_ID, ac.signal);
+    expect(res.status).toBe(404);
+    expect(api.calls.at(-1)).toMatchObject({
+      method: 'GET',
+      path: `/events?lageId=${LAGE_ID}`,
+    });
+    expect(api.calls.at(-1)!.headers['accept']).toBe('text/event-stream');
+    expect(api.calls.at(-1)!.headers['x-worldbuilder-session']).toBe(TOKEN);
+  });
+
   it('reads archived Lage versions', async () => {
     const { api, client } = setup();
     api.versions = [

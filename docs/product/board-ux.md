@@ -264,7 +264,7 @@ lists them.
 
 ## 8. Seats and agent proposals
 
-Status: planned (M1) for the proposal round trip; live updates planned (M2+). Decided in
+Status: the proposal round trip exists. Live updates are `GET /events`: a notice carries no card text, and a dropped stream falls back to polling (ADR-0032). Decided in
 [ADR-0011](../adr/0011-agent-moves-are-proposals.md).
 
 The board is "looking at the chessboard together". A **seat** is a participant at the board:

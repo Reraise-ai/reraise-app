@@ -89,6 +89,7 @@ const HUMAN_ONLY: { id: string; method: string; url: string; payload?: unknown }
     url: '/source-profiles?source=https://example.invalid/none',
   },
   { id: 'disclosure_transfer_preview', method: 'POST', url: '/disclosure/transfers', payload: {} },
+  { id: 'events_stream', method: 'GET', url: '/events' },
   { id: 'disclosure_transfer_get', method: 'GET', url: `/disclosure/transfers/${ULID}` },
   {
     id: 'disclosure_confirm',

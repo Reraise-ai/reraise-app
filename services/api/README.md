@@ -198,10 +198,19 @@ Tests: `src/level1.test.ts`.
 - Origin roots follow `cites` and `based_on` edges among the cleared cards; a root with a
   `source` is identified by it, otherwise it is its own root and flagged unknown.
 
+## Live channel (ADR-0032)
+
+`GET /events` is human-only. The first event is `{"kind":"ready"}`. Later events are
+`{"kind":"proposal"}` or `{"kind":"move"}`, with `lageId` when the change belongs to one Lage.
+The stream carries no card text. An optional `lageId` query keeps notices for that Lage and
+notices that name none. The operation does not touch the store, so it has no 503. Agents are
+not on this stream.
+
 ## Known gaps
 
 - MCP: no server-initiated notifications for proposals or Lage changes yet (the stream only
   carries `tools/list_changed`); agents poll `proposal_list` with `changedSince` (ADR-0032).
+  The board uses `GET /events` instead.
   `/mcp` sends no CORS headers: it is for agents, not for browser pages.
 - The bridge re-opens an expired session once per failed message; it does not retry a service
   that is down, and the host's own state about the old session (for example subscriptions) is not

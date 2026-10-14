@@ -211,6 +211,11 @@ export interface MockApi {
   versions: LageVersion[];
   /** The next request whose "METHOD /path" matches (default: any) answers with this problem. */
   failNext(status: number, title?: string, match?: RegExp, detail?: string): void;
+  /**
+   * When set, GET /events answers `text/event-stream`. A function runs once per request,
+   * because one stream can only be read once and the inbox and the board each open one.
+   */
+  events?: ReadableStream<Uint8Array> | (() => ReadableStream<Uint8Array>);
 }
 
 function json(status: number, body: unknown, problem = false): Response {
@@ -456,6 +461,14 @@ export function createMockApi(initial: { lage?: Lage; cards?: Card[] } = {}): Mo
     const p = url.pathname;
     let m: RegExpMatchArray | null;
 
+    if (p === '/events' && method === 'GET') {
+      const body = typeof api.events === 'function' ? api.events() : api.events;
+      if (!body) return problem(404, 'no event stream');
+      return new Response(body, {
+        status: 200,
+        headers: { 'content-type': 'text/event-stream' },
+      });
+    }
     if (p === '/metrics/usage' && method === 'GET') {
       const week = url.searchParams.get('week');
       if (week && !/^[0-9]{4}-W(0[1-9]|[1-4][0-9]|5[0-3])$/.test(week))

@@ -195,9 +195,9 @@ Privacy is structural, not a setting ([ADR-0012](../adr/0012-disclosure-gate.md)
   a target class and a token whose hash is kept in `agents.yaml` in the state directory. The
   class follows where the agent's models run, not where the agent runs
   ([ADR-0037](../adr/0037-hermes-agents-as-mcp-clients.md)).
-- In M1 the board polls `proposal_list` with `changedSince=<cursor>` every 2 seconds (the same
-  parameter exists for agents over MCP); the M2 live channel
-  replaces polling ([ADR-0032](../adr/0032-m1-proposal-polling.md)).
+- The board follows the human-only live channel `GET /events` and uses `proposal_list` with
+  `changedSince` when the stream drops. Agents still poll that operation over MCP
+  ([ADR-0032](../adr/0032-m1-proposal-polling.md)).
 - Accept and reject are human-only. On accept, the change is written through the
   `StorageAdapter` with the agent kept as author.
 - **Non-counting rule:** pending or rejected proposals count nowhere: not in rules

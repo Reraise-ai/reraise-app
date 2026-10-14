@@ -135,6 +135,25 @@ describe('proposal poller (ADR-0032)', () => {
     poller.stop();
   });
 
+  it('pause stops the interval and resume polls again', async () => {
+    let n = 0;
+    const poller = createProposalPoller({
+      client: { proposal_list: async () => ({ proposals: [], nextCursor: String(++n) }) },
+      lageId: 'L',
+      onChanges: () => {},
+    });
+    poller.start();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(n).toBe(1);
+    poller.pause();
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(n).toBe(1);
+    poller.resume();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(n).toBe(2);
+    poller.stop();
+  });
+
   it('start is idempotent', async () => {
     let n = 0;
     const poller = createProposalPoller({

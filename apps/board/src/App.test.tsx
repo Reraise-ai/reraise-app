@@ -404,6 +404,50 @@ describe('remove a card from the board (AC-22)', () => {
   });
 });
 
+describe('live channel (ADR-0032)', () => {
+  it('reloads this board when a move for it arrives, and ignores a move for another Lage', async () => {
+    const api = createMockApi();
+    const enc = new TextEncoder();
+    const open: { live: boolean; controller?: ReadableStreamDefaultController<Uint8Array> }[] = [];
+    api.events = () => {
+      const entry: (typeof open)[number] = { live: true };
+      open.push(entry);
+      return new ReadableStream({
+        start(controller) {
+          entry.controller = controller;
+        },
+        cancel() {
+          entry.live = false;
+        },
+      });
+    };
+    await openLage(api);
+    // The inbox opens a stream and closes it; the board opens the next one.
+    await waitFor(() => {
+      const live = open.filter((e) => e.live && e.controller);
+      expect(open.length).toBeGreaterThanOrEqual(2);
+      expect(live).toHaveLength(1);
+      expect(live[0]).toBe(open[open.length - 1]);
+    });
+    const push = (chunk: string) => {
+      const bytes = enc.encode(chunk);
+      for (const entry of open) {
+        if (entry.live && entry.controller) entry.controller.enqueue(bytes);
+      }
+    };
+    const reads = () =>
+      api.calls.filter((c) => c.method === 'GET' && c.path === `/lagen/${LAGE_ID}`).length;
+    const before = reads();
+    push(
+      `event: move\ndata: ${JSON.stringify({ kind: 'move', lageId: '01ARZ3NDEKTSV4RRFFQ69G5FAV' })}\n\n`,
+    );
+    await new Promise((resolve) => setTimeout(resolve, 40));
+    expect(reads()).toBe(before);
+    push(`event: move\ndata: ${JSON.stringify({ kind: 'move', lageId: LAGE_ID })}\n\n`);
+    await waitFor(() => expect(reads()).toBeGreaterThan(before));
+  });
+});
+
 describe('proposals (polling, ADR-0032)', () => {
   it('shows an agent proposal without reload, with author, kind and summary; accept refreshes the board', async () => {
     const api = createMockApi();

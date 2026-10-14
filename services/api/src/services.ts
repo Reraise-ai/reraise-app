@@ -8,6 +8,7 @@ import type { Card, Lage, LocalStateStore, Stance, StorageAdapter } from '@world
 import type { Disclosures } from './disclosure.js';
 import type { GateService } from './gate.js';
 import type { Level1Service } from './level1.js';
+import type { LiveBus } from './live.js';
 import type { ScenarioLayers } from './scenario.js';
 import type { ReceiptStore } from './receipts.js';
 import type { Mutex } from './util.js';
@@ -23,6 +24,8 @@ export interface Services {
   readonly level1: Level1Service;
   /** Live what-if layer per Lage, in memory only (ADR-0050). */
   readonly scenario: ScenarioLayers;
+  /** Open boards hear a move or a proposal without a card body (ADR-0032). */
+  readonly live: LiveBus;
   /** Serialises every write that reads then changes the store (single writer, ADR-0006). */
   readonly writes: Mutex;
   readonly now: () => Date;

@@ -30,6 +30,7 @@ import { scenarioHandlers } from './scenario-ops.js';
 import { buildContextPackage } from './context.js';
 import { readLage } from './lage.js';
 import { HttpError } from './problem.js';
+import { proposalNotice } from './live.js';
 import { recordOutcomeExperience } from './outcome-experience.js';
 import { recordSourceProfiles } from './source-profile.js';
 import { applyProposal } from './proposals.js';
@@ -178,7 +179,12 @@ export const handlers: Readonly<Record<string, Handler>> = {
       }
       await s.storage.patch(lageId, { lage: next }, { lageVersion: stored.lage.version });
     });
+    s.live.publish({ kind: 'move', lageId });
     return ok(await s.storage.read(lageId));
+  },
+
+  async events_stream() {
+    return ok({});
   },
 
   async lage_versions(s, { principal, params }) {
@@ -319,7 +325,9 @@ export const handlers: Readonly<Record<string, Handler>> = {
     if (principal.kind !== 'agent') throw new HttpError(403, 'only an agent proposes');
     const input = body as ProposalCreate;
     await assertAgentProposal(s, principal, input);
-    return ok(await s.localState.createProposal(input, principal.author), 201);
+    const created = await s.localState.createProposal(input, principal.author);
+    s.live.publish(proposalNotice(created.payload));
+    return ok(created, 201);
   },
 
   async proposal_accept(s, { params }) {
@@ -337,12 +345,17 @@ export const handlers: Readonly<Record<string, Handler>> = {
       }
       return s.localState.decideProposal(id, 'accepted');
     });
+    const notice = proposalNotice(proposal.payload);
+    s.live.publish(notice);
+    if (notice.lageId !== undefined) s.live.publish({ kind: 'move', lageId: notice.lageId });
     return ok(proposal);
   },
 
   async proposal_reject(s, { params }) {
     const id = str(params['proposalId']);
-    return ok(await s.writes.run(() => s.localState.decideProposal(id, 'rejected')));
+    const proposal = await s.writes.run(() => s.localState.decideProposal(id, 'rejected'));
+    s.live.publish(proposalNotice(proposal.payload));
+    return ok(proposal);
   },
 
   async decision_create(s, { body }) {

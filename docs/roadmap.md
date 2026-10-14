@@ -102,6 +102,10 @@ The open board holds a what-if layer of assumptions that are not cards. Saving t
 writes nothing to the store. Recording a decision can attach that layer. The attachment
 is a file in the state directory. The decision card is unchanged (ADR-0050).
 
+Two open boards on one service see a move within seconds. `GET /events` sends a notice
+with no card text. The board reads the change through the existing operations. A dropped
+stream falls back to `proposal_list`. Agents still poll (ADR-0032).
+
 | Slice | Done when |
 | --- | --- |
 | Decision card, protocol and outcome | A decision stores all 11 sections, reloads intact, rejects a `cardsUsed` id that does not exist, and entering the outcome creates a linked experience card. |

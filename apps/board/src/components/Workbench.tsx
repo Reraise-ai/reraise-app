@@ -11,8 +11,8 @@ import type {
   StanceInput,
 } from '@worldbuilder/core';
 import { ApiError, type BoardClient } from '../api/client.js';
-import { createProposalPoller, mergeProposals } from '../api/proposalPoller.js';
 import { describeError } from '../errors.js';
+import { useLiveFeed } from '../liveFeed.js';
 import {
   addEdge,
   moveCard,
@@ -66,8 +66,6 @@ export function Workbench({
 }: Props) {
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [message, setMessage] = useState<{ kind: 'info' | 'error'; text: string } | null>(null);
-  const [proposals, setProposals] = useState<Proposal[]>([]);
-  const [pollError, setPollError] = useState<string | null>(null);
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [selectedEdgeKey, setSelectedEdgeKey] = useState<string | null>(null);
   const [edgeKind, setNextEdgeKind] = useState<DrawnEdgeKind>('supports');
@@ -123,24 +121,17 @@ export function Workbench({
     void load();
   }, [load]);
 
-  // Proposals: poll with the change cursor every 2 seconds while this Lage is open (ADR-0032).
-  // Without a lageId: a proposal that names no Lage (an outcome, a comment, a card not placed
-  // yet) must be decidable too. The panel marks the ones that belong to another Lage.
-  useEffect(() => {
-    const poller = createProposalPoller({
-      client,
-      ...(pollIntervalMs !== undefined ? { intervalMs: pollIntervalMs } : {}),
-      onSuccess: () => alive.current && setPollError(null),
-      onChanges: (changed) => {
-        if (!alive.current) return;
-        setProposals((known) => mergeProposals(known, changed));
-        if (changed.some((p) => p.status === 'accepted')) void load();
-      },
-      onError: (e) => alive.current && setPollError(describeError(e)),
-    });
-    poller.start();
-    return () => poller.stop();
-  }, [client, lageId, pollIntervalMs, load]);
+  // Proposals for every Lage (one that names no Lage must be decidable here too). The panel
+  // marks a proposal that belongs to another Lage. A move for this Lage reloads the board.
+  const onBoardChange = useCallback(() => {
+    void load();
+  }, [load]);
+  const { proposals, pollError, note } = useLiveFeed({
+    client,
+    lageId,
+    ...(pollIntervalMs !== undefined ? { pollIntervalMs } : {}),
+    onBoardChange,
+  });
 
   /** Saves an edit of the Lage with the version guard; edits are applied one after another. */
   const edit = useCallback(
@@ -189,14 +180,14 @@ export function Workbench({
         decision === 'accept'
           ? await client.proposal_accept(p.id)
           : await client.proposal_reject(p.id);
-      setProposals((known) => mergeProposals(known, [updated]));
+      note(updated);
       setMessage({
         kind: 'info',
         text: decision === 'accept' ? 'Proposal accepted.' : 'Proposal rejected.',
       });
       if (decision === 'accept') await load();
     },
-    [client, load],
+    [client, load, note],
   );
 
   const saveStance = useCallback(

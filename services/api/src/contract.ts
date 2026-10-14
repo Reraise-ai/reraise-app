@@ -50,6 +50,8 @@ export interface Operation {
     number,
     { readonly schemaRef?: string; readonly problem: boolean }
   >;
+  /** A long-lived `text/event-stream` instead of one JSON body. */
+  readonly stream?: 'sse';
 }
 
 type Json = Record<string, unknown>;
@@ -102,9 +104,11 @@ export function loadOperations(file: string = OPENAPI_FILE): Operation[] {
         Json | undefined;
       const bodyRef = (bodySchema?.['schema'] as Json | undefined)?.['$ref'];
       const responses = new Map<number, { schemaRef?: string; problem: boolean }>();
+      let stream: 'sse' | undefined;
       for (const [status, raw] of Object.entries((op['responses'] ?? {}) as Record<string, Json>)) {
         const response = resolve(raw);
         const content = (response['content'] ?? {}) as Record<string, Json>;
+        if (Number(status) === 200 && content['text/event-stream'] !== undefined) stream = 'sse';
         const media = content['application/json'] ?? content['application/problem+json'];
         const ref = (media?.['schema'] as Json | undefined)?.['$ref'];
         responses.set(Number(status), {
@@ -123,6 +127,7 @@ export function loadOperations(file: string = OPENAPI_FILE): Operation[] {
         bodyRequired: body?.['required'] === true,
         ...(typeof bodyRef === 'string' ? { bodySchemaRef: refToSchemaRef(bodyRef) } : {}),
         responses,
+        ...(stream ? { stream } : {}),
       });
     }
   }

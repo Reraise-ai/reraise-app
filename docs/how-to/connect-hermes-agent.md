@@ -183,9 +183,10 @@ its previous call:
 { "changedSince": "<nextCursor of the previous proposal_list call>" }
 ```
 
-Poll every few seconds at most (the board itself polls every 2 seconds,
-[ADR-0032](../adr/0032-m1-proposal-polling.md)). A later release adds live notifications over
-the same connection; polling with `changedSince` keeps working for catch-up.
+Poll every few seconds at most
+([ADR-0032](../adr/0032-m1-proposal-polling.md)). The board follows `GET /events` and uses
+`proposal_list` only as catch-up. Agents stay on this poll. This release does not send live
+notifications over the MCP connection.
 
 ## What an agent cannot do
 
