@@ -8,6 +8,7 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import type { Card, DecisionDraft, DecisionSections } from '@worldbuilder/core';
+import { cardsSourcePass, sourcePassText } from '@worldbuilder/core/independence';
 import { isKnownOutcome } from '@worldbuilder/core/outcome';
 import type { BoardClient } from '../api/client.js';
 import { describeError } from '../errors.js';
@@ -55,6 +56,8 @@ export function DecisionPanel({ client, cards, disabled }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const placed = cards.filter((c): c is Card & { id: string } => Boolean(c.id));
+  const passIds = decision?.sections?.cardsUsed ?? used;
+  const pass = sourcePassText(cardsSourcePass(placed.filter((card) => passIds.includes(card.id))));
 
   async function showExperience(decisionId: string): Promise<void> {
     const page = await client.cards_search({ type: 'experience', limit: 200 });
@@ -129,6 +132,9 @@ export function DecisionPanel({ client, cards, disabled }: Props) {
   return (
     <section className="wb-panel" aria-labelledby="decision-h" data-testid="decision-panel">
       <h2 id="decision-h">Decision</h2>
+      <p className="wb-muted" data-testid="decision-source-pass">
+        {pass}
+      </p>
       {decision ? (
         <div>
           <p data-testid="decision-saved">{decision.title}</p>

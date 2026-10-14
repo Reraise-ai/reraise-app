@@ -8,6 +8,13 @@ import type {
   StancePosition,
   StoredSourceProfile,
 } from '@worldbuilder/core';
+import {
+  cardSourcePass,
+  entriesSourcePass,
+  seatEntries,
+  sourcePassText,
+  type SeatField,
+} from '@worldbuilder/core/independence';
 import { profileSourceOf } from '@worldbuilder/core/source-profile';
 import { ApiError, type BoardClient } from '../api/client.js';
 import { describeError } from '../errors.js';
@@ -23,9 +30,27 @@ interface Props {
   /** Takes the card off this Lage. The card file stays in the store. */
   onRemove?(): void;
   removeDisabled?: boolean;
+  /** Cards on this board. The source pass counts origins among them. */
+  boardCards?: readonly Card[];
 }
 
 const POSITIONS: StancePosition[] = ['believed', 'rejected', 'undecided'];
+
+const FIELD_LABEL: Record<SeatField, string> = {
+  interests: 'Interest',
+  capabilities: 'Capability',
+  dependencies: 'Dependency',
+  moves: 'Move',
+};
+
+function isSeat(card: Card): boolean {
+  return (
+    card.collection === 'actors' ||
+    card.type === 'actor' ||
+    card.type === 'person' ||
+    card.type === 'organisation'
+  );
+}
 
 /**
  * The selected card in full and the user's own stance on it (stance_save, human-only). The
@@ -39,6 +64,7 @@ export function InspectorPanel({
   onSaveStance,
   onRemove,
   removeDisabled,
+  boardCards,
 }: Props) {
   const [position, setPosition] = useState<StancePosition>('undecided');
   const [weight, setWeight] = useState(2);
@@ -77,6 +103,10 @@ export function InspectorPanel({
       cancelled = true;
     };
   }, [client, source]);
+
+  const scope = boardCards ?? (card ? [card] : []);
+  const cardPass = card?.id ? cardSourcePass(scope, card.id) : undefined;
+  const entries = card ? seatEntries(card) : [];
 
   if (!cardId) {
     return (
@@ -130,6 +160,32 @@ export function InspectorPanel({
         <p className="wb-muted" data-testid="inspector-origin">
           System: {card.originSystem}
         </p>
+      )}
+      {cardPass && (
+        <p className="wb-muted" data-testid="card-source-pass">
+          {sourcePassText(cardPass)}
+        </p>
+      )}
+      {card && isSeat(card) && (
+        <div data-testid="seat-pass">
+          <h3>Seat</h3>
+          <p className="wb-muted" data-testid="seat-source-pass">
+            {sourcePassText(entriesSourcePass(entries, scope))}
+          </p>
+          {entries.length > 0 && (
+            <ul className="wb-list" data-testid="seat-entries">
+              {entries.map((entry, index) => (
+                <li key={`${entry.field}-${index}`}>
+                  {FIELD_LABEL[entry.field]}: {entry.text} ({entry.source})
+                </li>
+              ))}
+            </ul>
+          )}
+          <h3>Moves</h3>
+          <p className="wb-muted" data-testid="moves-source-pass">
+            {sourcePassText(entriesSourcePass(card.moves ?? [], scope))}
+          </p>
+        </div>
       )}
       {card?.body && <p>{card.body}</p>}
       {onRemove && (

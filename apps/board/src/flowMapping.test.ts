@@ -28,6 +28,10 @@ describe('Lage to canvas mapping', () => {
     expect(nodes[0]!.data.stance).toBe(stance);
     expect(nodes[1]!.data.stance).toBeUndefined();
     expect(nodes[0]!.data.card?.title).toBe(C1!.title);
+    expect(nodes.map((n) => n.data.sourcePass)).toEqual([
+      '2 findings · 1 origin',
+      '2 findings · 1 origin',
+    ]);
   });
 
   it('marks one source, and two independent sources of the same statement', () => {

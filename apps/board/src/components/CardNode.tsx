@@ -12,6 +12,8 @@ export type CardNodeData = {
   stance?: Stance;
   /** One known origin, or two independent sources of the same statement (Entscheidung 125). */
   sourceMark?: SourceMark;
+  /** 'N findings · M origins' for this card among the cards on the board (ADR-0009). */
+  sourcePass?: string;
 };
 export type CardNodeType = Node<CardNodeData, 'card'>;
 
@@ -34,7 +36,7 @@ export const isAgentAuthor = (author: string | undefined): author is string =>
  * `originSystem` when the card has one; the stance is the user's own overlay.
  */
 export function CardNode({ data, selected }: NodeProps<CardNodeType>) {
-  const { card, cardId, stance, sourceMark } = data;
+  const { card, cardId, stance, sourceMark, sourcePass } = data;
   const layer = layerOf(card);
   const layerLabel = layer === 'unclassified' ? 'unclassified' : LAYER_LABEL[layer];
   const title = card?.title ?? 'Card not shown on this screen';
@@ -55,7 +57,7 @@ export function CardNode({ data, selected }: NodeProps<CardNodeType>) {
       role="group"
       aria-label={
         card
-          ? `${title}, ${card.type}, ${layerLabel}${system}${markLabel ? `, ${markLabel}` : ''}`
+          ? `${title}, ${card.type}, ${layerLabel}${system}${markLabel ? `, ${markLabel}` : ''}${sourcePass ? `, ${sourcePass}` : ''}`
           : `${title}, ${layerLabel}`
       }
     >
@@ -81,6 +83,11 @@ export function CardNode({ data, selected }: NodeProps<CardNodeType>) {
           </span>
         )}
       </div>
+      {sourcePass && (
+        <div className="wb-muted" data-testid={`card-source-pass-${cardId}`}>
+          {sourcePass}
+        </div>
+      )}
       {card?.source && <div className="wb-muted">{card.source}</div>}
       {card?.originSystem && (
         <div className="wb-muted" data-testid={`card-origin-${cardId}`}>

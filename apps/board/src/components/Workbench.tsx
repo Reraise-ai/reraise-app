@@ -341,6 +341,9 @@ export function Workbench({
           client={client}
           card={selectedCardId ? loaded.cards.get(selectedCardId) : undefined}
           cardId={selectedCardId}
+          boardCards={[...loaded.cards.values()].filter(
+            (c) => c.id !== undefined && placedIds.has(c.id),
+          )}
           stance={selectedCardId ? loaded.stances.get(selectedCardId) : undefined}
           onSaveStance={saveStance}
           removeDisabled={saving}
