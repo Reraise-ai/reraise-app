@@ -160,7 +160,9 @@ describe('model panel', () => {
       target: { value: 'What is claimed?' },
     });
     fireEvent.click(screen.getByTestId('model-ask'));
-    expect((await screen.findByTestId('model-error')).textContent).toContain('the model did not answer');
+    expect((await screen.findByTestId('model-error')).textContent).toContain(
+      'the model did not answer',
+    );
 
     rerender(<ModelAskPanel client={client} lageId={LAGE} disabled />);
     expect((screen.getByTestId('model-ask') as HTMLButtonElement).disabled).toBe(true);
