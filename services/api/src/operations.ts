@@ -28,6 +28,7 @@ import { buildContextPackage } from './context.js';
 import { readLage } from './lage.js';
 import { HttpError } from './problem.js';
 import { recordOutcomeExperience } from './outcome-experience.js';
+import { recordSourceProfiles } from './source-profile.js';
 import { applyProposal } from './proposals.js';
 import { evaluateRules } from './rules.js';
 import { stanceFor, type Services } from './services.js';
@@ -298,10 +299,25 @@ export const handlers: Readonly<Record<string, Handler>> = {
     const id = await s.writes.run(async () => {
       const created = await s.storage.create(draft, 'human');
       const decision = await s.storage.read(created);
-      if (decision) await recordOutcomeExperience(s.storage, undefined, decision);
+      if (decision) {
+        await recordOutcomeExperience(s.storage, undefined, decision);
+        await recordSourceProfiles(
+          s.storage,
+          s.localState,
+          undefined,
+          decision,
+          s.now().toISOString(),
+        );
+      }
       return created;
     });
     return ok(await s.storage.read(id), 201);
+  },
+
+  async source_profile_get(s, { query }) {
+    const stored = await s.localState.getSourceProfile(str(query['source']));
+    if (!stored) throw new HttpError(404, 'no source profile');
+    return ok(stored);
   },
 
   async decision_save(s, { params, body }) {
@@ -320,7 +336,10 @@ export const handlers: Readonly<Record<string, Handler>> = {
       ) as CardPatch;
       await s.storage.patch(id, patch, { contentHash: stored.contentHash });
       const updated = await s.storage.read(id);
-      if (updated) await recordOutcomeExperience(s.storage, stored, updated);
+      if (updated) {
+        await recordOutcomeExperience(s.storage, stored, updated);
+        await recordSourceProfiles(s.storage, s.localState, stored, updated, s.now().toISOString());
+      }
     });
     return ok(await s.storage.read(id));
   },

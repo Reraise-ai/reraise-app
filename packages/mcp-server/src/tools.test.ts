@@ -201,6 +201,7 @@ describe('MCP / Board API parity', () => {
       'level1_predict',
       'proposal_accept',
       'proposal_reject',
+      'source_profile_get',
       'stance_get',
       'stance_save',
       'usage_metrics_get',

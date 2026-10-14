@@ -45,6 +45,9 @@ export default defineConfig({
             '@worldbuilder/core/independence': fileURLToPath(
               new URL('./packages/core/src/independence.ts', import.meta.url),
             ),
+            '@worldbuilder/core/source-profile': fileURLToPath(
+              new URL('./packages/core/src/source-profile.ts', import.meta.url),
+            ),
             '@worldbuilder/level1-engines/format': fileURLToPath(
               new URL('./packages/level1-engines/src/format.ts', import.meta.url),
             ),

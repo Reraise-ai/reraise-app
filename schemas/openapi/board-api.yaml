@@ -446,6 +446,45 @@ paths:
         '413':
           $ref: '#/components/responses/TooLarge'
 
+  /source-profiles:
+    get:
+      operationId: source_profile_get
+      summary: Read the stored profile of one source
+      description: >-
+        Human-only. Derived from known decision outcomes and kept on the device.
+        agreement, deviation and counterPerspectiveValue stay here (ADR-0018, ADR-0008).
+        `earlier` holds the profiles this one replaced, oldest first.
+      tags: [human-only]
+      x-human-only: true
+      security:
+        - sessionToken: []
+      parameters:
+        - name: source
+          in: query
+          required: true
+          description: The profiled source (a card id or an absolute URI).
+          schema:
+            $ref: '../common.schema.json#/$defs/sourceRef'
+      responses:
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: The current profile and the earlier ones.
+          content:
+            application/json:
+              schema:
+                $ref: '../api.schema.json#/$defs/storedSourceProfile'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/HumanOnly'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /context-packages:
     post:
       operationId: context_package_get

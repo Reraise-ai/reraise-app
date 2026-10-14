@@ -799,6 +799,75 @@ describe('level1_get, level1_predict, level1_escalate', () => {
   });
 });
 
+describe('source_profile_get', () => {
+  const source = 'https://example.invalid/report-a';
+  const url = `/source-profiles?source=${encodeURIComponent(source)}`;
+
+  it('stores a hit count when the outcome becomes known and keeps the earlier count', async () => {
+    expectContract(
+      'source_profile_get',
+      await f.human('GET', '/source-profiles?source=https://example.invalid/unused'),
+      404,
+    );
+    const before = await f.human('GET', url);
+    const beforeN =
+      before.statusCode === 200
+        ? (before.json() as { profile: { dimensions: { hitAccuracy: { n: number } } } }).profile
+            .dimensions.hitAccuracy.n
+        : 0;
+    const open = await f.human('POST', '/decisions', {
+      format: 2,
+      type: 'decision',
+      title: 'Synthetic open decision',
+      sections: sections([f.ids.evPublic]),
+    });
+    expect(open.statusCode).toBe(201);
+    const still = await f.human('GET', url);
+    const stillN =
+      still.statusCode === 200
+        ? (still.json() as { profile: { dimensions: { hitAccuracy: { n: number } } } }).profile
+            .dimensions.hitAccuracy.n
+        : 0;
+    expect(stillN).toBe(beforeN);
+
+    const known = await f.human('POST', '/decisions', {
+      format: 2,
+      type: 'decision',
+      title: 'Synthetic counted decision',
+      sections: { ...sections([f.ids.evPublic]), outcome: 'The claim held.' },
+    });
+    expect(known.statusCode).toBe(201);
+    const got = await f.human('GET', url);
+    expectContract('source_profile_get', got, 200);
+    const body = got.json() as {
+      profile: {
+        source: string;
+        minimumN: number;
+        dimensions: {
+          hitAccuracy: { n: number; value: number };
+          reliability: { n: number };
+          topicCompetence: unknown[];
+        };
+      };
+      earlier: { dimensions: { hitAccuracy: { n: number } } }[];
+    };
+    expect(body.profile.source).toBe(source);
+    expect(body.profile.minimumN).toBe(5);
+    expect(body.profile.dimensions.hitAccuracy).toEqual({ n: beforeN + 1, value: 1 });
+    expect(body.profile.dimensions.reliability).toEqual({ n: 0 });
+    expect(body.profile.dimensions.topicCompetence).toEqual([]);
+    expect(body.earlier.at(-1)?.dimensions.hitAccuracy.n ?? 0).toBe(beforeN);
+    expectContract('source_profile_get', await f.human('GET', '/source-profiles'), 400);
+    expectContract(
+      'source_profile_get',
+      await f.human('GET', '/source-profiles?source=not-a-source'),
+      400,
+    );
+    expectContract('source_profile_get', await f.agent('scripted', 'GET', url), 403);
+    expectContract('source_profile_get', await f.raw({ method: 'GET', url }), 401);
+  });
+});
+
 describe('contract coverage', () => {
   it('declares 503 for every operation that touches the store or the receipt log, and 404 for a hidden Lage', () => {
     const ops = loadOperations();

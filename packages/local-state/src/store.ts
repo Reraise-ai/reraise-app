@@ -4,19 +4,23 @@
 // File-backed LocalStateStore (ADR-0030). One writer: the service process. Writes are atomic
 // and serialised in-process; ids are ULIDs. Layout:
 //   <state>/proposals/<ulid>.json   <state>/stances/<cardId>.json
+//   <state>/source-profiles/<sha256>.json
 //   <state>/gate-log.jsonl(.n)      <state>/gate-rules.yaml
 
-import type {
-  AgentAuthor,
-  GateLogEntry,
-  GateRulesLoad,
-  LocalStateStore,
-  Proposal,
-  ProposalCreate,
-  ProposalListRequest,
-  ProposalPage,
-  Stance,
-  StanceInput,
+import {
+  sha256,
+  type AgentAuthor,
+  type GateLogEntry,
+  type GateRulesLoad,
+  type LocalStateStore,
+  type Proposal,
+  type ProposalCreate,
+  type ProposalListRequest,
+  type ProposalPage,
+  type SourceProfile,
+  type Stance,
+  type StanceInput,
+  type StoredSourceProfile,
 } from '@worldbuilder/core';
 import { chmod, lstat, mkdir, readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
@@ -46,6 +50,13 @@ function rethrowUnlessInvalid<T>(onInvalid: () => T): (e: unknown) => T {
 }
 
 const ULID_FILE = /^[0-7][0-9A-HJKMNP-TV-Z]{25}\.json$/;
+
+/** File name for a source: the hex SHA-256 of the source text, so a URI cannot escape the directory. */
+function sourceHash(source: string): string {
+  return [...sha256(new TextEncoder().encode(source))]
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
 const DEFAULT_LIMIT = 50;
 const ZERO_KEY = { at: '1970-01-01T00:00:00.000Z', id: '' };
 
@@ -98,7 +109,7 @@ export async function createLocalStateStore(
  * state directory (and past the store-root and Git checks), so it is refused at open.
  */
 async function refuseSymlinkedEntries(stateDir: string, keep: number): Promise<void> {
-  const names = ['proposals', 'stances', 'gate-rules.yaml', 'gate-log.jsonl'];
+  const names = ['proposals', 'stances', 'source-profiles', 'gate-rules.yaml', 'gate-log.jsonl'];
   for (let n = 1; n <= keep; n++) names.push(`gate-log.jsonl.${n}`);
   for (const name of names) {
     const info = await lstat(path.join(stateDir, name)).catch(() => undefined);
@@ -114,6 +125,7 @@ async function refuseSymlinkedEntries(stateDir: string, keep: number): Promise<v
 class FileLocalStateStore implements LocalStateStore {
   private readonly proposalsDir: string;
   private readonly stancesDir: string;
+  private readonly profilesDir: string;
   private readonly mutex = new Mutex();
   private readonly newId: () => string;
   private readonly now: () => Date;
@@ -128,6 +140,7 @@ class FileLocalStateStore implements LocalStateStore {
   ) {
     this.proposalsDir = path.join(stateDir, 'proposals');
     this.stancesDir = path.join(stateDir, 'stances');
+    this.profilesDir = path.join(stateDir, 'source-profiles');
     this.now = options.now ?? (() => new Date());
     this.fsOps = options.fsOps ?? defaultFsOps;
     this.newId = createUlidFactory({
@@ -381,6 +394,57 @@ class FileLocalStateStore implements LocalStateStore {
       };
       await atomicWriteFile(file, `${JSON.stringify(stance, null, 2)}\n`, this.fsOps);
       return stance;
+    });
+  }
+
+  private profileFile(source: string): string {
+    return path.join(this.profilesDir, `${sourceHash(source)}.json`);
+  }
+
+  private async readProfileFile(file: string): Promise<StoredSourceProfile | undefined> {
+    let text: string;
+    try {
+      text = await readFile(file, 'utf8');
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code === 'ENOENT') return undefined;
+      throw e;
+    }
+    let data: StoredSourceProfile;
+    try {
+      data = parseJson(text) as StoredSourceProfile;
+    } catch {
+      throw localStateError('invalid', 'stored source profile is not valid JSON');
+    }
+    const checked = validatorFor('api.schema.json#/$defs/storedSourceProfile')(data);
+    if (!checked.ok) {
+      throw localStateError('invalid', `stored source profile invalid: ${checked.message}`);
+    }
+    if (`${sourceHash(data.profile.source)}.json` !== path.basename(file)) {
+      throw localStateError('invalid', 'stored source profile does not match its file name');
+    }
+    if (data.earlier.some((old) => old.source !== data.profile.source)) {
+      throw localStateError('invalid', 'stored source profile mixes sources');
+    }
+    return data;
+  }
+
+  async getSourceProfile(source: string): Promise<StoredSourceProfile | undefined> {
+    return await this.readProfileFile(this.profileFile(source));
+  }
+
+  async saveSourceProfile(profile: SourceProfile): Promise<StoredSourceProfile> {
+    const checked = validatorFor('source-profile.schema.json')(profile);
+    if (!checked.ok) throw localStateError('invalid', `source profile invalid: ${checked.message}`);
+    const file = this.profileFile(profile.source);
+    return await this.mutex.run(async () => {
+      const previous = await this.readProfileFile(file);
+      if (previous && JSON.stringify(previous.profile) === JSON.stringify(profile)) return previous;
+      const stored: StoredSourceProfile = {
+        profile,
+        earlier: previous ? [...previous.earlier, previous.profile] : [],
+      };
+      await atomicWriteFile(file, `${JSON.stringify(stored, null, 2)}\n`, this.fsOps);
+      return stored;
     });
   }
 

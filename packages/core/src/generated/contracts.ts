@@ -931,6 +931,49 @@ export interface Level1EscalateRequest {
   playerCardId: CardId;
 }
 /**
+ * The current source profile and every profile it replaced, oldest first. Kept on the device (ADR-0018). Derived, never edited by hand.
+ */
+export interface StoredSourceProfile {
+  profile: SourceProfile;
+  /**
+   * Profiles replaced by later known outcomes, oldest first.
+   */
+  earlier: SourceProfile[];
+}
+/**
+ * Multi-dimensional profile of a source (ADR-0018). Never one score: there is no aggregate field and no overall ranking. Every dimension carries its sample size `n`; below `minimumN` the UI shows 'insufficient data'. Derived from resolved estimates and decision outcomes, never edited by hand. agreement, deviation and counterPerspectiveValue use the user's stances and stay on the device.
+ */
+export interface SourceProfile {
+  source: SourceRef;
+  computedAt: DateTime;
+  /**
+   * Sample size below which a value is shown as insufficient data.
+   */
+  minimumN: number;
+  dimensions: {
+    hitAccuracy: SourceProfileDimension;
+    reliability: SourceProfileDimension;
+    topicCompetence: SourceProfileTopicDimension[];
+    agreement: SourceProfileDimension;
+    deviation: SourceProfileDimension;
+    sourceQuality: SourceProfileDimension;
+    historicalPerformance: SourceProfileDimension;
+    counterPerspectiveValue: SourceProfileDimension;
+  };
+}
+/**
+ * One dimension: a value in [0, 1] and its sample size. A value is required once n >= 1.
+ */
+export interface SourceProfileDimension {
+  value?: number;
+  n: number;
+}
+export interface SourceProfileTopicDimension {
+  topic: Text;
+  value?: number;
+  n: number;
+}
+/**
  * What a model or agent receives about the active world (ADR-0016, ADR-0024 item 34). Built after the disclosure gate: every item is gate-cleared for `target`; denied cards are omitted and only counted in `withheld`. Layers are never merged into a score. Only accepted content appears as items; pending proposals are listed separately. Stance data appears only for target screen; a cloud_model package carries content only with a confirmed, consumed transfer token.
  */
 export interface ContextPackage {
@@ -1555,39 +1598,6 @@ export interface RuleConditionRef {
  */
 export interface RulesEvaluateRequest {
   lageId: CardId;
-}
-/**
- * Multi-dimensional profile of a source (ADR-0018). Never one score: there is no aggregate field and no overall ranking. Every dimension carries its sample size `n`; below `minimumN` the UI shows 'insufficient data'. Derived from resolved estimates and decision outcomes, never edited by hand. agreement, deviation and counterPerspectiveValue use the user's stances and stay on the device.
- */
-export interface SourceProfile {
-  source: SourceRef;
-  computedAt: DateTime;
-  /**
-   * Sample size below which a value is shown as insufficient data.
-   */
-  minimumN: number;
-  dimensions: {
-    hitAccuracy: SourceProfileDimension;
-    reliability: SourceProfileDimension;
-    topicCompetence: SourceProfileTopicDimension[];
-    agreement: SourceProfileDimension;
-    deviation: SourceProfileDimension;
-    sourceQuality: SourceProfileDimension;
-    historicalPerformance: SourceProfileDimension;
-    counterPerspectiveValue: SourceProfileDimension;
-  };
-}
-/**
- * One dimension: a value in [0, 1] and its sample size. A value is required once n >= 1.
- */
-export interface SourceProfileDimension {
-  value?: number;
-  n: number;
-}
-export interface SourceProfileTopicDimension {
-  topic: Text;
-  value?: number;
-  n: number;
 }
 /**
  * Body of the human-only stance_save operation. The server sets cardId (from the path), updatedAt and history.

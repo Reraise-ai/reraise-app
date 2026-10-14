@@ -26,6 +26,7 @@ import type {
   ProposalPage,
   Stance,
   StanceInput,
+  StoredSourceProfile,
   UsageMetrics,
   WorldList,
 } from '@worldbuilder/core';
@@ -104,6 +105,8 @@ export interface BoardClient {
   usage_metrics_get(week?: string): Promise<UsageMetrics>;
   /** Which of the user's rules fire on a Lage. No percentage (ADR-0013). */
   rules_evaluate(body: RulesEvaluateRequest): Promise<RuleEvaluation>;
+  /** Human-only. The derived profile of one source, kept on this device (ADR-0018). */
+  source_profile_get(source: string): Promise<StoredSourceProfile>;
 }
 
 function query(params: Record<string, string | number | undefined>): string {
@@ -184,6 +187,7 @@ export function createClient(options: ClientOptions): BoardClient {
       call('POST', `/lagen/${enc(id)}/level1/escalate`, { playerCardId }),
     usage_metrics_get: (week) => call('GET', `/metrics/usage${query({ week })}`),
     rules_evaluate: (body) => call('POST', '/rules/evaluate', body),
+    source_profile_get: (source) => call('GET', `/source-profiles${query({ source })}`),
   };
 }
 

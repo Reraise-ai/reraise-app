@@ -375,7 +375,7 @@ decision slice and must not change the eleven sections.
 
 ## 12. Source profile
 
-Status: planned (M2+), decided in [ADR-0018](../adr/0018-multidimensional-source-profile.md).
+Status: on the board (ADR-0018). A known outcome stores `hitAccuracy` on this device. The other dimensions stay at `n` = 0 until their inputs exist. Below `minimumN` (5) the board says "insufficient data" (OQ-31).
 
 A source has a **profile of separate dimensions**, never one credibility value. Every
 dimension carries its value and its sample size `n`, and below a minimum `n` the UI shows

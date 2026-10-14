@@ -337,6 +337,7 @@ export function Workbench({
           }}
         />
         <InspectorPanel
+          client={client}
           card={selectedCardId ? loaded.cards.get(selectedCardId) : undefined}
           cardId={selectedCardId}
           stance={selectedCardId ? loaded.stances.get(selectedCardId) : undefined}

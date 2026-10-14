@@ -415,6 +415,22 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
         required: ['cardId', 'reason'],
         additionalProperties: false,
       },
+      storedSourceProfile: {
+        title: 'StoredSourceProfile',
+        description:
+          'The current source profile and every profile it replaced, oldest first. Kept on the device (ADR-0018). Derived, never edited by hand.',
+        type: 'object',
+        properties: {
+          profile: { $ref: 'source-profile.schema.json' },
+          earlier: {
+            type: 'array',
+            description: 'Profiles replaced by later known outcomes, oldest first.',
+            items: { $ref: 'source-profile.schema.json' },
+          },
+        },
+        required: ['profile', 'earlier'],
+        additionalProperties: false,
+      },
     },
   },
   'https://worldbuilder.invalid/schemas/v0/card.schema.json': {

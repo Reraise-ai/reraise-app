@@ -566,11 +566,13 @@ describe('a decision and its outcome on the Hormuz store', () => {
     const first = await serve();
     let decisionId = '';
     let usedId = '';
+    let source = '';
     try {
       const listed = await first.call('GET', '/cards?limit=200');
       const used = (listed.json['cards'] as unknown as Card[]).find((c) => c.type === 'event');
       expect(used?.id).toBeTruthy();
       usedId = used!.id;
+      source = used!.source ?? '';
       const rejected = await first.call('POST', '/decisions', {
         format: 2,
         type: 'decision',
@@ -611,6 +613,27 @@ describe('a decision and its outcome on the Hormuz store', () => {
         { target: decisionId, kind: 'based_on', by: 'human' },
         { target: usedId, kind: 'based_on', by: 'human' },
       ]);
+      expect(source.startsWith('https://')).toBe(true);
+      const profile = await second.call(
+        'GET',
+        `/source-profiles?source=${encodeURIComponent(source)}`,
+      );
+      expect(profile.status).toBe(200);
+      const body = profile.json as unknown as {
+        profile: {
+          minimumN: number;
+          dimensions: { hitAccuracy: { n: number }; reliability: { n: number } };
+        };
+        earlier: unknown[];
+      };
+      expect(body.profile.dimensions.hitAccuracy.n).toBe(1);
+      expect(body.profile.dimensions.reliability).toEqual({ n: 0 });
+      expect(body.profile.minimumN).toBe(5);
+      expect(body.earlier).toEqual([]);
+      const storeText = (await textsUnder(path.join(dir, 'store'))).join('\n');
+      expect(storeText).not.toContain('hitAccuracy');
+      const stateText = (await textsUnder(path.join(dir, 'state'))).join('\n');
+      expect(stateText).toContain('hitAccuracy');
     } finally {
       await second.service.close();
     }

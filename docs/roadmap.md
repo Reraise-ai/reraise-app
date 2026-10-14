@@ -22,7 +22,7 @@ Until then this page is the plan of record.
 | --- | --- | --- | --- |
 | **M0** Repository foundation and contracts | Monorepo, tooling, CI, docs, ADRs, contracts as code. No features. | in progress | CI is green, schemas validate the examples, the ADR log is complete, the docs build |
 | **M1** Walking skeleton | Thinnest end-to-end path, everything real, nothing pretty | done at `4e0ebf8` (job `e2e` green on Linux, Windows and macOS) | one Playwright end-to-end test runs the scenario below in CI |
-| **M2+** Vertical slices | One pull request per slice: UI, API, adapter and tests together | not started | per slice, see [below](#m2-vertical-slices) |
+| **M2+** Vertical slices | One pull request per slice: UI, API, adapter and tests together | in progress | per slice, see [below](#m2-vertical-slices) |
 
 ## M0: repository foundation and contracts
 
@@ -75,7 +75,12 @@ done criterion is what counts.
 
 The decision slice stores the eleven sections, rejects an unknown `cardsUsed` id, and the
 board records the decision and its outcome. A known outcome stores one linked experience
-card. Source hit counts stay in the source-profile slice.
+card.
+
+The source-profile slice meets its done criterion: a known outcome adds one to the stored
+hit count of each source cited by `cardsUsed`, the previous profile stays on the device,
+and the board shows every dimension with its sample size and "insufficient data" below
+`n` of 5.
 
 The rules panel lists each rule as fired or not fired, with the rule's own text and the
 triggering cards, and shows no percentage. Creating and editing rule cards stays open (AC-10).
