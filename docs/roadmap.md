@@ -90,6 +90,10 @@ card-on-board condition. The API accepts every condition kind.
 A card with one known origin is marked on the board. The same statement from two origins
 that do not repeat each other is marked as meeting the journalistic standard (Entscheidung 125).
 
+A player entry without a source is rejected. An empty player field is allowed. The board
+shows a source pass, "N findings · M origins", on each placed card, on an actor's seat
+entries and on its moves, on each edge, and on the cards a decision uses (AC-28, AC-30).
+
 | Slice | Done when |
 | --- | --- |
 | Decision card, protocol and outcome | A decision stores all 11 sections, reloads intact, rejects a `cardsUsed` id that does not exist, and entering the outcome creates a linked experience card. |
