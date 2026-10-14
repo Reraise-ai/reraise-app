@@ -212,3 +212,57 @@ export function independenceOf(
     origins: new Set(roots.map((root) => root.originRoot)).size,
   };
 }
+
+function word(n: number, one: string, many: string): string {
+  return `${n} ${n === 1 ? one : many}`;
+}
+
+/** The source-pass line (ADR-0009). It is never a bare card count. */
+export function sourcePassText(pass: ContextIndependence): string {
+  return `${word(pass.findings, 'finding', 'findings')} · ${word(pass.origins, 'origin', 'origins')}`;
+}
+
+/** Each card is one finding. Origins are the distinct origin roots of the set. */
+export function cardsSourcePass(cards: readonly Card[]): ContextIndependence {
+  return independenceOf([...originRoots(cards).values()]);
+}
+
+/**
+ * Findings in `cards` that share this card's origin root.
+ * Undefined when the card is not in the set.
+ */
+export function cardSourcePass(
+  cards: readonly Card[],
+  cardId: string,
+): ContextIndependence | undefined {
+  const roots = originRoots(cards);
+  const mine = roots.get(cardId);
+  if (!mine) return undefined;
+  const same = [...roots.values()].filter((root) => root.originRoot === mine.originRoot);
+  return independenceOf(same);
+}
+
+const SEAT_FIELDS = ['interests', 'capabilities', 'dependencies', 'moves'] as const;
+
+export type SeatField = (typeof SEAT_FIELDS)[number];
+
+/** Player-field entries of a seat (an actor card), in field order. Empty fields add nothing. */
+export function seatEntries(card: Card): { field: SeatField; text: string; source: string }[] {
+  return SEAT_FIELDS.flatMap((field) =>
+    (card[field] ?? []).map((entry) => ({ field, text: entry.text, source: entry.source })),
+  );
+}
+
+/**
+ * Each player entry is one finding. A source that names a card in `known` uses that card's
+ * origin root. The same source is one origin.
+ * shortcut: a source card that is not in `known` counts as its own origin.
+ */
+export function entriesSourcePass(
+  entries: readonly { source: string }[],
+  known: readonly Card[] = [],
+): ContextIndependence {
+  const roots = originRoots(known);
+  const labels = entries.map((entry) => roots.get(entry.source)?.originRoot ?? entry.source);
+  return { findings: entries.length, origins: new Set(labels).size };
+}

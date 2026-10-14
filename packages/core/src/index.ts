@@ -40,8 +40,17 @@ export {
   personalDataKinds,
 } from './personal-data.js';
 export type { PersonalDataKind } from './personal-data.js';
-export { independenceOf, originRoots, sourceMark } from './independence.js';
-export type { SourceMark } from './independence.js';
+export {
+  cardSourcePass,
+  cardsSourcePass,
+  entriesSourcePass,
+  independenceOf,
+  originRoots,
+  seatEntries,
+  sourceMark,
+  sourcePassText,
+} from './independence.js';
+export type { SeatField, SourceMark } from './independence.js';
 export { cardsForPackage } from './package-view.js';
 export type { PackageView } from './package-view.js';
 export type { OriginRoot } from './independence.js';
