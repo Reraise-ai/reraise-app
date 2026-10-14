@@ -14,6 +14,7 @@ import type {
   Proposal,
 } from '@worldbuilder/core';
 import { validityPeriodError } from '@worldbuilder/core';
+import { recordOutcomeExperience } from './outcome-experience.js';
 import { HttpError } from './problem.js';
 import { readLage, withPlacement, writeLageVersion } from './lage.js';
 import type { Services } from './services.js';
@@ -149,6 +150,8 @@ export async function applyProposal(s: Services, p: Proposal): Promise<void> {
         { sections: { ...decision.sections, outcome } },
         { contentHash: decision.contentHash },
       );
+      const updated = await s.storage.read(decisionId);
+      if (updated) await recordOutcomeExperience(s.storage, decision, updated);
       return;
     }
     case 'comment':

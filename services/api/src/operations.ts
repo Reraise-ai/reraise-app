@@ -27,6 +27,7 @@ import { level1Handlers } from './level1-ops.js';
 import { buildContextPackage } from './context.js';
 import { readLage } from './lage.js';
 import { HttpError } from './problem.js';
+import { recordOutcomeExperience } from './outcome-experience.js';
 import { applyProposal } from './proposals.js';
 import { evaluateRules } from './rules.js';
 import { stanceFor, type Services } from './services.js';
@@ -294,7 +295,12 @@ export const handlers: Readonly<Record<string, Handler>> = {
   async decision_create(s, { body }) {
     const draft = body as DecisionDraft;
     await requireCards(s, draft.sections.cardsUsed, 'cardsUsed');
-    const id = await s.writes.run(() => s.storage.create(draft, 'human'));
+    const id = await s.writes.run(async () => {
+      const created = await s.storage.create(draft, 'human');
+      const decision = await s.storage.read(created);
+      if (decision) await recordOutcomeExperience(s.storage, undefined, decision);
+      return created;
+    });
     return ok(await s.storage.read(id), 201);
   },
 
@@ -313,6 +319,8 @@ export const handlers: Readonly<Record<string, Handler>> = {
         Object.entries(next).filter(([key]) => !NOT_PATCHABLE.has(key)),
       ) as CardPatch;
       await s.storage.patch(id, patch, { contentHash: stored.contentHash });
+      const updated = await s.storage.read(id);
+      if (updated) await recordOutcomeExperience(s.storage, stored, updated);
     });
     return ok(await s.storage.read(id));
   },

@@ -546,3 +546,73 @@ describe('a model answers from the Hormuz context package (AC-16)', () => {
     }
   });
 });
+
+const decisionSections = (cardsUsed: string[], outcome = 'open') => ({
+  situation: 'A synthetic situation.',
+  trigger: 'A synthetic trigger.',
+  conditions: 'Synthetic conditions.',
+  facts: 'Synthetic facts.',
+  priorities: 'Synthetic priorities.',
+  action: 'Reroute via the Cape.',
+  alternatives: 'Wait.',
+  exclusions: 'Do not sail the strait.',
+  rationale: 'The wire report is the only placed evidence.',
+  cardsUsed,
+  outcome,
+});
+
+describe('a decision and its outcome on the Hormuz store', () => {
+  it('keeps the eleven sections after a restart, rejects an unknown card, and keeps the experience card', async () => {
+    const first = await serve();
+    let decisionId = '';
+    let usedId = '';
+    try {
+      const listed = await first.call('GET', '/cards?limit=200');
+      const used = (listed.json['cards'] as unknown as Card[]).find((c) => c.type === 'event');
+      expect(used?.id).toBeTruthy();
+      usedId = used!.id;
+      const rejected = await first.call('POST', '/decisions', {
+        format: 2,
+        type: 'decision',
+        title: 'Synthetic routing decision',
+        sections: decisionSections(['01ARZ3NDEKTSV4RRFFQ69G5FAV']),
+      });
+      expect(rejected.status).toBe(400);
+      const created = await first.call('POST', '/decisions', {
+        format: 2,
+        type: 'decision',
+        title: 'Synthetic routing decision',
+        sections: decisionSections([usedId]),
+      });
+      expect(created.status).toBe(201);
+      const decision = created.json as unknown as Card;
+      decisionId = decision.id;
+      expect(decision.sections).toEqual(decisionSections([usedId]));
+      const saved = await first.call('PUT', `/decisions/${decisionId}`, {
+        ...decision,
+        sections: decisionSections([usedId], 'Rerouted via the Cape.'),
+      });
+      expect(saved.status).toBe(200);
+    } finally {
+      await first.service.close();
+    }
+
+    const second = await serve();
+    try {
+      const reloaded = (await second.call('GET', `/cards/${decisionId}`)).json as unknown as Card;
+      expect(reloaded.sections).toEqual(decisionSections([usedId], 'Rerouted via the Cape.'));
+      const found = await second.call('GET', '/cards?type=experience&limit=200');
+      const linked = (found.json['cards'] as unknown as Card[]).filter((c) =>
+        c.edges?.some((e) => e.target === decisionId && e.kind === 'based_on'),
+      );
+      expect(linked).toHaveLength(1);
+      expect(linked[0]?.body).toContain('Rerouted via the Cape.');
+      expect(linked[0]?.edges).toEqual([
+        { target: decisionId, kind: 'based_on', by: 'human' },
+        { target: usedId, kind: 'based_on', by: 'human' },
+      ]);
+    } finally {
+      await second.service.close();
+    }
+  });
+});

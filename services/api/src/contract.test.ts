@@ -423,6 +423,13 @@ describe('proposal_create, proposal_list, proposal_accept, proposal_reject', () 
 
 describe('decision_create and decision_save', () => {
   let decision: Card;
+  const linkedExperience = async (decisionId: string): Promise<Card[]> => {
+    const res = await f.human('GET', '/cards?type=experience&limit=200');
+    const body = res.json() as { cards: Card[] };
+    return body.cards.filter((c) =>
+      c.edges?.some((e) => e.target === decisionId && e.kind === 'based_on'),
+    );
+  };
   it('decision_create saves a decision authored by the human', async () => {
     const res = await f.human('POST', '/decisions', {
       format: 2,
@@ -433,6 +440,31 @@ describe('decision_create and decision_save', () => {
     expectContract('decision_create', res, 201);
     decision = cardOf(res);
     expect(decision.author).toBe('human');
+    expect(await linkedExperience(decision.id)).toEqual([]);
+  });
+  it('decision_create with a known outcome stores one linked experience card', async () => {
+    const res = await f.human('POST', '/decisions', {
+      format: 2,
+      type: 'decision',
+      title: 'Already decided',
+      sections: { ...sections([f.ids.evPublic]), outcome: 'It held.' },
+    });
+    expectContract('decision_create', res, 201);
+    const made = cardOf(res);
+    const linked = await linkedExperience(made.id);
+    expect(linked).toHaveLength(1);
+    expect(linked[0]).toMatchObject({
+      type: 'experience',
+      layer: 'experience',
+      title: 'Experience: Already decided',
+      body: 'It held.',
+      visibility: 'private',
+      author: 'human',
+      edges: [
+        { target: made.id, kind: 'based_on', by: 'human' },
+        { target: f.ids.evPublic, kind: 'based_on', by: 'human' },
+      ],
+    });
   });
   it('decision_create rejects unknown cardsUsed and an incomplete body (400)', async () => {
     const draft = { format: 2, type: 'decision', title: 'D' };
@@ -454,6 +486,22 @@ describe('decision_create and decision_save', () => {
     const res = await f.human('PUT', `/decisions/${decision.id}`, changed);
     expectContract('decision_save', res, 200);
     expect(cardOf(res).sections?.outcome).toBe('Synthetic outcome.');
+    const linked = await linkedExperience(decision.id);
+    expect(linked).toHaveLength(1);
+    expect(linked[0]?.body).toBe('Synthetic outcome.');
+    expect(linked[0]?.edges).toEqual([
+      { target: decision.id, kind: 'based_on', by: 'human' },
+      { target: f.ids.evPublic, kind: 'based_on', by: 'human' },
+    ]);
+    const current = cardOf(res);
+    const again = await f.human('PUT', `/decisions/${decision.id}`, {
+      ...current,
+      sections: { ...current.sections, outcome: 'A later outcome.' },
+    });
+    expectContract('decision_save', again, 200);
+    const still = await linkedExperience(decision.id);
+    expect(still).toHaveLength(1);
+    expect(still[0]?.body).toBe('Synthetic outcome.');
     expectContract(
       'decision_save',
       await f.human('PUT', `/decisions/${decision.id}`, changed),
