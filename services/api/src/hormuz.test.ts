@@ -303,6 +303,52 @@ describe('proposals the real adapter refuses', () => {
   });
 });
 
+const HORMUZ_LAGE = '01M1F21G80R816A1T0V2P6RACH';
+const HORMUZ_PLACED = '01M1E34QM03WVTE8T1RYS3AM18';
+const HORMUZ_WORLD = '01M1DZPW00JGXPRPG4179ZPNB8';
+
+describe('a rule the user writes on the Hormuz store', () => {
+  it('keeps the changed action after a restart and the evaluation reads that card', async () => {
+    const first = await serve();
+    let ruleId = '';
+    try {
+      const created = await first.call('POST', '/rules', {
+        title: 'Synthetic hold rule',
+        worlds: [HORMUZ_WORLD],
+        rule: { when: [{ kind: 'card_on_lage', card: HORMUZ_PLACED }], then: 'Hold the cape' },
+      });
+      expect(created.status).toBe(201);
+      const rule = created.json as unknown as Card;
+      ruleId = rule.id;
+      expect(rule.author).toBe('human');
+      const saved = await first.call('PUT', `/rules/${ruleId}`, {
+        ...rule,
+        rule: { ...rule.rule!, then: 'Divert around the cape' },
+      });
+      expect(saved.status).toBe(200);
+    } finally {
+      await first.service.close();
+    }
+
+    const second = await serve();
+    try {
+      const res = await second.call('POST', '/rules/evaluate', { lageId: HORMUZ_LAGE });
+      expect(res.status).toBe(200);
+      const results = res.json['results'] as unknown as {
+        ruleId: string;
+        fired: boolean;
+        rule: { then: string };
+      }[];
+      expect(results.find((r) => r.ruleId === ruleId)).toMatchObject({
+        fired: true,
+        rule: { then: 'Divert around the cape' },
+      });
+    } finally {
+      await second.service.close();
+    }
+  });
+});
+
 describe('rule cards of the Hormuz store (a "## Rule" section in the file)', () => {
   it('rules_evaluate reads them through the real adapter', async () => {
     const { service, call } = await serve();

@@ -563,6 +563,90 @@ paths:
         '413':
           $ref: '#/components/responses/TooLarge'
 
+  /rules:
+    post:
+      operationId: rule_create
+      summary: Save a new rule card
+      description: >-
+        Human-only. Stores a card of type rule. A condition that names a card id stores only when
+        that card exists. The response is the stored card.
+      tags: [human-only]
+      x-human-only: true
+      security:
+        - sessionToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../rule.schema.json#/$defs/draft'
+      responses:
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '201':
+          description: The saved rule card.
+          content:
+            application/json:
+              schema:
+                $ref: '../rule.schema.json#/$defs/card'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/HumanOnly'
+        '413':
+          $ref: '#/components/responses/TooLarge'
+
+  /rules/{cardId}:
+    put:
+      operationId: rule_save
+      summary: Change a rule card
+      description: >-
+        Human-only. Patches the title and the rule. Every other stored field stays. A stale
+        contentHash is a conflict.
+      tags: [human-only]
+      x-human-only: true
+      security:
+        - sessionToken: []
+      parameters:
+        - name: cardId
+          in: path
+          required: true
+          schema:
+            $ref: '../common.schema.json#/$defs/cardId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../rule.schema.json#/$defs/card'
+      responses:
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: The saved rule card.
+          content:
+            application/json:
+              schema:
+                $ref: '../rule.schema.json#/$defs/card'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/HumanOnly'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '413':
+          $ref: '#/components/responses/TooLarge'
+
   /proposals:
     get:
       operationId: proposal_list

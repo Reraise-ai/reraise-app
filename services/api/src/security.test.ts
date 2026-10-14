@@ -63,6 +63,8 @@ const HUMAN_ONLY: { id: string; method: string; url: string; payload?: unknown }
   },
   { id: 'proposal_accept', method: 'POST', url: `/proposals/${ULID}/accept`, payload: {} },
   { id: 'proposal_reject', method: 'POST', url: `/proposals/${ULID}/reject`, payload: {} },
+  { id: 'rule_create', method: 'POST', url: '/rules', payload: {} },
+  { id: 'rule_save', method: 'PUT', url: `/rules/${ULID}`, payload: {} },
   { id: 'decision_create', method: 'POST', url: '/decisions', payload: {} },
   { id: 'decision_save', method: 'PUT', url: `/decisions/${ULID}`, payload: {} },
   { id: 'usage_metrics_get', method: 'GET', url: '/metrics/usage' },

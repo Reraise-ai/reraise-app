@@ -18,6 +18,8 @@ import type {
   Lage,
   LageCreateRequest,
   ProposalCreate,
+  Rule,
+  RuleDraft,
   StanceInput,
 } from '@worldbuilder/core';
 import { targetOf, type Principal } from './auth.js';
@@ -30,7 +32,7 @@ import { HttpError } from './problem.js';
 import { recordOutcomeExperience } from './outcome-experience.js';
 import { recordSourceProfiles } from './source-profile.js';
 import { applyProposal } from './proposals.js';
-import { evaluateRules } from './rules.js';
+import { cardsNamedBy, evaluateRules } from './rules.js';
 import { stanceFor, type Services } from './services.js';
 import { validators } from './contract.js';
 
@@ -237,6 +239,41 @@ export const handlers: Readonly<Record<string, Handler>> = {
 
   async context_package_get(s, { principal, body }) {
     return ok(await buildContextPackage(s, principal, body as ContextPackageRequest));
+  },
+
+  async rule_create(s, { body }) {
+    const draft = body as RuleDraft;
+    await requireCards(s, cardsNamedBy(draft.rule), 'rule');
+    const card: CardDraft = {
+      format: 2,
+      type: 'rule',
+      title: draft.title,
+      ...(draft.worlds ? { worlds: draft.worlds } : {}),
+      rule: draft.rule,
+    };
+    assertDraft(card);
+    const id = await s.writes.run(() => s.storage.create(card, 'human'));
+    return ok(await s.storage.read(id), 201);
+  },
+
+  async rule_save(s, { params, body }) {
+    const id = str(params['cardId']);
+    const next = body as Card & { rule: Rule };
+    if (next.id !== id) throw new HttpError(400, 'the id in the body differs from the path');
+    await requireCards(s, cardsNamedBy(next.rule), 'rule');
+    await s.writes.run(async () => {
+      const stored = await s.storage.read(id);
+      if (stored?.type !== 'rule') throw new HttpError(404, 'unknown rule');
+      if (next.contentHash !== stored.contentHash) {
+        throw new HttpError(409, 'the rule changed since it was read');
+      }
+      await s.storage.patch(
+        id,
+        { title: next.title, rule: next.rule },
+        { contentHash: stored.contentHash },
+      );
+    });
+    return ok(await s.storage.read(id));
   },
 
   async rules_evaluate(s, { principal, body }) {

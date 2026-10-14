@@ -311,6 +311,13 @@ export type ProposalCreate = ProposalKindPayload & {
 export type WriteBackReason =
   'no_new_knowledge' | 'already_covered' | 'ephemeral_ops_fact' | 'task_abandoned';
 /**
+ * A stored rule card. Body of the human-only rule save operation, and the response of create and save.
+ */
+export type RuleCard = Card & {
+  type: 'rule';
+  rule: Rule;
+};
+/**
  * Input of knowledge_write_back: exactly one of `card` (creates a create_card proposal; the agent cannot release it for sharing, ADR-0036) or `notNeeded`. Author and target come from the connection.
  */
 export type WriteBackRequest = WriteBackRequest1 & WriteBackRequest2;
@@ -1598,6 +1605,17 @@ export interface RuleConditionRef {
  */
 export interface RulesEvaluateRequest {
   lageId: CardId;
+}
+/**
+ * Body of the human-only rule create operation. The store assigns the id and the author is the human. The board form sends one card-on-board condition; any condition kind the rule schema allows is accepted here.
+ */
+export interface RuleDraft {
+  title: Text;
+  /**
+   * @minItems 1
+   */
+  worlds?: WorldId[];
+  rule: Rule;
 }
 /**
  * Body of the human-only stance_save operation. The server sets cardId (from the path), updatedAt and history.

@@ -2701,6 +2701,33 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
         required: ['kind', 'tag'],
         additionalProperties: false,
       },
+      draft: {
+        title: 'RuleDraft',
+        description:
+          'Body of the human-only rule create operation. The store assigns the id and the author is the human. The board form sends one card-on-board condition; any condition kind the rule schema allows is accepted here.',
+        type: 'object',
+        properties: {
+          title: { $ref: 'common.schema.json#/$defs/text' },
+          worlds: {
+            type: 'array',
+            items: { $ref: 'common.schema.json#/$defs/worldId' },
+            minItems: 1,
+            uniqueItems: true,
+          },
+          rule: { $ref: '#' },
+        },
+        required: ['title', 'rule'],
+        additionalProperties: false,
+      },
+      card: {
+        title: 'RuleCard',
+        description:
+          'A stored rule card. Body of the human-only rule save operation, and the response of create and save.',
+        type: 'object',
+        $ref: 'card.schema.json',
+        properties: { type: { type: 'string', const: 'rule' }, rule: { $ref: '#' } },
+        required: ['type', 'rule'],
+      },
     },
   },
   'https://worldbuilder.invalid/schemas/v0/shared-card.schema.json': {

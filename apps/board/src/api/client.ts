@@ -21,6 +21,7 @@ import type {
   Level1State,
   Problem,
   Proposal,
+  RuleDraft,
   RuleEvaluation,
   RulesEvaluateRequest,
   ProposalPage,
@@ -105,6 +106,10 @@ export interface BoardClient {
   usage_metrics_get(week?: string): Promise<UsageMetrics>;
   /** Which of the user's rules fire on a Lage. No percentage (ADR-0013). */
   rules_evaluate(body: RulesEvaluateRequest): Promise<RuleEvaluation>;
+  /** Human-only. Stores a rule card. The author is the human. */
+  rule_create(body: RuleDraft): Promise<Card>;
+  /** Human-only. Patches the title and the rule. A stale contentHash is a conflict. */
+  rule_save(cardId: string, card: Card): Promise<Card>;
   /** Human-only. The derived profile of one source, kept on this device (ADR-0018). */
   source_profile_get(source: string): Promise<StoredSourceProfile>;
 }
@@ -187,6 +192,8 @@ export function createClient(options: ClientOptions): BoardClient {
       call('POST', `/lagen/${enc(id)}/level1/escalate`, { playerCardId }),
     usage_metrics_get: (week) => call('GET', `/metrics/usage${query({ week })}`),
     rules_evaluate: (body) => call('POST', '/rules/evaluate', body),
+    rule_create: (body) => call('POST', '/rules', body),
+    rule_save: (id, card) => call('PUT', `/rules/${enc(id)}`, card),
     source_profile_get: (source) => call('GET', `/source-profiles${query({ source })}`),
   };
 }

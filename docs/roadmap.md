@@ -83,7 +83,9 @@ and the board shows every dimension with its sample size and "insufficient data"
 `n` of 5.
 
 The rules panel lists each rule as fired or not fired, with the rule's own text and the
-triggering cards, and shows no percentage. Creating and editing rule cards stays open (AC-10).
+triggering cards, and shows no percentage. The user creates a rule card and changes its
+action. The next evaluation reads that stored card (AC-10). The board form sends one
+card-on-board condition. The API accepts every condition kind.
 
 A card with one known origin is marked on the board. The same statement from two origins
 that do not repeat each other is marked as meeting the journalistic standard (Entscheidung 125).

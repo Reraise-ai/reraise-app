@@ -5,7 +5,7 @@
 // fastify.inject and its response is validated against the contract (status declared, media
 // type, JSON Schema). The last test fails if an operation of the contract was never called.
 
-import type { Card, DisclosureTransfer, Proposal } from '@worldbuilder/core';
+import type { Card, DisclosureTransfer, Proposal, RuleEvaluation } from '@worldbuilder/core';
 import { StorageError, type StorageErrorCode } from '@worldbuilder/core';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { loadOperations } from './contract.js';
@@ -520,6 +520,61 @@ describe('decision_create and decision_save', () => {
       await f.human('PUT', `/decisions/${decision.id}`, { x: 1 }),
       400,
     );
+  });
+});
+
+describe('rule_create and rule_save', () => {
+  const draft = (card: string, then = 'Hold the cape') => ({
+    title: 'Synthetic hold rule',
+    worlds: [f.worldId],
+    rule: { when: [{ kind: 'card_on_lage' as const, card }], then },
+  });
+  const hit = (body: RuleEvaluation, ruleId: string) =>
+    body.results.find((r) => r.ruleId === ruleId);
+
+  it('stores a rule the evaluation reads, and a later action replaces the stored one', async () => {
+    expectContract('rule_create', await f.human('POST', '/rules', { title: 'x' }), 400);
+    expectContract(
+      'rule_create',
+      await f.human('POST', '/rules', draft('01ARZ3NDEKTSV4RRFFQ69G5FAV')),
+      400,
+    );
+    const res = await f.human('POST', '/rules', draft(f.ids.evPublic));
+    expectContract('rule_create', res, 201);
+    const rule = cardOf(res);
+    expect(rule).toMatchObject({ type: 'rule', author: 'human', title: 'Synthetic hold rule' });
+    expect(rule.rule?.then).toBe('Hold the cape');
+    expect(rule.visibility).toBeUndefined();
+
+    const evaluated = await f.human('POST', '/rules/evaluate', { lageId: f.ids.lage });
+    expect(hit(evaluated.json() as RuleEvaluation, rule.id)).toMatchObject({
+      fired: true,
+      triggeringCardIds: [f.ids.evPublic],
+      rule: { then: 'Hold the cape' },
+    });
+
+    const changed = {
+      ...rule,
+      visibility: 'public' as const,
+      title: 'Synthetic hold rule',
+      rule: { ...rule.rule!, then: 'Divert' },
+    };
+    const saved = await f.human('PUT', `/rules/${rule.id}`, changed);
+    expectContract('rule_save', saved, 200);
+    const next = cardOf(saved);
+    expect(next.rule?.then).toBe('Divert');
+    expect(next.visibility).toBeUndefined();
+    expectContract('rule_save', await f.human('PUT', `/rules/${rule.id}`, changed), 409);
+    const ghost = '01ARZ3NDEKTSV4RRFFQ69G5FAV';
+    expectContract(
+      'rule_save',
+      await f.human('PUT', `/rules/${ghost}`, { ...next, id: ghost }),
+      404,
+    );
+    expectContract('rule_save', await f.human('PUT', `/rules/${rule.id}`, { x: 1 }), 400);
+
+    const again = await f.human('POST', '/rules/evaluate', { lageId: f.ids.lage });
+    expect(hit(again.json() as RuleEvaluation, rule.id)?.rule?.then).toBe('Divert');
   });
 });
 

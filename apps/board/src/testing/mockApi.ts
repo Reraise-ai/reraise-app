@@ -223,6 +223,24 @@ export function createMockApi(initial: { lage?: Lage; cards?: Card[] } = {}): Mo
   const lageCard = (lage: Lage, cardId = LAGE_ID, title = 'Hormuz reroute'): Card =>
     makeCard({ id: cardId, title, type: 'lage', lage, layer: undefined, author: 'human' });
   cards.set(LAGE_ID, lageCard(initial.lage ?? makeLage()));
+  cards.set(
+    RULE_FIRED,
+    makeCard({
+      id: RULE_FIRED,
+      title: 'Reroute when evidenced',
+      type: 'rule',
+      rule: { when: [{ kind: 'card_on_lage', card: id('C1') }], then: 'Reroute' },
+    }),
+  );
+  cards.set(
+    RULE_QUIET,
+    makeCard({
+      id: RULE_QUIET,
+      title: 'Wait for a second report',
+      type: 'rule',
+      rule: { when: [{ kind: 'card_on_lage', card: id('C2') }], then: 'Wait' },
+    }),
+  );
 
   let seq = 0;
   let changeSeq = 0;
@@ -749,35 +767,64 @@ export function createMockApi(initial: { lage?: Lage; cards?: Card[] } = {}): Mo
         confirmedAt: '2026-10-06T10:01:00.000Z',
       });
     }
+    if (p === '/rules' && method === 'POST') {
+      const draft = body as { title?: string; worlds?: string[]; rule?: Card['rule'] };
+      const named = (draft.rule?.when ?? []).flatMap((c) =>
+        'card' in c && c.card ? [c.card] : [],
+      );
+      if (!draft.title || !draft.rule?.then || named.some((cardId) => !cards.has(cardId))) {
+        return problem(400, 'invalid rule');
+      }
+      const card = makeCard({
+        id: id(`U${++seq}`),
+        type: 'rule',
+        title: draft.title,
+        ...(draft.worlds ? { worlds: draft.worlds } : {}),
+        rule: draft.rule,
+      });
+      cards.set(card.id!, card);
+      return json(201, card);
+    }
+    if ((m = p.match(/^\/rules\/([^/]+)$/)) && method === 'PUT' && m[1] !== 'evaluate') {
+      const current = cards.get(m[1]!);
+      if (current?.type !== 'rule' || !current.rule) return problem(404, 'unknown rule');
+      const next = body as Card;
+      if (next.contentHash !== current.contentHash) {
+        return problem(409, 'the rule changed since it was read');
+      }
+      const saved: Card = {
+        ...current,
+        title: next.title ?? current.title,
+        rule: next.rule ?? current.rule,
+        contentHash: `sha256:${'e'.repeat(64)}`,
+      };
+      cards.set(current.id!, saved);
+      return json(200, saved);
+    }
     if (p === '/rules/evaluate' && method === 'POST') {
       const lageId = (body as { lageId?: string }).lageId;
       const lage = lageId ? lageOf(lageId) : undefined;
       if (!lage || !lageId) return problem(404, 'Not found');
-      const trigger = id('C1');
+      const onBoard = new Set(lage.cards.map((c) => c.id));
+      const rules = [...cards.values()].filter((c) => c.type === 'rule' && c.rule);
       return json(200, {
         lageId,
         lageVersion: lage.version,
         target: 'screen',
         evaluatedAt: '2026-10-14T00:00:00.000Z',
         withheld: 0,
-        results: [
-          {
-            ruleId: RULE_FIRED,
-            fired: true,
-            triggeringCardIds: cards.has(trigger) ? [trigger] : [],
-            unmet: [],
+        results: rules.map((c) => {
+          const trigger = c.rule?.when.find((w) => w.kind === 'card_on_lage')?.card;
+          const fired = c.id !== RULE_QUIET && trigger !== undefined && onBoard.has(trigger);
+          return {
+            ruleId: c.id,
+            fired,
+            triggeringCardIds: fired && trigger ? [trigger] : [],
+            unmet: fired ? [] : [{ clause: 'when', index: 0 }],
             unknown: [],
-            rule: { when: [{ kind: 'card_on_lage', card: trigger }], then: 'Reroute' },
-          },
-          {
-            ruleId: RULE_QUIET,
-            fired: false,
-            triggeringCardIds: [],
-            unmet: [{ clause: 'when', index: 0 }],
-            unknown: [],
-            rule: { when: [{ kind: 'card_on_lage', card: id('C2') }], then: 'Wait' },
-          },
-        ],
+            rule: c.rule,
+          };
+        }),
       });
     }
     return problem(404, `no route ${method} ${p}`);

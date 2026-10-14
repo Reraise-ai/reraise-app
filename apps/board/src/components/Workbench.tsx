@@ -285,6 +285,7 @@ export function Workbench({
           client={client}
           lageId={lageId}
           lageVersion={lage.version}
+          worldId={worldId ?? loaded.card.worlds?.[0]}
           cards={loaded.cards}
           onFocusCard={(id) => {
             setSelectedEdgeKey(null);

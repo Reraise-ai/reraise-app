@@ -16,6 +16,7 @@ import {
   RULE_FIRED,
   RULE_QUIET,
   TOKEN,
+  WORLD_ID,
   createMockApi,
 } from './testing/mockApi.js';
 
@@ -31,6 +32,7 @@ function open(version = 1) {
       client={client}
       lageId={LAGE_ID}
       lageVersion={version}
+      worldId={WORLD_ID}
       cards={cards}
       onFocusCard={onFocusCard}
     />,
@@ -118,5 +120,32 @@ describe('rules panel', () => {
       />,
     );
     expect((await screen.findByTestId('rules-error')).textContent).toMatch(/rules down/);
+  });
+
+  it('saves a new rule and a changed action, and the panel reads both from the service', async () => {
+    const { api } = open();
+    await screen.findByTestId(`rules-row-${RULE_FIRED}`);
+    await userEvent.type(screen.getByTestId('rule-title'), 'Hold the cape');
+    await userEvent.type(screen.getByTestId('rule-then'), 'Hold');
+    await userEvent.click(screen.getByTestId('rule-create-submit'));
+    await screen.findByText('Hold');
+    const created = api.calls.find((c) => c.method === 'POST' && c.path === '/rules');
+    expect(created?.body).toEqual({
+      title: 'Hold the cape',
+      worlds: [WORLD_ID],
+      rule: { when: [{ kind: 'card_on_lage', card: C1 }], then: 'Hold' },
+    });
+
+    await userEvent.click(screen.getByTestId(`rules-change-${RULE_FIRED}`));
+    const input = await screen.findByTestId('rule-edit-then');
+    expect((input as HTMLInputElement).value).toBe('Reroute');
+    await userEvent.clear(input);
+    await userEvent.type(input, 'Divert');
+    await userEvent.click(screen.getByTestId('rule-edit-submit'));
+    await waitFor(() =>
+      expect(screen.getByTestId(`rules-then-${RULE_FIRED}`).textContent).toBe('Divert'),
+    );
+    const saved = api.calls.find((c) => c.method === 'PUT' && c.path === `/rules/${RULE_FIRED}`);
+    expect(saved?.body).toMatchObject({ rule: { then: 'Divert' } });
   });
 });

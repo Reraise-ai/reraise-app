@@ -40,7 +40,7 @@ interface Env {
 const unmet: Outcome = { state: 'unmet' };
 const unknown: Outcome = { state: 'unknown' };
 
-/** Card ids a condition refers to explicitly (used to decide whether a rule is withheld). */
+/** Card ids a condition names. A missing card is refused on write and unknown on evaluation. */
 function referencedCards(c: RuleCondition): string[] {
   switch (c.kind) {
     case 'card_on_lage':
@@ -52,6 +52,15 @@ function referencedCards(c: RuleCondition): string[] {
     case 'edge':
       return [c.from, c.to].filter((x): x is string => x !== undefined);
   }
+}
+
+/** Every card id the rule names, once. */
+export function cardsNamedBy(rule: Rule): string[] {
+  const ids = new Set<string>();
+  for (const condition of [...rule.when, ...(rule.unless ?? [])]) {
+    for (const id of referencedCards(condition)) ids.add(id);
+  }
+  return [...ids];
 }
 
 /** Does a Lage edge that the condition matches have an end the target may not see? */

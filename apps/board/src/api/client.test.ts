@@ -134,6 +134,25 @@ describe('board client', () => {
     ]);
   });
 
+  it('creates a rule and saves a changed action', async () => {
+    const { api, client } = setup();
+    const made = await client.rule_create({
+      title: 'Synthetic hold rule',
+      worlds: [WORLD_ID],
+      rule: { when: [{ kind: 'card_on_lage', card: CARDS[0]!.id! }], then: 'Hold' },
+    });
+    expect(made.rule?.then).toBe('Hold');
+    const saved = await client.rule_save(made.id!, {
+      ...made,
+      rule: { ...made.rule!, then: 'Divert' },
+    });
+    expect(saved.rule?.then).toBe('Divert');
+    expect(api.calls.map((c) => `${c.method} ${c.path}`)).toEqual([
+      'POST /rules',
+      `PUT /rules/${made.id}`,
+    ]);
+  });
+
   it('evaluates the rules of a Lage', async () => {
     const { api, client } = setup();
     const evaluation = await client.rules_evaluate({ lageId: LAGE_ID });
