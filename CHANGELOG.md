@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- The open board holds a what-if layer of assumptions that are not cards. Saving the layer writes nothing to the store. Recording a decision can attach that layer as a file in the state directory. The decision card stays unchanged (ADR-0050).
 - The board can be shown as of an earlier date. `lage_versions` returns the archived Lage versions, oldest first. The current state is not included. The slider shows that board and does not save the view (ADR-0049).
 - A player entry without a source is rejected. An empty player field is allowed. The board shows a source pass, "N findings · M origins", on each placed card, on an actor's seat entries and on its moves, on each edge, and on the cards a decision uses (AC-28, AC-30).
 - The user creates a rule card and changes its action. The board form sends one card-on-board condition and the action in the user's words. The API accepts every condition kind. A condition that names a missing card is rejected. A restart of `worldbuilder serve` on the Hormuz store still evaluates the changed action. A field other than the title and the rule is left as stored (AC-10).

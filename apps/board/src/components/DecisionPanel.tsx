@@ -42,15 +42,19 @@ const emptyFields = (): Record<Field, string> => ({
 interface Props {
   client: BoardClient;
   cards: Card[];
+  /** Set when the panel can attach the live what-if layer (ADR-0050). */
+  lageId?: string;
   disabled?: boolean;
 }
 
 /** The human records a decision. A known outcome is the service's cue to store an experience card. */
-export function DecisionPanel({ client, cards, disabled }: Props) {
+export function DecisionPanel({ client, cards, lageId, disabled }: Props) {
   const [title, setTitle] = useState('');
   const [fields, setFields] = useState(emptyFields);
   const [used, setUsed] = useState<string[]>([]);
   const [outcome, setOutcome] = useState('open');
+  const [attach, setAttach] = useState(false);
+  const [attached, setAttached] = useState<string[]>([]);
   const [decision, setDecision] = useState<Card | null>(null);
   const [experience, setExperience] = useState<Card | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -90,6 +94,10 @@ export function DecisionPanel({ client, cards, disabled }: Props) {
     try {
       const saved = await client.decision_create(draft);
       setDecision(saved);
+      if (attach && lageId && saved.id) {
+        const snapshot = await client.scenario_attach(lageId, saved.id);
+        setAttached(snapshot.assumptions.map((item) => item.statement));
+      }
       if (isKnownOutcome(saved.sections?.outcome)) await showExperience(saved.id!);
       else setOutcome('');
     } catch (e) {
@@ -138,6 +146,13 @@ export function DecisionPanel({ client, cards, disabled }: Props) {
       {decision ? (
         <div>
           <p data-testid="decision-saved">{decision.title}</p>
+          {attached.length > 0 && (
+            <ul data-testid="decision-scenario">
+              {attached.map((statement) => (
+                <li key={statement}>{statement}</li>
+              ))}
+            </ul>
+          )}
           {experience ? (
             <p data-testid="decision-experience">{experience.title}</p>
           ) : (
@@ -215,6 +230,19 @@ export function DecisionPanel({ client, cards, disabled }: Props) {
               required
             />
           </div>
+          {lageId && (
+            <div className="wb-field">
+              <label>
+                <input
+                  type="checkbox"
+                  data-testid="decision-attach"
+                  checked={attach}
+                  onChange={(e) => setAttach(e.target.checked)}
+                />{' '}
+                Attach the what-if
+              </label>
+            </div>
+          )}
           <button
             type="submit"
             className="wb-primary"

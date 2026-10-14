@@ -76,3 +76,4 @@ MCP tool definitions, the adapter interfaces, or the product canon
 | [0047](0047-api-rate-limiting.md) | The Board API limits requests per credential and locks an address out after failed credentials | accepted | 2026-10-09 |
 | [0048](0048-card-descriptive-fields.md) | Optional descriptive card fields stay out of the hash and follow the card's disclosure rules | accepted | 2026-10-10 |
 | [0049](0049-lage-versions.md) | Archived Lage versions are a human-only read | accepted | 2026-10-14 |
+| [0050](0050-what-if-scenario-layer.md) | The what-if layer is not a card | accepted | 2026-10-14 |

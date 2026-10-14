@@ -9,6 +9,7 @@ import type { Card, DisclosureTransfer, Proposal, RuleEvaluation } from '@worldb
 import { StorageError, type StorageErrorCode } from '@worldbuilder/core';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { loadOperations } from './contract.js';
+import { proveScenarioContract } from './scenario.contract.js';
 import { cardOf, covered, expectContract, makeFixture, type Fixture } from './test-helpers.js';
 
 const NOW = '2026-02-01T00:00:00Z';
@@ -930,6 +931,11 @@ describe('source_profile_get', () => {
     expectContract('source_profile_get', await f.agent('scripted', 'GET', url), 403);
     expectContract('source_profile_get', await f.raw({ method: 'GET', url }), 401);
   });
+});
+
+describe('what-if layer (ADR-0050)', () => {
+  it('changes no card and attaches the layer to a decision', () =>
+    proveScenarioContract(f, sections));
 });
 
 describe('contract coverage', () => {

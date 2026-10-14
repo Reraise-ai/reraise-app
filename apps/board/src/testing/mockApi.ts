@@ -247,6 +247,11 @@ export function createMockApi(initial: { lage?: Lage; cards?: Card[] } = {}): Mo
 
   let seq = 0;
   let changeSeq = 0;
+  const scenarios = new Map<string, { id: string; statement: string }[]>();
+  const scenarioAttachments = new Map<
+    string,
+    { decisionId: string; assumptions: { id: string; statement: string }[] }
+  >();
   let fail: { status: number; title: string; match: RegExp; detail?: string } | undefined;
   const state: { proposalSeq: Map<string, number> } = { proposalSeq: new Map() };
   const api: MockApi = {
@@ -579,6 +584,42 @@ export function createMockApi(initial: { lage?: Lage; cards?: Card[] } = {}): Mo
       });
       cards.set(card.id!, card);
       return json(201, card);
+    }
+    if ((m = p.match(/^\/lagen\/([^/]+)\/scenario$/))) {
+      const lageId = m[1]!;
+      if (!lageOf(lageId)) return problem(404, 'unknown Lage');
+      if (method === 'GET') return json(200, { assumptions: scenarios.get(lageId) ?? [] });
+      if (method === 'PUT') {
+        const seen = new Set<string>();
+        const assumptions: { id: string; statement: string }[] = [];
+        for (const item of (body as { assumptions?: { statement?: string }[] }).assumptions ?? []) {
+          const statement = (item.statement ?? '').trim();
+          if (statement === '' || seen.has(statement)) continue;
+          seen.add(statement);
+          assumptions.push({
+            id: `01JA000000000000000000S${String(++seq).padStart(3, '0')}`,
+            statement,
+          });
+        }
+        if (assumptions.length === 0) scenarios.delete(lageId);
+        else scenarios.set(lageId, assumptions);
+        return json(200, { assumptions });
+      }
+    }
+    if ((m = p.match(/^\/lagen\/([^/]+)\/scenario\/attach$/)) && method === 'POST') {
+      const lageId = m[1]!;
+      if (!lageOf(lageId)) return problem(404, 'unknown Lage');
+      const assumptions = scenarios.get(lageId) ?? [];
+      if (assumptions.length === 0) return problem(400, 'the what-if layer is empty');
+      const decisionId = (body as { decisionId?: string }).decisionId ?? '';
+      if (cards.get(decisionId)?.type !== 'decision') return problem(404, 'unknown decision');
+      const attachment = { decisionId, assumptions };
+      scenarioAttachments.set(decisionId, attachment);
+      return json(200, attachment);
+    }
+    if ((m = p.match(/^\/decisions\/([^/]+)\/scenario$/)) && method === 'GET') {
+      const saved = scenarioAttachments.get(m[1]!);
+      return saved ? json(200, saved) : problem(404, 'no what-if attached to this decision');
     }
     if ((m = p.match(/^\/lagen\/([^/]+)\/versions$/)) && method === 'GET') {
       const card = cards.get(m[1]!);

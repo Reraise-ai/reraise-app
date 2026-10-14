@@ -82,6 +82,81 @@
       "required": ["versions"],
       "additionalProperties": false
     },
+    "scenarioAssumption": {
+      "title": "ScenarioAssumption",
+      "description": "One assumption of a what-if layer. The id is a ULID and is not a card in the store (ADR-0050).",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/ulid" },
+        "statement": { "$ref": "common.schema.json#/$defs/text" }
+      },
+      "required": ["id", "statement"],
+      "additionalProperties": false
+    },
+    "scenarioStatement": {
+      "title": "ScenarioStatement",
+      "description": "An assumption the user typed. The service assigns the id (ADR-0050).",
+      "type": "object",
+      "properties": {
+        "statement": { "$ref": "common.schema.json#/$defs/text" }
+      },
+      "required": ["statement"],
+      "additionalProperties": false
+    },
+    "scenarioLayer": {
+      "title": "ScenarioLayer",
+      "description": "The live what-if layer of one Lage. It is kept in memory and is not a card (ADR-0050).",
+      "type": "object",
+      "properties": {
+        "assumptions": {
+          "type": "array",
+          "maxItems": 20,
+          "items": { "$ref": "#/$defs/scenarioAssumption" }
+        }
+      },
+      "required": ["assumptions"],
+      "additionalProperties": false
+    },
+    "scenarioReplace": {
+      "title": "ScenarioReplace",
+      "description": "Replace the live what-if layer. An empty list clears it. Nothing is written to the card store (ADR-0050).",
+      "type": "object",
+      "properties": {
+        "assumptions": {
+          "type": "array",
+          "maxItems": 20,
+          "items": { "$ref": "#/$defs/scenarioStatement" }
+        }
+      },
+      "required": ["assumptions"],
+      "additionalProperties": false
+    },
+    "scenarioAttachRequest": {
+      "title": "ScenarioAttachRequest",
+      "description": "Copy the live what-if layer onto this decision. The decision card is not changed (ADR-0050).",
+      "type": "object",
+      "properties": {
+        "decisionId": { "$ref": "common.schema.json#/$defs/cardId" }
+      },
+      "required": ["decisionId"],
+      "additionalProperties": false
+    },
+    "scenarioAttachment": {
+      "title": "ScenarioAttachment",
+      "description": "The what-if assumptions copied onto a decision. Kept on this device, not on the decision card (ADR-0050).",
+      "type": "object",
+      "properties": {
+        "decisionId": { "$ref": "common.schema.json#/$defs/cardId" },
+        "assumptions": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "items": { "$ref": "#/$defs/scenarioAssumption" }
+        }
+      },
+      "required": ["decisionId", "assumptions"],
+      "additionalProperties": false
+    },
     "cardGetRequest": {
       "title": "CardGetRequest",
       "type": "object",

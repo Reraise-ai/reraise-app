@@ -12,6 +12,7 @@ import type {
   ProposalCreate,
   ProposalListRequest,
   ProposalPage,
+  ScenarioAttachment,
   SourceProfile,
   Stance,
   StanceInput,
@@ -118,6 +119,13 @@ export interface LocalStateStore {
    * same profile again changes nothing. Human-only; the service derives it, nobody edits it.
    */
   saveSourceProfile(profile: SourceProfile): Promise<StoredSourceProfile>;
+
+  /** The what-if snapshot attached to a decision, or `undefined` when none is (ADR-0050). */
+  getScenarioAttachment(decisionId: string): Promise<ScenarioAttachment | undefined>;
+  /**
+   * Replace the snapshot. Saving the same one again changes nothing. Human-only. Not a card.
+   */
+  saveScenarioAttachment(attachment: ScenarioAttachment): Promise<ScenarioAttachment>;
 
   /**
    * Names of proposal and stance files that were skipped or refused because they are damaged

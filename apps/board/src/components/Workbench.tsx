@@ -32,6 +32,7 @@ import { InspectorPanel } from './InspectorPanel.js';
 import { Level1Panel } from './Level1Panel.js';
 import { ProposalsPanel } from './ProposalsPanel.js';
 import { RulesPanel } from './RulesPanel.js';
+import { ScenarioPanel } from './ScenarioPanel.js';
 import { SearchPanel } from './SearchPanel.js';
 
 interface Props {
@@ -413,8 +414,10 @@ export function Workbench({
               }
             : {})}
         />
+        <ScenarioPanel client={client} lageId={lageId} disabled={saving || frozen} />
         <DecisionPanel
           client={client}
+          lageId={lageId}
           cards={[...loaded.cards.values()].filter(
             (c) => c.id !== undefined && placedIds.has(c.id),
           )}

@@ -5,6 +5,7 @@
 // and serialised in-process; ids are ULIDs. Layout:
 //   <state>/proposals/<ulid>.json   <state>/stances/<cardId>.json
 //   <state>/source-profiles/<sha256>.json
+//   <state>/scenario-attachments/<decisionId>.json
 //   <state>/gate-log.jsonl(.n)      <state>/gate-rules.yaml
 
 import {
@@ -17,6 +18,7 @@ import {
   type ProposalCreate,
   type ProposalListRequest,
   type ProposalPage,
+  type ScenarioAttachment,
   type SourceProfile,
   type Stance,
   type StanceInput,
@@ -109,7 +111,14 @@ export async function createLocalStateStore(
  * state directory (and past the store-root and Git checks), so it is refused at open.
  */
 async function refuseSymlinkedEntries(stateDir: string, keep: number): Promise<void> {
-  const names = ['proposals', 'stances', 'source-profiles', 'gate-rules.yaml', 'gate-log.jsonl'];
+  const names = [
+    'proposals',
+    'stances',
+    'source-profiles',
+    'scenario-attachments',
+    'gate-rules.yaml',
+    'gate-log.jsonl',
+  ];
   for (let n = 1; n <= keep; n++) names.push(`gate-log.jsonl.${n}`);
   for (const name of names) {
     const info = await lstat(path.join(stateDir, name)).catch(() => undefined);
@@ -126,6 +135,7 @@ class FileLocalStateStore implements LocalStateStore {
   private readonly proposalsDir: string;
   private readonly stancesDir: string;
   private readonly profilesDir: string;
+  private readonly attachmentsDir: string;
   private readonly mutex = new Mutex();
   private readonly newId: () => string;
   private readonly now: () => Date;
@@ -141,6 +151,7 @@ class FileLocalStateStore implements LocalStateStore {
     this.proposalsDir = path.join(stateDir, 'proposals');
     this.stancesDir = path.join(stateDir, 'stances');
     this.profilesDir = path.join(stateDir, 'source-profiles');
+    this.attachmentsDir = path.join(stateDir, 'scenario-attachments');
     this.now = options.now ?? (() => new Date());
     this.fsOps = options.fsOps ?? defaultFsOps;
     this.newId = createUlidFactory({
@@ -445,6 +456,53 @@ class FileLocalStateStore implements LocalStateStore {
       };
       await atomicWriteFile(file, `${JSON.stringify(stored, null, 2)}\n`, this.fsOps);
       return stored;
+    });
+  }
+
+  private attachmentFile(decisionId: string): string {
+    return path.join(this.attachmentsDir, `${decisionId}.json`);
+  }
+
+  private async readAttachmentFile(file: string): Promise<ScenarioAttachment | undefined> {
+    let text: string;
+    try {
+      text = await readFile(file, 'utf8');
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code === 'ENOENT') return undefined;
+      throw e;
+    }
+    let data: ScenarioAttachment;
+    try {
+      data = parseJson(text) as ScenarioAttachment;
+    } catch {
+      throw localStateError('invalid', 'stored scenario attachment is not valid JSON');
+    }
+    const checked = validatorFor('api.schema.json#/$defs/scenarioAttachment')(data);
+    if (!checked.ok) {
+      throw localStateError('invalid', `stored scenario attachment invalid: ${checked.message}`);
+    }
+    if (`${data.decisionId}.json` !== path.basename(file)) {
+      throw localStateError('invalid', 'stored scenario attachment does not match its file name');
+    }
+    return data;
+  }
+
+  async getScenarioAttachment(decisionId: string): Promise<ScenarioAttachment | undefined> {
+    checkId(decisionId, 'decision id');
+    return this.readAttachmentFile(this.attachmentFile(decisionId));
+  }
+
+  async saveScenarioAttachment(attachment: ScenarioAttachment): Promise<ScenarioAttachment> {
+    const checked = validatorFor('api.schema.json#/$defs/scenarioAttachment')(attachment);
+    if (!checked.ok)
+      throw localStateError('invalid', `scenario attachment invalid: ${checked.message}`);
+    checkId(attachment.decisionId, 'decision id');
+    const file = this.attachmentFile(attachment.decisionId);
+    return this.mutex.run(async () => {
+      const previous = await this.readAttachmentFile(file);
+      if (previous && JSON.stringify(previous) === JSON.stringify(attachment)) return previous;
+      await atomicWriteFile(file, `${JSON.stringify(attachment, null, 2)}\n`, this.fsOps);
+      return attachment;
     });
   }
 

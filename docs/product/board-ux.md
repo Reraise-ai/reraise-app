@@ -403,8 +403,11 @@ These ideas come from a second UX study and fit the canon.
 - **Time slider**. The open board shows an earlier archived Lage (question, options, placements
   and edges) from `lage_versions`. Card text stays current. The view is not saved
   ([ADR-0049](../adr/0049-lage-versions.md), [ADR-0006](../adr/0006-files-are-the-truth.md)).
-- **What-if layer** (planned (M2+)). A non-persisting scenario layer with your own
-  assumptions, savable and attachable to a decision. It never changes real cards.
+- **What-if layer**. The open board holds assumptions that are not cards. Saving them
+  writes nothing to the store. Recording a decision can attach that layer. The attachment
+  stays on this device. A restart clears the live layer and keeps the attachment. The
+  decision card stays unchanged
+  ([ADR-0050](../adr/0050-what-if-scenario-layer.md)).
 - **World collision** (planned (M2+)). Two local worlds overlaid on one question: shared
   cards, diverging cards, and cards from one world that do not fit the other, with no
   consensus required.

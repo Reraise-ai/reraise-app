@@ -98,6 +98,10 @@ The board can be shown as of an earlier date. `lage_versions` returns archived L
 versions, oldest first, and the current state is not included. The slider shows that
 board and does not save the view (ADR-0049).
 
+The open board holds a what-if layer of assumptions that are not cards. Saving the layer
+writes nothing to the store. Recording a decision can attach that layer. The attachment
+is a file in the state directory. The decision card is unchanged (ADR-0050).
+
 | Slice | Done when |
 | --- | --- |
 | Decision card, protocol and outcome | A decision stores all 11 sections, reloads intact, rejects a `cardsUsed` id that does not exist, and entering the outcome creates a linked experience card. |

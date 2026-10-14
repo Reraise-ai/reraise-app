@@ -191,6 +191,159 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /lagen/{lageId}/scenario:
+    parameters:
+      - name: lageId
+        in: path
+        required: true
+        schema:
+          $ref: '../api.schema.json#/$defs/lageGetRequest/properties/lageId'
+    get:
+      operationId: scenario_get
+      summary: The live what-if layer of a Lage
+      description: >-
+        Human-only. The assumptions the user is trying, kept in memory for this process.
+        They are not cards. An empty list means the layer is off. A restart drops the layer
+        (ADR-0050).
+      tags: [human-only]
+      x-human-only: true
+      security:
+        - sessionToken: []
+      responses:
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: The live layer. Empty when the user has not set one.
+          content:
+            application/json:
+              schema:
+                $ref: '../api.schema.json#/$defs/scenarioLayer'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/HumanOnly'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      operationId: scenario_replace
+      summary: Replace the live what-if layer
+      description: >-
+        Human-only. Replaces the in-memory layer. The service trims statements and keeps one
+        copy of each. An empty list clears the layer. No card is written (ADR-0050).
+      tags: [human-only]
+      x-human-only: true
+      security:
+        - sessionToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../api.schema.json#/$defs/scenarioReplace'
+      responses:
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: The layer as stored in memory, with an id on each assumption.
+          content:
+            application/json:
+              schema:
+                $ref: '../api.schema.json#/$defs/scenarioLayer'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/HumanOnly'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '413':
+          $ref: '#/components/responses/TooLarge'
+
+  /lagen/{lageId}/scenario/attach:
+    parameters:
+      - name: lageId
+        in: path
+        required: true
+        schema:
+          $ref: '../api.schema.json#/$defs/lageGetRequest/properties/lageId'
+    post:
+      operationId: scenario_attach
+      summary: Attach the live what-if layer to a decision
+      description: >-
+        Human-only. Copies the live layer into the state directory under the decision id.
+        The decision card is not modified. An empty layer is refused (ADR-0050).
+      tags: [human-only]
+      x-human-only: true
+      security:
+        - sessionToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../api.schema.json#/$defs/scenarioAttachRequest'
+      responses:
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: The snapshot now kept on this device.
+          content:
+            application/json:
+              schema:
+                $ref: '../api.schema.json#/$defs/scenarioAttachment'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/HumanOnly'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '413':
+          $ref: '#/components/responses/TooLarge'
+
+  /decisions/{decisionId}/scenario:
+    parameters:
+      - name: decisionId
+        in: path
+        required: true
+        schema:
+          $ref: '../common.schema.json#/$defs/cardId'
+    get:
+      operationId: scenario_attachment_get
+      summary: The what-if snapshot attached to a decision
+      description: >-
+        Human-only. The snapshot copied by scenario_attach. It lives in the state directory,
+        not on the decision card (ADR-0050).
+      tags: [human-only]
+      x-human-only: true
+      security:
+        - sessionToken: []
+      responses:
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: The attached assumptions.
+          content:
+            application/json:
+              schema:
+                $ref: '../api.schema.json#/$defs/scenarioAttachment'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/HumanOnly'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /lagen/{lageId}/level1:
     parameters:
       - name: lageId

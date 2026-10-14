@@ -1,0 +1,11 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/api.schema.json#/$defs/scenarioReplace",
+  "description": "Replace the live what-if layer. The service assigns the ids (ADR-0050).",
+  "data": {
+    "assumptions": [
+      { "statement": "The strait stays closed for thirty days." },
+      { "statement": "War-risk cover doubles." }
+    ]
+  }
+}

@@ -26,6 +26,7 @@ import { targetOf, type Principal } from './auth.js';
 import { assertAgentProposal } from './agent-checks.js';
 import { knowledgeHandlers } from './knowledge-ops.js';
 import { level1Handlers } from './level1-ops.js';
+import { scenarioHandlers } from './scenario-ops.js';
 import { buildContextPackage } from './context.js';
 import { readLage } from './lage.js';
 import { HttpError } from './problem.js';
@@ -125,6 +126,7 @@ const NOT_PATCHABLE = new Set([
 export const handlers: Readonly<Record<string, Handler>> = {
   ...knowledgeHandlers,
   ...level1Handlers,
+  ...scenarioHandlers,
 
   async world_list(s, { principal }) {
     const worlds = await s.storage.listWorlds();

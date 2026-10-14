@@ -42,6 +42,10 @@ export type EdgeKind =
  */
 export type KnownAuthor = string;
 /**
+ * A ULID: 26 Crockford base32 characters, upper case. Canonical ids are minted ULIDs or derived from the card URI (first 128 bits of SHA-256(uri), ADR-0023).
+ */
+export type Ulid = string;
+/**
  * Epistemic kind of a card (ADR-0007). believed is never a layer; it is a private stance (ADR-0008).
  */
 export type Layer = 'evidenced' | 'said' | 'experience';
@@ -100,10 +104,6 @@ export type Author = string;
  * A card id or an absolute URI (for example a wb: URI or a web address). Used where provenance must be machine-resolvable, e.g. player fields (ADR-0009).
  */
 export type SourceRef = Ulid;
-/**
- * A ULID: 26 Crockford base32 characters, upper case. Canonical ids are minted ULIDs or derived from the card URI (first 128 bits of SHA-256(uri), ADR-0023).
- */
-export type Ulid = string;
 /**
  * Player-field entries; each needs a source (ADR-0009).
  */
@@ -437,6 +437,54 @@ export interface LageVersion {
  */
 export interface LageVersionList {
   versions: LageVersion[];
+}
+/**
+ * One assumption of a what-if layer. The id is a ULID and is not a card in the store (ADR-0050).
+ */
+export interface ScenarioAssumption {
+  id: Ulid;
+  statement: Text;
+}
+/**
+ * An assumption the user typed. The service assigns the id (ADR-0050).
+ */
+export interface ScenarioStatement {
+  statement: Text;
+}
+/**
+ * The live what-if layer of one Lage. It is kept in memory and is not a card (ADR-0050).
+ */
+export interface ScenarioLayer {
+  /**
+   * @maxItems 20
+   */
+  assumptions: ScenarioAssumption[];
+}
+/**
+ * Replace the live what-if layer. An empty list clears it. Nothing is written to the card store (ADR-0050).
+ */
+export interface ScenarioReplace {
+  /**
+   * @maxItems 20
+   */
+  assumptions: ScenarioStatement[];
+}
+/**
+ * Copy the live what-if layer onto this decision. The decision card is not changed (ADR-0050).
+ */
+export interface ScenarioAttachRequest {
+  decisionId: CardId;
+}
+/**
+ * The what-if assumptions copied onto a decision. Kept on this device, not on the decision card (ADR-0050).
+ */
+export interface ScenarioAttachment {
+  decisionId: CardId;
+  /**
+   * @minItems 1
+   * @maxItems 20
+   */
+  assumptions: ScenarioAssumption[];
 }
 export interface CardGetRequest {
   cardId: CardId;

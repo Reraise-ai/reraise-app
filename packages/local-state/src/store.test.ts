@@ -453,12 +453,44 @@ describe('source profiles (ADR-0018)', () => {
   });
 });
 
+describe('scenario attachments (ADR-0050)', () => {
+  const attachment = {
+    decisionId: CARD_A,
+    assumptions: [{ id: CARD_B, statement: 'A synthetic assumption.' }],
+  };
+
+  it('stores the snapshot under the decision id and reads it from a new store', async () => {
+    const { stateDir, store } = await open();
+    expect(await store.getScenarioAttachment(CARD_A)).toBeUndefined();
+    const saved = await store.saveScenarioAttachment(attachment);
+    expect(saved).toEqual(attachment);
+    const names = await readdir(path.join(stateDir, 'scenario-attachments'));
+    expect(names).toEqual([`${CARD_A}.json`]);
+    expect(await store.saveScenarioAttachment(attachment)).toEqual(saved);
+    const next = await createLocalStateStore({ explicitPath: stateDir });
+    expect(await next.getScenarioAttachment(CARD_A)).toEqual(attachment);
+    await rejects(store.saveScenarioAttachment({ ...attachment, assumptions: [] }), 'invalid');
+    await rejects(store.getScenarioAttachment('not-an-id'), 'invalid');
+  });
+
+  it('refuses a damaged file and a file whose decision id differs from its name', async () => {
+    const { stateDir, store } = await open();
+    await store.saveScenarioAttachment(attachment);
+    const file = path.join(stateDir, 'scenario-attachments', `${CARD_A}.json`);
+    await writeFile(file, '{');
+    await rejects(store.getScenarioAttachment(CARD_A), 'invalid');
+    await writeFile(file, `${JSON.stringify({ ...attachment, decisionId: CARD_B })}\n`);
+    await rejects(store.getScenarioAttachment(CARD_A), 'invalid');
+  });
+});
+
 describe('review hardening', () => {
   it('refuses at open a symlinked proposals dir, stances dir, rules file or log file', async () => {
     for (const name of [
       'proposals',
       'stances',
       'source-profiles',
+      'scenario-attachments',
       'gate-rules.yaml',
       'gate-log.jsonl',
       'gate-log.jsonl.2',

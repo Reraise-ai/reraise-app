@@ -29,6 +29,7 @@ import { Level1Service } from './level1.js';
 import { createMcpMount, type McpMount } from './mcp.js';
 import { handlers } from './operations.js';
 import { ReceiptStore } from './receipts.js';
+import { ScenarioLayers } from './scenario.js';
 import { HttpError, problemOf } from './problem.js';
 import type { Services } from './services.js';
 import {
@@ -149,6 +150,7 @@ export async function buildApp(options: AppOptions): Promise<BoardApp> {
   );
   const services: Services = {
     level1,
+    scenario: new ScenarioLayers(now),
     storage: options.storage,
     localState: options.localState,
     gate: gateService,

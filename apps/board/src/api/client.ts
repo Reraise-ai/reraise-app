@@ -25,6 +25,9 @@ import type {
   RuleDraft,
   RuleEvaluation,
   RulesEvaluateRequest,
+  ScenarioAttachment,
+  ScenarioLayer,
+  ScenarioReplace,
   ProposalPage,
   Stance,
   StanceInput,
@@ -115,6 +118,14 @@ export interface BoardClient {
   rule_save(cardId: string, card: Card): Promise<Card>;
   /** Human-only. The derived profile of one source, kept on this device (ADR-0018). */
   source_profile_get(source: string): Promise<StoredSourceProfile>;
+  /** Human-only. The live what-if layer. Empty when it is off (ADR-0050). */
+  scenario_get(lageId: string): Promise<ScenarioLayer>;
+  /** Human-only. Replace the live layer. An empty list clears it. No card is written. */
+  scenario_replace(lageId: string, body: ScenarioReplace): Promise<ScenarioLayer>;
+  /** Human-only. Copy the live layer onto a decision. The decision card is not changed. */
+  scenario_attach(lageId: string, decisionId: string): Promise<ScenarioAttachment>;
+  /** Human-only. The snapshot attached to a decision, kept on this device. */
+  scenario_attachment_get(decisionId: string): Promise<ScenarioAttachment>;
 }
 
 function query(params: Record<string, string | number | undefined>): string {
@@ -199,6 +210,11 @@ export function createClient(options: ClientOptions): BoardClient {
     rule_create: (body) => call('POST', '/rules', body),
     rule_save: (id, card) => call('PUT', `/rules/${enc(id)}`, card),
     source_profile_get: (source) => call('GET', `/source-profiles${query({ source })}`),
+    scenario_get: (id) => call('GET', `/lagen/${enc(id)}/scenario`),
+    scenario_replace: (id, body) => call('PUT', `/lagen/${enc(id)}/scenario`, body),
+    scenario_attach: (id, decisionId) =>
+      call('POST', `/lagen/${enc(id)}/scenario/attach`, { decisionId }),
+    scenario_attachment_get: (id) => call('GET', `/decisions/${enc(id)}/scenario`),
   };
 }
 

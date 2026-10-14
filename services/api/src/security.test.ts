@@ -42,6 +42,20 @@ const HUMAN_ONLY: { id: string; method: string; url: string; payload?: unknown }
   { id: 'lage_create', method: 'POST', url: '/lagen', payload: body },
   { id: 'lage_save', method: 'PUT', url: `/lagen/${ULID}`, payload: body.lage },
   { id: 'lage_versions', method: 'GET', url: `/lagen/${ULID}/versions` },
+  { id: 'scenario_get', method: 'GET', url: `/lagen/${ULID}/scenario` },
+  {
+    id: 'scenario_replace',
+    method: 'PUT',
+    url: `/lagen/${ULID}/scenario`,
+    payload: { assumptions: [] },
+  },
+  {
+    id: 'scenario_attach',
+    method: 'POST',
+    url: `/lagen/${ULID}/scenario/attach`,
+    payload: { decisionId: ULID },
+  },
+  { id: 'scenario_attachment_get', method: 'GET', url: `/decisions/${ULID}/scenario` },
   { id: 'level1_get', method: 'GET', url: `/lagen/${ULID}/level1` },
   {
     id: 'level1_predict',
