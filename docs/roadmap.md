@@ -106,6 +106,14 @@ Two open boards on one service see a move within seconds. `GET /events` sends a 
 with no card text. The board reads the change through the existing operations. A dropped
 stream falls back to `proposal_list`. Agents still poll (ADR-0032).
 
+Ollama, a cloud chat model and a decision-service stub answer through one `ModelConnector`.
+The answer is a pending comment, not a card. A cloud call shows the envelope and sends
+nothing until that transfer is confirmed (ADR-0011, ADR-0015, ADR-0031).
+
+An HTTP/JSON list, an Obsidian vault and a document index report references. Pinning one
+stores a private card on the open Lage and does not copy the source text. A second pin
+returns the same card. Paid news stays later (ADR-0014, OQ-33).
+
 | Slice | Done when |
 | --- | --- |
 | Decision card, protocol and outcome | A decision stores all 11 sections, reloads intact, rejects a `cardsUsed` id that does not exist, and entering the outcome creates a linked experience card. |

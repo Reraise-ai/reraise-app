@@ -11,8 +11,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - M1 is done. CI job `e2e` runs the Hormuz walking skeleton (`e2e/tests/walking-skeleton.spec.ts`) on Linux, Windows and macOS. The green run is commit `4e0ebf8`.
 - The gate rules `worldbuilder serve` writes on first start allow every card for the screen and for a local model on this device, including private cards. Nothing leaves the device and no transfer confirmation is required. Stance stays on the screen; no rule can release it. `cloud_model` and `demo` stay deny until you add an allow rule. A cloud transfer still needs the per-transfer confirmation (ADR-0031, owner 2026-10-13).
 
+### Fixed
+
+- `model_ask` answers 200 again. The response schema no longer uses an `allOf` that Ajv strict mode cannot compile.
+
 ### Added
 
+- The board lists references from a connected HTTP/JSON source, an Obsidian vault and a document index. `finding_pin` reads the chosen URI again and stores a private card on the open Lage. The card copies the title and, when present, the short snippet. A second pin of the same URI returns that card and does not place it twice. The note text and a document body stay in the source. Both operations are human-only and are not MCP tools (ADR-0014). The document index is `GET` of `{ documents: [{ title, url, updated? }] }` until a named product is chosen (OQ-33). Paid news is not connected.
+- Ollama, a cloud chat model and a decision-service stub answer through one `ModelConnector`. `model_ask` stores the answer as a pending comment by `agent:<engine>`. A cloud call returns the transfer preview and sends nothing until the human confirms that one transfer (ADR-0011, ADR-0015, ADR-0031).
 - Two open boards on one service see a move within seconds. `GET /events` is human-only and sends a notice of kind `proposal` or `move`, with `lageId` when the change belongs to one Lage, and no card text. The board reads the change through the existing operations. A dropped stream falls back to `proposal_list`. Agents still poll (ADR-0032).
 - The open board holds a what-if layer of assumptions that are not cards. Saving the layer writes nothing to the store. Recording a decision can attach that layer as a file in the state directory. The decision card stays unchanged (ADR-0050).
 - The board can be shown as of an earlier date. `lage_versions` returns the archived Lage versions, oldest first. The current state is not included. The slider shows that board and does not save the view (ADR-0049).

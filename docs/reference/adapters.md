@@ -78,6 +78,12 @@ Reports new findings from a connected source with their provenance; read only
 | `findings(query)` | findings that validate against `finding.schema.json`: a URI and a source or origin system on every one |
 | `referenceCard(finding)` | the reference card a pin would create; writes nothing. Pinning is a human action or an agent proposal |
 
+`createHttpJsonSource`, `createObsidianVaultSource` and `createDocumentSource` in
+`packages/core/src/adapters/sources.ts` are the three connectors. Each one reports a
+reference. `referenceCard` copies the title and, when the finding has one, the short snippet.
+No connector reads a document body. The Board API `finding_pin` reads that URI again and
+stores a private card. Paid news is not connected (OQ-33).
+
 ## ModelConnector
 
 A replaceable model for level-2 support: a local or a cloud model answering a question about a
@@ -96,8 +102,13 @@ The M1 stand-in is `createLocalQuoteModel` in `packages/core` (`LOCAL_QUOTE_ENGI
 then the sorted ids of the package items, one per line. With no items the text is
 `local-quote` alone. `proposals` is empty. A blank question returns `local-quote: no question`
 and no ids. It reads ids only, so a title, a body, a stance or a denied id is not in the
-answer. The package it receives is already gate-cleared. A networked model connector is a
-later slice.
+answer. The package it receives is already gate-cleared. It still writes no proposals.
+
+`createOllamaModel`, `createCloudChatModel` and `createDecisionStub` in
+`packages/core/src/adapters/http-models.ts` are the networked connectors. Ollama is
+`local_model`. The cloud chat model and the decision stub are `cloud_model` and send
+nothing without a `DisclosureRelease`. The Board API stores the text as a pending comment
+by `agent:<engine>`, not as a card (ADR-0011).
 
 ## Level1Engine
 
