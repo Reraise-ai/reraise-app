@@ -6,6 +6,7 @@
 // check, optimistic version guard (409), human-only decisions, change-cursor polling and the
 // cloud transfer flow. Synthetic data only.
 
+import { isKnownOutcome } from '@worldbuilder/core/outcome';
 import type {
   Card,
   ContextPackage,
@@ -383,6 +384,26 @@ export function createMockApi(initial: { lage?: Lage; cards?: Card[] } = {}): Mo
     };
   }
 
+  const storeExperience = (decision: Card): void => {
+    const exp = makeCard({
+      id: id(`E${++seq}`),
+      type: 'experience',
+      layer: 'experience',
+      title: `Experience: ${decision.title ?? 'decision'}`,
+      body: decision.sections?.outcome,
+      visibility: 'private',
+      edges: [
+        { target: decision.id!, kind: 'based_on', by: 'human' },
+        ...(decision.sections?.cardsUsed ?? []).map((target) => ({
+          target,
+          kind: 'based_on' as const,
+          by: 'human' as const,
+        })),
+      ],
+    });
+    cards.set(exp.id!, exp);
+  };
+
   api.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = new URL(String(input));
     const method = (init?.method ?? 'GET').toUpperCase();
@@ -546,6 +567,43 @@ export function createMockApi(initial: { lage?: Lage; cards?: Card[] } = {}): Mo
         cards.set(lageId, saved);
         return json(200, saved);
       }
+    }
+    if (p === '/decisions' && method === 'POST') {
+      const draft = body as {
+        title?: string;
+        sections?: { cardsUsed?: string[]; outcome?: string };
+      };
+      const used = draft.sections?.cardsUsed ?? [];
+      if (used.length === 0 || used.some((cardId) => !cards.has(cardId))) {
+        return problem(400, 'unknown card');
+      }
+      const card = makeCard({
+        id: id(`D${++seq}`),
+        type: 'decision',
+        title: draft.title ?? 'Decision',
+        sections: draft.sections as Card['sections'],
+        contentHash: `sha256:${'a'.repeat(64)}`,
+      });
+      cards.set(card.id!, card);
+      if (isKnownOutcome(draft.sections?.outcome)) storeExperience(card);
+      return json(201, card);
+    }
+    if ((m = p.match(/^\/decisions\/([^/]+)$/)) && method === 'PUT') {
+      const current = cards.get(m[1]!);
+      if (current?.type !== 'decision') return problem(404, 'unknown decision');
+      const next = body as Card;
+      if (next.contentHash !== current.contentHash) {
+        return problem(409, 'the decision changed since it was read');
+      }
+      const wasKnown = isKnownOutcome(current.sections?.outcome);
+      const saved: Card = {
+        ...current,
+        sections: next.sections,
+        contentHash: `sha256:${'b'.repeat(64)}`,
+      };
+      cards.set(current.id!, saved);
+      if (!wasKnown && isKnownOutcome(saved.sections?.outcome)) storeExperience(saved);
+      return json(200, saved);
     }
     if (p === '/cards' && method === 'GET') {
       const text = url.searchParams.get('text')?.toLowerCase();

@@ -830,6 +830,42 @@ describe('usage metrics panel', () => {
   });
 });
 
+describe('decision', () => {
+  it('records a decision and shows the experience card once the outcome is known', async () => {
+    const api = createMockApi();
+    await openLage(api);
+    await userEvent.type(screen.getByTestId('decision-title'), 'Reroute now');
+    for (const key of [
+      'situation',
+      'trigger',
+      'conditions',
+      'facts',
+      'priorities',
+      'action',
+      'alternatives',
+      'exclusions',
+      'rationale',
+    ]) {
+      await userEvent.type(screen.getByTestId(`decision-${key}`), `${key} text`);
+    }
+    await userEvent.click(screen.getByTestId(`decision-card-${C1}`));
+    await userEvent.click(screen.getByTestId('decision-create-submit'));
+    expect((await screen.findByTestId('decision-saved')).textContent).toBe('Reroute now');
+    expect(screen.queryByTestId('decision-experience')).toBeNull();
+    const post = api.calls.find((c) => c.method === 'POST' && c.path === '/decisions');
+    expect(post?.body).toMatchObject({
+      type: 'decision',
+      title: 'Reroute now',
+      sections: { situation: 'situation text', cardsUsed: [C1], outcome: 'open' },
+    });
+    await userEvent.type(screen.getByTestId('decision-outcome'), 'Rerouted via the Cape.');
+    await userEvent.click(screen.getByTestId('decision-outcome-submit'));
+    expect((await screen.findByTestId('decision-experience')).textContent).toBe(
+      'Experience: Reroute now',
+    );
+  });
+});
+
 describe('unauthorized', () => {
   it('signs out when any call answers 401, not only the first', async () => {
     const api = createMockApi();

@@ -8,6 +8,7 @@
 import type {
   Card,
   CardPage,
+  DecisionDraft,
   ContextPackage,
   ContextPackageRequest,
   DisclosureConfirmation,
@@ -77,6 +78,8 @@ export interface ProposalListParams {
 export interface BoardClient {
   world_list(): Promise<WorldList>;
   lage_create(body: LageCreateRequest): Promise<Card>;
+  decision_create(body: DecisionDraft): Promise<Card>;
+  decision_save(cardId: string, card: Card): Promise<Card>;
   lage_get(lageId: string): Promise<Card>;
   lage_save(lageId: string, lage: Lage): Promise<Card>;
   cards_search(params?: SearchParams): Promise<CardPage>;
@@ -153,6 +156,8 @@ export function createClient(options: ClientOptions): BoardClient {
   return {
     world_list: () => call('GET', '/worlds'),
     lage_create: (body) => call('POST', '/lagen', body),
+    decision_create: (body) => call('POST', '/decisions', body),
+    decision_save: (id, card) => call('PUT', `/decisions/${enc(id)}`, card),
     lage_get: (id) => call('GET', `/lagen/${enc(id)}`),
     lage_save: (id, lage) => call('PUT', `/lagen/${enc(id)}`, lage),
     cards_search: (p = {}) => call('GET', `/cards${query({ ...p })}`),

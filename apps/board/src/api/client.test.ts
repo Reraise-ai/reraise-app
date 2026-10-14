@@ -100,6 +100,40 @@ describe('board client', () => {
     expect(api.calls[0]!.body).toEqual({ note: 'ok' });
   });
 
+  it('creates a decision and saves a later outcome', async () => {
+    const { api, client } = setup();
+    const made = await client.decision_create({
+      format: 2,
+      type: 'decision',
+      title: 'Synthetic decision',
+      sections: {
+        situation: 's',
+        trigger: 't',
+        conditions: 'c',
+        facts: 'f',
+        priorities: 'p',
+        action: 'a',
+        alternatives: 'al',
+        exclusions: 'e',
+        rationale: 'r',
+        cardsUsed: [CARDS[0]!.id!],
+        outcome: 'open',
+      },
+    });
+    const saved = await client.decision_save(made.id!, {
+      ...made,
+      sections: { ...made.sections!, outcome: 'Done.' },
+    });
+    expect(saved.sections?.outcome).toBe('Done.');
+    const page = await client.cards_search({ type: 'experience' });
+    expect(page.cards.map((c) => c.title)).toEqual(['Experience: Synthetic decision']);
+    expect(api.calls.map((c) => `${c.method} ${c.path.split('?')[0]}`)).toEqual([
+      'POST /decisions',
+      `PUT /decisions/${made.id}`,
+      'GET /cards',
+    ]);
+  });
+
   it('omits empty query parameters', async () => {
     const { api, client } = setup();
     await client.cards_search({ text: '', type: 'lage' });

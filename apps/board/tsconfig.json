@@ -10,6 +10,7 @@
     "types": ["vite/client"],
     "paths": {
       "@worldbuilder/core": ["../../packages/core/src/generated/contracts.ts"],
+      "@worldbuilder/core/outcome": ["../../packages/core/src/outcome.ts"],
       "@worldbuilder/level1-engines/format": ["../../packages/level1-engines/src/format.ts"]
     }
   },

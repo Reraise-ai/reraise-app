@@ -8,6 +8,11 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
+      // Pure helpers only. The board typechecks against the generated contracts, not the core
+      // package index, so these two files are named on their own.
+      '@worldbuilder/core/outcome': fileURLToPath(
+        new URL('../../packages/core/src/outcome.ts', import.meta.url),
+      ),
       // Only the display formatter of the level-1 package (pure text, no runtime imports): the
       // board shows exactly the text of the contract and does not bundle the engines.
       '@worldbuilder/level1-engines/format': fileURLToPath(

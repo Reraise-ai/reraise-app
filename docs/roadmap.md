@@ -73,6 +73,10 @@ at commit `4e0ebf8` (job `e2e` green on Linux, Windows and macOS). The v0.1.0 ta
 Each slice is one pull request with UI, API, adapter and tests. The order may change; the
 done criterion is what counts.
 
+The decision slice stores the eleven sections, rejects an unknown `cardsUsed` id, and the
+board records the decision and its outcome. A known outcome stores one linked experience
+card. Source hit counts stay in the source-profile slice.
+
 | Slice | Done when |
 | --- | --- |
 | Decision card, protocol and outcome | A decision stores all 11 sections, reloads intact, rejects a `cardsUsed` id that does not exist, and entering the outcome creates a linked experience card. |

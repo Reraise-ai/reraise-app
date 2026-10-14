@@ -17,6 +17,7 @@ import {
   type DrawnEdgeKind,
 } from '../lageModel.js';
 import { BoardCanvas } from './BoardCanvas.js';
+import { DecisionPanel } from './DecisionPanel.js';
 import { DisclosurePanel } from './DisclosurePanel.js';
 import { EdgePanel } from './EdgePanel.js';
 import { InspectorPanel } from './InspectorPanel.js';
@@ -339,6 +340,13 @@ export function Workbench({
                 },
               }
             : {})}
+        />
+        <DecisionPanel
+          client={client}
+          cards={[...loaded.cards.values()].filter(
+            (c) => c.id !== undefined && placedIds.has(c.id),
+          )}
+          disabled={saving}
         />
         <Level1Panel
           client={client}

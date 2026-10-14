@@ -39,6 +39,9 @@ export default defineConfig({
       {
         resolve: {
           alias: {
+            '@worldbuilder/core/outcome': fileURLToPath(
+              new URL('./packages/core/src/outcome.ts', import.meta.url),
+            ),
             '@worldbuilder/level1-engines/format': fileURLToPath(
               new URL('./packages/level1-engines/src/format.ts', import.meta.url),
             ),
