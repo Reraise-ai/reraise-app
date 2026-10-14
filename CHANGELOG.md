@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- Typecheck resolves `@worldbuilder/training-export` from its source, the same way as the other workspace packages. `dist/` is not in git, so CI no longer fails before that package is built.
+- The store write lock treats Windows `EPERM` on an exclusive create as "someone else holds it" and waits, when the lock file is there.
 - `model_ask` answers 200 again. The response schema no longer uses an `allOf` that Ajv strict mode cannot compile.
 
 ### Added

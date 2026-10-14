@@ -111,7 +111,17 @@ export async function acquireLock(lockPath: string, options: LockOptions = {}): 
         },
       };
     } catch (err) {
-      if ((err as NodeJS.ErrnoException).code !== 'EEXIST') throw err;
+      const code = (err as NodeJS.ErrnoException).code;
+      // Windows reports EPERM when two exclusive creates race on the same lock file.
+      if (code === 'EPERM') {
+        const there = await stat(lockPath).then(
+          () => true,
+          () => false,
+        );
+        if (!there) throw err;
+      } else if (code !== 'EEXIST') {
+        throw err;
+      }
     }
     await breakIfStale(lockPath, staleMs);
     if (Date.now() >= deadline) {

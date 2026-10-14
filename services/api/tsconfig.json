@@ -12,6 +12,7 @@
       "@worldbuilder/storage-markdown-files": [
         "../../packages/adapters/storage-markdown-files/src/index.ts"
       ],
+      "@worldbuilder/training-export": ["../../packages/training-export/src/index.ts"],
       "@worldbuilder/conformance": ["../../packages/conformance/src/index.ts"]
     }
   },
