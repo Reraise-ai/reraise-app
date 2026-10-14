@@ -63,6 +63,17 @@ const HUMAN_ONLY: { id: string; method: string; url: string; payload?: unknown }
     url: `/lagen/${ULID}/model`,
     payload: { engine: 'ollama', question: 'What is claimed?' },
   },
+  { id: 'findings_list', method: 'GET', url: '/findings' },
+  {
+    id: 'finding_pin',
+    method: 'POST',
+    url: '/findings/pin',
+    payload: {
+      connector: 'http-json',
+      uri: 'https://example.invalid/memo',
+      lageId: ULID,
+    },
+  },
   {
     id: 'level1_predict',
     method: 'POST',

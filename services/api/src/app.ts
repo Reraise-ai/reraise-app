@@ -26,6 +26,7 @@ import { executeOperation } from './execute.js';
 import { GateService } from './gate.js';
 import { Level1EngineRegistry, type Level1EngineRegistryOptions } from './level1-engines.js';
 import { buildModels, type ModelOptions } from './models.js';
+import { buildSources, type SourceOptions } from './sources.js';
 import { Level1Service } from './level1.js';
 import { LiveBus, type LiveNotice } from './live.js';
 import { createMcpMount, type McpMount } from './mcp.js';
@@ -68,6 +69,8 @@ export interface AppOptions {
   readonly level1?: Pick<Level1EngineRegistryOptions, 'fetch' | 'localEngine'>;
   /** Model connectors. Tests inject `fetch`. Cloud URLs are optional. */
   readonly models?: ModelOptions;
+  /** Source connectors. Tests inject `connectors`. Addresses are optional (ADR-0014). */
+  readonly sources?: SourceOptions;
   /** Rate limits (ADR-0047); `false` switches them off. */
   readonly rateLimit?: RateLimitOptions | false;
   readonly logger?: FastifyBaseLogger | boolean | object;
@@ -156,6 +159,7 @@ export async function buildApp(options: AppOptions): Promise<BoardApp> {
     level1,
     scenario: new ScenarioLayers(now),
     models: buildModels(options.models),
+    sources: buildSources({ ...options.sources, now }),
     live: new LiveBus(),
     storage: options.storage,
     localState: options.localState,

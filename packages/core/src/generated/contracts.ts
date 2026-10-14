@@ -186,6 +186,17 @@ export type Card = CardContent &
     >
   >;
 /**
+ * A new finding reported by a SourceConnector (ADR-0014). It is a reference with provenance, not content we ingest; nothing in the inbox is part of a world until a human pins it (reference-then-pin).
+ */
+export type Finding = Finding1 & Finding2;
+export type Finding1 =
+  | {
+      source: unknown;
+    }
+  | {
+      originSystem: unknown;
+    };
+/**
  * Opaque pagination cursor.
  */
 export type Cursor = string;
@@ -286,17 +297,6 @@ export type PublicSourceRef = string;
  * @minItems 1
  */
 export type SharedPlayerField = SharedPlayerEntry[];
-/**
- * A new finding reported by a SourceConnector (ADR-0014). It is a reference with provenance, not content we ingest; nothing in the inbox is part of a world until a human pins it (reference-then-pin).
- */
-export type Finding = Finding1 & Finding2;
-export type Finding1 =
-  | {
-      source: unknown;
-    }
-  | {
-      originSystem: unknown;
-    };
 /**
  * Input of proposal_create. Contains no author, id or status; the server sets them.
  */
@@ -810,6 +810,53 @@ export interface DisclosureModelRequest {
    * JSON Schema the answer must follow (level 1).
    */
   outputSchema?: Record<string, unknown>;
+}
+/**
+ * Query of the human-only findings list (ADR-0014). `since` keeps findings retrieved after that time. `text` matches the title and the snippet.
+ */
+export interface FindingsListRequest {
+  since?: DateTime;
+  text?: string;
+  limit?: number;
+}
+/**
+ * References from connected sources. Nothing here is part of a world until the human pins it (ADR-0014).
+ */
+export interface FindingsList {
+  findings: Finding[];
+}
+export interface Finding2 {
+  /**
+   * Where the finding lives in its home system.
+   */
+  uri: string;
+  /**
+   * Id of the reporting SourceConnector.
+   */
+  connector: string;
+  title: Text;
+  /**
+   * Minimal display text; never the full third-party content.
+   */
+  snippet?: string;
+  source?: Text;
+  sourceDate?: IsoDate;
+  originSystem?: Text;
+  retrievedAt: DateTime;
+}
+/**
+ * Pin one finding that a connected source currently reports. The service reads the finding again; the body does not carry the text.
+ */
+export interface FindingPinRequest {
+  connector: 'http-json' | 'obsidian' | 'documents';
+  uri: string;
+  lageId: Ulid;
+}
+/**
+ * The reference card on the Lage. A second pin of the same URI returns the card already stored.
+ */
+export interface FindingPinResult {
+  card: Card;
 }
 export interface CardGetRequest {
   cardId: CardId;
@@ -1339,25 +1386,6 @@ export interface SharedExternalRef {
   system: string;
   id?: Text;
   url: PublicSourceRef;
-}
-export interface Finding2 {
-  /**
-   * Where the finding lives in its home system.
-   */
-  uri: string;
-  /**
-   * Id of the reporting SourceConnector.
-   */
-  connector: string;
-  title: Text;
-  /**
-   * Minimal display text; never the full third-party content.
-   */
-  snippet?: string;
-  source?: Text;
-  sourceDate?: IsoDate;
-  originSystem?: Text;
-  retrievedAt: DateTime;
 }
 /**
  * Disclosure-gate configuration (ADR-0012, ADR-0031): the user's rule file (`<state>/gate-rules.yaml`), with allow and deny rules per target. A card is allowed for a target only if at least one allow rule matches it and no deny rule does: deny wins, and without a matching allow rule the decision is deny. Rules match card fields only; nothing matches stance data, which stays on the screen whatever the rules say (ADR-0008). The file `worldbuilder serve` writes on first start allows every card for `screen` and for `local_model`, including private cards, and allows nothing for `cloud_model` or `demo`.

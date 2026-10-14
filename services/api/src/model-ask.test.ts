@@ -30,7 +30,7 @@ function callsOf(fetchImpl: typeof fetch): { url: string; body: string; auth: st
 
 describe('model_ask', () => {
   let f: Fixture;
-  const fetchImpl = vi.fn(async (url: RequestInfo | URL) => {
+  const fetchImpl = vi.fn(async (url: string | URL) => {
     const href = String(url);
     if (href.endsWith('/api/chat')) {
       return new Response(JSON.stringify({ message: { content: 'Synthetic local answer.' } }), {
@@ -170,8 +170,9 @@ describe('model_ask', () => {
     });
     expectContract('model_ask', first, 200);
     expect(callsOf(fetchImpl)).toEqual([]);
-    const transfer = (first.json() as ModelAskResult & { status: 'confirmation_required' })
-      .transfer;
+    const transfer = (first.json() as ModelAskResult).transfer;
+    expect(transfer).toBeDefined();
+    if (!transfer) return;
     const confirm = await f.human('POST', `/disclosure/transfers/${transfer.transferId}/confirm`, {
       payloadHash: transfer.payloadHash,
     });

@@ -195,6 +195,8 @@ describe('MCP / Board API parity', () => {
       'disclosure_transfer_get',
       'disclosure_transfer_preview',
       'events_stream',
+      'finding_pin',
+      'findings_list',
       'lage_create',
       'lage_save',
       'lage_versions',

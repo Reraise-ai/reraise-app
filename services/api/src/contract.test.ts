@@ -10,6 +10,7 @@ import { StorageError, type StorageErrorCode } from '@worldbuilder/core';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { loadOperations } from './contract.js';
 import { proveModelContract } from './model.contract.js';
+import { proveFindingsContract } from './source.contract.js';
 import { proveScenarioContract } from './scenario.contract.js';
 import { cardOf, covered, expectContract, makeFixture, type Fixture } from './test-helpers.js';
 
@@ -947,6 +948,10 @@ describe('what-if layer (ADR-0050)', () => {
 
 describe('model_ask', () => {
   it('stores the Ollama answer as a pending comment', () => proveModelContract(f));
+});
+
+describe('findings (ADR-0014)', () => {
+  it('lists nothing when no source is connected', () => proveFindingsContract(f));
 });
 
 describe('events_stream (ADR-0032)', () => {

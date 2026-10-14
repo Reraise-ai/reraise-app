@@ -36,6 +36,8 @@ export interface ServiceOptions {
   readonly level1?: AppOptions['level1'];
   /** Model connectors. Tests inject `fetch` so a call never leaves the process. */
   readonly models?: AppOptions['models'];
+  /** Source connectors. Tests inject `connectors` so a call never leaves the process. */
+  readonly sources?: AppOptions['sources'];
   /** Write the shipped default rules if none exist (the CLI does). */
   readonly seedDefaultGateRules?: boolean;
   readonly logger?: boolean | object;
@@ -131,6 +133,7 @@ async function assemble(
     ...(options.syntheticStores ? { syntheticStores: options.syntheticStores } : {}),
     ...(options.level1 ? { level1: options.level1 } : {}),
     ...(options.models ? { models: options.models } : {}),
+    ...(options.sources ? { sources: options.sources } : {}),
     ...(options.logger !== undefined ? { logger: options.logger } : {}),
     ...(options.now ? { now: options.now } : {}),
   });

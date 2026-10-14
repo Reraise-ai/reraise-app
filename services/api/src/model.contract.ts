@@ -18,11 +18,13 @@ export async function proveModelContract(f: Fixture): Promise<void> {
   const body = res.json() as ModelAskResult;
   expect(body.status).toBe('proposed');
   expect(body.engine).toBe('ollama');
-  if (body.status !== 'proposed') return;
-  expect(body.proposal.author).toBe('agent:ollama');
-  expect(body.proposal.kind).toBe('comment');
-  expect(body.proposal.status).toBe('pending');
-  expect(body.proposal.payload).toMatchObject({
+  const proposal = body.proposal;
+  expect(proposal).toBeDefined();
+  if (!proposal) return;
+  expect(proposal.author).toBe('agent:ollama');
+  expect(proposal.kind).toBe('comment');
+  expect(proposal.status).toBe('pending');
+  expect(proposal.payload).toMatchObject({
     text: 'Synthetic local answer.',
     lageId: f.ids.lage,
   });
@@ -30,5 +32,5 @@ export async function proveModelContract(f: Fixture): Promise<void> {
   const listed = await f.human('GET', `/proposals?lageId=${f.ids.lage}`);
   expectContract('proposal_list', listed, 200);
   const proposals = (listed.json() as { proposals: Proposal[] }).proposals;
-  expect(proposals.some((p) => p.id === body.proposal.id)).toBe(true);
+  expect(proposals.some((p) => p.id === proposal.id)).toBe(true);
 }

@@ -890,6 +890,7 @@ export function createMockApi(initial: { lage?: Lage; cards?: Card[] } = {}): Mo
         }),
       });
     }
+    if (p === '/findings' && method === 'GET') return json(200, { findings: [] });
     return problem(404, `no route ${method} ${p}`);
   }) as typeof fetch;
   return api;

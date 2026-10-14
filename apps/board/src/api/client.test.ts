@@ -265,4 +265,41 @@ describe('board client', () => {
       token: TOKEN,
     });
   });
+
+  it('lists findings and pins one', async () => {
+    const seen: { method?: string; path?: string; body?: unknown; token?: string }[] = [];
+    const client = createClient({
+      baseUrl: BASE,
+      token: TOKEN,
+      fetch: (async (input: RequestInfo | URL, init?: RequestInit) => {
+        seen.push({
+          method: init?.method,
+          path: String(input).replace(BASE, ''),
+          body: init?.body ? JSON.parse(String(init.body)) : undefined,
+          token: new Headers(init?.headers).get('x-worldbuilder-session') ?? '',
+        });
+        const payload =
+          init?.method === 'GET'
+            ? { findings: [] }
+            : { card: { id: '01ARZ3NDEKTSV4RRFFQ69G5FAV' } };
+        return new Response(JSON.stringify(payload), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      }) as typeof fetch,
+    });
+    const pin = {
+      connector: 'http-json' as const,
+      uri: 'https://example.invalid/memo',
+      lageId: LAGE_ID,
+    };
+    await expect(client.findings_list({ text: 'memo' })).resolves.toEqual({ findings: [] });
+    await expect(client.finding_pin(pin)).resolves.toEqual({
+      card: { id: '01ARZ3NDEKTSV4RRFFQ69G5FAV' },
+    });
+    expect(seen).toEqual([
+      { method: 'GET', path: '/findings?text=memo', body: undefined, token: TOKEN },
+      { method: 'POST', path: '/findings/pin', body: pin, token: TOKEN },
+    ]);
+  });
 });

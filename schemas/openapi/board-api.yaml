@@ -546,6 +546,97 @@ paths:
         '502':
           $ref: '#/components/responses/BadGateway'
 
+  /findings:
+    get:
+      operationId: findings_list
+      summary: List findings from connected sources
+      description: >-
+        Human-only, and not an MCP tool. Each configured source reports references
+        (a URI, a title, a short snippet). Nothing in the list is part of a world.
+        A source that does not answer is skipped unless every configured source
+        failed, which is 502. No source is configured when the list is empty (ADR-0014).
+      tags: [human-only]
+      x-human-only: true
+      security:
+        - sessionToken: []
+      parameters:
+        - name: since
+          in: query
+          schema:
+            $ref: '../api.schema.json#/$defs/findingsListRequest/properties/since'
+        - name: text
+          in: query
+          schema:
+            $ref: '../api.schema.json#/$defs/findingsListRequest/properties/text'
+        - name: limit
+          in: query
+          schema:
+            $ref: '../api.schema.json#/$defs/findingsListRequest/properties/limit'
+      responses:
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: The references the connected sources reported.
+          content:
+            application/json:
+              schema:
+                $ref: '../api.schema.json#/$defs/findingsList'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/HumanOnly'
+        '502':
+          $ref: '#/components/responses/BadGateway'
+
+  /findings/pin:
+    post:
+      operationId: finding_pin
+      summary: Pin a finding onto a Lage
+      description: >-
+        Human-only, and not an MCP tool. The service reads that URI from the named
+        source again and stores a private reference card, then places it on the Lage.
+        The card copies the title and the short snippet only. A second pin of the same
+        URI returns the card already stored and does not place it twice (ADR-0014).
+      tags: [human-only]
+      x-human-only: true
+      security:
+        - sessionToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../api.schema.json#/$defs/findingPinRequest'
+      responses:
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: The reference card, placed on the Lage.
+          content:
+            application/json:
+              schema:
+                $ref: '../api.schema.json#/$defs/findingPinResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/HumanOnly'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '413':
+          $ref: '#/components/responses/TooLarge'
+        '502':
+          $ref: '#/components/responses/BadGateway'
+
   /cards:
     get:
       operationId: cards_search

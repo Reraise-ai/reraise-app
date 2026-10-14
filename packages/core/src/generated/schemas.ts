@@ -223,23 +223,49 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
         },
         required: ['status', 'engine'],
         additionalProperties: false,
-        allOf: [
-          {
-            if: { properties: { status: { const: 'proposed' } }, required: ['status'] },
-            then: { required: ['proposal'], not: { required: ['transfer'] } },
-          },
-          {
-            if: {
-              properties: { status: { const: 'confirmation_required' } },
-              required: ['status'],
-            },
-            then: { required: ['transfer'], not: { required: ['proposal'] } },
-          },
-          {
-            if: { properties: { status: { const: 'nothing_cleared' } }, required: ['status'] },
-            then: { not: { anyOf: [{ required: ['proposal'] }, { required: ['transfer'] }] } },
-          },
-        ],
+      },
+      findingsListRequest: {
+        title: 'FindingsListRequest',
+        description:
+          'Query of the human-only findings list (ADR-0014). `since` keeps findings retrieved after that time. `text` matches the title and the snippet.',
+        type: 'object',
+        properties: {
+          since: { $ref: 'common.schema.json#/$defs/dateTime' },
+          text: { type: 'string', minLength: 1, maxLength: 500 },
+          limit: { type: 'integer', minimum: 1, maximum: 100 },
+        },
+        additionalProperties: false,
+      },
+      findingsList: {
+        title: 'FindingsList',
+        description:
+          'References from connected sources. Nothing here is part of a world until the human pins it (ADR-0014).',
+        type: 'object',
+        properties: { findings: { type: 'array', items: { $ref: 'finding.schema.json' } } },
+        required: ['findings'],
+        additionalProperties: false,
+      },
+      findingPinRequest: {
+        title: 'FindingPinRequest',
+        description:
+          'Pin one finding that a connected source currently reports. The service reads the finding again; the body does not carry the text.',
+        type: 'object',
+        properties: {
+          connector: { type: 'string', enum: ['http-json', 'obsidian', 'documents'] },
+          uri: { type: 'string', format: 'uri' },
+          lageId: { $ref: 'common.schema.json#/$defs/ulid' },
+        },
+        required: ['connector', 'uri', 'lageId'],
+        additionalProperties: false,
+      },
+      findingPinResult: {
+        title: 'FindingPinResult',
+        description:
+          'The reference card on the Lage. A second pin of the same URI returns the card already stored.',
+        type: 'object',
+        properties: { card: { $ref: 'card.schema.json' } },
+        required: ['card'],
+        additionalProperties: false,
       },
       cardGetRequest: {
         title: 'CardGetRequest',

@@ -28,6 +28,7 @@ import { BoardCanvas } from './BoardCanvas.js';
 import { DecisionPanel } from './DecisionPanel.js';
 import { DisclosurePanel } from './DisclosurePanel.js';
 import { EdgePanel } from './EdgePanel.js';
+import { FindingsPanel } from './FindingsPanel.js';
 import { InspectorPanel } from './InspectorPanel.js';
 import { Level1Panel } from './Level1Panel.js';
 import { ModelAskPanel } from './ModelAskPanel.js';
@@ -430,6 +431,12 @@ export function Workbench({
           {...(level1DebounceMs !== undefined ? { debounceMs: level1DebounceMs } : {})}
         />
         <ModelAskPanel client={client} lageId={lageId} disabled={saving || frozen} />
+        <FindingsPanel
+          client={client}
+          lageId={lageId}
+          disabled={saving || frozen}
+          onPinned={() => void load()}
+        />
         <DisclosurePanel
           client={client}
           worldId={worldId ?? loaded.card.worlds?.[0]}
