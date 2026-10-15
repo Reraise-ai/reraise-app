@@ -37,7 +37,7 @@
     "@eslint/js": "^9.39.5",
     "@redocly/cli": "^2.58.1",
     "@testing-library/react": "^16.3.3",
-    "@types/node": "^22.20.5",
+    "@types/node": "^26.6.5",
     "@vitest/coverage-v8": "^5.0.3",
     "@worldbuilder/core": "workspace:*",
     "@worldbuilder/storage-markdown-files": "workspace:*",
