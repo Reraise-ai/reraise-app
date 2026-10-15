@@ -29,6 +29,9 @@ importers:
       '@worldbuilder/core':
         specifier: workspace:*
         version: link:packages/core
+      '@worldbuilder/storage-markdown-files':
+        specifier: workspace:*
+        version: link:packages/adapters/storage-markdown-files
       ajv:
         specifier: ^8.20.0
         version: 8.20.0
