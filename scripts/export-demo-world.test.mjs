@@ -1,8 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright The Worldbuilder contributors
-// Note: @worldbuilder/storage-markdown-files is a root workspace devDependency
-// (devDependencies in the monorepo root package.json) so that the root
-// typecheck script (tsconfig.scripts.json) resolves the import below.
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
