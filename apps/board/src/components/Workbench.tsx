@@ -1,10 +1,19 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright The Worldbuilder contributors
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { Card, EdgeKind, Lage, Proposal, Stance, StanceInput } from '@worldbuilder/core';
+import type {
+  Card,
+  EdgeKind,
+  Lage,
+  LageVersion,
+  Proposal,
+  Stance,
+  StanceInput,
+} from '@worldbuilder/core';
+import { actorCardForSource, isThemeLage, themeVoteText } from '@worldbuilder/core/theme';
 import { ApiError, type BoardClient } from '../api/client.js';
-import { createProposalPoller, mergeProposals } from '../api/proposalPoller.js';
 import { describeError } from '../errors.js';
+import { useLiveFeed } from '../liveFeed.js';
 import {
   addEdge,
   moveCard,
@@ -17,11 +26,16 @@ import {
   type DrawnEdgeKind,
 } from '../lageModel.js';
 import { BoardCanvas } from './BoardCanvas.js';
+import { DecisionPanel } from './DecisionPanel.js';
 import { DisclosurePanel } from './DisclosurePanel.js';
 import { EdgePanel } from './EdgePanel.js';
+import { FindingsPanel } from './FindingsPanel.js';
 import { InspectorPanel } from './InspectorPanel.js';
 import { Level1Panel } from './Level1Panel.js';
+import { ModelAskPanel } from './ModelAskPanel.js';
 import { ProposalsPanel } from './ProposalsPanel.js';
+import { RulesPanel } from './RulesPanel.js';
+import { ScenarioPanel } from './ScenarioPanel.js';
 import { SearchPanel } from './SearchPanel.js';
 
 interface Props {
@@ -55,14 +69,16 @@ export function Workbench({
 }: Props) {
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [message, setMessage] = useState<{ kind: 'info' | 'error'; text: string } | null>(null);
-  const [proposals, setProposals] = useState<Proposal[]>([]);
-  const [pollError, setPollError] = useState<string | null>(null);
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [selectedEdgeKey, setSelectedEdgeKey] = useState<string | null>(null);
   const [edgeKind, setNextEdgeKind] = useState<DrawnEdgeKind>('supports');
   const [saving, setSaving] = useState(false);
+  const [history, setHistory] = useState<LageVersion[]>([]);
+  const [asOf, setAsOf] = useState<number | null>(null);
   const loadedRef = useRef<Loaded | null>(null);
+  const asOfRef = useRef<number | null>(null);
   loadedRef.current = loaded;
+  asOfRef.current = asOf;
   const queue = useRef<Promise<unknown>>(Promise.resolve());
   const alive = useRef(true);
   useEffect(() => {
@@ -88,6 +104,16 @@ export function Workbench({
         }
       }
       if (!alive.current) return;
+      let nextHistory: LageVersion[] = [];
+      try {
+        nextHistory = (await client.lage_versions(lageId)).versions;
+      } catch {
+        // A missing archive must not blank the current board.
+        nextHistory = [];
+      }
+      if (!alive.current) return;
+      setHistory(nextHistory);
+      setAsOf((index) => (index !== null && index < nextHistory.length ? index : null));
       setLoaded({ card, lage: card.lage, cards, stances });
     } catch (e) {
       if (alive.current) setMessage({ kind: 'error', text: describeError(e) });
@@ -98,29 +124,23 @@ export function Workbench({
     void load();
   }, [load]);
 
-  // Proposals: poll with the change cursor every 2 seconds while this Lage is open (ADR-0032).
-  // Without a lageId: a proposal that names no Lage (an outcome, a comment, a card not placed
-  // yet) must be decidable too. The panel marks the ones that belong to another Lage.
-  useEffect(() => {
-    const poller = createProposalPoller({
-      client,
-      ...(pollIntervalMs !== undefined ? { intervalMs: pollIntervalMs } : {}),
-      onSuccess: () => alive.current && setPollError(null),
-      onChanges: (changed) => {
-        if (!alive.current) return;
-        setProposals((known) => mergeProposals(known, changed));
-        if (changed.some((p) => p.status === 'accepted')) void load();
-      },
-      onError: (e) => alive.current && setPollError(describeError(e)),
-    });
-    poller.start();
-    return () => poller.stop();
-  }, [client, lageId, pollIntervalMs, load]);
+  // Proposals for every Lage (one that names no Lage must be decidable here too). The panel
+  // marks a proposal that belongs to another Lage. A move for this Lage reloads the board.
+  const onBoardChange = useCallback(() => {
+    void load();
+  }, [load]);
+  const { proposals, pollError, note } = useLiveFeed({
+    client,
+    lageId,
+    ...(pollIntervalMs !== undefined ? { pollIntervalMs } : {}),
+    onBoardChange,
+  });
 
   /** Saves an edit of the Lage with the version guard; edits are applied one after another. */
   const edit = useCallback(
     (change: (lage: Lage) => Lage, done?: string) => {
       queue.current = queue.current.then(async () => {
+        if (asOfRef.current !== null) return;
         const current = loadedRef.current;
         if (!current) return;
         const next = change(current.lage);
@@ -163,14 +183,14 @@ export function Workbench({
         decision === 'accept'
           ? await client.proposal_accept(p.id)
           : await client.proposal_reject(p.id);
-      setProposals((known) => mergeProposals(known, [updated]));
+      note(updated);
       setMessage({
         kind: 'info',
         text: decision === 'accept' ? 'Proposal accepted.' : 'Proposal rejected.',
       });
       if (decision === 'accept') await load();
     },
-    [client, load],
+    [client, load, note],
   );
 
   const saveStance = useCallback(
@@ -181,7 +201,10 @@ export function Workbench({
     [client],
   );
 
-  const placedIds = useMemo(() => new Set(loaded?.lage.cards.map((c) => c.id) ?? []), [loaded]);
+  const placedIds = useMemo(() => {
+    const board = (asOf !== null ? history[asOf]?.lage : undefined) ?? loaded?.lage;
+    return new Set(board?.cards.map((c) => c.id) ?? []);
+  }, [loaded, history, asOf]);
   // Cards named by proposals but not on the board yet: fetched once so you see what you accept.
   const [extraCards, setExtraCards] = useState<Map<string, Card>>(new Map());
   const asked = useRef(new Set<string>());
@@ -227,6 +250,9 @@ export function Workbench({
     );
   }
   const { lage } = loaded;
+  const archived = asOf !== null ? history[asOf] : undefined;
+  const viewed = archived?.lage ?? lage;
+  const frozen = archived !== undefined;
 
   return (
     <div className="wb-workbench" data-testid="workbench">
@@ -237,12 +263,38 @@ export function Workbench({
           </button>{' '}
           <strong data-testid="board-title">{loaded.card.title}</strong>{' '}
           <span className="wb-muted" data-testid="board-question">
-            {lage.question}
+            {viewed.question}
           </span>
           <span className="wb-muted"> · version </span>
           <span className="wb-muted" data-testid="board-version">
-            {lage.version}
+            {viewed.version}
           </span>
+          {history.length > 0 && (
+            <label className="wb-muted">
+              {' '}
+              Board date{' '}
+              <input
+                type="range"
+                min={0}
+                max={history.length}
+                step={1}
+                value={asOf === null ? history.length : asOf}
+                data-testid="time-slider"
+                aria-label="Board date"
+                aria-valuetext={archived ? archived.archivedAt : 'Now'}
+                onChange={(e) => {
+                  const n = Number(e.target.value);
+                  setAsOf(n >= history.length ? null : n);
+                }}
+              />{' '}
+              {archived ? archived.archivedAt : 'Now'}
+            </label>
+          )}
+          {archived && (
+            <p className="wb-muted" data-testid="time-banner" role="status">
+              Showing the board as of {archived.archivedAt}. This view is not saved.
+            </p>
+          )}
           {saving && <span className="wb-muted"> · saving</span>}
           {message && (
             <div
@@ -255,7 +307,8 @@ export function Workbench({
           )}
         </div>
         <BoardCanvas
-          lage={lage}
+          lage={viewed}
+          readOnly={frozen}
           cards={loaded.cards}
           stances={loaded.stances}
           selectedCardId={selectedCardId}
@@ -269,16 +322,47 @@ export function Workbench({
         />
       </main>
       <aside className="wb-sidebar" aria-label="Board tools">
-        {lage.options.length > 0 && (
+        {isThemeLage(viewed) && (
+          <section className="wb-panel" aria-labelledby="theme-h" data-testid="theme-panel">
+            <h2 id="theme-h">Theme questions</h2>
+            <ul data-testid="theme-questions">
+              {viewed.questions.map((item, index) => (
+                <li key={item.text} data-testid={`theme-question-${index}`}>
+                  {item.text}{' '}
+                  <span data-testid={`theme-votes-${index}`}>{themeVoteText(item)}</span>
+                </li>
+              ))}
+            </ul>
+            <button
+              type="button"
+              data-testid="theme-collector"
+              onClick={() => setSelectedCardId(viewed.collectorCardId)}
+            >
+              Collector card
+            </button>
+          </section>
+        )}
+        {viewed.options.length > 0 && (
           <section aria-labelledby="options-h">
             <h2 id="options-h">Options</h2>
             <ul className="wb-list" data-testid="board-options">
-              {lage.options.map((option) => (
+              {viewed.options.map((option) => (
                 <li key={option}>{option}</li>
               ))}
             </ul>
           </section>
         )}
+        <RulesPanel
+          client={client}
+          lageId={lageId}
+          lageVersion={lage.version}
+          worldId={worldId ?? loaded.card.worlds?.[0]}
+          cards={loaded.cards}
+          onFocusCard={(id) => {
+            setSelectedEdgeKey(null);
+            setSelectedCardId(id);
+          }}
+        />
         <ProposalsPanel
           proposals={proposals}
           currentLageId={lageId}
@@ -290,7 +374,7 @@ export function Workbench({
           client={client}
           worldId={worldId ?? loaded.card.worlds?.[0]}
           placedIds={placedIds}
-          disabled={saving}
+          disabled={saving || frozen}
           onPlace={(card) => {
             if (!card.id) return;
             const id = card.id;
@@ -301,13 +385,13 @@ export function Workbench({
           }}
         />
         <EdgePanel
-          lage={lage}
+          lage={viewed}
           cards={loaded.cards}
           edgeKind={edgeKind}
           onEdgeKind={setNextEdgeKind}
           selectedEdgeKey={selectedEdgeKey}
           onSelectEdge={setSelectedEdgeKey}
-          disabled={saving}
+          disabled={saving || frozen}
           onAdd={(from, to, kind: EdgeKind) =>
             void edit((l) => addEdge(l, from, to, kind), 'Edge drawn.')
           }
@@ -325,11 +409,19 @@ export function Workbench({
           }}
         />
         <InspectorPanel
+          client={client}
           card={selectedCardId ? loaded.cards.get(selectedCardId) : undefined}
           cardId={selectedCardId}
+          boardCards={[...loaded.cards.values()].filter(
+            (c) => c.id !== undefined && placedIds.has(c.id),
+          )}
           stance={selectedCardId ? loaded.stances.get(selectedCardId) : undefined}
+          onOpenSource={(source) => {
+            const actor = actorCardForSource([...loaded.cards.values()], source);
+            if (actor?.id) setSelectedCardId(actor.id);
+          }}
           onSaveStance={saveStance}
-          removeDisabled={saving}
+          removeDisabled={saving || frozen}
           {...(selectedCardId
             ? {
                 onRemove: () => {
@@ -340,6 +432,16 @@ export function Workbench({
               }
             : {})}
         />
+        <ScenarioPanel client={client} lageId={lageId} disabled={saving || frozen} />
+        <DecisionPanel
+          client={client}
+          lageId={lageId}
+          cards={[...loaded.cards.values()].filter(
+            (c) => c.id !== undefined && placedIds.has(c.id),
+          )}
+          disabled={saving || frozen}
+        />
+        {/* Level 1 stays on the stored Lage. The slider only changes the board view. */}
         <Level1Panel
           client={client}
           lageId={lageId}
@@ -352,6 +454,13 @@ export function Workbench({
           }}
           onOpenLage={(id) => onOpenLage?.(id)}
           {...(level1DebounceMs !== undefined ? { debounceMs: level1DebounceMs } : {})}
+        />
+        <ModelAskPanel client={client} lageId={lageId} disabled={saving || frozen} />
+        <FindingsPanel
+          client={client}
+          lageId={lageId}
+          disabled={saving || frozen}
+          onPinned={() => void load()}
         />
         <DisclosurePanel
           client={client}

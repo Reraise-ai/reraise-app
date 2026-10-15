@@ -194,15 +194,28 @@ describe('MCP / Board API parity', () => {
       'disclosure_confirm',
       'disclosure_transfer_get',
       'disclosure_transfer_preview',
+      'events_stream',
+      'finding_pin',
+      'findings_list',
       'lage_create',
       'lage_save',
+      'lage_versions',
       'level1_escalate',
       'level1_get',
       'level1_predict',
+      'model_ask',
       'proposal_accept',
       'proposal_reject',
+      'rule_create',
+      'rule_save',
+      'scenario_attach',
+      'scenario_attachment_get',
+      'scenario_get',
+      'scenario_replace',
+      'source_profile_get',
       'stance_get',
       'stance_save',
+      'training_export',
       'usage_metrics_get',
     ]);
     for (const [id, { op }] of humanOnly) {
@@ -220,7 +233,8 @@ describe('MCP / Board API parity', () => {
 
   it('declares 503 for every operation that touches the store or the receipt log (ADR-0028)', () => {
     for (const [id, { op }] of operations) {
-      if (id === 'memory_route') expect(Object.keys(op.responses), id).not.toContain('503');
+      if (id === 'memory_route' || id === 'events_stream')
+        expect(Object.keys(op.responses), id).not.toContain('503');
       else expect(Object.keys(op.responses), id).toContain('503');
     }
   });

@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright The Worldbuilder contributors
 //
-// Polls proposal_list with the change cursor every 2 seconds while a Lage is open (ADR-0032).
-// The first poll has no cursor and loads the proposals of the Lage; each answer's nextCursor
-// becomes the next changedSince, so no proposal is missed or repeated. A full page is followed
-// at once, because more changes may be waiting. In M2 server-sent events replace this.
+// Polls proposal_list with the change cursor (ADR-0032). The first poll has no cursor and loads
+// the proposals; each answer's nextCursor becomes the next changedSince, so no proposal is
+// missed or repeated. A full page is followed at once. While the live channel is up, pause()
+// stops the interval and pollOnce() is the catch-up. A dropped stream calls resume().
 
 import type { Proposal } from '@worldbuilder/core';
 import type { BoardClient } from './client.js';
@@ -29,6 +29,10 @@ export interface PollerOptions {
 
 export interface Poller {
   start(): void;
+  /** Stop the interval. The cursor stays, and pollOnce still applies. */
+  pause(): void;
+  /** Start the interval again, with one poll now. */
+  resume(): void;
   stop(): void;
   /** One poll now; resolves when it and any follow-up pages are done. */
   pollOnce(): Promise<void>;
@@ -52,9 +56,16 @@ export function createProposalPoller(options: PollerOptions): Poller {
   let generation = 0;
   let failures = 0;
   let inFlight: Promise<void> | undefined;
+  // A notice that arrives while a poll is running must be fetched too. The interval is paused
+  // then, so nothing else would come back for it.
+  let followUp = false;
 
   function pollOnce(): Promise<void> {
-    if (inFlight) return inFlight;
+    if (inFlight) {
+      followUp = true;
+      return inFlight;
+    }
+    followUp = false;
     const mine = generation;
     const current = (): boolean => mine === generation;
     const run = (async () => {
@@ -81,7 +92,11 @@ export function createProposalPoller(options: PollerOptions): Poller {
       }
     })();
     inFlight = run;
-    return run;
+    return run.finally(() => {
+      if (!current() || !followUp) return;
+      followUp = false;
+      return pollOnce();
+    });
   }
 
   function schedule(mine: number): void {
@@ -96,6 +111,17 @@ export function createProposalPoller(options: PollerOptions): Poller {
 
   return {
     start() {
+      if (running) return;
+      running = true;
+      const mine = generation;
+      void pollOnce().finally(() => schedule(mine));
+    },
+    pause() {
+      running = false;
+      if (handle !== undefined) clearTimer(handle);
+      handle = undefined;
+    },
+    resume() {
       if (running) return;
       running = true;
       const mine = generation;

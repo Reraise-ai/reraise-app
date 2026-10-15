@@ -1,10 +1,28 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright The Worldbuilder contributors
 import { useEffect, useState, type FormEvent } from 'react';
-import type { Card, Stance, StanceInput, StancePosition } from '@worldbuilder/core';
+import type {
+  Card,
+  Stance,
+  StanceInput,
+  StancePosition,
+  StoredSourceProfile,
+} from '@worldbuilder/core';
+import {
+  cardSourcePass,
+  entriesSourcePass,
+  seatEntries,
+  sourcePassText,
+  type SeatField,
+} from '@worldbuilder/core/independence';
+import { profileSourceOf } from '@worldbuilder/core/source-profile';
+import { ApiError, type BoardClient } from '../api/client.js';
+import { describeError } from '../errors.js';
 import { LAYER_LABEL, isAgentAuthor, layerOf } from './CardNode.js';
+import { SourceProfileList } from './SourceProfileList.js';
 
 interface Props {
+  client: BoardClient;
   card: Card | undefined;
   cardId: string | null;
   stance: Stance | undefined;
@@ -12,26 +30,51 @@ interface Props {
   /** Takes the card off this Lage. The card file stays in the store. */
   onRemove?(): void;
   removeDisabled?: boolean;
+  /** Cards on this board. The source pass counts origins among them. */
+  boardCards?: readonly Card[];
+  /** Open the person or organisation card this source belongs to (e-52). */
+  onOpenSource?(source: string): void;
 }
 
 const POSITIONS: StancePosition[] = ['believed', 'rejected', 'undecided'];
+
+const FIELD_LABEL: Record<SeatField, string> = {
+  interests: 'Interest',
+  capabilities: 'Capability',
+  dependencies: 'Dependency',
+  moves: 'Move',
+};
+
+function isSeat(card: Card): boolean {
+  return (
+    card.collection === 'actors' ||
+    card.type === 'actor' ||
+    card.type === 'person' ||
+    card.type === 'organisation'
+  );
+}
 
 /**
  * The selected card in full and the user's own stance on it (stance_save, human-only). The
  * stance is a private overlay for this screen: it is never a layer, never in a count, never sent.
  */
 export function InspectorPanel({
+  client,
   card,
   cardId,
   stance,
   onSaveStance,
   onRemove,
   removeDisabled,
+  boardCards,
+  onOpenSource,
 }: Props) {
   const [position, setPosition] = useState<StancePosition>('undecided');
   const [weight, setWeight] = useState(2);
   const [note, setNote] = useState('');
   const [state, setState] = useState<'idle' | 'saving' | 'saved' | { error: string }>('idle');
+  const [profile, setProfile] = useState<StoredSourceProfile | undefined>();
+  const [profileError, setProfileError] = useState<string | null>(null);
 
   useEffect(() => {
     setPosition(stance?.position ?? 'undecided');
@@ -39,6 +82,34 @@ export function InspectorPanel({
     setNote(stance?.note ?? '');
   }, [cardId, stance]);
   useEffect(() => setState('idle'), [cardId]);
+
+  const source = card ? profileSourceOf(card) : undefined;
+  useEffect(() => {
+    if (!source) {
+      setProfile(undefined);
+      setProfileError(null);
+      return;
+    }
+    let cancelled = false;
+    setProfile(undefined);
+    setProfileError(null);
+    client.source_profile_get(source).then(
+      (stored) => {
+        if (!cancelled) setProfile(stored);
+      },
+      (e: unknown) => {
+        if (cancelled || (e instanceof ApiError && e.status === 404)) return;
+        setProfileError(describeError(e));
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [client, source]);
+
+  const scope = boardCards ?? (card ? [card] : []);
+  const cardPass = card?.id ? cardSourcePass(scope, card.id) : undefined;
+  const entries = card ? seatEntries(card) : [];
 
   if (!cardId) {
     return (
@@ -86,11 +157,52 @@ export function InspectorPanel({
         )}
         <span className="wb-muted">{card?.visibility}</span>
       </div>
-      {card?.source && <p className="wb-muted">Source: {card.source}</p>}
+      {card?.source &&
+        (onOpenSource ? (
+          <p className="wb-muted">
+            Source:{' '}
+            <button
+              type="button"
+              data-testid="inspector-source"
+              onClick={() => onOpenSource(card.source as string)}
+            >
+              {card.source}
+            </button>
+          </p>
+        ) : (
+          <p className="wb-muted">Source: {card.source}</p>
+        ))}
+      {card && <SourceProfileList profile={profile} error={profileError} />}
       {card?.originSystem && (
         <p className="wb-muted" data-testid="inspector-origin">
           System: {card.originSystem}
         </p>
+      )}
+      {cardPass && (
+        <p className="wb-muted" data-testid="card-source-pass">
+          {sourcePassText(cardPass)}
+        </p>
+      )}
+      {card && isSeat(card) && (
+        <div data-testid="seat-pass">
+          <h3>Seat</h3>
+          <p className="wb-muted" data-testid="seat-source-pass">
+            {sourcePassText(entriesSourcePass(entries, scope))}
+          </p>
+          {entries.length > 0 && (
+            <ul className="wb-list" data-testid="seat-entries">
+              {entries.map((entry, index) => (
+                <li key={`${entry.field}-${index}`}>
+                  {FIELD_LABEL[entry.field]}: {entry.text} ({entry.source})
+                </li>
+              ))}
+            </ul>
+          )}
+          <h3>Moves</h3>
+          <p className="wb-muted" data-testid="moves-source-pass">
+            {sourcePassText(entriesSourcePass(card.moves ?? [], scope))}
+          </p>
+        </div>
       )}
       {card?.body && <p>{card.body}</p>}
       {onRemove && (

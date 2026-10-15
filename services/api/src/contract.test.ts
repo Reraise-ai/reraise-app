@@ -5,10 +5,14 @@
 // fastify.inject and its response is validated against the contract (status declared, media
 // type, JSON Schema). The last test fails if an operation of the contract was never called.
 
-import type { Card, DisclosureTransfer, Proposal } from '@worldbuilder/core';
+import type { Card, DisclosureTransfer, Proposal, RuleEvaluation } from '@worldbuilder/core';
 import { StorageError, type StorageErrorCode } from '@worldbuilder/core';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { loadOperations } from './contract.js';
+import { proveTrainingExportContract } from './export.contract.js';
+import { proveModelContract } from './model.contract.js';
+import { proveFindingsContract } from './source.contract.js';
+import { proveScenarioContract } from './scenario.contract.js';
 import { cardOf, covered, expectContract, makeFixture, type Fixture } from './test-helpers.js';
 
 const NOW = '2026-02-01T00:00:00Z';
@@ -37,8 +41,14 @@ const sections = (cardsUsed: string[]) => ({
 
 let clock = Date.parse('2026-02-01T12:00:00Z');
 let f: Fixture;
+const modelFetch = vi.fn(
+  async () =>
+    new Response(JSON.stringify({ message: { content: 'Synthetic local answer.' } }), {
+      status: 200,
+    }),
+) as typeof fetch;
 beforeAll(async () => {
-  f = await makeFixture({ now: () => new Date(clock) });
+  f = await makeFixture({ now: () => new Date(clock), models: { fetch: modelFetch } });
 });
 afterAll(async () => {
   await f.close();
@@ -109,6 +119,15 @@ describe('lage_create, lage_get, lage_save', () => {
     expectContract('lage_save', res, 200);
     expect(cardOf(res).lage?.version).toBe(2);
     expect((await f.adapter.versions(lageId)).map((v) => v.card.lage?.version)).toEqual([1]);
+    const archived = await f.human('GET', `/lagen/${lageId}/versions`);
+    expectContract('lage_versions', archived, 200);
+    expect(archived.json().versions).toEqual([
+      expect.objectContaining({
+        version: 1,
+        lage: expect.objectContaining({ version: 1, question: 'Synthetic question?' }),
+      }),
+    ]);
+    expectContract('lage_versions', await f.human('GET', `/lagen/${f.ids.evPublic}/versions`), 404);
     expectContract('lage_save', await f.human('PUT', `/lagen/${lageId}`, emptyLage(2)), 409);
     expectContract('lage_save', await f.human('PUT', `/lagen/${lageId}`, { question: 'x' }), 400);
     expectContract(
@@ -423,6 +442,13 @@ describe('proposal_create, proposal_list, proposal_accept, proposal_reject', () 
 
 describe('decision_create and decision_save', () => {
   let decision: Card;
+  const linkedExperience = async (decisionId: string): Promise<Card[]> => {
+    const res = await f.human('GET', '/cards?type=experience&limit=200');
+    const body = res.json() as { cards: Card[] };
+    return body.cards.filter((c) =>
+      c.edges?.some((e) => e.target === decisionId && e.kind === 'based_on'),
+    );
+  };
   it('decision_create saves a decision authored by the human', async () => {
     const res = await f.human('POST', '/decisions', {
       format: 2,
@@ -433,6 +459,31 @@ describe('decision_create and decision_save', () => {
     expectContract('decision_create', res, 201);
     decision = cardOf(res);
     expect(decision.author).toBe('human');
+    expect(await linkedExperience(decision.id)).toEqual([]);
+  });
+  it('decision_create with a known outcome stores one linked experience card', async () => {
+    const res = await f.human('POST', '/decisions', {
+      format: 2,
+      type: 'decision',
+      title: 'Already decided',
+      sections: { ...sections([f.ids.evPublic]), outcome: 'It held.' },
+    });
+    expectContract('decision_create', res, 201);
+    const made = cardOf(res);
+    const linked = await linkedExperience(made.id);
+    expect(linked).toHaveLength(1);
+    expect(linked[0]).toMatchObject({
+      type: 'experience',
+      layer: 'experience',
+      title: 'Experience: Already decided',
+      body: 'It held.',
+      visibility: 'private',
+      author: 'human',
+      edges: [
+        { target: made.id, kind: 'based_on', by: 'human' },
+        { target: f.ids.evPublic, kind: 'based_on', by: 'human' },
+      ],
+    });
   });
   it('decision_create rejects unknown cardsUsed and an incomplete body (400)', async () => {
     const draft = { format: 2, type: 'decision', title: 'D' };
@@ -454,6 +505,22 @@ describe('decision_create and decision_save', () => {
     const res = await f.human('PUT', `/decisions/${decision.id}`, changed);
     expectContract('decision_save', res, 200);
     expect(cardOf(res).sections?.outcome).toBe('Synthetic outcome.');
+    const linked = await linkedExperience(decision.id);
+    expect(linked).toHaveLength(1);
+    expect(linked[0]?.body).toBe('Synthetic outcome.');
+    expect(linked[0]?.edges).toEqual([
+      { target: decision.id, kind: 'based_on', by: 'human' },
+      { target: f.ids.evPublic, kind: 'based_on', by: 'human' },
+    ]);
+    const current = cardOf(res);
+    const again = await f.human('PUT', `/decisions/${decision.id}`, {
+      ...current,
+      sections: { ...current.sections, outcome: 'A later outcome.' },
+    });
+    expectContract('decision_save', again, 200);
+    const still = await linkedExperience(decision.id);
+    expect(still).toHaveLength(1);
+    expect(still[0]?.body).toBe('Synthetic outcome.');
     expectContract(
       'decision_save',
       await f.human('PUT', `/decisions/${decision.id}`, changed),
@@ -472,6 +539,61 @@ describe('decision_create and decision_save', () => {
       await f.human('PUT', `/decisions/${decision.id}`, { x: 1 }),
       400,
     );
+  });
+});
+
+describe('rule_create and rule_save', () => {
+  const draft = (card: string, then = 'Hold the cape') => ({
+    title: 'Synthetic hold rule',
+    worlds: [f.worldId],
+    rule: { when: [{ kind: 'card_on_lage' as const, card }], then },
+  });
+  const hit = (body: RuleEvaluation, ruleId: string) =>
+    body.results.find((r) => r.ruleId === ruleId);
+
+  it('stores a rule the evaluation reads, and a later action replaces the stored one', async () => {
+    expectContract('rule_create', await f.human('POST', '/rules', { title: 'x' }), 400);
+    expectContract(
+      'rule_create',
+      await f.human('POST', '/rules', draft('01ARZ3NDEKTSV4RRFFQ69G5FAV')),
+      400,
+    );
+    const res = await f.human('POST', '/rules', draft(f.ids.evPublic));
+    expectContract('rule_create', res, 201);
+    const rule = cardOf(res);
+    expect(rule).toMatchObject({ type: 'rule', author: 'human', title: 'Synthetic hold rule' });
+    expect(rule.rule?.then).toBe('Hold the cape');
+    expect(rule.visibility).toBeUndefined();
+
+    const evaluated = await f.human('POST', '/rules/evaluate', { lageId: f.ids.lage });
+    expect(hit(evaluated.json() as RuleEvaluation, rule.id)).toMatchObject({
+      fired: true,
+      triggeringCardIds: [f.ids.evPublic],
+      rule: { then: 'Hold the cape' },
+    });
+
+    const changed = {
+      ...rule,
+      visibility: 'public' as const,
+      title: 'Synthetic hold rule',
+      rule: { ...rule.rule!, then: 'Divert' },
+    };
+    const saved = await f.human('PUT', `/rules/${rule.id}`, changed);
+    expectContract('rule_save', saved, 200);
+    const next = cardOf(saved);
+    expect(next.rule?.then).toBe('Divert');
+    expect(next.visibility).toBeUndefined();
+    expectContract('rule_save', await f.human('PUT', `/rules/${rule.id}`, changed), 409);
+    const ghost = '01ARZ3NDEKTSV4RRFFQ69G5FAV';
+    expectContract(
+      'rule_save',
+      await f.human('PUT', `/rules/${ghost}`, { ...next, id: ghost }),
+      404,
+    );
+    expectContract('rule_save', await f.human('PUT', `/rules/${rule.id}`, { x: 1 }), 400);
+
+    const again = await f.human('POST', '/rules/evaluate', { lageId: f.ids.lage });
+    expect(hit(again.json() as RuleEvaluation, rule.id)?.rule?.then).toBe('Divert');
   });
 });
 
@@ -751,11 +873,107 @@ describe('level1_get, level1_predict, level1_escalate', () => {
   });
 });
 
+describe('source_profile_get', () => {
+  const source = 'https://example.invalid/report-a';
+  const url = `/source-profiles?source=${encodeURIComponent(source)}`;
+
+  it('stores a hit count when the outcome becomes known and keeps the earlier count', async () => {
+    expectContract(
+      'source_profile_get',
+      await f.human('GET', '/source-profiles?source=https://example.invalid/unused'),
+      404,
+    );
+    const before = await f.human('GET', url);
+    const beforeN =
+      before.statusCode === 200
+        ? (before.json() as { profile: { dimensions: { hitAccuracy: { n: number } } } }).profile
+            .dimensions.hitAccuracy.n
+        : 0;
+    const open = await f.human('POST', '/decisions', {
+      format: 2,
+      type: 'decision',
+      title: 'Synthetic open decision',
+      sections: sections([f.ids.evPublic]),
+    });
+    expect(open.statusCode).toBe(201);
+    const still = await f.human('GET', url);
+    const stillN =
+      still.statusCode === 200
+        ? (still.json() as { profile: { dimensions: { hitAccuracy: { n: number } } } }).profile
+            .dimensions.hitAccuracy.n
+        : 0;
+    expect(stillN).toBe(beforeN);
+
+    const known = await f.human('POST', '/decisions', {
+      format: 2,
+      type: 'decision',
+      title: 'Synthetic counted decision',
+      sections: { ...sections([f.ids.evPublic]), outcome: 'The claim held.' },
+    });
+    expect(known.statusCode).toBe(201);
+    const got = await f.human('GET', url);
+    expectContract('source_profile_get', got, 200);
+    const body = got.json() as {
+      profile: {
+        source: string;
+        minimumN: number;
+        dimensions: {
+          hitAccuracy: { n: number; value: number };
+          reliability: { n: number };
+          topicCompetence: unknown[];
+        };
+      };
+      earlier: { dimensions: { hitAccuracy: { n: number } } }[];
+    };
+    expect(body.profile.source).toBe(source);
+    expect(body.profile.minimumN).toBe(5);
+    expect(body.profile.dimensions.hitAccuracy).toEqual({ n: beforeN + 1, value: 1 });
+    expect(body.profile.dimensions.reliability).toEqual({ n: 0 });
+    expect(body.profile.dimensions.topicCompetence).toEqual([]);
+    expect(body.earlier.at(-1)?.dimensions.hitAccuracy.n ?? 0).toBe(beforeN);
+    expectContract('source_profile_get', await f.human('GET', '/source-profiles'), 400);
+    expectContract(
+      'source_profile_get',
+      await f.human('GET', '/source-profiles?source=not-a-source'),
+      400,
+    );
+    expectContract('source_profile_get', await f.agent('scripted', 'GET', url), 403);
+    expectContract('source_profile_get', await f.raw({ method: 'GET', url }), 401);
+  });
+});
+
+describe('what-if layer (ADR-0050)', () => {
+  it('changes no card and attaches the layer to a decision', () =>
+    proveScenarioContract(f, sections));
+});
+
+describe('model_ask', () => {
+  it('stores the Ollama answer as a pending comment', () => proveModelContract(f));
+});
+
+describe('findings (ADR-0014)', () => {
+  it('lists nothing when no source is connected', () => proveFindingsContract(f));
+});
+
+describe('training_export (ADR-0017)', () => {
+  it('previews an opted-in known outcome and lists nothing beforehand', () =>
+    proveTrainingExportContract(f));
+});
+
+describe('events_stream (ADR-0032)', () => {
+  it('is human-only and rejects a bad Lage id before any stream starts', async () => {
+    expectContract('events_stream', await f.agent('scripted', 'GET', '/events'), 403);
+    expectContract('events_stream', await f.raw({ method: 'GET', url: '/events' }), 401);
+    expectContract('events_stream', await f.human('GET', '/events?lageId=not-an-id'), 400);
+  });
+});
+
 describe('contract coverage', () => {
   it('declares 503 for every operation that touches the store or the receipt log, and 404 for a hidden Lage', () => {
     const ops = loadOperations();
     for (const op of ops) {
-      if (op.id === 'memory_route') expect(op.responses.has(503)).toBe(false);
+      if (op.id === 'memory_route' || op.id === 'events_stream')
+        expect(op.responses.has(503), op.id).toBe(false);
       else expect(op.responses.has(503), op.id).toBe(true);
     }
     for (const id of ['context_package_get', 'knowledge_consult']) {

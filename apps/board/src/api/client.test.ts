@@ -62,6 +62,37 @@ describe('board client', () => {
     expect(api.calls[8]!.path).toBe(`/proposals?lageId=${LAGE_ID}&changedSince=5&limit=200`);
   });
 
+  it('opens the live channel as an event stream', async () => {
+    const { api, client } = setup();
+    const ac = new AbortController();
+    const res = await client.openEvents(LAGE_ID, ac.signal);
+    expect(res.status).toBe(404);
+    expect(api.calls.at(-1)).toMatchObject({
+      method: 'GET',
+      path: `/events?lageId=${LAGE_ID}`,
+    });
+    expect(api.calls.at(-1)!.headers['accept']).toBe('text/event-stream');
+    expect(api.calls.at(-1)!.headers['x-worldbuilder-session']).toBe(TOKEN);
+  });
+
+  it('reads archived Lage versions', async () => {
+    const { api, client } = setup();
+    api.versions = [
+      {
+        version: 1,
+        archivedAt: '2026-01-01T00:00:00.000Z',
+        lage: makeLage({ question: 'Earlier?' }),
+      },
+    ];
+    await expect(client.lage_versions(LAGE_ID)).resolves.toMatchObject({
+      versions: [{ version: 1, lage: { question: 'Earlier?' } }],
+    });
+    expect(api.calls.at(-1)).toMatchObject({
+      method: 'GET',
+      path: `/lagen/${LAGE_ID}/versions`,
+    });
+  });
+
   it('maps the level-1 operations to their paths and bodies', async () => {
     const { api, client } = setup();
     const trigger = { kind: 'manual' } as const;
@@ -98,6 +129,70 @@ describe('board client', () => {
       `/proposals/${q.id}/reject`,
     ]);
     expect(api.calls[0]!.body).toEqual({ note: 'ok' });
+  });
+
+  it('creates a decision and saves a later outcome', async () => {
+    const { api, client } = setup();
+    const made = await client.decision_create({
+      format: 2,
+      type: 'decision',
+      title: 'Synthetic decision',
+      sections: {
+        situation: 's',
+        trigger: 't',
+        conditions: 'c',
+        facts: 'f',
+        priorities: 'p',
+        action: 'a',
+        alternatives: 'al',
+        exclusions: 'e',
+        rationale: 'r',
+        cardsUsed: [CARDS[0]!.id!],
+        outcome: 'open',
+      },
+    });
+    const saved = await client.decision_save(made.id!, {
+      ...made,
+      sections: { ...made.sections!, outcome: 'Done.' },
+    });
+    expect(saved.sections?.outcome).toBe('Done.');
+    const page = await client.cards_search({ type: 'experience' });
+    expect(page.cards.map((c) => c.title)).toEqual(['Experience: Synthetic decision']);
+    expect(api.calls.map((c) => `${c.method} ${c.path.split('?')[0]}`)).toEqual([
+      'POST /decisions',
+      `PUT /decisions/${made.id}`,
+      'GET /cards',
+    ]);
+  });
+
+  it('creates a rule and saves a changed action', async () => {
+    const { api, client } = setup();
+    const made = await client.rule_create({
+      title: 'Synthetic hold rule',
+      worlds: [WORLD_ID],
+      rule: { when: [{ kind: 'card_on_lage', card: CARDS[0]!.id! }], then: 'Hold' },
+    });
+    expect(made.rule?.then).toBe('Hold');
+    const saved = await client.rule_save(made.id!, {
+      ...made,
+      rule: { ...made.rule!, then: 'Divert' },
+    });
+    expect(saved.rule?.then).toBe('Divert');
+    expect(api.calls.map((c) => `${c.method} ${c.path}`)).toEqual([
+      'POST /rules',
+      `PUT /rules/${made.id}`,
+    ]);
+  });
+
+  it('evaluates the rules of a Lage', async () => {
+    const { api, client } = setup();
+    const evaluation = await client.rules_evaluate({ lageId: LAGE_ID });
+    expect(evaluation.results.map((r) => r.fired)).toEqual([true, false]);
+    expect(api.calls[0]).toMatchObject({
+      method: 'POST',
+      path: '/rules/evaluate',
+      body: { lageId: LAGE_ID },
+    });
   });
 
   it('omits empty query parameters', async () => {
@@ -142,5 +237,94 @@ describe('board client', () => {
     const err = await client.world_list().catch((e) => e);
     expect(err.status).toBe(502);
     expect(err.problem).toBeUndefined();
+  });
+
+  it('posts model_ask on the Lage', async () => {
+    const seen: { method?: string; path?: string; body?: unknown; token?: string } = {};
+    const client = createClient({
+      baseUrl: BASE,
+      token: TOKEN,
+      fetch: (async (input: RequestInfo | URL, init?: RequestInit) => {
+        seen.method = init?.method;
+        seen.path = String(input).replace(BASE, '');
+        seen.body = init?.body ? JSON.parse(String(init.body)) : undefined;
+        seen.token = new Headers(init?.headers).get('x-worldbuilder-session') ?? '';
+        return new Response(JSON.stringify({ status: 'nothing_cleared', engine: 'ollama' }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      }) as typeof fetch,
+    });
+    await expect(
+      client.model_ask(LAGE_ID, { engine: 'ollama', question: 'What is claimed?' }),
+    ).resolves.toEqual({ status: 'nothing_cleared', engine: 'ollama' });
+    expect(seen).toEqual({
+      method: 'POST',
+      path: `/lagen/${LAGE_ID}/model`,
+      body: { engine: 'ollama', question: 'What is claimed?' },
+      token: TOKEN,
+    });
+  });
+
+  it('lists findings and pins one', async () => {
+    const seen: { method?: string; path?: string; body?: unknown; token?: string }[] = [];
+    const client = createClient({
+      baseUrl: BASE,
+      token: TOKEN,
+      fetch: (async (input: RequestInfo | URL, init?: RequestInit) => {
+        seen.push({
+          method: init?.method,
+          path: String(input).replace(BASE, ''),
+          body: init?.body ? JSON.parse(String(init.body)) : undefined,
+          token: new Headers(init?.headers).get('x-worldbuilder-session') ?? '',
+        });
+        const payload =
+          init?.method === 'GET'
+            ? { findings: [] }
+            : { card: { id: '01ARZ3NDEKTSV4RRFFQ69G5FAV' } };
+        return new Response(JSON.stringify(payload), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      }) as typeof fetch,
+    });
+    const pin = {
+      connector: 'http-json' as const,
+      uri: 'https://example.invalid/memo',
+      lageId: LAGE_ID,
+    };
+    await expect(client.findings_list({ text: 'memo' })).resolves.toEqual({ findings: [] });
+    await expect(client.finding_pin(pin)).resolves.toEqual({
+      card: { id: '01ARZ3NDEKTSV4RRFFQ69G5FAV' },
+    });
+    expect(seen).toEqual([
+      { method: 'GET', path: '/findings?text=memo', body: undefined, token: TOKEN },
+      { method: 'POST', path: '/findings/pin', body: pin, token: TOKEN },
+    ]);
+  });
+
+  it('posts training_export', async () => {
+    const seen: { method?: string; path?: string; body?: unknown; token?: string } = {};
+    const client = createClient({
+      baseUrl: BASE,
+      token: TOKEN,
+      fetch: (async (input: RequestInfo | URL, init?: RequestInit) => {
+        seen.method = init?.method;
+        seen.path = String(input).replace(BASE, '');
+        seen.body = init?.body ? JSON.parse(String(init.body)) : undefined;
+        seen.token = new Headers(init?.headers).get('x-worldbuilder-session') ?? '';
+        return new Response(JSON.stringify({ status: 'nothing_to_export' }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      }) as typeof fetch,
+    });
+    await expect(client.training_export()).resolves.toEqual({ status: 'nothing_to_export' });
+    expect(seen).toEqual({
+      method: 'POST',
+      path: '/training/export',
+      body: {},
+      token: TOKEN,
+    });
   });
 });

@@ -4,10 +4,20 @@
 // The shared services behind every operation (Board API now, MCP tools in the next slice;
 // ADR-0029: one adapter, one gate, one proposal list per process).
 
-import type { Card, Lage, LocalStateStore, Stance, StorageAdapter } from '@worldbuilder/core';
+import type {
+  Card,
+  Lage,
+  LocalStateStore,
+  ModelConnector,
+  SourceConnector,
+  Stance,
+  StorageAdapter,
+} from '@worldbuilder/core';
 import type { Disclosures } from './disclosure.js';
 import type { GateService } from './gate.js';
 import type { Level1Service } from './level1.js';
+import type { LiveBus } from './live.js';
+import type { ScenarioLayers } from './scenario.js';
 import type { ReceiptStore } from './receipts.js';
 import type { Mutex } from './util.js';
 
@@ -20,6 +30,14 @@ export interface Services {
   readonly receipts: ReceiptStore;
   /** Level 1: engines, the latest prediction per Lage, escalation (ADR-0045). */
   readonly level1: Level1Service;
+  /** Live what-if layer per Lage, in memory only (ADR-0050). */
+  readonly scenario: ScenarioLayers;
+  /** Ollama, the cloud chat model and the decision stub (ADR-0015). */
+  readonly models: ReadonlyMap<string, ModelConnector>;
+  /** Connected sources. Empty until one is configured (ADR-0014). */
+  readonly sources: ReadonlyMap<string, SourceConnector>;
+  /** Open boards hear a move or a proposal without a card body (ADR-0032). */
+  readonly live: LiveBus;
   /** Serialises every write that reads then changes the store (single writer, ADR-0006). */
   readonly writes: Mutex;
   readonly now: () => Date;

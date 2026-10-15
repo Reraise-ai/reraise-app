@@ -457,6 +457,12 @@ describe('decision_record and decision_outcome', () => {
       expect(after.title).toBe(decision.title);
       expect(after.author).toBe(decision.author);
       expect(after.contentHash).not.toBe(decision.contentHash);
+      const found = await f.human('GET', '/cards?type=experience&limit=200');
+      const linked = (found.json() as { cards: Card[] }).cards.filter((c) =>
+        c.edges?.some((e) => e.target === decision.id && e.kind === 'based_on'),
+      );
+      expect(linked).toHaveLength(1);
+      expect(linked[0]?.body).toBe('It worked out.');
     });
     it('a stale content hash is a 409 and the proposal stays pending, the card untouched', async () => {
       // `decision` was read before the outcome was recorded: its hash is stale now.

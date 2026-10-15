@@ -135,6 +135,50 @@ describe('proposal poller (ADR-0032)', () => {
     poller.stop();
   });
 
+  it('polls once more when pollOnce is called while a poll is in flight', async () => {
+    const seen: string[] = [];
+    let release: () => void = () => {};
+    let started = 0;
+    const poller = createProposalPoller({
+      client: {
+        proposal_list: async () => {
+          const n = ++started;
+          if (n === 1) await new Promise<void>((resolve) => (release = resolve));
+          return { proposals: [prop(`p${n}`)], nextCursor: `c${n}` };
+        },
+      },
+      onChanges: (changed) => seen.push(...changed.map((p) => p.id)),
+    });
+    const first = poller.pollOnce();
+    await Promise.resolve();
+    expect(started).toBe(1);
+    void poller.pollOnce();
+    release();
+    await first;
+    for (let i = 0; i < 10 && seen.length < 2; i++) await Promise.resolve();
+    expect(seen).toEqual(['p1', 'p2']);
+    poller.stop();
+  });
+
+  it('pause stops the interval and resume polls again', async () => {
+    let n = 0;
+    const poller = createProposalPoller({
+      client: { proposal_list: async () => ({ proposals: [], nextCursor: String(++n) }) },
+      lageId: 'L',
+      onChanges: () => {},
+    });
+    poller.start();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(n).toBe(1);
+    poller.pause();
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(n).toBe(1);
+    poller.resume();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(n).toBe(2);
+    poller.stop();
+  });
+
   it('start is idempotent', async () => {
     let n = 0;
     const poller = createProposalPoller({

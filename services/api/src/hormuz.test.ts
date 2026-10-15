@@ -303,6 +303,52 @@ describe('proposals the real adapter refuses', () => {
   });
 });
 
+const HORMUZ_LAGE = '01M1F21G80R816A1T0V2P6RACH';
+const HORMUZ_PLACED = '01M1E34QM03WVTE8T1RYS3AM18';
+const HORMUZ_WORLD = '01M1DZPW00JGXPRPG4179ZPNB8';
+
+describe('a rule the user writes on the Hormuz store', () => {
+  it('keeps the changed action after a restart and the evaluation reads that card', async () => {
+    const first = await serve();
+    let ruleId = '';
+    try {
+      const created = await first.call('POST', '/rules', {
+        title: 'Synthetic hold rule',
+        worlds: [HORMUZ_WORLD],
+        rule: { when: [{ kind: 'card_on_lage', card: HORMUZ_PLACED }], then: 'Hold the cape' },
+      });
+      expect(created.status).toBe(201);
+      const rule = created.json as unknown as Card;
+      ruleId = rule.id;
+      expect(rule.author).toBe('human');
+      const saved = await first.call('PUT', `/rules/${ruleId}`, {
+        ...rule,
+        rule: { ...rule.rule!, then: 'Divert around the cape' },
+      });
+      expect(saved.status).toBe(200);
+    } finally {
+      await first.service.close();
+    }
+
+    const second = await serve();
+    try {
+      const res = await second.call('POST', '/rules/evaluate', { lageId: HORMUZ_LAGE });
+      expect(res.status).toBe(200);
+      const results = res.json['results'] as unknown as {
+        ruleId: string;
+        fired: boolean;
+        rule: { then: string };
+      }[];
+      expect(results.find((r) => r.ruleId === ruleId)).toMatchObject({
+        fired: true,
+        rule: { then: 'Divert around the cape' },
+      });
+    } finally {
+      await second.service.close();
+    }
+  });
+});
+
 describe('rule cards of the Hormuz store (a "## Rule" section in the file)', () => {
   it('rules_evaluate reads them through the real adapter', async () => {
     const { service, call } = await serve();
@@ -543,6 +589,99 @@ describe('a model answers from the Hormuz context package (AC-16)', () => {
       expect(cloudText).not.toContain('invented internal cost estimate');
     } finally {
       await service.close();
+    }
+  });
+});
+
+const decisionSections = (cardsUsed: string[], outcome = 'open') => ({
+  situation: 'A synthetic situation.',
+  trigger: 'A synthetic trigger.',
+  conditions: 'Synthetic conditions.',
+  facts: 'Synthetic facts.',
+  priorities: 'Synthetic priorities.',
+  action: 'Reroute via the Cape.',
+  alternatives: 'Wait.',
+  exclusions: 'Do not sail the strait.',
+  rationale: 'The wire report is the only placed evidence.',
+  cardsUsed,
+  outcome,
+});
+
+describe('a decision and its outcome on the Hormuz store', () => {
+  it('keeps the eleven sections after a restart, rejects an unknown card, and keeps the experience card', async () => {
+    const first = await serve();
+    let decisionId = '';
+    let usedId = '';
+    let source = '';
+    try {
+      const listed = await first.call('GET', '/cards?limit=200');
+      const used = (listed.json['cards'] as unknown as Card[]).find((c) => c.type === 'event');
+      expect(used?.id).toBeTruthy();
+      usedId = used!.id;
+      source = used!.source ?? '';
+      const rejected = await first.call('POST', '/decisions', {
+        format: 2,
+        type: 'decision',
+        title: 'Synthetic routing decision',
+        sections: decisionSections(['01ARZ3NDEKTSV4RRFFQ69G5FAV']),
+      });
+      expect(rejected.status).toBe(400);
+      const created = await first.call('POST', '/decisions', {
+        format: 2,
+        type: 'decision',
+        title: 'Synthetic routing decision',
+        sections: decisionSections([usedId]),
+      });
+      expect(created.status).toBe(201);
+      const decision = created.json as unknown as Card;
+      decisionId = decision.id;
+      expect(decision.sections).toEqual(decisionSections([usedId]));
+      const saved = await first.call('PUT', `/decisions/${decisionId}`, {
+        ...decision,
+        sections: decisionSections([usedId], 'Rerouted via the Cape.'),
+      });
+      expect(saved.status).toBe(200);
+    } finally {
+      await first.service.close();
+    }
+
+    const second = await serve();
+    try {
+      const reloaded = (await second.call('GET', `/cards/${decisionId}`)).json as unknown as Card;
+      expect(reloaded.sections).toEqual(decisionSections([usedId], 'Rerouted via the Cape.'));
+      const found = await second.call('GET', '/cards?type=experience&limit=200');
+      const linked = (found.json['cards'] as unknown as Card[]).filter((c) =>
+        c.edges?.some((e) => e.target === decisionId && e.kind === 'based_on'),
+      );
+      expect(linked).toHaveLength(1);
+      expect(linked[0]?.body).toContain('Rerouted via the Cape.');
+      expect(linked[0]?.edges).toEqual([
+        { target: decisionId, kind: 'based_on', by: 'human' },
+        { target: usedId, kind: 'based_on', by: 'human' },
+      ]);
+      expect(source.startsWith('https://')).toBe(true);
+      const profile = await second.call(
+        'GET',
+        `/source-profiles?source=${encodeURIComponent(source)}`,
+      );
+      expect(profile.status).toBe(200);
+      const body = profile.json as unknown as {
+        profile: {
+          minimumN: number;
+          dimensions: { hitAccuracy: { n: number }; reliability: { n: number } };
+        };
+        earlier: unknown[];
+      };
+      expect(body.profile.dimensions.hitAccuracy.n).toBe(1);
+      expect(body.profile.dimensions.reliability).toEqual({ n: 0 });
+      expect(body.profile.minimumN).toBe(5);
+      expect(body.earlier).toEqual([]);
+      const storeText = (await textsUnder(path.join(dir, 'store'))).join('\n');
+      expect(storeText).not.toContain('hitAccuracy');
+      const stateText = (await textsUnder(path.join(dir, 'state'))).join('\n');
+      expect(stateText).toContain('hitAccuracy');
+    } finally {
+      await second.service.close();
     }
   });
 });

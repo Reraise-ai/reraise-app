@@ -1,0 +1,17 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/api.schema.json#/$defs/scenarioLayer",
+  "description": "A live what-if layer with two assumptions. The ids are not cards (ADR-0050).",
+  "data": {
+    "assumptions": [
+      {
+        "id": "01M1E34QM03WVTE8T1RYS3AM18",
+        "statement": "The strait stays closed for thirty days."
+      },
+      {
+        "id": "01M1F21G80R816A1T0V2P6RACH",
+        "statement": "War-risk cover doubles."
+      }
+    ]
+  }
+}

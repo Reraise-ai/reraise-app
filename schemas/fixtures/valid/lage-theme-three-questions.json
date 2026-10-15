@@ -1,0 +1,39 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/lage.schema.json",
+  "description": "A theme Lage with three playable questions and one collector card (e-52, e-58).",
+  "data": {
+    "question": "Vitamin D",
+    "questions": [
+      {
+        "text": "Two trials, two answers?",
+        "for": ["01M1E34QM03WVTE8T1RYS3AM18"],
+        "against": ["01M1E6JK80GR8G0JHMPVT7TDX4"]
+      },
+      {
+        "text": "20 or 60?",
+        "for": ["01M1EA0EW0V90F04X7AKQJSKK2", "01M1EDEAG082WZ7T7D204BHZDC"],
+        "against": []
+      },
+      {
+        "text": "Instead of the vaccine?",
+        "for": [],
+        "against": ["01M1EGW640BMD0RDT5NGRMFD70"]
+      }
+    ],
+    "collectorCardId": "01M1EMA1R0AH9ZTK3YJK33TNER",
+    "options": [],
+    "cards": [
+      { "id": "01M1E34QM03WVTE8T1RYS3AM18", "x": 0, "y": 0 },
+      { "id": "01M1E6JK80GR8G0JHMPVT7TDX4", "x": 280, "y": 0 },
+      { "id": "01M1EA0EW0V90F04X7AKQJSKK2", "x": 0, "y": 170 },
+      { "id": "01M1EDEAG082WZ7T7D204BHZDC", "x": 280, "y": 170 },
+      { "id": "01M1EGW640BMD0RDT5NGRMFD70", "x": 0, "y": 340 },
+      { "id": "01M1EMA1R0AH9ZTK3YJK33TNER", "x": 280, "y": 340 }
+    ],
+    "seats": [{ "name": "You", "kind": "human" }],
+    "edges": [],
+    "version": 1,
+    "updatedAt": "2026-10-14T12:00:00Z"
+  }
+}

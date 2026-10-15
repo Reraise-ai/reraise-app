@@ -6,9 +6,11 @@ step is to fix the contracts, then prove the thinnest real path end to end, then
 slice per pull request.
 
 ::: info Status in one line
-**M0 is in progress.** Nothing past M0 is built. No feature is claimed unless an automated
-test backs it, and a milestone is "done" only when CI is green and its scenario runs. The
-table of record is [verification](./verification.md).
+**M1 is done.** The Hormuz walking skeleton is the Playwright test in
+`e2e/tests/walking-skeleton.spec.ts`. CI job `e2e` runs it on Linux, Windows and macOS.
+That job was green at commit `4e0ebf8`. M0 stays in progress. The next work is the M2 slices.
+No feature is claimed unless an automated test backs it. The table of record is
+[verification](./verification.md).
 :::
 
 GitHub milestones and one issue per slice will be created once repository access works.
@@ -19,8 +21,8 @@ Until then this page is the plan of record.
 | Milestone | Goal | Status | Done when |
 | --- | --- | --- | --- |
 | **M0** Repository foundation and contracts | Monorepo, tooling, CI, docs, ADRs, contracts as code. No features. | in progress | CI is green, schemas validate the examples, the ADR log is complete, the docs build |
-| **M1** Walking skeleton | Thinnest end-to-end path, everything real, nothing pretty | in progress: the e2e passes locally on Linux and on Windows (2026-10-13); awaiting a green CI run on three operating systems | one Playwright end-to-end test runs the scenario below in CI |
-| **M2+** Vertical slices | One pull request per slice: UI, API, adapter and tests together | not started | per slice, see [below](#m2-vertical-slices) |
+| **M1** Walking skeleton | Thinnest end-to-end path, everything real, nothing pretty | done at `4e0ebf8` (job `e2e` green on Linux, Windows and macOS) | one Playwright end-to-end test runs the scenario below in CI |
+| **M2+** Vertical slices | One pull request per slice: UI, API, adapter and tests together | in progress | per slice, see [below](#m2-vertical-slices) |
 
 ## M0: repository foundation and contracts
 
@@ -36,14 +38,14 @@ Scope:
    the adapter interfaces `StorageAdapter`, `SourceConnector`, `ModelConnector` and
    `DisclosureGate`.
 4. Architecture documentation: arc42 and C4 diagrams.
-5. Example synthetic worlds (`hormuz`, `palma`) that the schemas validate.
+5. Example synthetic worlds (`hormuz`, `palma`, `gold`, `vitamin-d`) that the schemas validate.
 
 **Done when:** CI is green, the schemas validate the examples, the ADR log is complete and
 the docs build.
 
 ## M1: walking skeleton
 
-Status: in progress. A restart of `worldbuilder serve` on the Hormuz store keeps a drawn edge and a private stance (AC-05). The same restart keeps a Lage the user created, with their question and any number of options, including none (AC-07). A restart keeps a reversed `supports` edge, and a deleted `refutes` edge stays gone (AC-08). `local-quote` answers a Hormuz context package with the ids the gate cleared. Under the shipped default it names the private cost card; a `cloud_model` package with no confirmation does not contain that card (AC-16). A `local_model` package of that store keeps a relation only when both cards are in the package, so the decision's `cardsUsed` list keeps the wire report, the navy and the insurance card. A rule that states a stance, or that names a card outside the package, is left out. The Hormuz stance rule is absent. The reroute rule, which names only the wire report, stays (AC-18). The page reload of the walking skeleton is the end-to-end test.
+Status: done at commit `4e0ebf8`. CI job `e2e` runs this scenario on Linux, Windows and macOS, and that run was green. A restart of `worldbuilder serve` on the Hormuz store keeps a drawn edge and a private stance (AC-05). The same restart keeps a Lage the user created, with their question and any number of options, including none (AC-07). A restart keeps a reversed `supports` edge, and a deleted `refutes` edge stays gone (AC-08). `local-quote` answers a Hormuz context package with the ids the gate cleared. Under the shipped default it names the private cost card; a `cloud_model` package with no confirmation does not contain that card (AC-16). A `local_model` package of that store keeps a relation only when both cards are in the package, so the decision's `cardsUsed` list keeps the wire report, the navy and the insurance card. A rule that states a stance, or that names a card outside the package, is left out. The Hormuz stance rule is absent. The reroute rule, which names only the wire report, stays (AC-18). The page reload of the walking skeleton is the end-to-end test.
 
 The board context package lists findings and origins per layer (AC-01). A card shows its stored origin system on the canvas, in the card list and in the inspector (AC-06). Removing a placed card takes it off the Lage and out of the next context package. The card file stays in the store (AC-22). The checks are in
 [verification](./verification.md).
@@ -63,13 +65,59 @@ Scenario, using the Hormuz example:
 7. A context package is generated.
 8. The disclosure gate blocks a private card for the cloud target.
 
-**Done when:** one Playwright end-to-end test runs this scenario in CI. The first release
-(v0.1.0) waits until M1 passes on all three operating systems in CI.
+**Done when:** one Playwright end-to-end test runs this scenario in CI. That criterion is met
+at commit `4e0ebf8` (job `e2e` green on Linux, Windows and macOS). The v0.1.0 tag is not cut.
 
 ## M2+: vertical slices
 
 Each slice is one pull request with UI, API, adapter and tests. The order may change; the
 done criterion is what counts.
+
+The decision slice stores the eleven sections, rejects an unknown `cardsUsed` id, and the
+board records the decision and its outcome. A known outcome stores one linked experience
+card.
+
+The source-profile slice meets its done criterion: a known outcome adds one to the stored
+hit count of each source cited by `cardsUsed`, the previous profile stays on the device,
+and the board shows every dimension with its sample size and "insufficient data" below
+`n` of 5.
+
+The rules panel lists each rule as fired or not fired, with the rule's own text and the
+triggering cards, and shows no percentage. The user creates a rule card and changes its
+action. The next evaluation reads that stored card (AC-10). The board form sends one
+card-on-board condition. The API accepts every condition kind.
+
+A card with one known origin is marked on the board. The same statement from two origins
+that do not repeat each other is marked as meeting the journalistic standard (Entscheidung 125).
+
+A player entry without a source is rejected. An empty player field is allowed. The board
+shows a source pass, "N findings · M origins", on each placed card, on an actor's seat
+entries and on its moves, on each edge, and on the cards a decision uses (AC-28, AC-30).
+
+The board can be shown as of an earlier date. `lage_versions` returns archived Lage
+versions, oldest first, and the current state is not included. The slider shows that
+board and does not save the view (ADR-0049).
+
+The open board holds a what-if layer of assumptions that are not cards. Saving the layer
+writes nothing to the store. Recording a decision can attach that layer. The attachment
+is a file in the state directory. The decision card is unchanged (ADR-0050).
+
+Two open boards on one service see a move within seconds. `GET /events` sends a notice
+with no card text. The board reads the change through the existing operations. A dropped
+stream falls back to `proposal_list`. Agents still poll (ADR-0032).
+
+Ollama, a cloud chat model and a decision-service stub answer through one `ModelConnector`.
+The answer is a pending comment, not a card. A cloud call shows the envelope and sends
+nothing until that transfer is confirmed (ADR-0011, ADR-0015, ADR-0031).
+
+An HTTP/JSON list, an Obsidian vault and a document index report references. Pinning one
+stores a private card on the open Lage and does not copy the source text. A second pin
+returns the same card. Paid news stays later (ADR-0014, OQ-33).
+
+The training export writes a JSONL file of decision traces. A trace is exported only if
+the decision has `training: true` and a known outcome. Cards that did not opt in never
+appear, not even as ids. The first call shows the envelope; nothing leaves until that
+transfer is confirmed (ADR-0017).
 
 | Slice | Done when |
 | --- | --- |

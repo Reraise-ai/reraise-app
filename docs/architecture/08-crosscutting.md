@@ -172,8 +172,9 @@ Privacy is structural, not a setting ([ADR-0012](../adr/0012-disclosure-gate.md)
 
 - One card per Markdown file with YAML front matter. Files are the truth; every index is
   derived and may be deleted ([ADR-0006](../adr/0006-files-are-the-truth.md)).
-- History is archived versions (`_archive/<file>.v<n>.md`), not an event log. The time slider
-  (M2+) reads timestamps and archived versions.
+- History is archived versions (`_archive/<file>.v<n>.md`), not an event log. The board reads
+  them through `lage_versions` and can show an earlier board
+  ([ADR-0049](../adr/0049-lage-versions.md)).
 - Every write goes through one write path per store that validates, locks and writes.
   Concurrent writers use optimistic concurrency on `version` or `contentHash`.
 - Writes are patches: only the canonical fields the product changed are written; everything
@@ -194,9 +195,9 @@ Privacy is structural, not a setting ([ADR-0012](../adr/0012-disclosure-gate.md)
   a target class and a token whose hash is kept in `agents.yaml` in the state directory. The
   class follows where the agent's models run, not where the agent runs
   ([ADR-0037](../adr/0037-hermes-agents-as-mcp-clients.md)).
-- In M1 the board polls `proposal_list` with `changedSince=<cursor>` every 2 seconds (the same
-  parameter exists for agents over MCP); the M2 live channel
-  replaces polling ([ADR-0032](../adr/0032-m1-proposal-polling.md)).
+- The board follows the human-only live channel `GET /events` and uses `proposal_list` with
+  `changedSince` when the stream drops. Agents still poll that operation over MCP
+  ([ADR-0032](../adr/0032-m1-proposal-polling.md)).
 - Accept and reject are human-only. On accept, the change is written through the
   `StorageAdapter` with the agent kept as author.
 - **Non-counting rule:** pending or rejected proposals count nowhere: not in rules
@@ -266,8 +267,8 @@ library stays replaceable.
 | Unit | Domain logic in `core` with a coverage gate (90 % lines) | `packages/*/src/*.test.ts`, `vitest.config.ts` | gate configured (M0); little logic to cover yet |
 | Conformance | Every `StorageAdapter` against the kit | `packages/conformance` | skeleton (M0); full kit M1 |
 | Integration | Bind address, token separation, input limits | `services/api` | planned (M1) |
-| End to end | The walking-skeleton scenario in a browser, with a scripted MCP agent and the files on disk checked | Playwright, `e2e/` | passes locally on Linux; CI job `e2e` on three operating systems has not run yet |
-| Accessibility | axe on the main screens of the board | `e2e/tests/a11y.spec.ts` | passes locally on Linux; no CI run yet |
+| End to end | The walking-skeleton scenario in a browser, with a scripted MCP agent and the files on disk checked | Playwright, `e2e/` | passing in CI job `e2e` on Linux, Windows and macOS (commit `4e0ebf8`) |
+| Accessibility | axe on the main screens of the board | `e2e/tests/a11y.spec.ts` | passing in the same CI job `e2e` (commit `4e0ebf8`) |
 
 The record of what is proven is [verification](../verification.md).
 

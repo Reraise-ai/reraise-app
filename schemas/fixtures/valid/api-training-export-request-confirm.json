@@ -1,0 +1,9 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/api.schema.json#/$defs/trainingExportRequest",
+  "description": "Repeat after disclosure_confirm, with the single-use token.",
+  "data": {
+    "transferId": "01M1HA4MC0T8585XX5H0E6NVRP",
+    "confirmationToken": "AAAAAAAAAAAAAAAAAAAAAAAA"
+  }
+}

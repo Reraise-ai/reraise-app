@@ -264,7 +264,7 @@ lists them.
 
 ## 8. Seats and agent proposals
 
-Status: planned (M1) for the proposal round trip; live updates planned (M2+). Decided in
+Status: the proposal round trip exists. Live updates are `GET /events`: a notice carries no card text, and a dropped stream falls back to polling (ADR-0032). Decided in
 [ADR-0011](../adr/0011-agent-moves-are-proposals.md).
 
 The board is "looking at the chessboard together". A **seat** is a participant at the board:
@@ -349,7 +349,9 @@ Before anything leaves the screen, the gate decides per card and per target
 
 ## 11. Decision card
 
-Status: planned (M2+), decided in [ADR-0017](../adr/0017-decision-card-and-training-export.md).
+Status: on the board (ADR-0017). The Lagen list has a training export: the first click shows
+the envelope, confirming it downloads JSONL of opted-in traces, and cards that did not opt in
+never appear.
 
 A decision card has exactly eleven sections, each non-empty:
 
@@ -375,7 +377,7 @@ decision slice and must not change the eleven sections.
 
 ## 12. Source profile
 
-Status: planned (M2+), decided in [ADR-0018](../adr/0018-multidimensional-source-profile.md).
+Status: on the board (ADR-0018). A known outcome stores `hitAccuracy` on this device. The other dimensions stay at `n` = 0 until their inputs exist. Below `minimumN` (5) the board says "insufficient data" (OQ-31).
 
 A source has a **profile of separate dimensions**, never one credibility value. Every
 dimension carries its value and its sample size `n`, and below a minimum `n` the UI shows
@@ -400,11 +402,14 @@ Every number links to the cards behind it. The profile is derived, never edited 
 
 These ideas come from a second UX study and fit the canon.
 
-- **Time slider** (planned (M2+)). Move the board to an earlier date and see it as it was,
-  from real timestamps and archived Lage versions, not from replaying a log
-  ([ADR-0006](../adr/0006-files-are-the-truth.md)).
-- **What-if layer** (planned (M2+)). A non-persisting scenario layer with your own
-  assumptions, savable and attachable to a decision. It never changes real cards.
+- **Time slider**. The open board shows an earlier archived Lage (question, options, placements
+  and edges) from `lage_versions`. Card text stays current. The view is not saved
+  ([ADR-0049](../adr/0049-lage-versions.md), [ADR-0006](../adr/0006-files-are-the-truth.md)).
+- **What-if layer**. The open board holds assumptions that are not cards. Saving them
+  writes nothing to the store. Recording a decision can attach that layer. The attachment
+  stays on this device. A restart clears the live layer and keeps the attachment. The
+  decision card stays unchanged
+  ([ADR-0050](../adr/0050-what-if-scenario-layer.md)).
 - **World collision** (planned (M2+)). Two local worlds overlaid on one question: shared
   cards, diverging cards, and cards from one world that do not fit the other, with no
   consensus required.

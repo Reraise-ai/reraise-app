@@ -1,0 +1,12 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/api.schema.json#/$defs/trainingExportRequest",
+  "description": "A confirmation token without its transfer is rejected.",
+  "expect": {
+    "keyword": "dependentRequired",
+    "instancePath": ""
+  },
+  "data": {
+    "confirmationToken": "AAAAAAAAAAAAAAAAAAAAAAAA"
+  }
+}

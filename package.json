@@ -17,6 +17,7 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "build": "pnpm -r --if-present build",
+    "build:demo": "pnpm --filter @worldbuilder/storage-markdown-files build && node scripts/export-demo-world.mjs && pnpm --filter @worldbuilder/board build:demo",
     "check:board-tokens": "node scripts/check-board-tokens.mjs",
     "check:spdx": "node scripts/check-spdx.mjs",
     "check:no-real-data": "pnpm --filter @worldbuilder/core build && node scripts/check-no-real-data.mjs",
@@ -30,7 +31,7 @@
     "lint:openapi": "node scripts/lint-openapi.mjs",
     "check:licence-imports": "node scripts/check-licence-imports.mjs",
     "test:hermes": "node scripts/test-hermes.mjs",
-    "test:e2e": "pnpm build && pnpm --filter @worldbuilder/e2e test"
+    "test:e2e": "pnpm build && pnpm build:demo && pnpm --filter @worldbuilder/e2e test"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
@@ -39,6 +40,7 @@
     "@types/node": "^22.20.5",
     "@vitest/coverage-v8": "^5.0.3",
     "@worldbuilder/core": "workspace:*",
+    "@worldbuilder/storage-markdown-files": "workspace:*",
     "ajv": "^8.20.0",
     "ajv-formats": "^3.0.1",
     "eslint": "^9.39.5",

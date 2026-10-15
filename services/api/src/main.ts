@@ -17,6 +17,8 @@ import { configuredEngineIds } from './level1-engines.js';
 import { writePrivateFile, type AgentTarget } from './auth.js';
 import { DEFAULT_PORT } from './app.js';
 import type { StorageAdapter } from '@worldbuilder/core';
+import { modelOptionsFromEnv } from './models.js';
+import { sourceOptionsFromEnv } from './sources.js';
 import { createService, type Service } from './service.js';
 import { openMarkdownStore } from './store.js';
 
@@ -134,6 +136,8 @@ async function serve(argv: string[], deps: MainDeps): Promise<void> {
         }
       : {}),
     seedDefaultGateRules: true,
+    models: modelOptionsFromEnv(deps.env ?? process.env),
+    sources: sourceOptionsFromEnv(deps.env ?? process.env),
     logger: deps.logger ?? {
       level: 'info',
       redact: ['req.headers.authorization', 'req.headers["x-worldbuilder-session"]'],

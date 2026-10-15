@@ -39,6 +39,21 @@ export default defineConfig({
       {
         resolve: {
           alias: {
+            '@worldbuilder/core/outcome': fileURLToPath(
+              new URL('./packages/core/src/outcome.ts', import.meta.url),
+            ),
+            '@worldbuilder/core/independence': fileURLToPath(
+              new URL('./packages/core/src/independence.ts', import.meta.url),
+            ),
+            '@worldbuilder/core/source-profile': fileURLToPath(
+              new URL('./packages/core/src/source-profile.ts', import.meta.url),
+            ),
+            '@worldbuilder/core/theme': fileURLToPath(
+              new URL('./packages/core/src/theme.ts', import.meta.url),
+            ),
+            '@worldbuilder/core/ids': fileURLToPath(
+              new URL('./packages/core/src/ids.ts', import.meta.url),
+            ),
             '@worldbuilder/level1-engines/format': fileURLToPath(
               new URL('./packages/level1-engines/src/format.ts', import.meta.url),
             ),

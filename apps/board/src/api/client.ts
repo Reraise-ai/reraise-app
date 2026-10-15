@@ -8,6 +8,7 @@
 import type {
   Card,
   CardPage,
+  DecisionDraft,
   ContextPackage,
   ContextPackageRequest,
   DisclosureConfirmation,
@@ -15,14 +16,30 @@ import type {
   DisclosureTransfer,
   Lage,
   LageCreateRequest,
+  LageVersionList,
   Level1PredictRequest,
   Level1Result,
   Level1State,
+  FindingPinRequest,
+  FindingPinResult,
+  FindingsList,
+  FindingsListRequest,
+  ModelAskRequest,
+  ModelAskResult,
   Problem,
+  TrainingExportRequest,
+  TrainingExportResult,
   Proposal,
+  RuleDraft,
+  RuleEvaluation,
+  RulesEvaluateRequest,
+  ScenarioAttachment,
+  ScenarioLayer,
+  ScenarioReplace,
   ProposalPage,
   Stance,
   StanceInput,
+  StoredSourceProfile,
   UsageMetrics,
   WorldList,
 } from '@worldbuilder/core';
@@ -77,8 +94,12 @@ export interface ProposalListParams {
 export interface BoardClient {
   world_list(): Promise<WorldList>;
   lage_create(body: LageCreateRequest): Promise<Card>;
+  decision_create(body: DecisionDraft): Promise<Card>;
+  decision_save(cardId: string, card: Card): Promise<Card>;
   lage_get(lageId: string): Promise<Card>;
   lage_save(lageId: string, lage: Lage): Promise<Card>;
+  /** Human-only (ADR-0049). Replaced board states, oldest first. The current state is absent. */
+  lage_versions(lageId: string): Promise<LageVersionList>;
   cards_search(params?: SearchParams): Promise<CardPage>;
   card_get(cardId: string): Promise<Card>;
   stance_get(cardId: string): Promise<Stance>;
@@ -95,8 +116,37 @@ export interface BoardClient {
   level1_predict(lageId: string, body: Level1PredictRequest): Promise<Level1Result>;
   /** Human-only: open a level-2 board analysis for one player of the latest estimate. */
   level1_escalate(lageId: string, playerCardId: string): Promise<Card>;
+  /** Human-only. Ask one model. A cloud engine returns a transfer until the human confirms it. */
+  model_ask(lageId: string, body: ModelAskRequest): Promise<ModelAskResult>;
+  /** Human-only (ADR-0014). References from connected sources. Nothing here is on a board yet. */
+  findings_list(params?: FindingsListRequest): Promise<FindingsList>;
+  /** Human-only. Read that finding again and place a private reference card on the Lage. */
+  finding_pin(body: FindingPinRequest): Promise<FindingPinResult>;
   /** Human-only (ADR-0041). Without `week` the rolling 7 days. */
   usage_metrics_get(week?: string): Promise<UsageMetrics>;
+  /** Which of the user's rules fire on a Lage. No percentage (ADR-0013). */
+  rules_evaluate(body: RulesEvaluateRequest): Promise<RuleEvaluation>;
+  /** Human-only. Stores a rule card. The author is the human. */
+  rule_create(body: RuleDraft): Promise<Card>;
+  /** Human-only. Patches the title and the rule. A stale contentHash is a conflict. */
+  rule_save(cardId: string, card: Card): Promise<Card>;
+  /** Human-only. The derived profile of one source, kept on this device (ADR-0018). */
+  source_profile_get(source: string): Promise<StoredSourceProfile>;
+  /** Human-only. The live what-if layer. Empty when it is off (ADR-0050). */
+  scenario_get(lageId: string): Promise<ScenarioLayer>;
+  /** Human-only. Replace the live layer. An empty list clears it. No card is written. */
+  scenario_replace(lageId: string, body: ScenarioReplace): Promise<ScenarioLayer>;
+  /** Human-only. Copy the live layer onto a decision. The decision card is not changed. */
+  scenario_attach(lageId: string, decisionId: string): Promise<ScenarioAttachment>;
+  /** Human-only. The snapshot attached to a decision, kept on this device. */
+  scenario_attachment_get(decisionId: string): Promise<ScenarioAttachment>;
+  /** Human-only (ADR-0017). JSONL of opted-in traces; a cloud transfer until confirmed. */
+  training_export(body?: TrainingExportRequest): Promise<TrainingExportResult>;
+  /**
+   * Human-only live channel (ADR-0032). The body is the event stream, not JSON.
+   * `lageId` limits notices to that Lage; omit it to hear every board.
+   */
+  openEvents(lageId: string | undefined, signal: AbortSignal): Promise<Response>;
 }
 
 function query(params: Record<string, string | number | undefined>): string {
@@ -153,8 +203,11 @@ export function createClient(options: ClientOptions): BoardClient {
   return {
     world_list: () => call('GET', '/worlds'),
     lage_create: (body) => call('POST', '/lagen', body),
+    decision_create: (body) => call('POST', '/decisions', body),
+    decision_save: (id, card) => call('PUT', `/decisions/${enc(id)}`, card),
     lage_get: (id) => call('GET', `/lagen/${enc(id)}`),
     lage_save: (id, lage) => call('PUT', `/lagen/${enc(id)}`, lage),
+    lage_versions: (id) => call('GET', `/lagen/${enc(id)}/versions`),
     cards_search: (p = {}) => call('GET', `/cards${query({ ...p })}`),
     card_get: (id) => call('GET', `/cards/${enc(id)}`),
     stance_get: (id) => call('GET', `/cards/${enc(id)}/stance`),
@@ -173,7 +226,28 @@ export function createClient(options: ClientOptions): BoardClient {
     level1_predict: (id, body) => call('POST', `/lagen/${enc(id)}/level1`, body),
     level1_escalate: (id, playerCardId) =>
       call('POST', `/lagen/${enc(id)}/level1/escalate`, { playerCardId }),
+    model_ask: (id, body) => call('POST', `/lagen/${enc(id)}/model`, body),
+    findings_list: (p = {}) =>
+      call('GET', `/findings${query({ since: p.since, text: p.text, limit: p.limit })}`),
+    finding_pin: (body) => call('POST', '/findings/pin', body),
     usage_metrics_get: (week) => call('GET', `/metrics/usage${query({ week })}`),
+    rules_evaluate: (body) => call('POST', '/rules/evaluate', body),
+    rule_create: (body) => call('POST', '/rules', body),
+    rule_save: (id, card) => call('PUT', `/rules/${enc(id)}`, card),
+    source_profile_get: (source) => call('GET', `/source-profiles${query({ source })}`),
+    scenario_get: (id) => call('GET', `/lagen/${enc(id)}/scenario`),
+    scenario_replace: (id, body) => call('PUT', `/lagen/${enc(id)}/scenario`, body),
+    scenario_attach: (id, decisionId) =>
+      call('POST', `/lagen/${enc(id)}/scenario/attach`, { decisionId }),
+    scenario_attachment_get: (id) => call('GET', `/decisions/${enc(id)}/scenario`),
+    training_export: (body = {}) => call('POST', '/training/export', body),
+    openEvents: (lageId, signal) => {
+      const headers: Record<string, string> = {
+        [SESSION_HEADER]: options.token,
+        accept: 'text/event-stream',
+      };
+      return doFetch(`${base}/events${query({ lageId })}`, { method: 'GET', headers, signal });
+    },
   };
 }
 

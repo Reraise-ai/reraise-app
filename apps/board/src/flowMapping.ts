@@ -5,6 +5,7 @@
 // persisted (ADR-0019): positions and edges are written back as Lage edits.
 
 import type { Card, Lage, Stance } from '@worldbuilder/core';
+import { cardSourcePass, sourceMark, sourcePassText } from '@worldbuilder/core/independence';
 import type { CardNodeType } from './components/CardNode.js';
 import type { KindEdgeType } from './components/KindEdge.js';
 import { edgeKey } from './lageModel.js';
@@ -15,9 +16,15 @@ export function toNodes(
   stances: ReadonlyMap<string, Stance>,
   selectedCardId?: string | null,
 ): CardNodeType[] {
+  const placed = lage.cards.flatMap((p) => {
+    const card = cards.get(p.id);
+    return card ? [card] : [];
+  });
   return lage.cards.map((p) => {
     const card = cards.get(p.id);
     const stance = stances.get(p.id);
+    const mark = card ? sourceMark(placed, p.id) : undefined;
+    const pass = card ? cardSourcePass(placed, p.id) : undefined;
     return {
       id: p.id,
       type: 'card' as const,
@@ -27,6 +34,8 @@ export function toNodes(
         cardId: p.id,
         ...(card ? { card } : {}),
         ...(stance ? { stance } : {}),
+        ...(mark ? { sourceMark: mark } : {}),
+        ...(pass ? { sourcePass: sourcePassText(pass) } : {}),
       },
     };
   });

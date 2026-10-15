@@ -12,8 +12,11 @@ import type {
   ProposalCreate,
   ProposalListRequest,
   ProposalPage,
+  ScenarioAttachment,
+  SourceProfile,
   Stance,
   StanceInput,
+  StoredSourceProfile,
 } from '../generated/contracts.js';
 
 /** Why a local-state call failed. */
@@ -84,9 +87,9 @@ export interface GateRulesLoad {
 }
 
 /**
- * Device-only state (ADR-0030): proposals, stances, the gate log and the gate rules, as files
- * in the per-user state directory. `core` defines the port and has no I/O; one writer, the
- * service process, uses it. Nothing here is ever sent to a model, exported or shared.
+ * Device-only state (ADR-0030): proposals, stances, source profiles, the gate log and the gate
+ * rules, as files in the per-user state directory. `core` defines the port and has no I/O; one
+ * writer, the service process, uses it. Nothing here is ever sent to a model, exported or shared.
  */
 export interface LocalStateStore {
   /** The resolved state directory. */
@@ -108,6 +111,21 @@ export interface LocalStateStore {
   listStances(): Promise<Stance[]>;
   /** Human-only: set the stance; the previous version is kept in `history`. */
   saveStance(cardId: string, input: StanceInput): Promise<Stance>;
+
+  /** The stored profile of one source, or `undefined` when none has been derived yet. */
+  getSourceProfile(source: string): Promise<StoredSourceProfile | undefined>;
+  /**
+   * Replace the stored profile. The previous profile is appended to `earlier`. Saving the
+   * same profile again changes nothing. Human-only; the service derives it, nobody edits it.
+   */
+  saveSourceProfile(profile: SourceProfile): Promise<StoredSourceProfile>;
+
+  /** The what-if snapshot attached to a decision, or `undefined` when none is (ADR-0050). */
+  getScenarioAttachment(decisionId: string): Promise<ScenarioAttachment | undefined>;
+  /**
+   * Replace the snapshot. Saving the same one again changes nothing. Human-only. Not a card.
+   */
+  saveScenarioAttachment(attachment: ScenarioAttachment): Promise<ScenarioAttachment>;
 
   /**
    * Names of proposal and stance files that were skipped or refused because they are damaged

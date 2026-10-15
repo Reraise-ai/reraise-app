@@ -35,6 +35,8 @@ test.describe('axe on the board screens', () => {
     await login(page, env);
     await openLage(page, HORMUZ.lageId);
     await expect(page.getByTestId(`card-node-${HORMUZ.wireReportId}`)).toBeVisible();
+    await page.getByTestId(`card-node-${HORMUZ.wireReportId}`).click();
+    await expect(page.getByTestId('source-profile')).toBeVisible();
     await scan(page, 'board');
 
     await page.getByTestId('context-run').click();

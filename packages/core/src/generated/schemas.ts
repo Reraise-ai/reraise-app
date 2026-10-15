@@ -94,6 +94,233 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
         required: ['title', 'lage'],
         additionalProperties: false,
       },
+      lageVersion: {
+        title: 'LageVersion',
+        description:
+          'One archived board state of a Lage. version is the archive number. archivedAt is when this state was replaced. The current state is not an entry (ADR-0006, ADR-0049).',
+        type: 'object',
+        properties: {
+          version: { type: 'integer', minimum: 1 },
+          archivedAt: { type: 'string', format: 'date-time' },
+          lage: { $ref: 'lage.schema.json' },
+        },
+        required: ['version', 'archivedAt', 'lage'],
+        additionalProperties: false,
+      },
+      lageVersionList: {
+        title: 'LageVersionList',
+        description:
+          'Archived board states of one Lage, oldest first. The current state is not included (ADR-0049).',
+        type: 'object',
+        properties: { versions: { type: 'array', items: { $ref: '#/$defs/lageVersion' } } },
+        required: ['versions'],
+        additionalProperties: false,
+      },
+      scenarioAssumption: {
+        title: 'ScenarioAssumption',
+        description:
+          'One assumption of a what-if layer. The id is a ULID and is not a card in the store (ADR-0050).',
+        type: 'object',
+        properties: {
+          id: { $ref: 'common.schema.json#/$defs/ulid' },
+          statement: { $ref: 'common.schema.json#/$defs/text' },
+        },
+        required: ['id', 'statement'],
+        additionalProperties: false,
+      },
+      scenarioStatement: {
+        title: 'ScenarioStatement',
+        description: 'An assumption the user typed. The service assigns the id (ADR-0050).',
+        type: 'object',
+        properties: { statement: { $ref: 'common.schema.json#/$defs/text' } },
+        required: ['statement'],
+        additionalProperties: false,
+      },
+      scenarioLayer: {
+        title: 'ScenarioLayer',
+        description:
+          'The live what-if layer of one Lage. It is kept in memory and is not a card (ADR-0050).',
+        type: 'object',
+        properties: {
+          assumptions: {
+            type: 'array',
+            maxItems: 20,
+            items: { $ref: '#/$defs/scenarioAssumption' },
+          },
+        },
+        required: ['assumptions'],
+        additionalProperties: false,
+      },
+      scenarioReplace: {
+        title: 'ScenarioReplace',
+        description:
+          'Replace the live what-if layer. An empty list clears it. Nothing is written to the card store (ADR-0050).',
+        type: 'object',
+        properties: {
+          assumptions: {
+            type: 'array',
+            maxItems: 20,
+            items: { $ref: '#/$defs/scenarioStatement' },
+          },
+        },
+        required: ['assumptions'],
+        additionalProperties: false,
+      },
+      scenarioAttachRequest: {
+        title: 'ScenarioAttachRequest',
+        description:
+          'Copy the live what-if layer onto this decision. The decision card is not changed (ADR-0050).',
+        type: 'object',
+        properties: { decisionId: { $ref: 'common.schema.json#/$defs/cardId' } },
+        required: ['decisionId'],
+        additionalProperties: false,
+      },
+      scenarioAttachment: {
+        title: 'ScenarioAttachment',
+        description:
+          'The what-if assumptions copied onto a decision. Kept on this device, not on the decision card (ADR-0050).',
+        type: 'object',
+        properties: {
+          decisionId: { $ref: 'common.schema.json#/$defs/cardId' },
+          assumptions: {
+            type: 'array',
+            minItems: 1,
+            maxItems: 20,
+            items: { $ref: '#/$defs/scenarioAssumption' },
+          },
+        },
+        required: ['decisionId', 'assumptions'],
+        additionalProperties: false,
+      },
+      modelAskRequest: {
+        title: 'ModelAskRequest',
+        description:
+          'Body of the human-only model_ask. `engine` is `ollama` (on this device), `cloud-chat` or `decision-stub`. A cloud engine needs the transfer flow: the first call (without `transferId`) answers `confirmation_required` with the previewed envelope and sends nothing; after `disclosure_confirm` the call is repeated with the `transferId` and the single-use `confirmationToken`.',
+        type: 'object',
+        properties: {
+          engine: { type: 'string', enum: ['ollama', 'cloud-chat', 'decision-stub'] },
+          question: { $ref: 'common.schema.json#/$defs/text' },
+          transferId: { $ref: 'common.schema.json#/$defs/ulid' },
+          confirmationToken: { $ref: 'disclosure-decision.schema.json#/$defs/confirmationToken' },
+        },
+        required: ['engine', 'question'],
+        additionalProperties: false,
+        dependentRequired: { transferId: ['confirmationToken'], confirmationToken: ['transferId'] },
+      },
+      modelAskResult: {
+        title: 'ModelAskResult',
+        description:
+          'Answer of model_ask. `proposed`: the model answered and `proposal` is a pending comment whose text is that answer. Nothing is a card until a human accepts it (ADR-0011). `confirmation_required`: a cloud model; `transfer` is the preview and nothing was sent (ADR-0031). `nothing_cleared`: the gate cleared no card on this Lage for that cloud model. `proposed` carries no transfer. `confirmation_required` carries no proposal. `nothing_cleared` carries neither.',
+        type: 'object',
+        properties: {
+          status: {
+            type: 'string',
+            enum: ['proposed', 'confirmation_required', 'nothing_cleared'],
+          },
+          engine: { type: 'string', enum: ['ollama', 'cloud-chat', 'decision-stub'] },
+          proposal: { $ref: 'proposal.schema.json' },
+          transfer: { $ref: 'disclosure-decision.schema.json#/$defs/transfer' },
+        },
+        required: ['status', 'engine'],
+        additionalProperties: false,
+      },
+      findingsListRequest: {
+        title: 'FindingsListRequest',
+        description:
+          'Query of the human-only findings list (ADR-0014). `since` keeps findings retrieved after that time. `text` matches the title and the snippet.',
+        type: 'object',
+        properties: {
+          since: { $ref: 'common.schema.json#/$defs/dateTime' },
+          text: { type: 'string', minLength: 1, maxLength: 500 },
+          limit: { type: 'integer', minimum: 1, maximum: 100 },
+        },
+        additionalProperties: false,
+      },
+      findingsList: {
+        title: 'FindingsList',
+        description:
+          'References from connected sources. Nothing here is part of a world until the human pins it (ADR-0014).',
+        type: 'object',
+        properties: { findings: { type: 'array', items: { $ref: 'finding.schema.json' } } },
+        required: ['findings'],
+        additionalProperties: false,
+      },
+      findingPinRequest: {
+        title: 'FindingPinRequest',
+        description:
+          'Pin one finding that a connected source currently reports. The service reads the finding again; the body does not carry the text.',
+        type: 'object',
+        properties: {
+          connector: { type: 'string', enum: ['http-json', 'obsidian', 'documents'] },
+          uri: { type: 'string', format: 'uri' },
+          lageId: { $ref: 'common.schema.json#/$defs/ulid' },
+        },
+        required: ['connector', 'uri', 'lageId'],
+        additionalProperties: false,
+      },
+      findingPinResult: {
+        title: 'FindingPinResult',
+        description:
+          'The reference card on the Lage. A second pin of the same URI returns the card already stored.',
+        type: 'object',
+        properties: { card: { $ref: 'card.schema.json' } },
+        required: ['card'],
+        additionalProperties: false,
+      },
+      trainingExportRequest: {
+        title: 'TrainingExportRequest',
+        description:
+          'Body of the human-only training_export (ADR-0017). The first call (without transferId) answers confirmation_required with the previewed envelope and writes nothing; after disclosure_confirm the call is repeated with the transferId and the single-use confirmationToken and returns the JSONL. An empty body is the first call.',
+        type: 'object',
+        properties: {
+          transferId: { $ref: 'common.schema.json#/$defs/ulid' },
+          confirmationToken: { $ref: 'disclosure-decision.schema.json#/$defs/confirmationToken' },
+        },
+        additionalProperties: false,
+        dependentRequired: { transferId: ['confirmationToken'], confirmationToken: ['transferId'] },
+      },
+      trainingExportResult: {
+        title: 'TrainingExportResult',
+        description:
+          'Answer of training_export. exported: jsonl is one decision trace per line, only cards with training true (ADR-0017). confirmation_required: transfer is the preview and nothing left the device (ADR-0031). nothing_to_export: no opted-in decision with a known outcome is cleared for a cloud model. exported carries no transfer. confirmation_required carries no jsonl. nothing_to_export carries neither.',
+        type: 'object',
+        properties: {
+          status: {
+            type: 'string',
+            enum: ['exported', 'confirmation_required', 'nothing_to_export'],
+          },
+          jsonl: { type: 'string', minLength: 1 },
+          traces: { type: 'integer', minimum: 1 },
+          transfer: { $ref: 'disclosure-decision.schema.json#/$defs/transfer' },
+        },
+        required: ['status'],
+        additionalProperties: false,
+        allOf: [
+          {
+            if: { properties: { status: { const: 'exported' } }, required: ['status'] },
+            then: { properties: { jsonl: true, traces: true }, required: ['jsonl', 'traces'] },
+          },
+          {
+            if: {
+              properties: { status: { const: 'confirmation_required' } },
+              required: ['status'],
+            },
+            then: { properties: { transfer: true }, required: ['transfer'] },
+          },
+          {
+            if: { properties: { status: { const: 'nothing_to_export' } }, required: ['status'] },
+            then: {
+              properties: {},
+              not: {
+                anyOf: [
+                  { properties: { jsonl: true }, required: ['jsonl'] },
+                  { properties: { transfer: true }, required: ['transfer'] },
+                ],
+              },
+            },
+          },
+        ],
+      },
       cardGetRequest: {
         title: 'CardGetRequest',
         type: 'object',
@@ -413,6 +640,22 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
           reason: { type: 'string', const: 'not a valid card; left out of the request' },
         },
         required: ['cardId', 'reason'],
+        additionalProperties: false,
+      },
+      storedSourceProfile: {
+        title: 'StoredSourceProfile',
+        description:
+          'The current source profile and every profile it replaced, oldest first. Kept on the device (ADR-0018). Derived, never edited by hand.',
+        type: 'object',
+        properties: {
+          profile: { $ref: 'source-profile.schema.json' },
+          earlier: {
+            type: 'array',
+            description: 'Profiles replaced by later known outcomes, oldest first.',
+            items: { $ref: 'source-profile.schema.json' },
+          },
+        },
+        required: ['profile', 'earlier'],
         additionalProperties: false,
       },
     },
@@ -1835,8 +2078,22 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
     type: 'object',
     properties: {
       question: {
-        description: 'The guiding question of the Lage (required).',
+        description:
+          'The guiding question of the Lage (required). On a theme Lage this is the theme line; the playable questions live in `questions`.',
         $ref: 'common.schema.json#/$defs/text',
+      },
+      questions: {
+        description:
+          'Playable questions of a theme field (e-58, ADR-0051). 2 to 4 items. Each lists the cards arguing for and against. A single-question Lage omits this.',
+        type: 'array',
+        minItems: 2,
+        maxItems: 4,
+        items: { $ref: '#/$defs/themeQuestion' },
+      },
+      collectorCardId: {
+        description:
+          'The one collector card of this theme (e-52, ADR-0051). Required when `questions` is present.',
+        $ref: 'common.schema.json#/$defs/cardId',
       },
       options: {
         description: 'The options under consideration.',
@@ -1873,7 +2130,38 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
     },
     required: ['question', 'options', 'cards', 'seats', 'edges', 'version', 'updatedAt'],
     additionalProperties: false,
+    allOf: [
+      {
+        if: { properties: { questions: true }, required: ['questions'] },
+        then: { properties: { collectorCardId: true }, required: ['collectorCardId'] },
+      },
+      {
+        if: { properties: { collectorCardId: true }, required: ['collectorCardId'] },
+        then: { properties: { questions: true }, required: ['questions'] },
+      },
+    ],
     $defs: {
+      themeQuestion: {
+        title: 'ThemeQuestion',
+        description:
+          'One playable question of a theme, with the cards arguing for and against (e-58).',
+        type: 'object',
+        properties: {
+          text: { $ref: 'common.schema.json#/$defs/text' },
+          for: {
+            type: 'array',
+            items: { $ref: 'common.schema.json#/$defs/cardId' },
+            uniqueItems: true,
+          },
+          against: {
+            type: 'array',
+            items: { $ref: 'common.schema.json#/$defs/cardId' },
+            uniqueItems: true,
+          },
+        },
+        required: ['text', 'for', 'against'],
+        additionalProperties: false,
+      },
       placement: {
         title: 'LagePlacement',
         type: 'object',
@@ -2684,6 +2972,33 @@ export const SCHEMAS: Readonly<Record<string, Readonly<Record<string, unknown>>>
         },
         required: ['kind', 'tag'],
         additionalProperties: false,
+      },
+      draft: {
+        title: 'RuleDraft',
+        description:
+          'Body of the human-only rule create operation. The store assigns the id and the author is the human. The board form sends one card-on-board condition; any condition kind the rule schema allows is accepted here.',
+        type: 'object',
+        properties: {
+          title: { $ref: 'common.schema.json#/$defs/text' },
+          worlds: {
+            type: 'array',
+            items: { $ref: 'common.schema.json#/$defs/worldId' },
+            minItems: 1,
+            uniqueItems: true,
+          },
+          rule: { $ref: '#' },
+        },
+        required: ['title', 'rule'],
+        additionalProperties: false,
+      },
+      card: {
+        title: 'RuleCard',
+        description:
+          'A stored rule card. Body of the human-only rule save operation, and the response of create and save.',
+        type: 'object',
+        $ref: 'card.schema.json',
+        properties: { type: { type: 'string', const: 'rule' }, rule: { $ref: '#' } },
+        required: ['type', 'rule'],
       },
     },
   },

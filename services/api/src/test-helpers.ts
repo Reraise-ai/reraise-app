@@ -74,6 +74,10 @@ export interface FixtureOptions {
   readonly now?: () => Date;
   /** Level-1 seams: an injected `fetch` for cloud engines, a replacement local engine. */
   readonly level1?: ServiceOptions['level1'];
+  /** Model connectors. Pass `fetch` so a test never opens a socket. */
+  readonly models?: ServiceOptions['models'];
+  /** Source connectors. Pass `connectors` or a `fetch` so a test never opens a socket. */
+  readonly sources?: ServiceOptions['sources'];
   /** Files written into the state directory before the start (owner-only, for example keys). */
   readonly stateFiles?: Readonly<Record<string, string>>;
 }
@@ -180,6 +184,8 @@ export async function makeFixture(options: FixtureOptions = {}): Promise<Fixture
     ...(options.rateLimit !== undefined ? { rateLimit: options.rateLimit } : {}),
     ...(options.now ? { now: options.now } : {}),
     ...(options.level1 ? { level1: options.level1 } : {}),
+    ...(options.models ? { models: options.models } : {}),
+    ...(options.sources ? { sources: options.sources } : {}),
   });
   const bound = options.listen ? await service.listen() : undefined;
   const raw: Fixture['raw'] = (opts) =>

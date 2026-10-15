@@ -62,11 +62,22 @@ function sinkFirstComponents(
   return components;
 }
 
+export interface OriginRootOptions {
+  /**
+   * Identical `contentHash` is one copy (ADR-0009). Set false when the same statement from
+   * two sources must stay two cards until a source URI or a cite chain joins them (e-54).
+   */
+  sameTextIsOneCopy?: boolean;
+}
+
 /**
  * Origin root of every card in `cards`. The caller passes the cards in scope,
  * for example the cards a disclosure gate has already cleared.
  */
-export function originRoots(cards: readonly Card[]): Map<string, OriginRoot> {
+export function originRoots(
+  cards: readonly Card[],
+  options: OriginRootOptions = {},
+): Map<string, OriginRoot> {
   const byId = new Map<string, Card>();
   for (const card of cards) byId.set(card.id, card);
 
@@ -102,7 +113,7 @@ export function originRoots(cards: readonly Card[]): Map<string, OriginRoot> {
   };
 
   for (const id of byId.keys()) find(id);
-  uniteBy((card) => card.contentHash);
+  if (options.sameTextIsOneCopy !== false) uniteBy((card) => card.contentHash);
   uniteBy((card) => card.source);
 
   const members = new Map<string, Card[]>();
@@ -160,6 +171,38 @@ export function originRoots(cards: readonly Card[]): Map<string, OriginRoot> {
   return assigned;
 }
 
+export type SourceMark = 'one-source' | 'journalistic-standard';
+
+function statementOf(card: Card): string | undefined {
+  const text = card.body?.trim();
+  return text ? text : undefined;
+}
+
+/**
+ * How a card is marked for its sources (Entscheidung 125). One known origin is `one-source`.
+ * The same statement from two known origins that do not merely repeat each other is
+ * `journalistic-standard`. A card with no known origin is unmarked.
+ * shortcut: the same statement is the same trimmed body; a cites or based_on edge is a repeat.
+ */
+export function sourceMark(cards: readonly Card[], cardId: string): SourceMark | undefined {
+  const card = cards.find((item) => item.id === cardId);
+  if (!card) return undefined;
+  const roots = originRoots(cards, { sameTextIsOneCopy: false });
+  const mine = roots.get(cardId);
+  if (!mine?.originKnown) return undefined;
+  const statement = statementOf(card);
+  if (statement) {
+    const known = new Set<string>();
+    for (const other of cards) {
+      if (statementOf(other) !== statement) continue;
+      const root = roots.get(other.id);
+      if (root?.originKnown) known.add(root.originRoot);
+    }
+    if (known.size >= 2) return 'journalistic-standard';
+  }
+  return 'one-source';
+}
+
 /** 'N findings · M origins' over derived roots. M is the number of distinct roots. */
 export function independenceOf(
   roots: readonly Pick<OriginRoot, 'originRoot'>[],
@@ -168,4 +211,58 @@ export function independenceOf(
     findings: roots.length,
     origins: new Set(roots.map((root) => root.originRoot)).size,
   };
+}
+
+function word(n: number, one: string, many: string): string {
+  return `${n} ${n === 1 ? one : many}`;
+}
+
+/** The source-pass line (ADR-0009). It is never a bare card count. */
+export function sourcePassText(pass: ContextIndependence): string {
+  return `${word(pass.findings, 'finding', 'findings')} · ${word(pass.origins, 'origin', 'origins')}`;
+}
+
+/** Each card is one finding. Origins are the distinct origin roots of the set. */
+export function cardsSourcePass(cards: readonly Card[]): ContextIndependence {
+  return independenceOf([...originRoots(cards).values()]);
+}
+
+/**
+ * Findings in `cards` that share this card's origin root.
+ * Undefined when the card is not in the set.
+ */
+export function cardSourcePass(
+  cards: readonly Card[],
+  cardId: string,
+): ContextIndependence | undefined {
+  const roots = originRoots(cards);
+  const mine = roots.get(cardId);
+  if (!mine) return undefined;
+  const same = [...roots.values()].filter((root) => root.originRoot === mine.originRoot);
+  return independenceOf(same);
+}
+
+const SEAT_FIELDS = ['interests', 'capabilities', 'dependencies', 'moves'] as const;
+
+export type SeatField = (typeof SEAT_FIELDS)[number];
+
+/** Player-field entries of a seat (an actor card), in field order. Empty fields add nothing. */
+export function seatEntries(card: Card): { field: SeatField; text: string; source: string }[] {
+  return SEAT_FIELDS.flatMap((field) =>
+    (card[field] ?? []).map((entry) => ({ field, text: entry.text, source: entry.source })),
+  );
+}
+
+/**
+ * Each player entry is one finding. A source that names a card in `known` uses that card's
+ * origin root. The same source is one origin.
+ * shortcut: a source card that is not in `known` counts as its own origin.
+ */
+export function entriesSourcePass(
+  entries: readonly { source: string }[],
+  known: readonly Card[] = [],
+): ContextIndependence {
+  const roots = originRoots(known);
+  const labels = entries.map((entry) => roots.get(entry.source)?.originRoot ?? entry.source);
+  return { findings: entries.length, origins: new Set(labels).size };
 }

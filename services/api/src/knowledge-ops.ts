@@ -28,6 +28,7 @@ import {
 } from '@worldbuilder/knowledge-loop';
 import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
+import { proposalNotice } from './live.js';
 import type { Principal } from './auth.js';
 import { buildContextPackage } from './context.js';
 import type { Handler } from './operations.js';
@@ -159,6 +160,7 @@ export const knowledgeHandlers: Readonly<Record<string, Handler>> = {
       await s.localState.decideProposal(proposal.id, 'rejected').catch(() => undefined);
       throw e;
     }
+    s.live.publish(proposalNotice(proposal.payload));
     return ok({ receipt, proposal }, 201);
   },
 
@@ -175,6 +177,7 @@ export const knowledgeHandlers: Readonly<Record<string, Handler>> = {
       { lageId: req.lageId, x: req.x, y: req.y } as never,
       req.rationale,
     );
+    s.live.publish(proposalNotice(proposal.payload));
     return ok(proposal, 201);
   },
 
@@ -192,6 +195,7 @@ export const knowledgeHandlers: Readonly<Record<string, Handler>> = {
     } as ProposalCreate;
     await assertAgentProposal(s, agent, input);
     const proposal = await s.localState.createProposal(input, agent.author);
+    s.live.publish(proposalNotice(proposal.payload));
     return ok(proposal, 201);
   },
 

@@ -6,10 +6,12 @@
 // check, optimistic version guard (409), human-only decisions, change-cursor polling and the
 // cloud transfer flow. Synthetic data only.
 
+import { isKnownOutcome } from '@worldbuilder/core/outcome';
 import type {
   Card,
   ContextPackage,
   Lage,
+  LageVersion,
   Level1EngineInfo,
   Level1Prediction,
   Level1Trigger,
@@ -72,6 +74,9 @@ export const CARDS: Card[] = [
 ];
 
 export const LAGE_ID = id('L1');
+/** Two synthetic rules the rules panel shows. The service, not this stub, decides what fires. */
+export const RULE_FIRED = id('R1');
+export const RULE_QUIET = id('R2');
 
 /** Two fictional actors and an assumption, for the level-1 panel tests (not on the default Lage). */
 export const ORG_A = id('O1');
@@ -202,8 +207,15 @@ export interface MockApi {
   usage: UsageMetrics;
   /** Simulates another writer bumping the Lage version. */
   bumpLage(lageId: string): void;
+  /** Archived board states returned by GET /lagen/:id/versions. Empty means no slider. */
+  versions: LageVersion[];
   /** The next request whose "METHOD /path" matches (default: any) answers with this problem. */
   failNext(status: number, title?: string, match?: RegExp, detail?: string): void;
+  /**
+   * When set, GET /events answers `text/event-stream`. A function runs once per request,
+   * because one stream can only be read once and the inbox and the board each open one.
+   */
+  events?: ReadableStream<Uint8Array> | (() => ReadableStream<Uint8Array>);
 }
 
 function json(status: number, body: unknown, problem = false): Response {
@@ -219,9 +231,32 @@ export function createMockApi(initial: { lage?: Lage; cards?: Card[] } = {}): Mo
   const lageCard = (lage: Lage, cardId = LAGE_ID, title = 'Hormuz reroute'): Card =>
     makeCard({ id: cardId, title, type: 'lage', lage, layer: undefined, author: 'human' });
   cards.set(LAGE_ID, lageCard(initial.lage ?? makeLage()));
+  cards.set(
+    RULE_FIRED,
+    makeCard({
+      id: RULE_FIRED,
+      title: 'Reroute when evidenced',
+      type: 'rule',
+      rule: { when: [{ kind: 'card_on_lage', card: id('C1') }], then: 'Reroute' },
+    }),
+  );
+  cards.set(
+    RULE_QUIET,
+    makeCard({
+      id: RULE_QUIET,
+      title: 'Wait for a second report',
+      type: 'rule',
+      rule: { when: [{ kind: 'card_on_lage', card: id('C2') }], then: 'Wait' },
+    }),
+  );
 
   let seq = 0;
   let changeSeq = 0;
+  const scenarios = new Map<string, { id: string; statement: string }[]>();
+  const scenarioAttachments = new Map<
+    string,
+    { decisionId: string; assumptions: { id: string; statement: string }[] }
+  >();
   let fail: { status: number; title: string; match: RegExp; detail?: string } | undefined;
   const state: { proposalSeq: Map<string, number> } = { proposalSeq: new Map() };
   const api: MockApi = {
@@ -232,6 +267,7 @@ export function createMockApi(initial: { lage?: Lage; cards?: Card[] } = {}): Mo
     transfers: new Map(),
     usage: makeUsage(),
     level1: { engines: [LEVEL1_LOCAL, LEVEL1_JEV], predicts: [], cloudSends: 0 },
+    versions: [],
     fetch: undefined as unknown as typeof fetch,
     addProposal(p) {
       const full = {
@@ -383,6 +419,26 @@ export function createMockApi(initial: { lage?: Lage; cards?: Card[] } = {}): Mo
     };
   }
 
+  const storeExperience = (decision: Card): void => {
+    const exp = makeCard({
+      id: id(`E${++seq}`),
+      type: 'experience',
+      layer: 'experience',
+      title: `Experience: ${decision.title ?? 'decision'}`,
+      body: decision.sections?.outcome,
+      visibility: 'private',
+      edges: [
+        { target: decision.id!, kind: 'based_on', by: 'human' },
+        ...(decision.sections?.cardsUsed ?? []).map((target) => ({
+          target,
+          kind: 'based_on' as const,
+          by: 'human' as const,
+        })),
+      ],
+    });
+    cards.set(exp.id!, exp);
+  };
+
   api.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = new URL(String(input));
     const method = (init?.method ?? 'GET').toUpperCase();
@@ -405,6 +461,14 @@ export function createMockApi(initial: { lage?: Lage; cards?: Card[] } = {}): Mo
     const p = url.pathname;
     let m: RegExpMatchArray | null;
 
+    if (p === '/events' && method === 'GET') {
+      const body = typeof api.events === 'function' ? api.events() : api.events;
+      if (!body) return problem(404, 'no event stream');
+      return new Response(body, {
+        status: 200,
+        headers: { 'content-type': 'text/event-stream' },
+      });
+    }
     if (p === '/metrics/usage' && method === 'GET') {
       const week = url.searchParams.get('week');
       if (week && !/^[0-9]{4}-W(0[1-9]|[1-4][0-9]|5[0-3])$/.test(week))
@@ -534,6 +598,47 @@ export function createMockApi(initial: { lage?: Lage; cards?: Card[] } = {}): Mo
       cards.set(card.id!, card);
       return json(201, card);
     }
+    if ((m = p.match(/^\/lagen\/([^/]+)\/scenario$/))) {
+      const lageId = m[1]!;
+      if (!lageOf(lageId)) return problem(404, 'unknown Lage');
+      if (method === 'GET') return json(200, { assumptions: scenarios.get(lageId) ?? [] });
+      if (method === 'PUT') {
+        const seen = new Set<string>();
+        const assumptions: { id: string; statement: string }[] = [];
+        for (const item of (body as { assumptions?: { statement?: string }[] }).assumptions ?? []) {
+          const statement = (item.statement ?? '').trim();
+          if (statement === '' || seen.has(statement)) continue;
+          seen.add(statement);
+          assumptions.push({
+            id: `01JA000000000000000000S${String(++seq).padStart(3, '0')}`,
+            statement,
+          });
+        }
+        if (assumptions.length === 0) scenarios.delete(lageId);
+        else scenarios.set(lageId, assumptions);
+        return json(200, { assumptions });
+      }
+    }
+    if ((m = p.match(/^\/lagen\/([^/]+)\/scenario\/attach$/)) && method === 'POST') {
+      const lageId = m[1]!;
+      if (!lageOf(lageId)) return problem(404, 'unknown Lage');
+      const assumptions = scenarios.get(lageId) ?? [];
+      if (assumptions.length === 0) return problem(400, 'the what-if layer is empty');
+      const decisionId = (body as { decisionId?: string }).decisionId ?? '';
+      if (cards.get(decisionId)?.type !== 'decision') return problem(404, 'unknown decision');
+      const attachment = { decisionId, assumptions };
+      scenarioAttachments.set(decisionId, attachment);
+      return json(200, attachment);
+    }
+    if ((m = p.match(/^\/decisions\/([^/]+)\/scenario$/)) && method === 'GET') {
+      const saved = scenarioAttachments.get(m[1]!);
+      return saved ? json(200, saved) : problem(404, 'no what-if attached to this decision');
+    }
+    if ((m = p.match(/^\/lagen\/([^/]+)\/versions$/)) && method === 'GET') {
+      const card = cards.get(m[1]!);
+      if (!card?.lage) return problem(404, 'Not found');
+      return json(200, { versions: api.versions });
+    }
     if ((m = p.match(/^\/lagen\/([^/]+)$/))) {
       const lageId = m[1]!;
       const card = cards.get(lageId);
@@ -546,6 +651,43 @@ export function createMockApi(initial: { lage?: Lage; cards?: Card[] } = {}): Mo
         cards.set(lageId, saved);
         return json(200, saved);
       }
+    }
+    if (p === '/decisions' && method === 'POST') {
+      const draft = body as {
+        title?: string;
+        sections?: { cardsUsed?: string[]; outcome?: string };
+      };
+      const used = draft.sections?.cardsUsed ?? [];
+      if (used.length === 0 || used.some((cardId) => !cards.has(cardId))) {
+        return problem(400, 'unknown card');
+      }
+      const card = makeCard({
+        id: id(`D${++seq}`),
+        type: 'decision',
+        title: draft.title ?? 'Decision',
+        sections: draft.sections as Card['sections'],
+        contentHash: `sha256:${'a'.repeat(64)}`,
+      });
+      cards.set(card.id!, card);
+      if (isKnownOutcome(draft.sections?.outcome)) storeExperience(card);
+      return json(201, card);
+    }
+    if ((m = p.match(/^\/decisions\/([^/]+)$/)) && method === 'PUT') {
+      const current = cards.get(m[1]!);
+      if (current?.type !== 'decision') return problem(404, 'unknown decision');
+      const next = body as Card;
+      if (next.contentHash !== current.contentHash) {
+        return problem(409, 'the decision changed since it was read');
+      }
+      const wasKnown = isKnownOutcome(current.sections?.outcome);
+      const saved: Card = {
+        ...current,
+        sections: next.sections,
+        contentHash: `sha256:${'b'.repeat(64)}`,
+      };
+      cards.set(current.id!, saved);
+      if (!wasKnown && isKnownOutcome(saved.sections?.outcome)) storeExperience(saved);
+      return json(200, saved);
     }
     if (p === '/cards' && method === 'GET') {
       const text = url.searchParams.get('text')?.toLowerCase();
@@ -688,6 +830,67 @@ export function createMockApi(initial: { lage?: Lage; cards?: Card[] } = {}): Mo
         confirmedAt: '2026-10-06T10:01:00.000Z',
       });
     }
+    if (p === '/rules' && method === 'POST') {
+      const draft = body as { title?: string; worlds?: string[]; rule?: Card['rule'] };
+      const named = (draft.rule?.when ?? []).flatMap((c) =>
+        'card' in c && c.card ? [c.card] : [],
+      );
+      if (!draft.title || !draft.rule?.then || named.some((cardId) => !cards.has(cardId))) {
+        return problem(400, 'invalid rule');
+      }
+      const card = makeCard({
+        id: id(`U${++seq}`),
+        type: 'rule',
+        title: draft.title,
+        ...(draft.worlds ? { worlds: draft.worlds } : {}),
+        rule: draft.rule,
+      });
+      cards.set(card.id!, card);
+      return json(201, card);
+    }
+    if ((m = p.match(/^\/rules\/([^/]+)$/)) && method === 'PUT' && m[1] !== 'evaluate') {
+      const current = cards.get(m[1]!);
+      if (current?.type !== 'rule' || !current.rule) return problem(404, 'unknown rule');
+      const next = body as Card;
+      if (next.contentHash !== current.contentHash) {
+        return problem(409, 'the rule changed since it was read');
+      }
+      const saved: Card = {
+        ...current,
+        title: next.title ?? current.title,
+        rule: next.rule ?? current.rule,
+        contentHash: `sha256:${'e'.repeat(64)}`,
+      };
+      cards.set(current.id!, saved);
+      return json(200, saved);
+    }
+    if (p === '/rules/evaluate' && method === 'POST') {
+      const lageId = (body as { lageId?: string }).lageId;
+      const lage = lageId ? lageOf(lageId) : undefined;
+      if (!lage || !lageId) return problem(404, 'Not found');
+      const onBoard = new Set(lage.cards.map((c) => c.id));
+      const rules = [...cards.values()].filter((c) => c.type === 'rule' && c.rule);
+      return json(200, {
+        lageId,
+        lageVersion: lage.version,
+        target: 'screen',
+        evaluatedAt: '2026-10-14T00:00:00.000Z',
+        withheld: 0,
+        results: rules.map((c) => {
+          const trigger = c.rule?.when.find((w) => w.kind === 'card_on_lage')?.card;
+          const fired = c.id !== RULE_QUIET && trigger !== undefined && onBoard.has(trigger);
+          return {
+            ruleId: c.id,
+            fired,
+            triggeringCardIds: fired && trigger ? [trigger] : [],
+            unmet: fired ? [] : [{ clause: 'when', index: 0 }],
+            unknown: [],
+            rule: c.rule,
+          };
+        }),
+      });
+    }
+    if (p === '/findings' && method === 'GET') return json(200, { findings: [] });
     return problem(404, `no route ${method} ${p}`);
   }) as typeof fetch;
   return api;

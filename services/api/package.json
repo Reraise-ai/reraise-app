@@ -33,6 +33,7 @@
     "@worldbuilder/local-state": "workspace:*",
     "@worldbuilder/mcp-server": "workspace:*",
     "@worldbuilder/storage-markdown-files": "workspace:*",
+    "@worldbuilder/training-export": "workspace:*",
     "ajv": "^8.20.0",
     "ajv-formats": "^3.0.1",
     "fastify": "^5.12.5",

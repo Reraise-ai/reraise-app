@@ -1,0 +1,13 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/api.schema.json#/$defs/scenarioReplace",
+  "description": "A what-if replace body carries statements only (ADR-0050).",
+  "expect": {
+    "keyword": "additionalProperties",
+    "instancePath": ""
+  },
+  "data": {
+    "assumptions": [{ "statement": "The strait stays closed for thirty days." }],
+    "saved": true
+  }
+}

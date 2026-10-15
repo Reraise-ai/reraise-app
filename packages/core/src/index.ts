@@ -8,6 +8,41 @@ export type * from './generated/contracts.js';
 /** Adapter interfaces (ADR-0005). */
 export type * from './adapters/index.js';
 export { LOCAL_QUOTE_ENGINE, createLocalQuoteModel } from './adapters/local-quote.js';
+export {
+  CLOUD_CHAT_ENGINE,
+  DECISION_STUB_ENGINE,
+  DEFAULT_CLOUD_MODEL,
+  DEFAULT_OLLAMA_MODEL,
+  OLLAMA_ENGINE,
+  ModelCallError,
+  createCloudChatModel,
+  createDecisionStub,
+  createOllamaModel,
+} from './adapters/http-models.js';
+export type {
+  CloudChatModelOptions,
+  DecisionStubOptions,
+  ModelCallCode,
+  OllamaModelOptions,
+} from './adapters/http-models.js';
+export {
+  DOCUMENTS_SOURCE,
+  HTTP_JSON_SOURCE,
+  OBSIDIAN_SOURCE,
+  SourceReadError,
+  createDocumentSource,
+  createHttpJsonSource,
+  createObsidianVaultSource,
+  referenceCard,
+  selectFindings,
+} from './adapters/sources.js';
+export type {
+  DocumentSourceOptions,
+  HttpJsonSourceOptions,
+  ObsidianVaultOptions,
+  SourceReadCode,
+  VaultFile,
+} from './adapters/sources.js';
 export { GATE_LOG_REASONS } from './adapters/local-state.js';
 export { STORAGE_ERROR_CODES, StorageError, isStorageError } from './adapters/storage-error.js';
 export type { StorageErrorCode } from './adapters/storage-error.js';
@@ -40,11 +75,27 @@ export {
   personalDataKinds,
 } from './personal-data.js';
 export type { PersonalDataKind } from './personal-data.js';
-export { independenceOf, originRoots } from './independence.js';
+export {
+  cardSourcePass,
+  cardsSourcePass,
+  entriesSourcePass,
+  independenceOf,
+  originRoots,
+  seatEntries,
+  sourceMark,
+  sourcePassText,
+} from './independence.js';
+export type { SeatField, SourceMark } from './independence.js';
 export { cardsForPackage } from './package-view.js';
 export type { PackageView } from './package-view.js';
 export type { OriginRoot } from './independence.js';
 export { OPEN_OUTCOME, OPEN_OUTCOME_SCHEMA_PATTERN, isKnownOutcome } from './outcome.js';
+export { actorCardForSource, isThemeLage, themeVoteText } from './theme.js';
+export {
+  SOURCE_PROFILE_MINIMUM_N,
+  deriveSourceProfiles,
+  profileSourceOf,
+} from './source-profile.js';
 export {
   EXTERNAL_TYPES,
   SHARED_FIELDS,

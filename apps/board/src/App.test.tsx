@@ -4,6 +4,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { App } from './App.js';
+import { createMemoryClient, type DemoSeed } from './demo/memoryClient.js';
 import { saveSession } from './api/session.js';
 import {
   BASE,
@@ -99,6 +100,29 @@ describe('Lage list and creation', () => {
     await openLage(api);
     expect(screen.getByTestId('board-title').textContent).toBe('Hormuz reroute');
     expect(screen.getByTestId('board-version').textContent).toBe('1');
+    expect(screen.queryByTestId('time-slider')).toBeNull();
+  });
+
+  it('shows an archived board and does not save that view', async () => {
+    const api = createMockApi();
+    api.versions = [
+      {
+        version: 1,
+        archivedAt: '2026-01-01T00:00:00.000Z',
+        lage: makeLage({ question: 'Earlier question?', options: ['Hold'] }),
+      },
+    ];
+    await openLage(api);
+    expect(screen.getByTestId('board-question').textContent).toBe('Should the buyer reroute?');
+    const before = puts(api).length;
+    fireEvent.change(screen.getByTestId('time-slider'), { target: { value: '0' } });
+    expect(screen.getByTestId('board-question').textContent).toBe('Earlier question?');
+    expect(screen.getByTestId('time-banner').textContent).toContain('2026-01-01T00:00:00.000Z');
+    expect(within(screen.getByTestId('board-options')).getByText('Hold')).toBeTruthy();
+    expect(puts(api).length).toBe(before);
+    fireEvent.change(screen.getByTestId('time-slider'), { target: { value: '1' } });
+    expect(screen.getByTestId('board-question').textContent).toBe('Should the buyer reroute?');
+    expect(screen.queryByTestId('time-banner')).toBeNull();
   });
 
   it('creates a Lage (lage_create) and opens its board', async () => {
@@ -378,6 +402,50 @@ describe('remove a card from the board (AC-22)', () => {
     await screen.findByTestId('context-package');
     expect(screen.queryByTestId(`context-item-${C1}`)).toBeNull();
     expect(screen.getByTestId(`context-item-${C2}`)).toBeTruthy();
+  });
+});
+
+describe('live channel (ADR-0032)', () => {
+  it('reloads this board when a move for it arrives, and ignores a move for another Lage', async () => {
+    const api = createMockApi();
+    const enc = new TextEncoder();
+    const open: { live: boolean; controller?: ReadableStreamDefaultController<Uint8Array> }[] = [];
+    api.events = () => {
+      const entry: (typeof open)[number] = { live: true };
+      open.push(entry);
+      return new ReadableStream({
+        start(controller) {
+          entry.controller = controller;
+        },
+        cancel() {
+          entry.live = false;
+        },
+      });
+    };
+    await openLage(api);
+    // The inbox opens a stream and closes it; the board opens the next one.
+    await waitFor(() => {
+      const live = open.filter((e) => e.live && e.controller);
+      expect(open.length).toBeGreaterThanOrEqual(2);
+      expect(live).toHaveLength(1);
+      expect(live[0]).toBe(open[open.length - 1]);
+    });
+    const push = (chunk: string) => {
+      const bytes = enc.encode(chunk);
+      for (const entry of open) {
+        if (entry.live && entry.controller) entry.controller.enqueue(bytes);
+      }
+    };
+    const reads = () =>
+      api.calls.filter((c) => c.method === 'GET' && c.path === `/lagen/${LAGE_ID}`).length;
+    const before = reads();
+    push(
+      `event: move\ndata: ${JSON.stringify({ kind: 'move', lageId: '01ARZ3NDEKTSV4RRFFQ69G5FAV' })}\n\n`,
+    );
+    await new Promise((resolve) => setTimeout(resolve, 40));
+    expect(reads()).toBe(before);
+    push(`event: move\ndata: ${JSON.stringify({ kind: 'move', lageId: LAGE_ID })}\n\n`);
+    await waitFor(() => expect(reads()).toBeGreaterThan(before));
   });
 });
 
@@ -830,6 +898,42 @@ describe('usage metrics panel', () => {
   });
 });
 
+describe('decision', () => {
+  it('records a decision and shows the experience card once the outcome is known', async () => {
+    const api = createMockApi();
+    await openLage(api);
+    await userEvent.type(screen.getByTestId('decision-title'), 'Reroute now');
+    for (const key of [
+      'situation',
+      'trigger',
+      'conditions',
+      'facts',
+      'priorities',
+      'action',
+      'alternatives',
+      'exclusions',
+      'rationale',
+    ]) {
+      await userEvent.type(screen.getByTestId(`decision-${key}`), `${key} text`);
+    }
+    await userEvent.click(screen.getByTestId(`decision-card-${C1}`));
+    await userEvent.click(screen.getByTestId('decision-create-submit'));
+    expect((await screen.findByTestId('decision-saved')).textContent).toBe('Reroute now');
+    expect(screen.queryByTestId('decision-experience')).toBeNull();
+    const post = api.calls.find((c) => c.method === 'POST' && c.path === '/decisions');
+    expect(post?.body).toMatchObject({
+      type: 'decision',
+      title: 'Reroute now',
+      sections: { situation: 'situation text', cardsUsed: [C1], outcome: 'open' },
+    });
+    await userEvent.type(screen.getByTestId('decision-outcome'), 'Rerouted via the Cape.');
+    await userEvent.click(screen.getByTestId('decision-outcome-submit'));
+    expect((await screen.findByTestId('decision-experience')).textContent).toBe(
+      'Experience: Reroute now',
+    );
+  });
+});
+
 describe('unauthorized', () => {
   it('signs out when any call answers 401, not only the first', async () => {
     const api = createMockApi();
@@ -838,5 +942,68 @@ describe('unauthorized', () => {
     await userEvent.type(screen.getByTestId('search-input'), 'strait');
     await userEvent.click(screen.getByTestId('search-submit'));
     await screen.findByTestId('login-form');
+  });
+});
+
+describe('theme Lage (e-52, e-58)', () => {
+  it('lists questions with votes and opens the collector card', async () => {
+    const api = createMockApi({
+      lage: makeLage({
+        question: 'Vitamin D',
+        questions: [
+          { text: 'Two trials, two answers?', for: [C1], against: [C2] },
+          { text: '20 or 60?', for: [C1, C2], against: [] },
+        ],
+        collectorCardId: C1,
+      }),
+    });
+    await openLage(api);
+    expect(screen.getByTestId('theme-question-0').textContent).toMatch(/Two trials/);
+    expect(screen.getByTestId('theme-votes-0').textContent).toBe('1 for · 1 against');
+    expect(screen.getByTestId('theme-votes-1').textContent).toBe('2 for · 0 against');
+    await userEvent.click(screen.getByTestId('theme-collector'));
+    await waitFor(() =>
+      expect(screen.getByTestId('inspector-title').textContent).toBe('Strait traffic report'),
+    );
+  });
+});
+
+describe('demo client', () => {
+  it('skips login and lists the start world', async () => {
+    const seed: DemoSeed = {
+      synthetic: true,
+      stamp: 'demo-test',
+      storeInstanceId: '00000000-0000-4000-8000-000000000001',
+      worlds: [{ id: '01JA0000000000000000000W01', name: 'Hormuz' }],
+      cards: [
+        {
+          id: '01JA0000000000000000000L01',
+          externalId: '01JA0000000000000000000L01',
+          uri: 'wb:00000000-0000-4000-8000-000000000001/01JA0000000000000000000L01',
+          format: 2,
+          type: 'lage',
+          title: 'Q4 tanker routing',
+          author: 'human',
+          contentHash: `sha256:${'ab'.repeat(32)}`,
+          visibility: 'public',
+          lage: {
+            question: 'Reroute?',
+            options: [],
+            cards: [],
+            seats: [],
+            edges: [],
+            version: 1,
+            updatedAt: '2026-09-16T09:30:00.000Z',
+          },
+        },
+      ],
+      versions: {},
+    };
+    render(<App client={createMemoryClient(seed)} pollIntervalMs={30} />);
+    expect(screen.getByTestId('demo-banner').textContent).toMatch(/this browser/);
+    expect(screen.queryByTestId('login-form')).toBeNull();
+    expect((await screen.findByTestId('lage-item-01JA0000000000000000000L01')).textContent).toMatch(
+      /Q4 tanker routing/,
+    );
   });
 });

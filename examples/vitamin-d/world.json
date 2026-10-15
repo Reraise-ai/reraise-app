@@ -1,0 +1,12 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/world.schema.json",
+  "description": "Cards copied from the public board demonstration (Vitamin D).",
+  "data": {
+    "id": "01M4X4H7G0000000000000002R",
+    "name": "Vitamin D",
+    "description": "The Vitamin D field of the public board demonstration.",
+    "visibility": "private",
+    "release": "private"
+  }
+}

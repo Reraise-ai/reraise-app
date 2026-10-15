@@ -8,7 +8,10 @@
     "noImplicitAny": false,
     "verbatimModuleSyntax": false,
     "paths": {
-      "@worldbuilder/core": ["./packages/core/src/index.ts"]
+      "@worldbuilder/core": ["./packages/core/src/index.ts"],
+      "@worldbuilder/storage-markdown-files": [
+        "./packages/adapters/storage-markdown-files/src/index.ts"
+      ]
     }
   },
   "include": ["scripts/**/*.mjs", "*.js", "*.ts"]

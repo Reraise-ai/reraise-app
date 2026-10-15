@@ -1,0 +1,6 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/api.schema.json#/$defs/trainingExportRequest",
+  "description": "First call of training_export: no transfer yet.",
+  "data": {}
+}

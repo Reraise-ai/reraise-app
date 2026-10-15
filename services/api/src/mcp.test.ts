@@ -390,6 +390,7 @@ describe('what an agent cannot do', () => {
       ['proposal_accept', { proposalId: id }],
       ['proposal_reject', { proposalId: id }],
       ['lage_save', { lageId: f.ids.lage }],
+      ['lage_versions', { lageId: f.ids.lage }],
       ['stance_get', { cardId: f.ids.evPublic }],
       ['stance_save', { cardId: f.ids.evPublic }],
       ['disclosure_confirm', { transferId: id }],

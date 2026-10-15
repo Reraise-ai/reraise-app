@@ -1,0 +1,13 @@
+{
+  "synthetic": true,
+  "schema": "https://worldbuilder.invalid/schemas/v0/api.schema.json#/$defs/scenarioAttachment",
+  "description": "An attachment names at least one assumption (ADR-0050).",
+  "expect": {
+    "keyword": "minItems",
+    "instancePath": "/assumptions"
+  },
+  "data": {
+    "decisionId": "01M1F21G80R816A1T0V2P6RACH",
+    "assumptions": []
+  }
+}

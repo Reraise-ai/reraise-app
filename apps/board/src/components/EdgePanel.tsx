@@ -2,6 +2,7 @@
 // Copyright The Worldbuilder contributors
 import { useState } from 'react';
 import type { Card, EdgeKind, Lage, LageEdge } from '@worldbuilder/core';
+import { cardsSourcePass, sourcePassText } from '@worldbuilder/core/independence';
 import { EDGE_KINDS_DRAWN, edgeKey, type DrawnEdgeKind } from '../lageModel.js';
 
 interface Props {
@@ -117,7 +118,14 @@ export function EdgePanel(props: Props) {
               >
                 {titleOf(cards, e.from)} {e.kind} {titleOf(cards, e.to)}
               </button>{' '}
-              <span className="wb-muted">by {e.by}</span>
+              <span className="wb-muted">by {e.by}</span>{' '}
+              <span className="wb-muted" data-testid={`edge-source-pass-${key}`}>
+                {sourcePassText(
+                  cardsSourcePass(
+                    [cards.get(e.from), cards.get(e.to)].filter((c): c is Card => c !== undefined),
+                  ),
+                )}
+              </span>
               {selected && (
                 <div className="wb-row">
                   <label htmlFor={`edge-kind-${key}`} className="wb-visually-hidden">

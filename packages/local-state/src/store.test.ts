@@ -3,6 +3,7 @@
 
 import { mkdir, readFile, readdir, realpath, stat, symlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import type { SourceProfile } from '@worldbuilder/core';
 import { describe, expect, it } from 'vitest';
 import { isLocalStateError } from './errors.js';
 import { resolveStateDir } from './state-dir.js';
@@ -384,11 +385,112 @@ describe('gate log and rules through the store', () => {
   });
 });
 
+const SOURCE = 'https://example.invalid/report-a';
+const emptyDimension = { n: 0 };
+
+function sourceProfile(n: number, computedAt = '2026-10-14T00:00:00.000Z'): SourceProfile {
+  return {
+    source: SOURCE,
+    computedAt,
+    minimumN: 5,
+    dimensions: {
+      hitAccuracy: n > 0 ? { n, value: 1 } : emptyDimension,
+      reliability: emptyDimension,
+      topicCompetence: [],
+      agreement: emptyDimension,
+      deviation: emptyDimension,
+      sourceQuality: emptyDimension,
+      historicalPerformance: emptyDimension,
+      counterPerspectiveValue: emptyDimension,
+    },
+  };
+}
+
+describe('source profiles (ADR-0018)', () => {
+  it('stores a profile under the hash of the source and keeps the earlier one', async () => {
+    const { stateDir, store } = await open();
+    expect(await store.getSourceProfile(SOURCE)).toBeUndefined();
+    const first = await store.saveSourceProfile(sourceProfile(1));
+    expect(first.earlier).toEqual([]);
+    expect(first.profile.dimensions.hitAccuracy).toEqual({ n: 1, value: 1 });
+    const names = await readdir(path.join(stateDir, 'source-profiles'));
+    expect(names).toEqual([expect.stringMatching(/^[0-9a-f]{64}\.json$/)]);
+    expect(names[0]).not.toContain('example');
+    const again = await store.saveSourceProfile(sourceProfile(1));
+    expect(again).toEqual(first);
+    const second = await store.saveSourceProfile(sourceProfile(2, '2026-10-14T01:00:00.000Z'));
+    expect(second.profile.dimensions.hitAccuracy.n).toBe(2);
+    expect(second.earlier.map((old) => old.dimensions.hitAccuracy.n)).toEqual([1]);
+    expect(await store.getSourceProfile(SOURCE)).toEqual(second);
+    const same = await store.saveSourceProfile(sourceProfile(2, '2026-10-14T01:00:00.000Z'));
+    expect(same.earlier).toHaveLength(1);
+  });
+
+  it('rejects a profile the schema refuses, a damaged file, and a file that names another source', async () => {
+    const { stateDir, store } = await open();
+    const missingValue = sourceProfile(0);
+    missingValue.dimensions.hitAccuracy = { n: 1 };
+    await rejects(store.saveSourceProfile(missingValue), 'invalid');
+    await store.saveSourceProfile(sourceProfile(1));
+    const file = path.join(
+      stateDir,
+      'source-profiles',
+      (await readdir(path.join(stateDir, 'source-profiles')))[0]!,
+    );
+    await writeFile(file, '{');
+    await rejects(store.getSourceProfile(SOURCE), 'invalid');
+    const stored = {
+      profile: sourceProfile(1),
+      earlier: [sourceProfile(1)],
+    };
+    stored.earlier[0] = { ...sourceProfile(1), source: 'https://example.invalid/other' };
+    await writeFile(file, `${JSON.stringify(stored)}\n`);
+    await rejects(store.getSourceProfile(SOURCE), 'invalid');
+    stored.earlier = [];
+    stored.profile = { ...sourceProfile(1), source: 'https://example.invalid/other' };
+    await writeFile(file, `${JSON.stringify(stored)}\n`);
+    await rejects(store.getSourceProfile(SOURCE), 'invalid');
+  });
+});
+
+describe('scenario attachments (ADR-0050)', () => {
+  const attachment = {
+    decisionId: CARD_A,
+    assumptions: [{ id: CARD_B, statement: 'A synthetic assumption.' }],
+  };
+
+  it('stores the snapshot under the decision id and reads it from a new store', async () => {
+    const { stateDir, store } = await open();
+    expect(await store.getScenarioAttachment(CARD_A)).toBeUndefined();
+    const saved = await store.saveScenarioAttachment(attachment);
+    expect(saved).toEqual(attachment);
+    const names = await readdir(path.join(stateDir, 'scenario-attachments'));
+    expect(names).toEqual([`${CARD_A}.json`]);
+    expect(await store.saveScenarioAttachment(attachment)).toEqual(saved);
+    const next = await createLocalStateStore({ explicitPath: stateDir });
+    expect(await next.getScenarioAttachment(CARD_A)).toEqual(attachment);
+    await rejects(store.saveScenarioAttachment({ ...attachment, assumptions: [] }), 'invalid');
+    await rejects(store.getScenarioAttachment('not-an-id'), 'invalid');
+  });
+
+  it('refuses a damaged file and a file whose decision id differs from its name', async () => {
+    const { stateDir, store } = await open();
+    await store.saveScenarioAttachment(attachment);
+    const file = path.join(stateDir, 'scenario-attachments', `${CARD_A}.json`);
+    await writeFile(file, '{');
+    await rejects(store.getScenarioAttachment(CARD_A), 'invalid');
+    await writeFile(file, `${JSON.stringify({ ...attachment, decisionId: CARD_B })}\n`);
+    await rejects(store.getScenarioAttachment(CARD_A), 'invalid');
+  });
+});
+
 describe('review hardening', () => {
   it('refuses at open a symlinked proposals dir, stances dir, rules file or log file', async () => {
     for (const name of [
       'proposals',
       'stances',
+      'source-profiles',
+      'scenario-attachments',
       'gate-rules.yaml',
       'gate-log.jsonl',
       'gate-log.jsonl.2',

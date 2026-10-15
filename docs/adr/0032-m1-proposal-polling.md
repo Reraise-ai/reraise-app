@@ -73,6 +73,12 @@ no proposal is missed or repeated across two polls; both token kinds can poll.
 
 ## More Information
 
+- The live channel is `GET /events` (`events_stream`), human-only. The first event is
+  `{"kind":"ready"}`. Later events are `{"kind":"proposal"}` or `{"kind":"move"}`, with
+  `lageId` when the change belongs to one Lage. The stream carries no card text. The board
+  refetches through the existing operations. An optional `lageId` query drops notices that
+  name a different Lage. There is no 503: the operation does not touch the store. Agents are
+  not on this stream; they keep polling `proposal_list`. MCP has no live notifications yet.
 - Supersedes concept v1: nothing.
 - Resolves open decision OD-5 of the [architecture documentation](../architecture/09-decisions.md).
 - Related: [ADR-0011](0011-agent-moves-are-proposals.md),

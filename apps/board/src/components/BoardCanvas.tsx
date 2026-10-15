@@ -31,6 +31,8 @@ interface Props {
   /** The user drew a connection from one card to another. */
   onConnect(from: string, to: string): void;
   onSelect(selection: { cardId: string | null; edgeKey: string | null }): void;
+  /** A past board is shown. Cards stay put and new edges are not drawn. */
+  readOnly?: boolean;
 }
 
 function Canvas(props: Props) {
@@ -47,6 +49,7 @@ function Canvas(props: Props) {
   const onNodesChange = (changes: NodeChange<CardNodeType>[]) =>
     setNodes((ns) => applyNodeChanges(changes, ns));
   const onConnect = (c: Connection) => {
+    if (props.readOnly) return;
     if (c.source && c.target) props.onConnect(c.source, c.target);
   };
   // Selection is mirrored into the canvas (\`selected\`), so the library's own answers can lag
@@ -74,8 +77,12 @@ function Canvas(props: Props) {
         edges={edges}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
+        nodesDraggable={!props.readOnly}
+        nodesConnectable={!props.readOnly}
         onNodesChange={onNodesChange}
-        onNodeDragStop={(_e, node) => props.onMove(node.id, node.position.x, node.position.y)}
+        onNodeDragStop={(_e, node) => {
+          if (!props.readOnly) props.onMove(node.id, node.position.x, node.position.y);
+        }}
         onConnect={onConnect}
         onSelectionChange={onSelectionChange}
         onPaneClick={() => props.onSelect({ cardId: null, edgeKey: null })}

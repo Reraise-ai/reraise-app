@@ -28,6 +28,31 @@ describe('Lage to canvas mapping', () => {
     expect(nodes[0]!.data.stance).toBe(stance);
     expect(nodes[1]!.data.stance).toBeUndefined();
     expect(nodes[0]!.data.card?.title).toBe(C1!.title);
+    expect(nodes.map((n) => n.data.sourcePass)).toEqual([
+      '2 findings · 1 origin',
+      '2 findings · 1 origin',
+    ]);
+  });
+
+  it('marks one source, and two independent sources of the same statement', () => {
+    const statement = 'Transits fell by a third.';
+    const a = { ...C1!, source: 'https://example.org/a', body: statement };
+    const b = { ...C2!, source: 'https://example.org/b', body: statement };
+    const nodes = toNodes(
+      lage,
+      new Map([
+        [a.id!, a],
+        [b.id!, b],
+      ]),
+      new Map(),
+    );
+    expect(nodes.map((n) => n.data.sourceMark)).toEqual([
+      'journalistic-standard',
+      'journalistic-standard',
+    ]);
+    const alone = toNodes(lage, new Map([[a.id!, a]]), new Map());
+    expect(alone[0]!.data.sourceMark).toBe('one-source');
+    expect(alone[1]!.data.sourceMark).toBeUndefined();
   });
 
   it('keeps a placement whose card is not readable, without a card', () => {

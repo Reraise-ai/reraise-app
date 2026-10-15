@@ -83,7 +83,7 @@ export async function executeOperation(
     if (!checked.ok) {
       // A service bug: never send a body the contract does not allow.
       hooks.onContractViolation?.(op.id, result.status);
-      throw new HttpError(500, 'the response did not match the contract');
+      throw new HttpError(500, `the response did not match the contract: ${checked.message}`);
     }
   }
   return result;

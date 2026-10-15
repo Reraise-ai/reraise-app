@@ -10,6 +10,11 @@
     "types": ["vite/client"],
     "paths": {
       "@worldbuilder/core": ["../../packages/core/src/generated/contracts.ts"],
+      "@worldbuilder/core/outcome": ["../../packages/core/src/outcome.ts"],
+      "@worldbuilder/core/independence": ["../../packages/core/src/independence.ts"],
+      "@worldbuilder/core/source-profile": ["../../packages/core/src/source-profile.ts"],
+      "@worldbuilder/core/theme": ["../../packages/core/src/theme.ts"],
+      "@worldbuilder/core/ids": ["../../packages/core/src/ids.ts"],
       "@worldbuilder/level1-engines/format": ["../../packages/level1-engines/src/format.ts"]
     }
   },

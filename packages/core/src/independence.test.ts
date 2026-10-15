@@ -3,13 +3,23 @@
 
 import { describe, expect, it } from 'vitest';
 import type { Card, EdgeKind } from './generated/contracts.js';
-import { independenceOf, originRoots } from './independence.js';
+import {
+  cardSourcePass,
+  cardsSourcePass,
+  entriesSourcePass,
+  independenceOf,
+  originRoots,
+  seatEntries,
+  sourceMark,
+  sourcePassText,
+} from './independence.js';
 
 function card(
   id: string,
   extra: {
     source?: string;
     contentHash?: string;
+    body?: string;
     edges?: { target: string; kind: EdgeKind }[];
   } = {},
 ): Card {
@@ -290,5 +300,110 @@ describe('originRoots (ADR-0009)', () => {
     expect(roots.S).toEqual({ originRoot: 'https://example.org/s', originKnown: true });
     expect(roots.A).toEqual(roots.B);
     expect(independenceOf([...originRoots(cards).values()]).origins).toBe(2);
+  });
+});
+
+describe('sourceMark (Entscheidung 125)', () => {
+  const statement = 'Transits fell by a third.';
+
+  it('marks one known source and leaves a card with no source unmarked', () => {
+    const sourced = card('A', { source: 'https://example.org/a', body: statement });
+    const bare = card('B', { body: 'Something else.' });
+    expect(sourceMark([sourced, bare], 'A')).toBe('one-source');
+    expect(sourceMark([sourced, bare], 'B')).toBeUndefined();
+  });
+
+  it('marks the same statement from two sources that do not repeat each other', () => {
+    const cards = [
+      card('A', { source: 'https://example.org/a', body: statement }),
+      card('B', { source: 'https://example.org/b', body: statement }),
+    ];
+    expect(sourceMark(cards, 'A')).toBe('journalistic-standard');
+    expect(sourceMark(cards, 'B')).toBe('journalistic-standard');
+  });
+
+  it('does not count a card that only repeats another source', () => {
+    const cards = [
+      card('A', { source: 'https://example.org/a', body: statement }),
+      card('B', {
+        source: 'https://example.org/b',
+        body: statement,
+        edges: [{ target: 'A', kind: 'cites' }],
+      }),
+    ];
+    expect(sourceMark(cards, 'A')).toBe('one-source');
+    expect(sourceMark(cards, 'B')).toBe('one-source');
+  });
+
+  it('keeps identical text as one copy for the origin count', () => {
+    const copies = [
+      card('A', { contentHash: 'sha256:aa', source: 'https://example.org/a' }),
+      card('B', { contentHash: 'sha256:aa', source: 'https://example.org/b' }),
+    ];
+    expect(originRoots(copies).get('A')).toEqual(originRoots(copies).get('B'));
+  });
+});
+
+describe('source pass (ADR-0009)', () => {
+  it('names one finding and one origin in the singular, and zero as zero', () => {
+    expect(sourcePassText({ findings: 1, origins: 1 })).toBe('1 finding · 1 origin');
+    expect(sourcePassText({ findings: 4, origins: 2 })).toBe('4 findings · 2 origins');
+    expect(sourcePassText({ findings: 0, origins: 0 })).toBe('0 findings · 0 origins');
+  });
+
+  it('counts an empty card set as no findings', () => {
+    expect(cardsSourcePass([])).toEqual({ findings: 0, origins: 0 });
+  });
+
+  it('counts copies of one origin as several findings and one origin', () => {
+    const copies = [
+      card('A', { contentHash: 'sha256:aa', source: 'https://example.org/a' }),
+      card('B', { contentHash: 'sha256:aa', source: 'https://example.org/b' }),
+    ];
+    expect(cardSourcePass(copies, 'B')).toEqual({ findings: 2, origins: 1 });
+    expect(cardsSourcePass(copies)).toEqual({ findings: 2, origins: 1 });
+    expect(cardSourcePass(copies, 'Z')).toBeUndefined();
+  });
+
+  it('keeps two sources that do not repeat each other as two origins', () => {
+    const cards = [
+      card('A', { source: 'https://example.org/a' }),
+      card('B', { source: 'https://example.org/b' }),
+    ];
+    expect(cardSourcePass(cards, 'A')).toEqual({ findings: 1, origins: 1 });
+    expect(cardsSourcePass(cards)).toEqual({ findings: 2, origins: 2 });
+  });
+
+  it('counts player entries by source, and a cited card by that card origin', () => {
+    expect(entriesSourcePass([])).toEqual({ findings: 0, origins: 0 });
+    expect(
+      entriesSourcePass([
+        { source: 'https://example.org/a' },
+        { source: 'https://example.org/a' },
+        { source: 'https://example.org/b' },
+      ]),
+    ).toEqual({ findings: 3, origins: 2 });
+    const known = [
+      card('A', { source: 'https://example.org/a' }),
+      card('B', { edges: [{ target: 'A', kind: 'cites' }] }),
+    ];
+    expect(entriesSourcePass([{ source: 'A' }, { source: 'B' }], known)).toEqual({
+      findings: 2,
+      origins: 1,
+    });
+    expect(entriesSourcePass([{ source: 'C' }], known)).toEqual({ findings: 1, origins: 1 });
+  });
+
+  it('lists seat entries and skips a field that is empty', () => {
+    const actor = {
+      ...card('P'),
+      interests: [{ text: 'oil', source: 'https://example.org/a' }],
+      capabilities: [],
+      moves: [{ text: 'sail', source: 'https://example.org/b' }],
+    };
+    expect(seatEntries(actor)).toEqual([
+      { field: 'interests', text: 'oil', source: 'https://example.org/a' },
+      { field: 'moves', text: 'sail', source: 'https://example.org/b' },
+    ]);
   });
 });

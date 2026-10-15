@@ -3,8 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Card, Proposal } from '@worldbuilder/core';
 import type { BoardClient } from '../api/client.js';
-import { createProposalPoller, mergeProposals } from '../api/proposalPoller.js';
-import { describeError } from '../errors.js';
+import { useLiveFeed } from '../liveFeed.js';
 import { ProposalsPanel } from './ProposalsPanel.js';
 
 interface Props {
@@ -17,26 +16,12 @@ interface Props {
  * board. A proposal that names no Lage can only be decided here.
  */
 export function ProposalsInbox({ client, pollIntervalMs }: Props) {
-  const [proposals, setProposals] = useState<Proposal[]>([]);
-  const [pollError, setPollError] = useState<string | null>(null);
+  const { proposals, pollError, note } = useLiveFeed({
+    client,
+    ...(pollIntervalMs !== undefined ? { pollIntervalMs } : {}),
+  });
   const [titles, setTitles] = useState<Map<string, Card>>(new Map());
   const asked = useRef(new Set<string>());
-
-  useEffect(() => {
-    let alive = true;
-    const poller = createProposalPoller({
-      client,
-      ...(pollIntervalMs !== undefined ? { intervalMs: pollIntervalMs } : {}),
-      onSuccess: () => alive && setPollError(null),
-      onChanges: (changed) => alive && setProposals((known) => mergeProposals(known, changed)),
-      onError: (e) => alive && setPollError(describeError(e)),
-    });
-    poller.start();
-    return () => {
-      alive = false;
-      poller.stop();
-    };
-  }, [client, pollIntervalMs]);
 
   // Name the cards a pending proposal points at, so you see what you accept.
   useEffect(() => {
@@ -65,7 +50,7 @@ export function ProposalsInbox({ client, pollIntervalMs }: Props) {
       decision === 'accept'
         ? await client.proposal_accept(p.id)
         : await client.proposal_reject(p.id);
-    setProposals((known) => mergeProposals(known, [updated]));
+    note(updated);
   }
 
   return (

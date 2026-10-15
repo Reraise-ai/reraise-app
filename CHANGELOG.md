@@ -8,10 +8,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- M1 is done. CI job `e2e` runs the Hormuz walking skeleton (`e2e/tests/walking-skeleton.spec.ts`) on Linux, Windows and macOS. The green run is commit `4e0ebf8`.
 - The gate rules `worldbuilder serve` writes on first start allow every card for the screen and for a local model on this device, including private cards. Nothing leaves the device and no transfer confirmation is required. Stance stays on the screen; no rule can release it. `cloud_model` and `demo` stay deny until you add an allow rule. A cloud transfer still needs the per-transfer confirmation (ADR-0031, owner 2026-10-13).
+
+### Fixed
+
+- Typecheck resolves `@worldbuilder/training-export` from its source, the same way as the other workspace packages. `dist/` is not in git, so CI no longer fails before that package is built.
+- The store write lock treats Windows `EPERM` on an exclusive create as "someone else holds it" and waits, when the lock file is there.
+- `model_ask` answers 200 again. The response schema no longer uses an `allOf` that Ajv strict mode cannot compile.
 
 ### Added
 
+- `pnpm build:demo` writes a static board for `/board/`. It loads the Hormuz example from JSON and keeps edits in the browser. It does not call a Board API.
+- The demo start world also loads the gold market and the vitamin D theme from `examples/gold` and `examples/vitamin-d`. The theme has the three questions from the public board demonstration, votes for and against, and one collector card.
+- A theme Lage stores 2-4 questions, each with card ids arguing for and against, and exactly one collector card. The board lists the questions with vote counts. A click on a source opens the placed person or organisation card that names it (e-52, e-58, ADR-0051).
+- The board exports opted-in decision traces as JSONL. `training_export` is human-only. The first call returns a cloud transfer preview and writes nothing; after `disclosure_confirm` the JSONL contains only cards with `training: true`. A card that did not opt in never appears, not even as an id. Stance data is never exported (ADR-0017).
+- The board lists references from a connected HTTP/JSON source, an Obsidian vault and a document index. `finding_pin` reads the chosen URI again and stores a private card on the open Lage. The card copies the title and, when present, the short snippet. A second pin of the same URI returns that card and does not place it twice. The note text and a document body stay in the source. Both operations are human-only and are not MCP tools (ADR-0014). The document index is `GET` of `{ documents: [{ title, url, updated? }] }` until a named product is chosen (OQ-33). Paid news is not connected.
+- Ollama, a cloud chat model and a decision-service stub answer through one `ModelConnector`. `model_ask` stores the answer as a pending comment by `agent:<engine>`. A cloud call returns the transfer preview and sends nothing until the human confirms that one transfer (ADR-0011, ADR-0015, ADR-0031).
+- Two open boards on one service see a move within seconds. `GET /events` is human-only and sends a notice of kind `proposal` or `move`, with `lageId` when the change belongs to one Lage, and no card text. The board reads the change through the existing operations. A dropped stream falls back to `proposal_list`. Agents still poll (ADR-0032).
+- The open board holds a what-if layer of assumptions that are not cards. Saving the layer writes nothing to the store. Recording a decision can attach that layer as a file in the state directory. The decision card stays unchanged (ADR-0050).
+- The board can be shown as of an earlier date. `lage_versions` returns the archived Lage versions, oldest first. The current state is not included. The slider shows that board and does not save the view (ADR-0049).
+- A player entry without a source is rejected. An empty player field is allowed. The board shows a source pass, "N findings · M origins", on each placed card, on an actor's seat entries and on its moves, on each edge, and on the cards a decision uses (AC-28, AC-30).
+- The user creates a rule card and changes its action. The board form sends one card-on-board condition and the action in the user's words. The API accepts every condition kind. A condition that names a missing card is rejected. A restart of `worldbuilder serve` on the Hormuz store still evaluates the changed action. A field other than the title and the rule is left as stored (AC-10).
+- A card with one known origin is marked "One source". The same statement from two origins that do not repeat each other is marked "Journalistic standard". A card that only cites another source does not count as a second source (Entscheidung 125).
+- The open board lists each rule as fired or not fired, with that rule's own text and the cards that triggered it. It shows no percentage (AC-03).
+- The open board records a decision (eleven sections, cards on the board) and its outcome. A known outcome shows the experience card the service stored.
+- Recording a known outcome stores one private experience card. Its edges are `based_on` the decision and each id in `cardsUsed`. An outcome of `open` stores none. A later change of the outcome text does not store a second card. A restart of `worldbuilder serve` on the Hormuz store still has the decision's eleven sections and that experience card. An unknown `cardsUsed` id is rejected (AC-09, AC-11, AC-13).
+- A known decision outcome adds one to the stored hit count of each source cited by `cardsUsed`. The previous profile stays on the device. The board shows the eight dimensions with their sample size and says "insufficient data" when `n` is below 5. There is no combined figure (ADR-0018, AC-11). Until an outcome can record a miss, `hitAccuracy` is 1 per sample and the board does not present that as a correctness rate (OQ-31).
 - A context package for any target other than the screen leaves out a rule card that states a stance, or that names a card outside the package. The rule is counted and not rewritten. On the Hormuz store a `local_model` package under the shipped default still contains the reroute rule, which names only the wire report, and does not contain the stance rule (AC-18).
 - A context package for any target other than the screen keeps a relation only when both cards are in that package. An edge, a Lage placement, or a decision `cardsUsed` id that names another card is dropped. The rendered body of a changed Lage or decision is dropped with it, and `contentHash` is the hash of the view. On the Hormuz store a `local_model` package under the shipped default has the navy `represents` edge to the wire report, and the decision's `cardsUsed` list keeps the wire report, the navy and the insurance card, because the local model may see them. The screen package is unchanged. A confirmed cloud transfer still sends the stored cards (AC-18).
 - A deterministic local model, `local-quote`, answers a context package by naming the card ids it was given. It writes no proposals and uses no network. On the Hormuz store the private cost card stays in the file store. The shipped default puts it in a `local_model` context package, and `local-quote` names its id. A `cloud_model` package with no confirmation does not contain it (AC-16).
@@ -58,7 +81,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   store, a scripted MCP agent that consults the knowledge and proposes a card, the human accepting
   it, persistence after a reload, a context package, the disclosure gate withholding the private
   card from a cloud target, and the files on disk (Lage version archived). axe-core runs on the
-  main board screens. CI job `e2e` on Linux, Windows and macOS (not run yet).
+  main board screens. CI job `e2e` on Linux, Windows and macOS was green at commit `4e0ebf8`.
 - Level-1 engines (ADR-0035) in the new package `@worldbuilder/level1-engines`: the deterministic
   local rules engine (`createLocalRulesEngine`, with a per-option basis), the what-if re-run and
   stale-prediction helpers, the level-2 escalation draft, the cloud System One HTTP adapter

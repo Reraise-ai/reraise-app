@@ -155,6 +155,195 @@ paths:
         '413':
           $ref: '#/components/responses/TooLarge'
 
+  /lagen/{lageId}/versions:
+    parameters:
+      - name: lageId
+        in: path
+        required: true
+        schema:
+          $ref: '../api.schema.json#/$defs/lageGetRequest/properties/lageId'
+    get:
+      operationId: lage_versions
+      summary: Archived board states of a Lage, oldest first
+      description: >-
+        Human-only. Each entry is a board state that was replaced, with the time it was
+        archived. The current state is not included. Card text stays the current file;
+        only the Lage (question, placements, edges) is the archived one (ADR-0006, ADR-0049).
+      tags: [human-only]
+      x-human-only: true
+      security:
+        - sessionToken: []
+      responses:
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: Archived board states, oldest first.
+          content:
+            application/json:
+              schema:
+                $ref: '../api.schema.json#/$defs/lageVersionList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/HumanOnly'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /lagen/{lageId}/scenario:
+    parameters:
+      - name: lageId
+        in: path
+        required: true
+        schema:
+          $ref: '../api.schema.json#/$defs/lageGetRequest/properties/lageId'
+    get:
+      operationId: scenario_get
+      summary: The live what-if layer of a Lage
+      description: >-
+        Human-only. The assumptions the user is trying, kept in memory for this process.
+        They are not cards. An empty list means the layer is off. A restart drops the layer
+        (ADR-0050).
+      tags: [human-only]
+      x-human-only: true
+      security:
+        - sessionToken: []
+      responses:
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: The live layer. Empty when the user has not set one.
+          content:
+            application/json:
+              schema:
+                $ref: '../api.schema.json#/$defs/scenarioLayer'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/HumanOnly'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      operationId: scenario_replace
+      summary: Replace the live what-if layer
+      description: >-
+        Human-only. Replaces the in-memory layer. The service trims statements and keeps one
+        copy of each. An empty list clears the layer. No card is written (ADR-0050).
+      tags: [human-only]
+      x-human-only: true
+      security:
+        - sessionToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../api.schema.json#/$defs/scenarioReplace'
+      responses:
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: The layer as stored in memory, with an id on each assumption.
+          content:
+            application/json:
+              schema:
+                $ref: '../api.schema.json#/$defs/scenarioLayer'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/HumanOnly'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '413':
+          $ref: '#/components/responses/TooLarge'
+
+  /lagen/{lageId}/scenario/attach:
+    parameters:
+      - name: lageId
+        in: path
+        required: true
+        schema:
+          $ref: '../api.schema.json#/$defs/lageGetRequest/properties/lageId'
+    post:
+      operationId: scenario_attach
+      summary: Attach the live what-if layer to a decision
+      description: >-
+        Human-only. Copies the live layer into the state directory under the decision id.
+        The decision card is not modified. An empty layer is refused (ADR-0050).
+      tags: [human-only]
+      x-human-only: true
+      security:
+        - sessionToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../api.schema.json#/$defs/scenarioAttachRequest'
+      responses:
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: The snapshot now kept on this device.
+          content:
+            application/json:
+              schema:
+                $ref: '../api.schema.json#/$defs/scenarioAttachment'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/HumanOnly'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '413':
+          $ref: '#/components/responses/TooLarge'
+
+  /decisions/{decisionId}/scenario:
+    parameters:
+      - name: decisionId
+        in: path
+        required: true
+        schema:
+          $ref: '../common.schema.json#/$defs/cardId'
+    get:
+      operationId: scenario_attachment_get
+      summary: The what-if snapshot attached to a decision
+      description: >-
+        Human-only. The snapshot copied by scenario_attach. It lives in the state directory,
+        not on the decision card (ADR-0050).
+      tags: [human-only]
+      x-human-only: true
+      security:
+        - sessionToken: []
+      responses:
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: The attached assumptions.
+          content:
+            application/json:
+              schema:
+                $ref: '../api.schema.json#/$defs/scenarioAttachment'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/HumanOnly'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /lagen/{lageId}/level1:
     parameters:
       - name: lageId
@@ -302,6 +491,152 @@ paths:
         '413':
           $ref: '#/components/responses/TooLarge'
 
+  /lagen/{lageId}/model:
+    parameters:
+      - name: lageId
+        in: path
+        required: true
+        schema:
+          $ref: '../api.schema.json#/$defs/lageGetRequest/properties/lageId'
+    post:
+      operationId: model_ask
+      summary: Ask a model about the cards on a Lage
+      description: >-
+        Human-only, and not an MCP tool. Ollama runs on this device and is cleared as a
+        local model: the call answers `proposed` and stores a pending comment by
+        `agent:ollama`. A cloud chat model and the decision-service stub are cleared as
+        `cloud_model`. The first call answers `confirmation_required` with the previewed
+        envelope and sends nothing. After `disclosure_confirm`, the call is repeated with
+        the `transferId` and the single-use `confirmationToken`, and the connector receives
+        only the confirmed cards. A change of the board or the question since the preview
+        is a 409. The answer is a proposal, not a card (ADR-0011, ADR-0015, ADR-0031).
+      tags: [human-only]
+      x-human-only: true
+      security:
+        - sessionToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../api.schema.json#/$defs/modelAskRequest'
+      responses:
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: The model answered, or a cloud call is waiting for confirmation.
+          content:
+            application/json:
+              schema:
+                $ref: '../api.schema.json#/$defs/modelAskResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/HumanOnly'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '413':
+          $ref: '#/components/responses/TooLarge'
+        '502':
+          $ref: '#/components/responses/BadGateway'
+
+  /findings:
+    get:
+      operationId: findings_list
+      summary: List findings from connected sources
+      description: >-
+        Human-only, and not an MCP tool. Each configured source reports references
+        (a URI, a title, a short snippet). Nothing in the list is part of a world.
+        A source that does not answer is skipped unless every configured source
+        failed, which is 502. No source is configured when the list is empty (ADR-0014).
+      tags: [human-only]
+      x-human-only: true
+      security:
+        - sessionToken: []
+      parameters:
+        - name: since
+          in: query
+          schema:
+            $ref: '../api.schema.json#/$defs/findingsListRequest/properties/since'
+        - name: text
+          in: query
+          schema:
+            $ref: '../api.schema.json#/$defs/findingsListRequest/properties/text'
+        - name: limit
+          in: query
+          schema:
+            $ref: '../api.schema.json#/$defs/findingsListRequest/properties/limit'
+      responses:
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: The references the connected sources reported.
+          content:
+            application/json:
+              schema:
+                $ref: '../api.schema.json#/$defs/findingsList'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/HumanOnly'
+        '502':
+          $ref: '#/components/responses/BadGateway'
+
+  /findings/pin:
+    post:
+      operationId: finding_pin
+      summary: Pin a finding onto a Lage
+      description: >-
+        Human-only, and not an MCP tool. The service reads that URI from the named
+        source again and stores a private reference card, then places it on the Lage.
+        The card copies the title and the short snippet only. A second pin of the same
+        URI returns the card already stored and does not place it twice (ADR-0014).
+      tags: [human-only]
+      x-human-only: true
+      security:
+        - sessionToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../api.schema.json#/$defs/findingPinRequest'
+      responses:
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: The reference card, placed on the Lage.
+          content:
+            application/json:
+              schema:
+                $ref: '../api.schema.json#/$defs/findingPinResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/HumanOnly'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '413':
+          $ref: '#/components/responses/TooLarge'
+        '502':
+          $ref: '#/components/responses/BadGateway'
+
   /cards:
     get:
       operationId: cards_search
@@ -446,6 +781,45 @@ paths:
         '413':
           $ref: '#/components/responses/TooLarge'
 
+  /source-profiles:
+    get:
+      operationId: source_profile_get
+      summary: Read the stored profile of one source
+      description: >-
+        Human-only. Derived from known decision outcomes and kept on the device.
+        agreement, deviation and counterPerspectiveValue stay here (ADR-0018, ADR-0008).
+        `earlier` holds the profiles this one replaced, oldest first.
+      tags: [human-only]
+      x-human-only: true
+      security:
+        - sessionToken: []
+      parameters:
+        - name: source
+          in: query
+          required: true
+          description: The profiled source (a card id or an absolute URI).
+          schema:
+            $ref: '../common.schema.json#/$defs/sourceRef'
+      responses:
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: The current profile and the earlier ones.
+          content:
+            application/json:
+              schema:
+                $ref: '../api.schema.json#/$defs/storedSourceProfile'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/HumanOnly'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /context-packages:
     post:
       operationId: context_package_get
@@ -521,6 +895,90 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
+        '413':
+          $ref: '#/components/responses/TooLarge'
+
+  /rules:
+    post:
+      operationId: rule_create
+      summary: Save a new rule card
+      description: >-
+        Human-only. Stores a card of type rule. A condition that names a card id stores only when
+        that card exists. The response is the stored card.
+      tags: [human-only]
+      x-human-only: true
+      security:
+        - sessionToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../rule.schema.json#/$defs/draft'
+      responses:
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '201':
+          description: The saved rule card.
+          content:
+            application/json:
+              schema:
+                $ref: '../rule.schema.json#/$defs/card'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/HumanOnly'
+        '413':
+          $ref: '#/components/responses/TooLarge'
+
+  /rules/{cardId}:
+    put:
+      operationId: rule_save
+      summary: Change a rule card
+      description: >-
+        Human-only. Patches the title and the rule. Every other stored field stays. A stale
+        contentHash is a conflict.
+      tags: [human-only]
+      x-human-only: true
+      security:
+        - sessionToken: []
+      parameters:
+        - name: cardId
+          in: path
+          required: true
+          schema:
+            $ref: '../common.schema.json#/$defs/cardId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../rule.schema.json#/$defs/card'
+      responses:
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: The saved rule card.
+          content:
+            application/json:
+              schema:
+                $ref: '../rule.schema.json#/$defs/card'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/HumanOnly'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
         '413':
           $ref: '#/components/responses/TooLarge'
 
@@ -1052,6 +1510,41 @@ paths:
           $ref: '#/components/responses/TooLarge'
         '429':
           $ref: '#/components/responses/TooManyRequests'
+  /events:
+    get:
+      operationId: events_stream
+      summary: Live channel of moves and proposals
+      description: >-
+        Human-only server-sent events (ADR-0032). The first event is `{"kind":"ready"}`.
+        Each later event is `{"kind":"proposal"}` or `{"kind":"move"}`, with `lageId` when the
+        change belongs to one Lage. The stream carries no card text. The board reads the change
+        through the existing operations. An optional `lageId` keeps only notices for that Lage
+        and notices that name no Lage. `proposal_list` with `changedSince` stays the catch-up
+        after a dropped stream. The operation does not touch the store, so it has no 503.
+      tags: [human-only]
+      x-human-only: true
+      security:
+        - sessionToken: []
+      parameters:
+        - name: lageId
+          in: query
+          schema:
+            $ref: '../api.schema.json#/$defs/proposalListRequest/properties/lageId'
+      responses:
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: The event stream. It stays open.
+          content:
+            text/event-stream:
+              schema:
+                type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/HumanOnly'
   /metrics/usage:
     get:
       operationId: usage_metrics_get
@@ -1086,6 +1579,49 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/HumanOnly'
+  /training/export:
+    post:
+      operationId: training_export
+      summary: Export opted-in decision traces as JSONL
+      description: >-
+        Human-only, and not an MCP tool. Builds one JSONL line per decision card that has
+        `training: true` and a known outcome. Cards that did not opt in never appear, not even
+        as ids. The first call answers `confirmation_required` with the previewed envelope
+        (purpose `export`) and writes nothing. After `disclosure_confirm`, the call is repeated
+        with the `transferId` and the single-use `confirmationToken` and returns the JSONL.
+        A change of the opted-in cards since the preview is a 409. Stance data is never
+        exported (ADR-0017, ADR-0031).
+      tags: [human-only]
+      x-human-only: true
+      security:
+        - sessionToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../api.schema.json#/$defs/trainingExportRequest'
+      responses:
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '200':
+          description: The JSONL, a preview waiting for confirmation, or nothing to export.
+          content:
+            application/json:
+              schema:
+                $ref: '../api.schema.json#/$defs/trainingExportResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/HumanOnly'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '413':
+          $ref: '#/components/responses/TooLarge'
 components:
   securitySchemes:
     sessionToken:
