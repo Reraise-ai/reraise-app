@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- The in-memory fake of the storage conformance kit refused an unsourced player entry on create but accepted it on `patch`. It refuses both now, as the markdown-files adapter does, and the kit tests an unsourced patch (ADR-0009, AC-28).
 - The source profile no longer shows "Hit accuracy: 1 (n=5)". An outcome cannot record a miss yet, so the stored 1 is not a rate. The board shows "not yet measurable (n=5): outcomes cannot record a miss yet" (ADR-0018, OQ-31).
 - The inspector reads the source profile again after the human enters an outcome. Before, it kept the count it had loaded (n=0) until another card was selected, although the service already held n=1 (ADR-0018, AC-11).
 - Typecheck resolves `@worldbuilder/training-export` from its source, the same way as the other workspace packages. `dist/` is not in git, so CI no longer fails before that package is built.
@@ -31,6 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - The open board holds a what-if layer of assumptions that are not cards. Saving the layer writes nothing to the store. Recording a decision can attach that layer as a file in the state directory. The decision card stays unchanged (ADR-0050).
 - The board can be shown as of an earlier date. `lage_versions` returns the archived Lage versions, oldest first. The current state is not included. The slider shows that board and does not save the view (ADR-0049).
 - A player entry without a source is rejected. An empty player field is allowed. The board shows a source pass, "N findings · M origins", on each placed card, on an actor's seat entries and on its moves, on each edge, and on the cards a decision uses (AC-28, AC-30).
+- A test run in a browser on the Hormuz example proves that rule on the real stack. A scripted agent's seat with an entry without a source is refused for `interests`, `capabilities`, `dependencies`, `moves`, `redLines` and `assumedGoals`, and nothing is stored. A seat with an empty field is accepted. The board shows the pass on the placed cards, on a seat and its moves, on a new edge between a copy and its original ("2 findings · 1 origin") and on a stored decision (AC-28, AC-30).
 - The user creates a rule card and changes its action. The board form sends one card-on-board condition and the action in the user's words. The API accepts every condition kind. A condition that names a missing card is rejected. A restart of `worldbuilder serve` on the Hormuz store still evaluates the changed action. A field other than the title and the rule is left as stored (AC-10).
 - A card with one known origin is marked "One source". The same statement from two origins that do not repeat each other is marked "Journalistic standard". A card that only cites another source does not count as a second source (Entscheidung 125).
 - The open board lists each rule as fired or not fired, with that rule's own text and the cards that triggered it. It shows no percentage (AC-03).
