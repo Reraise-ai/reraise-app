@@ -6,7 +6,7 @@
 // linked experience card; `open` shows none.
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createClient } from './api/client.js';
 import { DecisionPanel } from './components/DecisionPanel.js';
 import { BASE, CARDS, TOKEN, createMockApi, makeCard } from './testing/mockApi.js';
@@ -34,14 +34,33 @@ const decision = (n: string, outcome: string) =>
     contentHash: `sha256:${'a'.repeat(64)}`,
   });
 
-function setup(initial: ReturnType<typeof decision>[] = []) {
+function setup(initial: ReturnType<typeof decision>[] = [], onOutcomeRecorded?: () => void) {
   const api = createMockApi({ cards: initial });
   const client = createClient({ baseUrl: BASE, token: TOKEN, fetch: api.fetch });
-  render(<DecisionPanel client={client} cards={CARDS} />);
+  render(
+    <DecisionPanel
+      client={client}
+      cards={CARDS}
+      {...(onOutcomeRecorded ? { onOutcomeRecorded } : {})}
+    />,
+  );
   return api;
 }
 
 describe('decision protocol', () => {
+  it('tells the board once a known outcome is stored, and not for an open one', async () => {
+    const recorded = vi.fn();
+    const earlier = decision('D8', 'open');
+    setup([earlier], recorded);
+    await screen.findByTestId(`decision-protocol-${earlier.id}`);
+    fireEvent.click(screen.getByText('Decision D8'));
+    expect(recorded).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByTestId('decision-outcome'), { target: { value: 'It held.' } });
+    fireEvent.click(screen.getByTestId('decision-outcome-submit'));
+    await screen.findByTestId('decision-experience');
+    expect(recorded).toHaveBeenCalledTimes(1);
+  });
+
   it('says so when no decision is stored', async () => {
     setup();
     expect((await screen.findByTestId('decision-protocol-empty')).textContent).toContain(

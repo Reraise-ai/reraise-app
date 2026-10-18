@@ -34,6 +34,8 @@ interface Props {
   boardCards?: readonly Card[];
   /** Open the person or organisation card this source belongs to (e-52). */
   onOpenSource?(source: string): void;
+  /** Changes when a known outcome was stored; the source profile is read again (ADR-0018). */
+  profileVersion?: number;
 }
 
 const POSITIONS: StancePosition[] = ['believed', 'rejected', 'undecided'];
@@ -68,6 +70,7 @@ export function InspectorPanel({
   removeDisabled,
   boardCards,
   onOpenSource,
+  profileVersion,
 }: Props) {
   const [position, setPosition] = useState<StancePosition>('undecided');
   const [weight, setWeight] = useState(2);
@@ -105,7 +108,7 @@ export function InspectorPanel({
     return () => {
       cancelled = true;
     };
-  }, [client, source]);
+  }, [client, source, profileVersion]);
 
   const scope = boardCards ?? (card ? [card] : []);
   const cardPass = card?.id ? cardSourcePass(scope, card.id) : undefined;

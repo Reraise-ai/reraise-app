@@ -71,6 +71,7 @@ export function Workbench({
   const [message, setMessage] = useState<{ kind: 'info' | 'error'; text: string } | null>(null);
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [selectedEdgeKey, setSelectedEdgeKey] = useState<string | null>(null);
+  const [profileVersion, setProfileVersion] = useState(0);
   const [edgeKind, setNextEdgeKind] = useState<DrawnEdgeKind>('supports');
   const [saving, setSaving] = useState(false);
   const [history, setHistory] = useState<LageVersion[]>([]);
@@ -421,6 +422,7 @@ export function Workbench({
             if (actor?.id) setSelectedCardId(actor.id);
           }}
           onSaveStance={saveStance}
+          profileVersion={profileVersion}
           removeDisabled={saving || frozen}
           {...(selectedCardId
             ? {
@@ -440,6 +442,7 @@ export function Workbench({
             (c) => c.id !== undefined && placedIds.has(c.id),
           )}
           disabled={saving || frozen}
+          onOutcomeRecorded={() => setProfileVersion((v) => v + 1)}
         />
         {/* Level 1 stays on the stored Lage. The slider only changes the board view. */}
         <Level1Panel
