@@ -75,7 +75,9 @@ done criterion is what counts.
 
 The decision slice stores the eleven sections, rejects an unknown `cardsUsed` id, and the
 board records the decision and its outcome. A known outcome stores one linked experience
-card.
+card. The board's decision protocol lists the decisions already in the store, opens one with
+its eleven sections, and takes the outcome in a later session (AC-12). Tests:
+[verification](./verification.md#m2-decision-card-protocol-and-outcome).
 
 The source-profile slice meets its done criterion: a known outcome adds one to the stored
 hit count of each source cited by `cardsUsed`, the previous profile stays on the device,
