@@ -121,7 +121,8 @@ describe('source pass on the board', () => {
   });
 
   it('counts the cards a decision uses, and nothing before one is chosen', () => {
-    render(<DecisionPanel client={{} as BoardClient} cards={[report, other]} />);
+    const client = { cards_search: async () => ({ cards: [] }) } as unknown as BoardClient;
+    render(<DecisionPanel client={client} cards={[report, other]} />);
     expect(screen.getByTestId('decision-source-pass').textContent).toBe('0 findings · 0 origins');
     fireEvent.click(screen.getByTestId(`decision-card-${report.id}`));
     expect(screen.getByTestId('decision-source-pass').textContent).toBe('1 finding · 1 origin');

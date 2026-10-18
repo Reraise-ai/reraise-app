@@ -2,10 +2,11 @@
 // Copyright The Worldbuilder contributors
 //
 // Records one decision for the cards on this board and, once the outcome is known, shows the
-// experience card the service stored.
-// shortcut: the panel shows the decision recorded in this visit, not decisions already in the store. List them when a decision names its Lage.
+// experience card the service stored. The protocol lists the decisions already in the store, so an
+// earlier decision can be read and its outcome entered in a later session (AC-12).
+// shortcut: the protocol lists every stored decision of the store, newest first, not those of one Lage (a decision does not name its Lage).
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import type { Card, DecisionDraft, DecisionSections } from '@worldbuilder/core';
 import { cardsSourcePass, sourcePassText } from '@worldbuilder/core/independence';
@@ -24,6 +25,8 @@ const FIELDS = [
   ['exclusions', 'Exclusions'],
   ['rationale', 'Rationale'],
 ] as const;
+
+const SECTIONS = [...FIELDS, ['cardsUsed', 'Cards used'], ['outcome', 'Outcome']] as const;
 
 type Field = (typeof FIELDS)[number][0];
 
@@ -59,9 +62,41 @@ export function DecisionPanel({ client, cards, lageId, disabled }: Props) {
   const [experience, setExperience] = useState<Card | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [stored, setStored] = useState<Card[]>([]);
   const placed = cards.filter((c): c is Card & { id: string } => Boolean(c.id));
+  const titleOf = (id: string): string => placed.find((c) => c.id === id)?.title ?? id;
   const passIds = decision?.sections?.cardsUsed ?? used;
   const pass = sourcePassText(cardsSourcePass(placed.filter((card) => passIds.includes(card.id))));
+
+  async function refresh(): Promise<void> {
+    const page = await client.cards_search({ type: 'decision', limit: 200 });
+    setStored([...page.cards].reverse());
+  }
+
+  useEffect(() => {
+    refresh().catch((e: unknown) => setError(describeError(e)));
+  }, [client]);
+
+  async function open(card: Card): Promise<void> {
+    setError(null);
+    setExperience(null);
+    setAttached([]);
+    setOutcome('');
+    setDecision(card);
+    try {
+      if (card.id && isKnownOutcome(card.sections?.outcome)) await showExperience(card.id);
+    } catch (e) {
+      setError(describeError(e));
+    }
+  }
+
+  function startNew(): void {
+    setDecision(null);
+    setExperience(null);
+    setAttached([]);
+    setOutcome('open');
+    setError(null);
+  }
 
   async function showExperience(decisionId: string): Promise<void> {
     const page = await client.cards_search({ type: 'experience', limit: 200 });
@@ -100,6 +135,7 @@ export function DecisionPanel({ client, cards, lageId, disabled }: Props) {
       }
       if (isKnownOutcome(saved.sections?.outcome)) await showExperience(saved.id!);
       else setOutcome('');
+      await refresh();
     } catch (e) {
       setError(describeError(e));
     } finally {
@@ -124,6 +160,7 @@ export function DecisionPanel({ client, cards, lageId, disabled }: Props) {
       });
       setDecision(saved);
       await showExperience(saved.id!);
+      await refresh();
     } catch (e) {
       setError(describeError(e));
     } finally {
@@ -143,9 +180,44 @@ export function DecisionPanel({ client, cards, lageId, disabled }: Props) {
       <p className="wb-muted" data-testid="decision-source-pass">
         {pass}
       </p>
+      <h3 id="decision-protocol-h">Protocol</h3>
+      {stored.length === 0 ? (
+        <p className="wb-muted" data-testid="decision-protocol-empty">
+          No decision is stored yet.
+        </p>
+      ) : (
+        <ul
+          className="wb-list"
+          aria-labelledby="decision-protocol-h"
+          data-testid="decision-protocol"
+        >
+          {stored.map((card) => (
+            <li key={card.id} data-testid={`decision-protocol-${card.id}`}>
+              <button type="button" className="wb-link" onClick={() => void open(card)}>
+                {card.title}
+              </button>{' '}
+              <span className="wb-muted" data-testid={`decision-protocol-outcome-${card.id}`}>
+                {isKnownOutcome(card.sections?.outcome) ? card.sections?.outcome : 'open'}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
       {decision ? (
         <div>
           <p data-testid="decision-saved">{decision.title}</p>
+          <dl className="wb-envelope" data-testid="decision-sections">
+            {SECTIONS.map(([key, label]) => (
+              <div key={key}>
+                <dt>{label}</dt>
+                <dd data-testid={`decision-section-${key}`}>
+                  {key === 'cardsUsed'
+                    ? (decision.sections?.cardsUsed ?? []).map(titleOf).join(', ')
+                    : decision.sections?.[key]}
+                </dd>
+              </div>
+            ))}
+          </dl>
           {attached.length > 0 && (
             <ul data-testid="decision-scenario">
               {attached.map((statement) => (
@@ -177,6 +249,9 @@ export function DecisionPanel({ client, cards, lageId, disabled }: Props) {
               </button>
             </form>
           )}
+          <button type="button" data-testid="decision-new" onClick={startNew}>
+            New decision
+          </button>
         </div>
       ) : (
         <form onSubmit={onCreate} data-testid="decision-create-form">
