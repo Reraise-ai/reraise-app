@@ -10,16 +10,41 @@ It is updated as tests land.
 
 ## Last local verification
 
-**Date:** 2026-10-18 (final verification run of the M2 source-profile slice, run independently of the implementer)  
-**Branch:** `slice/m2-source-profile` at `78f4a72` (the verified tree; the commit that records this run is the next commit on the branch)  
+**Date:** 2026-10-18 (independent verifier run of the M2 player-fields slice; the implementer's own run is superseded by this one)  
+**Branch:** `slice/m2-player-fields`, verified tree at HEAD `631bbb1`. The commit that records this run is the next commit on the branch; a commit cannot name its own hash, so that hash is given in the verifier's report, not here.  
 **Platform:** Linux (kernel 6.18.44-fc-v139). Not Windows and not macOS: the three-OS matrix was not run here.  
 **Node:** v22.22.0 (`.nvmrc`: 22)  
 **pnpm:** 10.28.0  
-**Python:** 3.11.17 (venv with `pip install -e "integrations/hermes[test]"`, as in CI); ruff 0.17.1 from that venv  
+**Python:** 3.11.17 (venv outside the repository with `pip install -e "integrations/hermes[test]"`, as in CI); ruff 0.17.1 from that venv; pytest 9.1.1  
 **Chromium:** Playwright 1.56.1 (`@playwright/test` in `e2e/package.json`) with the browser under `/opt/pw-browsers` (chromium-1194), not reinstalled.  
-**Environment variable `CI`:** set to `1` for the e2e run (`CI=1 pnpm test:e2e`, which runs the CI reporter and `forbidOnly`); unset for the other steps.
+**Environment variable `CI`:** set to `1` for the e2e run (`CI=1 pnpm test:e2e`, which runs the CI reporter and `forbidOnly`); unset for the other steps.  
+**Worktree:** clean at the start (`git status` empty, branch `slice/m2-player-fields`, not `main`); the run left only git-ignored build output.
 
-**Results** (the exit code and the counts the tool printed; the run started from a clean `git status`, HEAD `78f4a72`):
+**Results** (the exit code and the counts the tool printed):
+- install (`pnpm install --frozen-lockfile`): PASS, exit 0
+- lint (`pnpm lint`, `eslint .`): PASS, exit 0
+- format:check (`prettier --check .`): PASS, exit 0 ("All matched files use Prettier code style")
+- lint:openapi (Redocly): PASS, exit 0; the API description is valid; one problem explicitly ignored, as configured
+- typecheck (`pnpm typecheck`, every package and `tsconfig.scripts.json`): PASS, exit 0
+- check:generated: PASS, exit 0 (`contracts.ts` and `schemas.ts` up to date)
+- test (`pnpm test`, vitest): PASS, exit 0, 103 files, 1660 passed, 6 skipped, 0 failed
+- test:coverage (`pnpm test:coverage`, the command the `checks` job runs): PASS, exit 0, 103 files, 1660 passed, 6 skipped, 0 failed; all files: 95.57 % statements, 91.42 % branches, 91.91 % functions, 97.88 % lines (gate in `vitest.config.ts`: 90 lines, 90 functions, 85 branches, 90 statements; met)
+- check:spdx: PASS, exit 0
+- check:board-tokens: PASS, exit 0
+- check:licence-imports: PASS, exit 0
+- check:no-real-data: PASS, exit 0 (4 lines skipped via `no-real-data-ignore` in `scripts/`, as configured)
+- validate:schemas: PASS, exit 0, 30 schemas, 143 examples, 83 valid and 194 invalid fixtures
+- build (`pnpm build`): PASS, exit 0
+- build:demo: PASS, exit 0
+- check:doc-anchors: PASS, exit 0
+- docs:build (VitePress): PASS, exit 0 ("build complete")
+- audit (`pnpm audit --audit-level high`): PASS, exit 0; the tree has one low-severity advisory, below the gate
+- test:e2e (`CI=1 pnpm test:e2e`: `build`, `build:demo`, then all seven spec files on Chromium from `/opt/pw-browsers`): PASS, exit 0, 9 of 9 tests passed (a11y x3, decision-protocol x1, demo-build x1, player-fields x1, rules-panel x1, source-profile x1, walking-skeleton x1); no failed, skipped or flaky test in the output. Nothing in the e2e suite was unable to run on this machine.
+- test:hermes (`PYTHON` set to the Python 3.11.17 venv): PASS, exit 0, 261 passed, 7 skipped (1 needs `HERMES_SRC`, 6 need `pwsh`; re-checked with `pytest -rs` in this run); `ruff check` and `ruff format --check` on `integrations/hermes`: PASS, exit 0 (32 files formatted)
+- reuse lint (`pipx run reuse==6.2.0 lint`): PASS, exit 0, 993 of 993 files
+- gitleaks 8.28.0 (archive SHA-256 checked against the pinned value `a65b5253…840eb`: OK), `git` mode over the full local history: PASS, exit 0, 29 commits scanned, no leaks
+
+**Earlier run of the same day** (the M2 source-profile slice, HEAD `78f4a72`, kept as history; it is not the record of this branch; its results follow, with the exit code and counts the tool printed, from a clean `git status`):
 - install (`pnpm install --frozen-lockfile`): PASS, exit 0 (lockfile up to date)
 - lint (`pnpm lint`, `eslint .`): PASS, exit 0
 - format:check (`prettier --check .`): PASS, exit 0
@@ -43,18 +68,13 @@ It is updated as tests land.
 - reuse lint (`pipx run reuse==6.2.0 lint`): PASS, exit 0, 992 of 992 files
 - gitleaks 8.28.0 (archive SHA-256 checked against the pinned value: OK), `git` mode over the full local history: PASS, exit 0, 23 commits scanned, no leaks
 
-**Not run here:** the Windows and macOS legs of the `checks` and `e2e` jobs; a real hermes-agent (`HERMES_SRC` unset, so 1 hermes test is skipped); the PowerShell cron variants (`pwsh` absent, 6 hermes tests skipped). Of the 6 vitest skips, 4 are the optional legacy-stance mapping tests of the storage conformance kit (markdown-files, empty and complete Hormuz store), 1 is the fixture regeneration (only with `WB_REGENERATE_FIXTURE`) and 1 is a case-folding test that Linux skips by design (macOS and Windows hosts). That split was recorded earlier and this run did not re-check it. No push and no pull request was made, so CI has not run this branch.
+**Not run in this run:** the Windows and macOS legs of the `checks` and `e2e` jobs (Linux only, so the three-OS matrix is not claimed); a real hermes-agent (`HERMES_SRC` unset, so 1 hermes test is skipped); the PowerShell cron variants (`pwsh` absent, 6 hermes tests skipped). The 6 vitest skips are the count of this run; the split below was not re-checked. No push and no pull request was made, so CI has not run this branch.
+
+**Not run in the earlier run:** the Windows and macOS legs of the `checks` and `e2e` jobs; a real hermes-agent (`HERMES_SRC` unset, so 1 hermes test is skipped); the PowerShell cron variants (`pwsh` absent, 6 hermes tests skipped). Of the 6 vitest skips, 4 are the optional legacy-stance mapping tests of the storage conformance kit (markdown-files, empty and complete Hormuz store), 1 is the fixture regeneration (only with `WB_REGENERATE_FIXTURE`) and 1 is a case-folding test that Linux skips by design (macOS and Windows hosts). That split was recorded earlier and this run did not re-check it. No push and no pull request was made, so CI has not run this branch.
 
 **Note:** the first CI run (pull request 13 on the project's GitHub repository) showed the end-to-end job green on all three operating systems, while the unit-test job failed on macOS (3 tests) and Windows (6 tests); the fixes are on branch `ci/02-macos` and are not yet proven by a green matrix. The Windows run on `7201f3c` (after those fixes) still failed 2 tests: the `fs-util` atomic-write concurrency test (EPERM after the full rename retry budget) and the MCP 413 test (ECONNRESET); fixes are on branch `ci/03-windows`. The gitleaks job also failed on six synthetic values in older history (the published Stripe documentation example key used as test bait, plus five test or fixture tokens: a base64 confirmation token in two Level-1 fixtures, a fake adapter key, an example sentence for the secret router and an arbitrary token in an invalid fixture). History cannot be rewritten, so `.gitleaks.toml` allowlists each exact value in the file(s) where it lives, with the default rules left on; the same value in any other file is still flagged.
 
-**Also checked 2026-10-18, Linux, Node v22.22.0, pnpm 10.28.0: the M2 player-fields slice, by its implementer** (branch `slice/m2-player-fields`, started at `17f5d97`; not an independent run). Chromium from `/opt/pw-browsers`.
-
-- lint, typecheck, format:check, check:spdx, check:licence-imports, check:no-real-data, check:generated, check:board-tokens, check:doc-anchors, lint:openapi: PASS, exit 0
-- validate:schemas: PASS, 30 schemas, 143 examples, 83 valid and 194 invalid fixtures
-- test:coverage: PASS, exit 0, 103 files, 1660 passed, 6 skipped, 0 failed (before the slice: 1644 passed, 6 skipped); all files 95.46 % statements, 91.34 % branches, 91.61 % functions, 97.88 % lines
-- build and build:demo (inside `test:e2e`) and docs:build: PASS, exit 0
-- test:e2e (`CI=1`): PASS, exit 0, 9 of 9 tests (the eight of the earlier run plus `player-fields.spec.ts`); that spec also passed twice more on its own
-- Not run: Windows and macOS, test:hermes, reuse lint, gitleaks, audit
+**Implementer's run of the same slice, 2026-10-18 (superseded by the verifier run in "Last local verification").** The implementer recorded 1660 passed and 6 skipped in 103 files, and 9 of 9 e2e tests, which agrees with this run. Its coverage figures (95.46 % statements, 91.34 % branches, 91.61 % functions, 97.88 % lines) differ from this run's (95.57 / 91.42 / 91.91 / 97.88); the verifier run's figures are the ones recorded above, and both pass the gate. The implementer did not run test:hermes, reuse, gitleaks or audit.
 
 **Also checked 2026-10-13, Windows, Node v22.23.2, pnpm 10.28.0.** This slice only.
 
@@ -162,7 +182,7 @@ The done criterion of the slice ([roadmap](./roadmap.md#m2-vertical-slices)), cl
 
 ## M2: player fields with provenance
 
-The done criterion of the slice ([roadmap](./roadmap.md#m2-vertical-slices)), clause by clause. The player-field schema (`playerEntry` with a required `source`), the adapters' rejection of an unsourced entry, `seatEntries` and `entriesSourcePass` in `packages/core`, and the source pass on the card node, the inspector, the edge list and the decision panel were already in the code base. This slice adds the missing proof: all four player fields on the real adapter, an empty field, a source that names no card, the pass on every surface and the real path in a browser. No production code of the board, the service or the adapter changed. One defect was found in the reference fake of the storage conformance kit: its `patch` accepted an unsourced player entry, which the markdown-files adapter refuses; the fake now validates the patched player fields too. Status of P1 to P3: each named test was run in the final local run of 2026-10-18 on `slice/m2-player-fields` and passed; the three-OS CI matrix has not run them.
+The done criterion of the slice ([roadmap](./roadmap.md#m2-vertical-slices)), clause by clause. The player-field schema (`playerEntry` with a required `source`), the adapters' rejection of an unsourced entry, `seatEntries` and `entriesSourcePass` in `packages/core`, and the source pass on the card node, the inspector, the edge list and the decision panel were already in the code base. This slice adds the missing proof: all four player fields on the real adapter, an empty field, a source that names no card, the pass on every surface and the real path in a browser. No production code of the board, the service or the adapter changed. One defect was found in the reference fake of the storage conformance kit: its `patch` accepted an unsourced player entry, which the markdown-files adapter refuses; the fake now validates the patched player fields too. Status of P1 to P3: each named test was run in the independent verifier run of 2026-10-18 (HEAD `631bbb1`): the full `pnpm test`, `pnpm test:coverage` and `CI=1 pnpm test:e2e` (which includes `e2e/tests/player-fields.spec.ts`) passed; the three-OS CI matrix has not run them.
 
 | ID | Criterion | Test file | CI job | Status |
 | --- | --- | --- | --- | --- |
@@ -170,7 +190,7 @@ The done criterion of the slice ([roadmap](./roadmap.md#m2-vertical-slices)), cl
 | M2-P2 | An empty player field is allowed: an empty list or no field at all is accepted, stored, read back after a restart, and the board shows it as 0 findings with no entry list | `services/api/src/hormuz.test.ts` (an empty and an absent field accepted; sourced entries kept after a restart); `packages/conformance/src/storage.ts`; `apps/board/src/sourcePass.test.tsx` (an actor with `interests: []`); `e2e/tests/player-fields.spec.ts` (an accepted seat with empty `interests` and `moves` shows "0 findings · 0 origins"; the consortium of the example has no moves and shows the same) | `checks` (`pnpm test:coverage`), `e2e` (`pnpm test:e2e`) | proven (local, 2026-10-18; no CI run yet) |
 | M2-P3 | The board shows "N findings · M origins" on each placed card, on an actor's seat entries and on its moves, on each edge, and on the cards a decision uses; copies and a quote chain are one origin | `packages/core/src/independence.test.ts`; `apps/board/src/flowMapping.test.ts` (placed card); `apps/board/src/sourcePass.test.tsx` (seat, moves, edge, a new decision with copies, a stored decision opened from the protocol, two entries citing one card); `e2e/tests/player-fields.spec.ts` (Hormuz: the wire report, the newspaper and the broadcaster show "3 findings · 1 origin"; the navy "4 findings · 3 origins" on its seat and "1 finding · 1 origin" on its moves; the represents edge "2 findings · 2 origins" and a new supports edge between a copy and its original "2 findings · 1 origin"; the stored decision "3 findings · 3 origins"; an axe scan) | `checks` (`pnpm test:coverage`), `e2e` (`pnpm test:e2e`) | proven (local, 2026-10-18; no CI run yet) |
 
-Mutation probes of 2026-10-18 (core line broken, named tests red, line restored): `required` of `playerEntry` without `source` (11 vitest tests and the e2e red); `minItems: 1` on `playerField` (3 vitest tests and the e2e red); `findings: entries.length + 1` in `entriesSourcePass` (4 vitest tests and the e2e red); the edge list counting only its first card (1 and the e2e red); the decision panel counting the cards it does not use (3 and the e2e red); the placed card counting only itself (1 and the e2e red).
+Mutation probes by the implementer of 2026-10-18 (not repeated in the verifier run, which changed no code) (core line broken, named tests red, line restored): `required` of `playerEntry` without `source` (11 vitest tests and the e2e red); `minItems: 1` on `playerField` (3 vitest tests and the e2e red); `findings: entries.length + 1` in `entriesSourcePass` (4 vitest tests and the e2e red); the edge list counting only its first card (1 and the e2e red); the decision panel counting the cards it does not use (3 and the e2e red); the placed card counting only itself (1 and the e2e red).
 
 Known gap: the pass of a stored decision counts only the cards of `cardsUsed` that are placed on the open Lage. A card removed from the board after the decision is not counted, so the line can show fewer findings than the decision cites. The contract does not say what the line shows then (open question for the architect).
 
