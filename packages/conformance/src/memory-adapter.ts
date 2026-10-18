@@ -40,6 +40,18 @@ const validateDraft = schemaValidator(
   'https://worldbuilder.invalid/schemas/v0/card.schema.json#/$defs/draft',
 );
 
+const validatePlayerField = schemaValidator(
+  'https://worldbuilder.invalid/schemas/v0/card.schema.json#/$defs/playerField',
+);
+const PLAYER_FIELDS = [
+  'interests',
+  'capabilities',
+  'dependencies',
+  'moves',
+  'redLines',
+  'assumedGoals',
+];
+
 /** Canonical card fields the fake understands; everything else is a foreign store field. */
 const CONTENT_FIELDS = new Set([
   'format',
@@ -262,6 +274,15 @@ export class MemoryStorageAdapter implements StorageAdapter {
     this.assertKnown(keys);
     const blocked = keys.filter((k) => NOT_PATCHABLE.has(k));
     if (blocked.length > 0) throw new StorageError('invalid', `cannot patch ${blocked.join(', ')}`);
+    for (const field of PLAYER_FIELDS) {
+      const entries = (patch as Record<string, unknown>)[field];
+      if (entries !== undefined && !validatePlayerField(entries)) {
+        throw new StorageError(
+          'invalid',
+          `invalid ${field}: every entry needs a text and a source`,
+        );
+      }
+    }
 
     const current = this.toCard(externalId, stored);
     if (guard.contentHash !== undefined && guard.contentHash !== current.contentHash) {

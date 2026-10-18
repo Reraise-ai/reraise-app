@@ -189,6 +189,11 @@ export function describeStorageAdapterConformance(
         { ...draft, collection: 'actors', interests: [{ text: 'Unsourced' }] },
         { ...draft, interests: [{ text: 'On a claim', source: 'https://example.org/a' }] },
         { ...draft, collection: 'actors', redLines: [{ text: 'Unsourced red line' }] },
+        { ...draft, collection: 'actors', capabilities: [{ text: 'Unsourced capability' }] },
+        { ...draft, collection: 'actors', dependencies: [{ text: 'Unsourced dependency' }] },
+        { ...draft, collection: 'actors', moves: [{ text: 'Unsourced move' }] },
+        { ...draft, collection: 'actors', assumedGoals: [{ text: 'Unsourced goal' }] },
+        { ...draft, collection: 'actors', moves: [{ text: 'Empty source', source: '' }] },
         {
           ...draft,
           collection: 'actors',
@@ -205,6 +210,39 @@ export function describeStorageAdapterConformance(
       }
       // Nothing was written: the store holds exactly what it held before (it need not be empty).
       expect((await adapter.list({ limit: Number.MAX_SAFE_INTEGER })).items).toEqual(before);
+    });
+
+    it('keeps sourced player entries, accepts empty player fields and refuses an unsourced patch (ADR-0009)', async () => {
+      const { adapter } = await factory();
+      const fields = {
+        interests: [{ text: 'Keep the lane open', source: 'https://example.org/seat/a' }],
+        capabilities: [{ text: 'Escort fleet', source: 'https://example.org/seat/b' }],
+        dependencies: [],
+        moves: [{ text: 'Publish a circular', source: 'https://example.org/seat/c' }],
+      };
+      const id = await adapter.create(
+        { ...draft, collection: 'actors', type: 'organisation', ...fields },
+        'human',
+      );
+      const card = await adapter.read(id);
+      expectValidCard(card);
+      expect(card).toMatchObject({
+        interests: fields.interests,
+        capabilities: fields.capabilities,
+        moves: fields.moves,
+      });
+      expect(card?.dependencies ?? []).toEqual([]);
+
+      const emptyId = await adapter.create(
+        { ...draft, title: 'Empty seat', collection: 'actors', type: 'organisation', moves: [] },
+        'human',
+      );
+      expectValidCard(await adapter.read(emptyId));
+
+      await expect(
+        adapter.patch(id, { moves: [{ text: 'Unsourced move' }] } as never),
+      ).rejects.toThrow();
+      expect((await adapter.read(id))?.moves).toEqual(fields.moves);
     });
 
     it('round-trips red lines, assumed goals and a personality type (ADR-0038)', async () => {
