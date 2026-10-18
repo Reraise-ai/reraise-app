@@ -68,6 +68,37 @@ describe('decision protocol', () => {
     );
   });
 
+  it('also tells the board when a new decision is created with a known outcome', async () => {
+    const recorded = vi.fn();
+    setup([], recorded);
+    await screen.findByTestId('decision-protocol-empty');
+    const create = async (outcome: string) => {
+      fireEvent.change(screen.getByTestId('decision-title'), { target: { value: 'New choice' } });
+      for (const key of [
+        'situation',
+        'trigger',
+        'conditions',
+        'facts',
+        'priorities',
+        'action',
+        'alternatives',
+        'exclusions',
+        'rationale',
+      ]) {
+        fireEvent.change(screen.getByTestId(`decision-${key}`), { target: { value: 'Text' } });
+      }
+      fireEvent.click(screen.getByTestId(`decision-card-${USED}`));
+      fireEvent.change(screen.getByTestId('decision-outcome'), { target: { value: outcome } });
+      fireEvent.click(screen.getByTestId('decision-create-submit'));
+      await screen.findByTestId('decision-saved');
+    };
+    await create('open');
+    expect(recorded).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId('decision-new'));
+    await create('It held.');
+    await waitFor(() => expect(recorded).toHaveBeenCalledTimes(1));
+  });
+
   it('lists an earlier decision, opens it with all eleven sections and takes its outcome later', async () => {
     const earlier = decision('D9', 'open');
     const api = setup([earlier]);
