@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- The inspector reads the source profile again after the human enters an outcome. Before, it kept the count it had loaded (n=0) until another card was selected, although the service already held n=1 (ADR-0018, AC-11).
 - Typecheck resolves `@worldbuilder/training-export` from its source, the same way as the other workspace packages. `dist/` is not in git, so CI no longer fails before that package is built.
 - The store write lock treats Windows `EPERM` on an exclusive create as "someone else holds it" and waits, when the lock file is there.
 - `model_ask` answers 200 again. The response schema no longer uses an `allOf` that Ajv strict mode cannot compile.
