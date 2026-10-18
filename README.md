@@ -76,6 +76,7 @@ Without a checkout, with Node 22 only: unpack `reraise-toolkit-<version>.zip` fr
 release (`.github/workflows/release.yml` builds it on a `v*` tag; no tag exists yet) and run the
 same command in that folder: `node services/api/dist/cli.js serve --init --store ~/my-world` (or
 `npm start -- --init --store ~/my-world`). Nothing to install: the dependencies are in the zip.
+To check a zip the way the release does: `node scripts/smoke-toolkit.mjs <zip>`.
 The same folder is the npm package `@reraise/app` (command `reraise`; not published): `npm pack`
 in `dist/toolkit` after `node scripts/pack-toolkit.mjs` gives a tarball that runs with
 `npx ./reraise-app-<version>.tgz serve --init --store ~/my-world`.

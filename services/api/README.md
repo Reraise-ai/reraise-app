@@ -30,7 +30,8 @@ credential, from `apps/board/dist` (the toolkit zip and the container image keep
 layout). A browser then needs no `--allow-origin`; only the Vite dev
 server on another port does. Without a built board the routes `/` and `/assets/*` do not exist.
 `--init` creates a missing store (`worldbuilder-store.yaml`, `cards/` and one empty, private world
-"My world" in `world.json`); an existing store is opened unchanged.
+"My world" in `world.json`, unless a `world.json` is already there); an existing store is opened
+unchanged and no file is overwritten.
 
 `serve` opens the store with the markdown-files adapter (tested on a copy of the Hormuz
 example, `src/hormuz.test.ts`) and binds `127.0.0.1` by default, creates a fresh human session token at every start, writes
