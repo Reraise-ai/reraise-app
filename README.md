@@ -76,6 +76,9 @@ Without a checkout, with Node 22 only: unpack `reraise-toolkit-<version>.zip` fr
 release (`.github/workflows/release.yml` builds it on a `v*` tag; no tag exists yet) and run the
 same command in that folder: `node services/api/dist/cli.js serve --init --store ~/my-world` (or
 `npm start -- --init --store ~/my-world`). Nothing to install: the dependencies are in the zip.
+The same folder is the npm package `@reraise/app` (command `reraise`; not published): `npm pack`
+in `dist/toolkit` after `node scripts/pack-toolkit.mjs` gives a tarball that runs with
+`npx ./reraise-app-<version>.tgz serve --init --store ~/my-world`.
 
 With Docker: `docker compose up --build`, then open `http://127.0.0.1:4310` and paste the token
 from `docker compose logs`. Store and state directory live in the volume `reraise-data`
