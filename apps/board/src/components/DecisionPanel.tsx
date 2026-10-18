@@ -48,10 +48,12 @@ interface Props {
   /** Set when the panel can attach the live what-if layer (ADR-0050). */
   lageId?: string;
   disabled?: boolean;
+  /** Called after the service stored a decision whose outcome is known. */
+  onOutcomeRecorded?(): void;
 }
 
 /** The human records a decision. A known outcome is the service's cue to store an experience card. */
-export function DecisionPanel({ client, cards, lageId, disabled }: Props) {
+export function DecisionPanel({ client, cards, lageId, disabled, onOutcomeRecorded }: Props) {
   const [title, setTitle] = useState('');
   const [fields, setFields] = useState(emptyFields);
   const [used, setUsed] = useState<string[]>([]);
@@ -136,8 +138,10 @@ export function DecisionPanel({ client, cards, lageId, disabled }: Props) {
         const snapshot = await client.scenario_attach(lageId, saved.id);
         setAttached(snapshot.assumptions.map((item) => item.statement));
       }
-      if (isKnownOutcome(saved.sections?.outcome)) await showExperience(saved.id!);
-      else setOutcome('');
+      if (isKnownOutcome(saved.sections?.outcome)) {
+        await showExperience(saved.id!);
+        onOutcomeRecorded?.();
+      } else setOutcome('');
       await refresh();
     } catch (e) {
       setError(describeError(e));
@@ -163,6 +167,7 @@ export function DecisionPanel({ client, cards, lageId, disabled }: Props) {
       });
       setDecision(saved);
       await showExperience(saved.id!);
+      onOutcomeRecorded?.();
       await refresh();
     } catch (e) {
       setError(describeError(e));

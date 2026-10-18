@@ -104,6 +104,33 @@ describe('inspector source profile', () => {
     );
   });
 
+  it('reads the profile again when a known outcome was stored', async () => {
+    const answers = [stored(1), stored(2, 1)];
+    const fetch = vi.fn(
+      async () =>
+        new Response(JSON.stringify(answers.shift()), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }),
+    );
+    const client = createClient({ baseUrl: BASE, token: TOKEN, fetch });
+    const props = { client, card: CARD, cardId: CARD.id, stance: undefined };
+    const { rerender } = render(
+      <InspectorPanel {...props} onSaveStance={async () => {}} profileVersion={0} />,
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId('source-dimension-hitAccuracy').textContent).toContain('(n=1)'),
+    );
+    rerender(<InspectorPanel {...props} onSaveStance={async () => {}} profileVersion={0} />);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    rerender(<InspectorPanel {...props} onSaveStance={async () => {}} profileVersion={1} />);
+    await waitFor(() =>
+      expect(screen.getByTestId('source-dimension-hitAccuracy').textContent).toContain('(n=2)'),
+    );
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(screen.getByTestId('source-profile-earlier').textContent).toBe('Earlier hit count: 1');
+  });
+
   it('shows an alert when the profile cannot be read', async () => {
     open(500, { title: 'Unavailable', status: 500 });
     await waitFor(() => expect(screen.getByTestId('source-profile-error')).toBeTruthy());
