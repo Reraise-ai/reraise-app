@@ -10,6 +10,47 @@ It is updated as tests land.
 
 ## Last local verification
 
+**Date:** 2026-10-18, independent final verifier run of the M2 time slider slice (`slice/m2-time-slider`). It supersedes the earlier runs below.  
+**Branch:** `slice/m2-time-slider`, verified tree at HEAD `5a16634fd3b54eed7e33af64648c7f91dadf6c86`, worktree clean before the run. The commit that records this run is the next commit on the branch; a commit cannot name its own hash, so that hash is given in the verifier's report, not here.  
+**Platform:** Linux (kernel 6.18.44-fc-v139). Not Windows and not macOS: the three-OS matrix was not run here, so no cross-OS result is claimed.  
+**Node:** v22.22.0 (`.nvmrc`: 22)  
+**pnpm:** 10.28.0  
+**Python:** 3.11.17 (venv outside the repository with `pip install -e "integrations/hermes[test]"`, as in CI); ruff 0.17.1 from that venv; pytest 9.1.1  
+**Chromium:** Playwright 1.56.1 (`@playwright/test` in `e2e/package.json`) with the browser under `/opt/pw-browsers` (chromium-1194), not reinstalled.  
+**Other tools:** reuse 6.2.0 via `pipx run`; gitleaks 8.28.0, the archive checked against the pinned SHA-256 before extraction.  
+**Environment variable `CI`:** set to `1` for the e2e run only (`CI=1 pnpm test:e2e`: CI reporter and `forbidOnly`); unset for the other steps.
+
+**Results** (the exit code and the counts the tool printed):
+- install (`pnpm install --frozen-lockfile`): PASS, exit 0
+- lint (`pnpm lint`, `eslint .`): PASS, exit 0
+- format:check (`prettier --check .`): PASS, exit 0
+- lint:openapi (Redocly): PASS, exit 0
+- typecheck (`pnpm typecheck`, every package and `tsconfig.scripts.json`): PASS, exit 0
+- check:generated: PASS, exit 0 (`contracts.ts` and `schemas.ts` up to date)
+- build (`pnpm build`): PASS, exit 0
+- build:demo: PASS, exit 0
+- test (`pnpm test`, vitest): PASS, exit 0, 103 files, 1667 passed, 6 skipped, 0 failed
+- test:coverage (`pnpm test:coverage`, the command the `checks` job runs): PASS, exit 0, 103 files, 1667 passed, 6 skipped, 0 failed; all files: 95.57 % statements, 91.42 % branches, 91.91 % functions, 97.88 % lines (gate in `vitest.config.ts`: 90 lines, 90 functions, 85 branches, 90 statements; met)
+- check:spdx: PASS, exit 0
+- check:no-real-data: PASS, exit 0 (4 lines skipped via `no-real-data-ignore` in `scripts/`, as configured)
+- validate:schemas: PASS, exit 0, 30 schemas, 143 examples, 83 valid and 194 invalid fixtures
+- check:board-tokens: PASS, exit 0
+- check:licence-imports: PASS, exit 0
+- check:doc-anchors: PASS, exit 0
+- docs:build (VitePress): PASS, exit 0 ("build complete")
+- audit (`pnpm audit --audit-level high`): PASS, exit 0; the tree has one low-severity advisory, below the gate
+- test:hermes (`PYTHON` set to the Python 3.11.17 venv): PASS, exit 0, 261 passed, 7 skipped (1 needs `HERMES_SRC`, 6 need `pwsh`; the skip reasons were listed with `pytest -rs`)
+- ruff check and ruff format --check on `integrations/hermes` (run from the repository root, as in CI): PASS, exit 0, 32 files formatted
+- reuse lint (`pipx run reuse==6.2.0 lint`): PASS, exit 0, 994 of 994 files
+- gitleaks 8.28.0, `git` mode over the full local history: PASS, exit 0, 35 commits scanned, no leaks
+- test:e2e (`CI=1 pnpm test:e2e`: `build`, `build:demo`, then all eight spec files on Chromium from `/opt/pw-browsers`): PASS, exit 0, 10 of 10 tests passed (a11y x3, decision-protocol x1, demo-build x1, player-fields x1, rules-panel x1, source-profile x1, time-slider x1, walking-skeleton x1); no failed, skipped or flaky test in the output. No part of the e2e suite was unable to run on this machine.
+
+**Named M2 time-slider tests, checked by name in this run** (`vitest run --reporter=verbose` on the six files that hold them, PASS, 281 passed, 4 skipped): `App.test.tsx` (`shows an archived board and does not save that view`, `shows a card that was on the archived board and has left the board since`, `cannot edit while an archived board is shown`), `api/client.test.ts` (`reads archived Lage versions`), `hormuz.test.ts` (`lists the replaced states oldest first with real timestamps, never the current one, and reading writes nothing`), `contract.test.ts` (`lage_save writes version + 1, archives the previous one, and refuses a stale save`), `security.test.ts` (the two `lage_versions` agent-token refusals), and the markdown-files conformance file (`lists the replaced Lage states oldest first and never the current one`, empty and complete Hormuz store).
+
+**Not run in this run:** the Windows and macOS legs of the `checks` and `e2e` jobs; a real hermes-agent (`HERMES_SRC` unset, so 1 hermes test is skipped); the PowerShell cron variants (`pwsh` absent, 6 hermes tests skipped). The mutation probes under M2-T3 are the implementer's record and were not re-run here. No push and no pull request was made, so CI has not run this branch.
+
+**Earlier local verification** (the M2 player-fields slice, HEAD `631bbb1`, kept as history):
+
 **Date:** 2026-10-18 (independent verifier run of the M2 player-fields slice; the implementer's own run is superseded by this one)  
 **Branch:** `slice/m2-player-fields`, verified tree at HEAD `631bbb1`. The commit that records this run is the next commit on the branch; a commit cannot name its own hash, so that hash is given in the verifier's report, not here.  
 **Platform:** Linux (kernel 6.18.44-fc-v139). Not Windows and not macOS: the three-OS matrix was not run here.  
@@ -203,7 +244,7 @@ The done criterion of the slice ([roadmap](./roadmap.md#m2-vertical-slices)), cl
 | ID | Criterion | Test file | CI job | Status |
 | --- | --- | --- | --- | --- |
 | M2-T1 | The board can be shown as of an earlier date: the slider's positions are the archived states, oldest first, and the last position is the current board; the question, options, placements and edges of the chosen state are shown | `apps/board/src/App.test.tsx` (`shows an archived board`: question, options and banner of the old state, back to the current one); `apps/board/src/api/client.test.ts`; `e2e/tests/time-slider.spec.ts` (three changes made in the board archive versions 3, 4 and 5 of the Hormuz Lage; after a reload the slider has four positions; position 0 shows version 3 without the private card, position 1 shows it, position 2 shows the drawn edge, the last position shows version 6; an axe scan of the board at an earlier date) | `checks` (`pnpm test:coverage`), `e2e` (`pnpm test:e2e`) | proven (local, 2026-10-18; no CI run yet) |
-| M2-T2 | `lage_versions` returns the archived Lage versions, oldest first, with the time each was replaced, and the current state is not in the list. An unknown Lage and one the caller may not see are 404; an agent token is refused | `packages/conformance/src/storage.ts` (`lists the replaced Lage states oldest first and never the current one`, on every adapter, with ISO times that do not decrease and lie between the test start and now); `services/api/src/hormuz.test.ts` (`the time slider reads archived Lage versions`: four versions written on the real adapter, versions 1 to 3 listed in that order after a restart, version 4 only through `lage_get`, none listed for a new Lage); `services/api/src/contract.test.ts` (the response matches the contract; 404 for a non-Lage); `services/api/src/security.test.ts` (human-only); `e2e/tests/time-slider.spec.ts` (over HTTP: versions 3, 4, 5, times between the test start and now, in order) | `checks` (`pnpm test:coverage`), `e2e` (`pnpm test:e2e`) | proven (local, 2026-10-18; no CI run yet) |
+| M2-T2 | `lage_versions` returns the archived Lage versions, oldest first, with the time each was replaced, and the current state is not in the list. An unknown Lage and one the caller may not see are 404; an agent token is refused | `packages/adapters/storage-markdown-files/src/conformance.test.ts` (runs the kit of `packages/conformance/src/storage.ts`: `lists the replaced Lage states oldest first and never the current one`, for every adapter; today the only adapter is markdown-files, empty and complete Hormuz store; ISO times that do not decrease and lie between the test start and now); `services/api/src/hormuz.test.ts` (`the time slider reads archived Lage versions`: four versions written on the real adapter, versions 1 to 3 listed in that order after a restart, version 4 only through `lage_get`, none listed for a new Lage); `services/api/src/contract.test.ts` (the response matches the contract; 404 for a non-Lage); `services/api/src/security.test.ts` (human-only); `e2e/tests/time-slider.spec.ts` (over HTTP: versions 3, 4, 5, times between the test start and now, in order) | `checks` (`pnpm test:coverage`), `e2e` (`pnpm test:e2e`) | proven (local, 2026-10-18; no CI run yet) |
 | M2-T3 | The slider shows the earlier board and does not save the view: moving it sends no write, the edit controls are off while an earlier board is shown, and no file of the store or of the state directory changes | `apps/board/src/App.test.tsx` (no `PUT` while the slider moves; place, draw and the other edits are disabled and send nothing on an earlier board, and are enabled again on the current one); `services/api/src/hormuz.test.ts` (path, size and modification time of every file of the store are equal before and after two reads); `e2e/tests/time-slider.spec.ts` (every request of a non-`GET` kind to the service is recorded while the slider visits all four positions: none; path, size and modification time of every file under the store and under the state directory are equal before and after; the Lage file still has the current version) | `checks` (`pnpm test:coverage`), `e2e` (`pnpm test:e2e`) | proven (local, 2026-10-18; no CI run yet) |
 
 Mutation probes (core line broken, named tests red, line restored), 2026-10-18: the markdown-files adapter sorting newest first (the conformance test on both Hormuz stores, the Hormuz API test and the contract test red); `lage_versions` appending the current state (the Hormuz API test and the contract test red); the slider calling `lage_save` with the chosen state (`shows an archived board and does not save that view` red, and the browser test red because the removed card was placed again by the write); the board not reading a card that left the board (`shows a card that was on the archived board and has left the board since` red).
