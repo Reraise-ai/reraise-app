@@ -103,6 +103,18 @@ describe('Lage list and creation', () => {
     expect(screen.queryByTestId('time-slider')).toBeNull();
   });
 
+  it('shows the rules panel on an open board and no meter, percentage or winning option (AC-03)', async () => {
+    const api = createMockApi();
+    await openLage(api);
+    const workbench = screen.getByTestId('workbench');
+    await within(workbench).findByTestId('rules-panel');
+    expect(await within(workbench).findAllByText(/^(Fired|Not fired)$/)).not.toHaveLength(0);
+    expect(
+      workbench.querySelector('meter, progress, [role="meter"], [role="progressbar"]'),
+    ).toBeNull();
+    expect(workbench.textContent).not.toMatch(/%|percent|barometer|verdict|recommend|winning/i);
+  });
+
   it('shows an archived board and does not save that view', async () => {
     const api = createMockApi();
     api.versions = [
