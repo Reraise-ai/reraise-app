@@ -5,12 +5,13 @@
 // Board API contract, the examples and the licence files. The folder keeps the repository
 // layout, so it starts with plain Node 22 exactly like a checkout:
 //   node services/api/dist/cli.js serve --init --store ./my-world      (or: npm start -- ...)
+// The folder is also the npm package @reraise/app (see its package.json below).
 // Run `pnpm build` first. Writes dist/toolkit/ and dist/reraise-toolkit-<version>.zip
 // (the zip needs `zip` on the PATH; --no-zip writes the folder only, as the Dockerfile does).
 //   node scripts/pack-toolkit.mjs [--version <x.y.z>] [--no-zip]
 
 import { execFileSync } from 'node:child_process';
-import { cpSync, existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
@@ -33,7 +34,8 @@ for (const built of ['services/api/dist/cli.js', 'apps/board/dist/index.html']) 
 }
 rmSync(out, { recursive: true, force: true });
 
-// A flat node_modules without symbolic links, so the folder survives a zip on every platform.
+// A flat node_modules of plain copies: a zip keeps no symbolic link on every platform, and npm
+// drops the hard-link entries of a tarball (pnpm links identical files from its store).
 // `--legacy`: pnpm 10 deploys workspace dependencies this way without inject-workspace-packages.
 execFileSync(
   'pnpm',
@@ -44,39 +46,47 @@ execFileSync(
     '--prod',
     '--legacy',
     '--config.node-linker=hoisted',
+    '--config.package-import-method=copy',
     api,
   ],
   { cwd: root, stdio: 'inherit', shell: process.platform === 'win32' },
 );
 rmSync(path.join(api, 'node_modules', '.bin'), { recursive: true, force: true });
+// At the top, where `npm pack` takes bundled dependencies from; Node finds them from services/api.
+renameSync(path.join(api, 'node_modules'), path.join(out, 'node_modules'));
 
 copy('apps/board/dist', (src) => !path.basename(src).startsWith('demo'));
 copy('schemas/openapi/board-api.yaml');
 for (const rel of ['examples', 'LICENSE', 'LICENSING.md', 'LICENSES', 'README.md']) copy(rel);
 
-// The service's package.json: the release version and the exact versions it bundles.
+// The top package.json is the one publishable package, @reraise/app (`npm pack` in the folder,
+// then `npx ./reraise-app-<version>.tgz serve --init --store <folder>`): the exact versions it
+// bundles, the `reraise` command. The service's own package.json only keeps its module type.
 const apiPkg = readJson(path.join(api, 'package.json'));
-const dependencies = Object.fromEntries(
-  Object.keys(apiPkg.dependencies).map((name) => [
-    name,
-    readJson(path.join(api, 'node_modules', name, 'package.json')).version,
-  ]),
-);
-delete apiPkg.devDependencies;
 writeJson(path.join(api, 'package.json'), {
-  ...apiPkg,
-  version,
-  scripts: { start: apiPkg.scripts.start },
-  dependencies,
-});
-writeJson(path.join(out, 'package.json'), {
-  name: 'reraise-toolkit',
+  name: apiPkg.name,
   version,
   private: true,
+  license: apiPkg.license,
+  type: apiPkg.type,
+});
+const bundled = Object.keys(apiPkg.dependencies);
+writeJson(path.join(out, 'package.json'), {
+  name: '@reraise/app',
+  version,
+  description: 'The Reraise toolkit: the Worldbuilder service and board in one command',
   license: 'AGPL-3.0-or-later',
   type: 'module',
   engines: rootPkg.engines,
+  bin: { reraise: 'services/api/dist/cli.js' },
   scripts: { start: rootPkg.scripts.start },
+  dependencies: Object.fromEntries(
+    bundled.map((name) => [
+      name,
+      readJson(path.join(out, 'node_modules', name, 'package.json')).version,
+    ]),
+  ),
+  bundleDependencies: bundled,
 });
 
 if (values['no-zip']) {

@@ -261,6 +261,7 @@ open, empty board of their own in under ten minutes, with one command after the 
 | TK-1 | One process, one origin: `serve` serves the built board at `/` and `/assets/*` without a credential, Host-checked; the API routes still need a credential; a path out of the board folder is refused; the start prints one line with the session token and the URL to open | `services/api/src/main.test.ts` (`serves the built board on its own origin without a credential; the API still needs one`); `e2e/tests/first-start.spec.ts` (the printed URL and token, nothing typed but the token, the login form defaults to the page origin) | `checks` (`pnpm test:coverage`), `e2e` (`pnpm test:e2e`) | proven (local, 2026-10-18; no CI run yet) |
 | TK-2 | `serve --init` on a folder that does not exist creates `worldbuilder-store.yaml` and one empty, private world "My world", no cards; a second start keeps the same world | `services/api/src/main.test.ts` (`--init creates an empty store with one starter world and keeps it on the next start`); `e2e/tests/first-start.spec.ts` (empty Lagen list, the first Lage is created and opens) | `checks`, `e2e` | proven (local, 2026-10-18; no CI run yet) |
 | TK-3 | Release: a `v*` tag packs `reraise-toolkit-<version>.zip` (service with its production dependencies and no symbolic links, board, Board API contract, examples, licence files, README), starts the unpacked zip on a new store and attaches the zip to the release; the same folder is the Docker image (`Dockerfile`, `docker-compose.yml`, volume `/data`) | `scripts/pack-toolkit.mjs`, `scripts/smoke-toolkit.mjs` (unzips into a fresh temporary folder outside the repository, `serve --init` on a missing store, checks `GET /` serves the board, `/health`, and the starter world with the printed token), `.github/workflows/release.yml` | `release` (on tag; never run) | proven (local, 2026-10-18; no CI run yet) |
+| TK-4 | The npx way, prepared: the toolkit folder is the package `@reraise/app` (the only package that is not private; all workspace packages stay private), command `reraise`, every dependency bundled at the top with exact versions; `npm pack` gives a tarball without hard-link entries that `npx` starts | `scripts/pack-toolkit.mjs`; the commands below | none (not published, no CI step) | proven (local, 2026-10-18; no CI run yet) |
 
 Local run of 2026-10-18 for TK-3: `node scripts/pack-toolkit.mjs --version 0.0.0-local` wrote
 `dist/reraise-toolkit-0.0.0-local.zip` (10.6 MB); `node scripts/smoke-toolkit.mjs
@@ -275,6 +276,15 @@ CA through a local copy of the Dockerfile with two added lines, `COPY --from=ca`
 127.0.0.1:4310:4310 -v <volume>:/data`: `GET /` 200, `GET /worlds` with the logged token 200 "My
 world"; after `docker restart` the same world id; `docker compose up --no-build` on that image:
 `GET /` 200. The workflow itself has not run (no tag, no push).
+
+Local run of 2026-10-18 for TK-4: `npm pack` in `dist/toolkit` wrote `reraise-app-0.0.0-local.tgz`
+(7.3 MB, 6414 files, 0 hard-link entries: the first try with pnpm's hard links had 741, and npm
+dropped those files on install, so `zod/v4-mini` was missing; the deploy now copies files). In a
+fresh folder with an empty npm cache and `npm_config_offline=true`: `npx --yes
+./reraise-app-0.0.0-local.tgz serve --init --store /tmp/x-reraise-npx` printed the token line
+with `Open http://127.0.0.1:4313`, `GET /` 200, `GET /worlds` 200 "My world", and the new store
+held `worldbuilder-store.yaml`, `world.json` and `cards/`. The zip smoke check and the Docker
+image were run again on this layout: both pass.
 
 Local run of 2026-10-18 (Linux, Node 22.22.0, pnpm 10.28.0, Chromium 1194 from
 `/opt/pw-browsers`): `pnpm lint`, `pnpm typecheck`, `pnpm format:check` exit 0; `pnpm test` 1669

@@ -155,6 +155,7 @@ Tests: [verification](./verification.md#toolkit-from-download-to-an-empty-board)
 | --- | --- | --- |
 | One process, one origin | `serve` serves the built board itself; `serve --init` creates an empty store with one starter world; the start prints the URL and the token on one line | proven (local, 2026-10-18; no CI run yet) |
 | Release zip and container | a `v*` tag attaches `reraise-toolkit-<version>.zip` (runs with Node 22, nothing to install) to the release; `Dockerfile` and `docker-compose.yml` run the same folder with one volume | proven (local, 2026-10-18; no CI run yet) |
+| npx way, prepared | the toolkit folder is the package `@reraise/app` with the command `reraise` and bundled dependencies; `npx ./<tgz> serve --init` starts; nothing is published | proven (local, 2026-10-18; no CI run yet) |
 
 ## Mapping of earlier plans onto the milestones
 
