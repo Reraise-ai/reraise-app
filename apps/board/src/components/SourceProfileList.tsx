@@ -2,7 +2,8 @@
 // Copyright The Worldbuilder contributors
 //
 // Eight dimensions of one source, each with its sample size (ADR-0018). Below minimumN the
-// board says "insufficient data". There is no combined figure.
+// board says "insufficient data". There is no combined figure. Hit accuracy never shows its
+// value: an outcome cannot record a miss yet, so the stored 1 is not a rate (OQ-31).
 
 import type {
   SourceProfile,
@@ -29,6 +30,11 @@ function figure(n: number, value: number | undefined, minimumN: number): string 
 
 function rowText(profile: SourceProfile | undefined, id: string): string {
   const minimumN = profile?.minimumN ?? SOURCE_PROFILE_MINIMUM_N;
+  if (id === 'hitAccuracy') {
+    const { n = 0, value } = profile?.dimensions.hitAccuracy ?? {};
+    if (n < minimumN || value === undefined) return figure(n, undefined, minimumN);
+    return `not yet measurable (n=${n}): outcomes cannot record a miss yet`;
+  }
   if (id === 'topicCompetence') {
     const topics = profile?.dimensions.topicCompetence ?? [];
     if (topics.length === 0) return figure(0, undefined, minimumN);
