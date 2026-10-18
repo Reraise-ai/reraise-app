@@ -26,6 +26,7 @@
   },
   "dependencies": {
     "@fastify/rate-limit": "11.2.1",
+    "@fastify/static": "10.1.5",
     "@worldbuilder/core": "workspace:*",
     "@worldbuilder/disclosure-gate": "workspace:*",
     "@worldbuilder/knowledge-loop": "workspace:*",

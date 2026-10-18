@@ -24,7 +24,7 @@ const cli = path.join(repoRoot, 'services', 'api', 'dist', 'cli.js');
 const boardRoot = path.join(repoRoot, 'apps', 'board');
 
 /** A free loopback port: bind port 0, read it, release it. */
-function freePort(): Promise<number> {
+export function freePort(): Promise<number> {
   return new Promise((resolve, reject) => {
     const server = createServer();
     server.once('error', reject);
@@ -52,7 +52,7 @@ function runCli(args: string[]): Promise<void> {
 }
 
 /** Starts `worldbuilder serve` and resolves when it printed that it listens (and its log). */
-function startService(args: string[]): Promise<{ child: ChildProcess; log: () => string }> {
+export function startService(args: string[]): Promise<{ child: ChildProcess; log: () => string }> {
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, [cli, 'serve', ...args], {
       stdio: ['ignore', 'pipe', 'pipe'],
@@ -78,7 +78,7 @@ function startService(args: string[]): Promise<{ child: ChildProcess; log: () =>
   });
 }
 
-async function stop_(child: ChildProcess): Promise<void> {
+export async function stop_(child: ChildProcess): Promise<void> {
   if (child.exitCode !== null || child.signalCode !== null) return;
   await new Promise<void>((resolve) => {
     const timer = setTimeout(() => {

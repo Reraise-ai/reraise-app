@@ -13,13 +13,24 @@ confirmation), [ADR-0032](../../docs/adr/0032-m1-proposal-polling.md) (polling).
 
 ## Run it
 
+`worldbuilder` is the `bin` of this package. From a checkout run it as
+`node services/api/dist/cli.js` (or `pnpm start` for `worldbuilder serve`); it is not put on the
+`PATH` by the build.
+
 ```sh
-worldbuilder serve --store <path-to-store> [--state <dir>] [--port 4310] [--host 127.0.0.1] \
+worldbuilder serve --store <path-to-store> [--init] [--state <dir>] [--port 4310] [--host 127.0.0.1] \
                    [--allow-host <host>]... [--allow-origin http://127.0.0.1:5173]...
 worldbuilder agent add <name> --target local_model|cloud_model [--state <dir>] [--token-file <path>]
 worldbuilder agent list [--state <dir>]
 worldbuilder agent remove <name> [--state <dir>]
 ```
+
+`serve` also serves the built board (`index.html` and `assets/`) on its own origin, without a
+credential: from `board/` next to the package when it is packed, otherwise from
+`apps/board/dist` of the repository. A browser then needs no `--allow-origin`; only the Vite dev
+server on another port does. Without a built board the routes `/` and `/assets/*` do not exist.
+`--init` creates a missing store (`worldbuilder-store.yaml`, `cards/` and one empty, private world
+"My world" in `world.json`); an existing store is opened unchanged.
 
 `serve` opens the store with the markdown-files adapter (tested on a copy of the Hormuz
 example, `src/hormuz.test.ts`) and binds `127.0.0.1` by default, creates a fresh human session token at every start, writes

@@ -146,6 +146,15 @@ Later and out of scope here: a sharing platform, card-exchange economics, gamifi
 crypto, and fine-tuning itself. The data model keeps ids, content hash, `level` and
 `signature` reserved and builds nothing on them.
 
+## Toolkit
+
+A newcomer gets from the download to an open, empty board of their own in under ten minutes.
+Tests: [verification](./verification.md#toolkit-from-download-to-an-empty-board).
+
+| Step | Done when | Status |
+| --- | --- | --- |
+| One process, one origin | `serve` serves the built board itself; `serve --init` creates an empty store with one starter world; the start prints the URL and the token on one line | proven (local, 2026-10-18; no CI run yet) |
+
 ## Mapping of earlier plans onto the milestones
 
 ### Concept v1 phases 0 to 4

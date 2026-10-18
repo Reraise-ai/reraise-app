@@ -251,6 +251,27 @@ Mutation probes (core line broken, named tests red, line restored), 2026-10-18: 
 
 Known gaps: the card text on an earlier board is today's text, not the text of that date (ADR-0049, accepted). The archive holds only states replaced by a rewrite, so a Lage never rewritten has no slider. The label of a position is the time the state was replaced, which is when that board stopped being the current one; the banner says "as of" that time.
 
+## Toolkit: from download to an empty board
+
+The done criterion of the [toolkit](./roadmap.md#toolkit): a newcomer gets from the download to an
+open, empty board of their own in under ten minutes, with one command after the build.
+
+| ID | Criterion | Test file | CI job | Status |
+| --- | --- | --- | --- | --- |
+| TK-1 | One process, one origin: `serve` serves the built board at `/` and `/assets/*` without a credential, Host-checked; the API routes still need a credential; a path out of the board folder is refused; the start prints one line with the session token and the URL to open | `services/api/src/main.test.ts` (`serves the built board on its own origin without a credential; the API still needs one`); `e2e/tests/first-start.spec.ts` (the printed URL and token, nothing typed but the token, the login form defaults to the page origin) | `checks` (`pnpm test:coverage`), `e2e` (`pnpm test:e2e`) | proven (local, 2026-10-18; no CI run yet) |
+| TK-2 | `serve --init` on a folder that does not exist creates `worldbuilder-store.yaml` and one empty, private world "My world", no cards; a second start keeps the same world | `services/api/src/main.test.ts` (`--init creates an empty store with one starter world and keeps it on the next start`); `e2e/tests/first-start.spec.ts` (empty Lagen list, the first Lage is created and opens) | `checks`, `e2e` | proven (local, 2026-10-18; no CI run yet) |
+
+Local run of 2026-10-18 (Linux, Node 22.22.0, pnpm 10.28.0, Chromium 1194 from
+`/opt/pw-browsers`): `pnpm lint`, `pnpm typecheck`, `pnpm format:check` exit 0; `pnpm test` 1669
+passed, 6 skipped; `pnpm test:e2e` 11 of 11 passed (with `first-start`). On the built service
+(`node services/api/dist/cli.js serve --init --store <new folder>`): `GET /` 200 `text/html` with
+the board's `index.html`, `GET /health` 200, `GET /worlds` without a token 401 and with the token
+200 `{"worlds":[{"name":"My world",...}]}`, `GET /assets/%2e%2e%2f%2e%2e%2fpackage.json` 403.
+
+Not done: no SPA fallback for other paths. The board has no client-side routes, and answering
+unknown paths without a credential would tell a caller which API routes exist (today an unknown
+route without a credential is 401).
+
 ## Checks promised by the ADRs
 
 These are the automated checks the [ADRs](./adr/) commit to. "Passing" means the check

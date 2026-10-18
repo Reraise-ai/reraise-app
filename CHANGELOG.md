@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- `worldbuilder serve` serves the built board on its own origin (`/`, `/assets/*`, no credential, Host-checked), so the board needs no second server and no `--allow-origin`. `serve --init` creates a missing store with one empty, private world "My world". The start prints the session token and the URL to open on one line. `pnpm start` runs `worldbuilder serve` from a checkout. The built board's login form defaults to its own origin.
 - `pnpm build:demo` writes a static board for `/board/`. It loads the Hormuz example from JSON and keeps edits in the browser. It does not call a Board API.
 - The demo start world also loads the gold market and the vitamin D theme from `examples/gold` and `examples/vitamin-d`. The theme has the three questions from the public board demonstration, votes for and against, and one collector card.
 - A theme Lage stores 2-4 questions, each with card ids arguing for and against, and exactly one collector card. The board lists the questions with vote counts. A click on a source opens the placed person or organisation card that names it (e-52, e-58, ADR-0051).
