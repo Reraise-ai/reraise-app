@@ -260,6 +260,21 @@ open, empty board of their own in under ten minutes, with one command after the 
 | --- | --- | --- | --- | --- |
 | TK-1 | One process, one origin: `serve` serves the built board at `/` and `/assets/*` without a credential, Host-checked; the API routes still need a credential; a path out of the board folder is refused; the start prints one line with the session token and the URL to open | `services/api/src/main.test.ts` (`serves the built board on its own origin without a credential; the API still needs one`); `e2e/tests/first-start.spec.ts` (the printed URL and token, nothing typed but the token, the login form defaults to the page origin) | `checks` (`pnpm test:coverage`), `e2e` (`pnpm test:e2e`) | proven (local, 2026-10-18; no CI run yet) |
 | TK-2 | `serve --init` on a folder that does not exist creates `worldbuilder-store.yaml` and one empty, private world "My world", no cards; a second start keeps the same world | `services/api/src/main.test.ts` (`--init creates an empty store with one starter world and keeps it on the next start`); `e2e/tests/first-start.spec.ts` (empty Lagen list, the first Lage is created and opens) | `checks`, `e2e` | proven (local, 2026-10-18; no CI run yet) |
+| TK-3 | Release: a `v*` tag packs `reraise-toolkit-<version>.zip` (service with its production dependencies and no symbolic links, board, Board API contract, examples, licence files, README), starts the unpacked zip on a new store and attaches the zip to the release; the same folder is the Docker image (`Dockerfile`, `docker-compose.yml`, volume `/data`) | `scripts/pack-toolkit.mjs`, `scripts/smoke-toolkit.mjs` (unzips into a fresh temporary folder outside the repository, `serve --init` on a missing store, checks `GET /` serves the board, `/health`, and the starter world with the printed token), `.github/workflows/release.yml` | `release` (on tag; never run) | proven (local, 2026-10-18; no CI run yet) |
+
+Local run of 2026-10-18 for TK-3: `node scripts/pack-toolkit.mjs --version 0.0.0-local` wrote
+`dist/reraise-toolkit-0.0.0-local.zip` (10.6 MB); `node scripts/smoke-toolkit.mjs
+dist/reraise-toolkit-0.0.0-local.zip` printed `toolkit ok: http://127.0.0.1:<port>/ serves the
+board, /health ok, worlds: My world`, exit 0 (the first run of this check found that the service
+reads `schemas/openapi/board-api.yaml` at run time; the toolkit therefore keeps the repository
+layout). `release.yml` and `docker-compose.yml` parse with the `yaml` package; `docker compose
+config` accepts the compose file. Docker 29.8.2: the image built (the base image came from
+`mirror.gcr.io` because Docker Hub answered 429, and the build stage got this sandbox's TLS proxy
+CA through a local copy of the Dockerfile with two added lines, `COPY --from=ca` and
+`NODE_EXTRA_CA_CERTS`; the runtime stage is the committed one). `docker run -p
+127.0.0.1:4310:4310 -v <volume>:/data`: `GET /` 200, `GET /worlds` with the logged token 200 "My
+world"; after `docker restart` the same world id; `docker compose up --no-build` on that image:
+`GET /` 200. The workflow itself has not run (no tag, no push).
 
 Local run of 2026-10-18 (Linux, Node 22.22.0, pnpm 10.28.0, Chromium 1194 from
 `/opt/pw-browsers`): `pnpm lint`, `pnpm typecheck`, `pnpm format:check` exit 0; `pnpm test` 1669

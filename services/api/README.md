@@ -26,8 +26,8 @@ worldbuilder agent remove <name> [--state <dir>]
 ```
 
 `serve` also serves the built board (`index.html` and `assets/`) on its own origin, without a
-credential: from `board/` next to the package when it is packed, otherwise from
-`apps/board/dist` of the repository. A browser then needs no `--allow-origin`; only the Vite dev
+credential, from `apps/board/dist` (the toolkit zip and the container image keep the repository
+layout). A browser then needs no `--allow-origin`; only the Vite dev
 server on another port does. Without a built board the routes `/` and `/assets/*` do not exist.
 `--init` creates a missing store (`worldbuilder-store.yaml`, `cards/` and one empty, private world
 "My world" in `world.json`); an existing store is opened unchanged.
