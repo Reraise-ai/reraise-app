@@ -25,6 +25,7 @@ temporary directory for inspection.
 - `tests/walking-skeleton.spec.ts`: the scenario "hormuz walking skeleton".
 - `tests/a11y.spec.ts`: axe-core on the main screens (no serious or critical violation).
 - `tests/player-fields.spec.ts`: the source pass on cards, seats, moves, edges and decisions; an unsourced player entry is refused, an empty field is accepted (M2 slice "Player fields with provenance").
+- `tests/what-if.spec.ts`: a what-if layer saved in the board writes no file of the store; a recorded decision attaches it as one file in the state directory and its card file stays as it was (M2 slice "What-if").
 
 The tests use the `data-testid` contract in `apps/board/README.md`. Every spec file starts its
 own stack (own temporary store, state directory, service and board ports), so files do not see

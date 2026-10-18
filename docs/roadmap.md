@@ -108,7 +108,8 @@ board and does not save the view (ADR-0049). Tests:
 
 The open board holds a what-if layer of assumptions that are not cards. Saving the layer
 writes nothing to the store. Recording a decision can attach that layer. The attachment
-is a file in the state directory. The decision card is unchanged (ADR-0050).
+is a file in the state directory. The decision card is unchanged (ADR-0050). Tests:
+[verification](./verification.md#m2-what-if-layer-that-is-not-a-card).
 
 Two open boards on one service see a move within seconds. `GET /events` sends a notice
 with no card text. The board reads the change through the existing operations. A dropped
