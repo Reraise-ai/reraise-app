@@ -1049,6 +1049,7 @@ describe('source_profile_get', () => {
     expect(counted.map((s) => s?.earlier.at(-1)?.dimensions.hitAccuracy.n ?? 0)).toEqual(before);
 
     const current = cardOf(known);
+    clock += 60_000;
     const edited = await f.human('PUT', `/decisions/${decision.id}`, {
       ...current,
       sections: { ...current.sections, outcome: 'Both held, and later still.' },
