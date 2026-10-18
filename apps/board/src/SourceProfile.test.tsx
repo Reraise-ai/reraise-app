@@ -47,15 +47,18 @@ describe('SourceProfileList', () => {
     expect(screen.queryByTestId('source-profile-earlier')).toBeNull();
   });
 
-  it('keeps the figure hidden below the minimum and shows it once n is large enough', () => {
+  it('keeps the hit figure hidden below the minimum and says it is not measurable from n of 5', () => {
     const { rerender } = render(<SourceProfileList profile={stored(1)} error={null} />);
     expect(screen.getByTestId('source-dimension-hitAccuracy').textContent).toBe(
       'Hit accuracy: insufficient data (n=1)',
     );
     rerender(<SourceProfileList profile={stored(5, 1)} error={null} />);
     expect(screen.getByTestId('source-dimension-hitAccuracy').textContent).toBe(
-      'Hit accuracy: 1 (n=5)',
+      'Hit accuracy: not yet measurable (n=5): outcomes cannot record a miss yet',
     );
+    for (const row of screen.getAllByRole('listitem')) {
+      expect(row.textContent?.replace(/\(n=\d+\)/g, '')).not.toMatch(/\d/);
+    }
     expect(screen.getByTestId('source-profile-earlier').textContent).toBe('Earlier hit count: 1');
     expect(screen.getByTestId('source-profile').textContent).not.toMatch(/%/);
   });

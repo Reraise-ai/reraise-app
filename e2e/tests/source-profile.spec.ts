@@ -127,12 +127,14 @@ test('an outcome adds one hit to each cited source and the earlier profiles stay
     await expect(page.getByTestId('source-profile-earlier')).toHaveText('Earlier hit count: 3');
   });
 
-  await test.step('the fifth outcome reaches the minimum and the figure appears with its n', async () => {
+  await test.step('the fifth outcome reaches the minimum and the board still shows no hit figure, only n', async () => {
     await decideKnown('E2E fifth');
     await page.reload();
     await openLage(page, HORMUZ.lageId);
     await select(HORMUZ.wireReportId);
-    await expect(hit).toHaveText('Hit accuracy: 1 (n=5)');
+    await expect(hit).toHaveText(
+      'Hit accuracy: not yet measurable (n=5): outcomes cannot record a miss yet',
+    );
     await expect(page.getByTestId('source-profile-earlier')).toHaveText('Earlier hit count: 4');
     for (const id of OTHER_DIMENSIONS) {
       await expect(page.getByTestId(`source-dimension-${id}`)).toContainText(
@@ -142,6 +144,9 @@ test('an outcome adds one hit to each cited source and the earlier profiles stay
     expect(await page.getByTestId('source-profile').textContent()).not.toMatch(
       /%|percent|verdict|\bscore\b/i,
     );
+    for (const row of await page.locator('[data-testid^="source-dimension-"]').all()) {
+      expect((await row.textContent())!.replace(/\(n=\d+\)/g, '')).not.toMatch(/\d/);
+    }
   });
 
   await test.step('every earlier state is still there through the API and on disk', async () => {
