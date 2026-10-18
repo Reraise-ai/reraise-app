@@ -1007,6 +1007,56 @@ describe('source_profile_get', () => {
     expectContract('source_profile_get', await f.agent('scripted', 'GET', url), 403);
     expectContract('source_profile_get', await f.raw({ method: 'GET', url }), 401);
   });
+
+  type Stored = {
+    profile: { dimensions: { hitAccuracy: { n: number } } };
+    earlier: { dimensions: { hitAccuracy: { n: number } } }[];
+  };
+  const storedOf = async (source: string): Promise<Stored | undefined> => {
+    const res = await f.human('GET', `/source-profiles?source=${encodeURIComponent(source)}`);
+    return res.statusCode === 200 ? (res.json() as Stored) : undefined;
+  };
+
+  it('adds one to each cited source once, and a later edit of the outcome does not add again', async () => {
+    const sourceB = 'https://example.invalid/report-b';
+    // evCopy has no machine-resolvable source, so it is profiled under its own id.
+    const keys = ['https://example.invalid/report-a', sourceB, f.ids.evCopy];
+    const before = await Promise.all(
+      keys.map(async (key) => (await storedOf(key))?.profile.dimensions.hitAccuracy.n ?? 0),
+    );
+    const open = await f.human('POST', '/decisions', {
+      format: 2,
+      type: 'decision',
+      title: 'Synthetic two-source decision',
+      sections: sections([f.ids.evPublic, f.ids.evLoose, f.ids.evCopy]),
+    });
+    expect(open.statusCode).toBe(201);
+    const afterOpen = await Promise.all(
+      keys.map(async (key) => (await storedOf(key))?.profile.dimensions.hitAccuracy.n ?? 0),
+    );
+    expect(afterOpen).toEqual(before);
+
+    const decision = cardOf(open);
+    const known = await f.human('PUT', `/decisions/${decision.id}`, {
+      ...decision,
+      sections: { ...decision.sections, outcome: 'Both held.' },
+    });
+    expectContract('decision_save', known, 200);
+    const counted = await Promise.all(keys.map(storedOf));
+    expect(counted.map((s) => s?.profile.dimensions.hitAccuracy.n)).toEqual(
+      before.map((n) => n + 1),
+    );
+    expect(counted.map((s) => s?.earlier.at(-1)?.dimensions.hitAccuracy.n ?? 0)).toEqual(before);
+
+    const current = cardOf(known);
+    const edited = await f.human('PUT', `/decisions/${decision.id}`, {
+      ...current,
+      sections: { ...current.sections, outcome: 'Both held, and later still.' },
+    });
+    expectContract('decision_save', edited, 200);
+    const unchanged = await Promise.all(keys.map(storedOf));
+    expect(unchanged).toEqual(counted);
+  });
 });
 
 describe('what-if layer (ADR-0050)', () => {
