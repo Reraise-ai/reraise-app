@@ -51,7 +51,7 @@ verification row or the planned test.
 | QS-V1 | An agent proposes a card and nobody accepts it. | It appears only as a pending proposal; rules, statistics, source profiles and the training export ignore it; context packages list it only in the proposals section. | unit tests with mixed fixtures ([ADR-0011](../adr/0011-agent-moves-are-proposals.md)) | not started |
 | QS-V2 | An adapter patches one field of a store card that also contains fields the product does not know. | The file is byte-identical except for that field. | conformance kit (M1-02) | not started |
 | QS-V3 | Ten cards quote the same agency report. | The board shows "10 findings · 1 origin". | AC-29 | not started |
-| QS-V4 | A player-field entry without a source is saved. | Rejected by schema validation. | AC-28 | not started |
+| QS-V4 | A player-field entry without a source is saved. | Rejected by schema validation. | AC-28, [M2-P1](../verification.md#m2-player-fields-with-provenance) | in progress (passes locally; no CI run yet) |
 | QS-V5 | A board shows evidenced, said and experience cards and the user's stances. | No number on screen combines layers or folds a stance into a layer. | AC-01 | in progress (context package and cloud preview; board unit tests) |
 
 ### Replaceability
