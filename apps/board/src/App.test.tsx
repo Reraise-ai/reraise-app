@@ -137,6 +137,49 @@ describe('Lage list and creation', () => {
     expect(screen.queryByTestId('time-banner')).toBeNull();
   });
 
+  it('shows a card that was on the archived board and has left the board since; a card that no longer exists is withheld', async () => {
+    const api = createMockApi();
+    const gone = 'GONE00000000000000000000A';
+    api.versions = [
+      {
+        version: 1,
+        archivedAt: '2026-01-01T00:00:00.000Z',
+        lage: makeLage({
+          cards: [
+            { id: C1, x: 0, y: 0 },
+            { id: C3, x: 280, y: 0 },
+            { id: gone, x: 560, y: 0 },
+          ],
+        }),
+      },
+    ];
+    await openLage(api);
+    expect(screen.queryByTestId(`card-node-${C3}`)).toBeNull();
+    fireEvent.change(screen.getByTestId('time-slider'), { target: { value: '0' } });
+    const left = await screen.findByTestId(`card-node-${C3}`);
+    await waitFor(() => expect(left.getAttribute('data-withheld')).toBeNull());
+    expect(left.textContent).toContain('My observation at the port');
+    expect(screen.getByTestId(`card-node-${gone}`).getAttribute('data-withheld')).toBe('true');
+    expect(puts(api)).toHaveLength(0);
+  });
+
+  it('cannot edit while an archived board is shown: place, draw and move are off, and nothing is sent', async () => {
+    const api = createMockApi();
+    api.versions = [
+      { version: 1, archivedAt: '2026-01-01T00:00:00.000Z', lage: makeLage({ question: 'Old?' }) },
+    ];
+    await openLage(api);
+    await screen.findByTestId(`search-place-${C3}`);
+    fireEvent.change(screen.getByTestId('time-slider'), { target: { value: '0' } });
+    expect((screen.getByTestId(`search-place-${C3}`) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByTestId('edge-add') as HTMLButtonElement).disabled).toBe(true);
+    await userEvent.click(screen.getByTestId(`search-place-${C3}`));
+    await userEvent.click(screen.getByTestId('edge-add'));
+    expect(puts(api)).toHaveLength(0);
+    fireEvent.change(screen.getByTestId('time-slider'), { target: { value: '1' } });
+    expect((screen.getByTestId(`search-place-${C3}`) as HTMLButtonElement).disabled).toBe(false);
+  });
+
   it('creates a Lage (lage_create) and opens its board', async () => {
     const api = createMockApi();
     signedIn(api);
