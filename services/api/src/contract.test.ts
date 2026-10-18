@@ -540,6 +540,17 @@ describe('decision_create and decision_save', () => {
       400,
     );
   });
+  it('decision_save rejects an unknown cardsUsed id and stores nothing (400)', async () => {
+    const current = cardOf(await f.human('GET', `/cards/${decision.id}`));
+    const res = await f.human('PUT', `/decisions/${decision.id}`, {
+      ...current,
+      sections: { ...current.sections, cardsUsed: ['01ARZ3NDEKTSV4RRFFQ69G5FAV'] },
+    });
+    expectContract('decision_save', res, 400);
+    const after = cardOf(await f.human('GET', `/cards/${decision.id}`));
+    expect(after.sections?.cardsUsed).toEqual(current.sections?.cardsUsed);
+    expect(after.contentHash).toBe(current.contentHash);
+  });
 });
 
 describe('rule_create and rule_save', () => {

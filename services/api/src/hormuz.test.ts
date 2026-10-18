@@ -685,3 +685,66 @@ describe('a decision and its outcome on the Hormuz store', () => {
     }
   });
 });
+
+describe('the decision protocol across sessions on the Hormuz store', () => {
+  it('lists a stored decision in a later session, takes its outcome there, and keeps both after another restart', async () => {
+    const cardsOf = (res: { json: Record<string, unknown> }) =>
+      res.json['cards'] as unknown as Card[];
+    let decisionId = '';
+    let usedId = '';
+
+    const first = await serve();
+    try {
+      const listed = await first.call('GET', '/cards?limit=200');
+      usedId = cardsOf(listed).find((c) => c.type === 'event')!.id;
+      const created = await first.call('POST', '/decisions', {
+        format: 2,
+        type: 'decision',
+        title: 'Synthetic protocol decision',
+        sections: decisionSections([usedId]),
+      });
+      expect(created.status).toBe(201);
+      decisionId = (created.json as unknown as Card).id;
+    } finally {
+      await first.service.close();
+    }
+
+    const second = await serve();
+    try {
+      const listed = cardsOf(await second.call('GET', '/cards?type=decision&limit=200'));
+      const earlier = listed.find((c) => c.id === decisionId);
+      expect(earlier?.sections).toEqual(decisionSections([usedId]));
+      const none = cardsOf(await second.call('GET', '/cards?type=experience&limit=200')).filter(
+        (c) => c.edges?.some((e) => e.target === decisionId),
+      );
+      expect(none).toHaveLength(0);
+      const unknown = await second.call('PUT', `/decisions/${decisionId}`, {
+        ...earlier,
+        sections: decisionSections(['01ARZ3NDEKTSV4RRFFQ69G5FAV'], 'Rerouted via the Cape.'),
+      });
+      expect(unknown.status).toBe(400);
+      const saved = await second.call('PUT', `/decisions/${decisionId}`, {
+        ...earlier,
+        sections: decisionSections([usedId], 'Rerouted via the Cape.'),
+      });
+      expect(saved.status).toBe(200);
+    } finally {
+      await second.service.close();
+    }
+
+    const third = await serve();
+    try {
+      const listed = cardsOf(await third.call('GET', '/cards?type=decision&limit=200'));
+      expect(listed.find((c) => c.id === decisionId)?.sections).toEqual(
+        decisionSections([usedId], 'Rerouted via the Cape.'),
+      );
+      const linked = cardsOf(await third.call('GET', '/cards?type=experience&limit=200')).filter(
+        (c) => c.edges?.some((e) => e.target === decisionId && e.kind === 'based_on'),
+      );
+      expect(linked).toHaveLength(1);
+      expect(linked[0]?.body).toContain('Rerouted via the Cape.');
+    } finally {
+      await third.service.close();
+    }
+  });
+});
