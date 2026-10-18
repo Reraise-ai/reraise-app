@@ -96,6 +96,93 @@ describe('on the screen', () => {
   });
 });
 
+describe('only the accepted state of the store counts (ADR-0011)', () => {
+  const propose = async (payload: Record<string, unknown>) => {
+    const res = await f.agent('scripted', 'POST', '/proposals', {
+      kind: 'create_card',
+      payload,
+      rationale: 'synthetic',
+    });
+    expectContract('proposal_create', res, 201);
+    return res.json().id as string;
+  };
+  const accept = async (id: string) =>
+    expectContract('proposal_accept', await f.human('POST', `/proposals/${id}/accept`, {}), 200);
+
+  it('a proposed card placed on the Lage fires no rule until the human accepts it', async () => {
+    const author = seedRule('author of a proposed card', {
+      when: [{ kind: 'card_field', field: 'author', equals: 'agent:scripted' }],
+      then: 'x',
+    });
+    const field = seedRule('field of a proposed card', {
+      when: [{ kind: 'card_field', field: 'originSystem', equals: 'Synthetic proposer' }],
+      then: 'x',
+    });
+    const id = await propose({
+      card: {
+        format: 2,
+        type: 'claim',
+        title: 'Synthetic proposed claim',
+        layer: 'said',
+        originSystem: 'Synthetic proposer',
+        body: 'Pending.',
+      },
+      lageId: f.ids.lage,
+      x: 40,
+      y: 40,
+    });
+    const before = await evaluate();
+    for (const rule of [author, field]) {
+      expect(resultOf(before, rule)).toMatchObject({
+        fired: false,
+        triggeringCardIds: [],
+        unmet: [{ clause: 'when', index: 0 }],
+      });
+    }
+    expect(JSON.stringify(before)).not.toContain('Synthetic proposed claim');
+
+    await accept(id);
+    const after = await evaluate();
+    for (const rule of [author, field]) {
+      expect(resultOf(after, rule)).toMatchObject({ fired: true });
+      expect(resultOf(after, rule)?.triggeringCardIds).toHaveLength(1);
+    }
+  });
+
+  it('a proposed rule card is not evaluated until the human accepts it', async () => {
+    const id = await propose({
+      card: {
+        format: 2,
+        type: 'rule',
+        title: 'Synthetic proposed rule',
+        rule: { when: [{ kind: 'card_on_lage', card: f.ids.evPublic }], then: 'Proposed action' },
+      },
+    });
+    expect(JSON.stringify(await evaluate())).not.toContain('Proposed action');
+    expect(JSON.stringify(await evaluate('scripted'))).not.toContain('Proposed action');
+    await accept(id);
+    const texts = (await evaluate()).results.map((r) => r.rule?.then);
+    expect(texts).toContain('Proposed action');
+  });
+
+  it('a rejected proposal never enters the evaluation', async () => {
+    const id = await propose({
+      card: {
+        format: 2,
+        type: 'rule',
+        title: 'Synthetic rejected rule',
+        rule: { when: [{ kind: 'card_on_lage', card: f.ids.evPublic }], then: 'Rejected action' },
+      },
+    });
+    expectContract(
+      'proposal_reject',
+      await f.human('POST', `/proposals/${id}/reject`, { note: 'no' }),
+      200,
+    );
+    expect(JSON.stringify(await evaluate())).not.toContain('Rejected action');
+  });
+});
+
 describe('for a local_model', () => {
   it('omits rules with a stance condition and only counts them', async () => {
     const e = await evaluate('scripted');

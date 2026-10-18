@@ -606,6 +606,62 @@ describe('rule_create and rule_save', () => {
     const again = await f.human('POST', '/rules/evaluate', { lageId: f.ids.lage });
     expect(hit(again.json() as RuleEvaluation, rule.id)?.rule?.then).toBe('Divert');
   });
+
+  it('accepts every condition kind the rule schema allows, in when and in unless, and stores it as sent', async () => {
+    const ghost = '01ARZ3NDEKTSV4RRFFQ69G5FAV';
+    const kinds = [
+      { kind: 'card_on_lage', card: f.ids.evPublic },
+      { kind: 'card_field', field: 'layer', equals: 'evidenced' },
+      { kind: 'card_field', card: f.ids.evPublic, field: 'type', equals: 'claim' },
+      { kind: 'tag', tag: 'synthetic-tag' },
+      { kind: 'tag', card: f.ids.evPublic, tag: 'synthetic-tag' },
+      { kind: 'edge', edgeKind: 'supports' },
+      { kind: 'edge', edgeKind: 'refutes', from: f.ids.evPublic, to: f.ids.evCopy },
+      { kind: 'stance', card: f.ids.evPublic, position: 'believed' },
+    ];
+    const stored: Card[] = [];
+    for (const condition of kinds) {
+      const res = await f.human('POST', '/rules', {
+        title: `Synthetic ${condition.kind} rule`,
+        rule: {
+          when: [{ kind: 'card_on_lage', card: f.ids.evPublic }],
+          unless: [condition],
+          then: 'x',
+        },
+      });
+      expectContract('rule_create', res, 201);
+      expect(cardOf(res).rule?.unless).toEqual([condition]);
+      const asWhen = await f.human('POST', '/rules', {
+        title: `Synthetic ${condition.kind} when rule`,
+        rule: { when: [condition], then: 'x' },
+      });
+      expectContract('rule_create', asWhen, 201);
+      stored.push(cardOf(res), cardOf(asWhen));
+    }
+    const evaluated = (
+      await f.human('POST', '/rules/evaluate', { lageId: f.ids.lage })
+    ).json() as RuleEvaluation;
+    for (const card of stored) expect(hit(evaluated, card.id)).toBeDefined();
+
+    const before = (await f.adapter.search({ type: 'rule', limit: 200 })).items.length;
+    expectContract(
+      'rule_create',
+      await f.human('POST', '/rules', {
+        title: 'Synthetic unknown kind',
+        rule: { when: [{ kind: 'percentage', card: f.ids.evPublic }], then: 'x' },
+      }),
+      400,
+    );
+    expectContract(
+      'rule_create',
+      await f.human('POST', '/rules', {
+        title: 'Synthetic ghost endpoint',
+        rule: { when: [{ kind: 'edge', edgeKind: 'supports', to: ghost }], then: 'x' },
+      }),
+      400,
+    );
+    expect((await f.adapter.search({ type: 'rule', limit: 200 })).items).toHaveLength(before);
+  });
 });
 
 describe('disclosure transfers', () => {
