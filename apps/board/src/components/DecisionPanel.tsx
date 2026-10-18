@@ -91,6 +91,9 @@ export function DecisionPanel({ client, cards, lageId, disabled }: Props) {
   }
 
   function startNew(): void {
+    setTitle('');
+    setFields(emptyFields());
+    setUsed([]);
     setDecision(null);
     setExperience(null);
     setAttached([]);
