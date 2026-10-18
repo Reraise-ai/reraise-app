@@ -82,7 +82,9 @@ its eleven sections, and takes the outcome in a later session (AC-12). Tests:
 The source-profile slice meets its done criterion: a known outcome adds one to the stored
 hit count of each source cited by `cardsUsed`, the previous profile stays on the device,
 and the board shows every dimension with its sample size and "insufficient data" below
-`n` of 5.
+`n` of 5. The inspector reads the profile again when the human enters an outcome, so the
+open board shows the new count without selecting another card. Tests:
+[verification](./verification.md#m2-source-profile-and-hit-statistics-from-outcomes).
 
 The rules panel lists each rule as fired or not fired, with the rule's own text and the
 triggering cards, and shows no percentage. The user creates a rule card and changes its
