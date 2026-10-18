@@ -490,6 +490,41 @@ export function describeStorageAdapterConformance(
       ).rejects.toThrow();
     });
 
+    it('lists the replaced Lage states oldest first and never the current one', async () => {
+      const { adapter } = await factory();
+      const lage = {
+        question: 'Q1?',
+        options: ['yes', 'no'],
+        cards: [],
+        seats: [{ name: 'Tester', kind: 'human' as const }],
+        edges: [],
+        version: 1,
+        updatedAt: '2026-10-06T00:00:00Z',
+      };
+      const id = await adapter.create(
+        { format: 2, collection: 'decisions', type: 'lage', title: 'History Lage', lage },
+        'human',
+      );
+      expect(await adapter.versions(id)).toEqual([]);
+      const before = Date.now() - 2_000;
+      for (const version of [2, 3, 4]) {
+        await adapter.patch(
+          id,
+          { lage: { ...lage, version, question: `Q${version}?` } },
+          { lageVersion: version - 1 },
+        );
+      }
+      const history = await adapter.versions(id);
+      expect(history.map((v) => v.version)).toEqual([1, 2, 3]);
+      expect(history.map((v) => v.card.lage?.question)).toEqual(['Q1?', 'Q2?', 'Q3?']);
+      expect((await adapter.read(id))?.lage?.question).toBe('Q4?');
+      const stamps = history.map((v) => Date.parse(v.archivedAt));
+      expect(
+        stamps.every((t) => Number.isFinite(t) && t >= before && t <= Date.now() + 2_000),
+      ).toBe(true);
+      expect(stamps).toEqual([...stamps].sort((a, b) => a - b));
+    });
+
     it('leaves the version list unchanged when an inverted period rejects a patch', async () => {
       const { adapter } = await factory();
       const lage = {
