@@ -748,3 +748,65 @@ describe('the decision protocol across sessions on the Hormuz store', () => {
     }
   });
 });
+
+describe('the source profile across restarts on the Hormuz store', () => {
+  it('keeps every earlier profile after a restart and adds the next outcome on top', async () => {
+    type Stored = {
+      profile: { dimensions: { hitAccuracy: { n: number } } };
+      earlier: { dimensions: { hitAccuracy: { n: number } } }[];
+    };
+    let source = '';
+    const decide = async (s: Awaited<ReturnType<typeof serve>>, title: string) => {
+      const created = await s.call('POST', '/decisions', {
+        format: 2,
+        type: 'decision',
+        title,
+        sections: decisionSections([WIRE_REPORT_ID], 'It happened.'),
+      });
+      expect(created.status).toBe(201);
+    };
+    const stored = async (s: Awaited<ReturnType<typeof serve>>): Promise<Stored> => {
+      const res = await s.call('GET', `/source-profiles?source=${encodeURIComponent(source)}`);
+      expect(res.status).toBe(200);
+      return res.json as unknown as Stored;
+    };
+    let base = 0;
+
+    const first = await serve();
+    try {
+      source = ((await first.call('GET', `/cards/${WIRE_REPORT_ID}`)).json as unknown as Card)
+        .source!;
+      const known = await first.call(
+        'GET',
+        `/source-profiles?source=${encodeURIComponent(source)}`,
+      );
+      base =
+        known.status === 200
+          ? (known.json as unknown as Stored).profile.dimensions.hitAccuracy.n
+          : 0;
+      await decide(first, 'Synthetic first outcome');
+      await decide(first, 'Synthetic second outcome');
+      const now = await stored(first);
+      expect(now.profile.dimensions.hitAccuracy.n).toBe(base + 2);
+      expect(now.earlier.at(-1)?.dimensions.hitAccuracy.n).toBe(base + 1);
+    } finally {
+      await first.service.close();
+    }
+
+    const second = await serve();
+    try {
+      const reloaded = await stored(second);
+      expect(reloaded.profile.dimensions.hitAccuracy.n).toBe(base + 2);
+      expect(reloaded.earlier.at(-1)?.dimensions.hitAccuracy.n).toBe(base + 1);
+      await decide(second, 'Synthetic third outcome');
+      const next = await stored(second);
+      expect(next.profile.dimensions.hitAccuracy.n).toBe(base + 3);
+      expect(next.earlier.slice(-2).map((p) => p.dimensions.hitAccuracy.n)).toEqual([
+        base + 1,
+        base + 2,
+      ]);
+    } finally {
+      await second.service.close();
+    }
+  });
+});
