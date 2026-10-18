@@ -81,6 +81,28 @@ describe('source pass on the board', () => {
     expect(screen.getByTestId('seat-entries').textContent).toContain('Move: Lay mines');
   });
 
+  it('allows an empty player field: an actor with no entries shows 0 findings and no entry list', async () => {
+    const bare = makeCard({
+      id: '01JA00000000000000000000A2',
+      title: 'Harbour authority',
+      type: 'organisation',
+      collection: 'actors',
+      contentHash: hash('d'),
+      interests: [],
+    });
+    const fetch = openInspector(bare, [bare, report]);
+    await waitFor(() => expect(fetch).toHaveBeenCalled());
+    expect(screen.getByTestId('seat-source-pass').textContent).toBe('0 findings · 0 origins');
+    expect(screen.getByTestId('moves-source-pass').textContent).toBe('0 findings · 0 origins');
+    expect(screen.queryByTestId('seat-entries')).toBeNull();
+  });
+
+  it('counts two seat entries that cite the same card as one origin, also when that card is not on the board', async () => {
+    const fetch = openInspector(navy, [navy]);
+    await waitFor(() => expect(fetch).toHaveBeenCalled());
+    expect(screen.getByTestId('seat-source-pass').textContent).toBe('3 findings · 2 origins');
+  });
+
   it('leaves the seat pass off a card that is not an actor', async () => {
     const fetch = openInspector(report, [report, repeat]);
     await waitFor(() => expect(fetch).toHaveBeenCalled());
@@ -128,5 +150,44 @@ describe('source pass on the board', () => {
     expect(screen.getByTestId('decision-source-pass').textContent).toBe('1 finding · 1 origin');
     fireEvent.click(screen.getByTestId(`decision-card-${other.id}`));
     expect(screen.getByTestId('decision-source-pass').textContent).toBe('2 findings · 2 origins');
+  });
+
+  it('counts copies as one origin for a decision that uses a report and its repeat', () => {
+    const client = { cards_search: async () => ({ cards: [] }) } as unknown as BoardClient;
+    render(<DecisionPanel client={client} cards={[report, repeat, other]} />);
+    fireEvent.click(screen.getByTestId(`decision-card-${report.id}`));
+    fireEvent.click(screen.getByTestId(`decision-card-${repeat.id}`));
+    expect(screen.getByTestId('decision-source-pass').textContent).toBe('2 findings · 1 origin');
+  });
+
+  it('shows the pass of the cards a stored decision uses once it is opened from the protocol', async () => {
+    const stored = makeCard({
+      id: '01JA00000000000000000000D1',
+      title: 'Stored decision',
+      type: 'decision',
+      sections: {
+        situation: 's',
+        trigger: 't',
+        conditions: 'c',
+        facts: 'f',
+        priorities: 'p',
+        action: 'a',
+        alternatives: 'l',
+        exclusions: 'e',
+        rationale: 'r',
+        cardsUsed: [report.id, repeat.id, other.id],
+        outcome: 'open',
+      },
+    });
+    const client = {
+      cards_search: async ({ type }: { type?: string }) => ({
+        cards: type === 'decision' ? [stored] : [],
+      }),
+    } as unknown as BoardClient;
+    render(<DecisionPanel client={client} cards={[report, repeat, other]} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Stored decision' }));
+    await waitFor(() =>
+      expect(screen.getByTestId('decision-source-pass').textContent).toBe('3 findings · 2 origins'),
+    );
   });
 });
