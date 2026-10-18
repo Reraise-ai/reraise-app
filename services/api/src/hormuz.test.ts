@@ -16,7 +16,7 @@ import {
   type ContextPackage,
   type Lage,
 } from '@worldbuilder/core';
-import { cp, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -931,6 +931,87 @@ describe('player fields on the Hormuz store (AC-28)', () => {
       expect(kept.capabilities).toEqual(sourced.capabilities);
       expect(kept.dependencies ?? []).toEqual([]);
       expect(kept.moves).toEqual(sourced.moves);
+    } finally {
+      await second.service.close();
+    }
+  });
+});
+
+/** Path, size and modification time of every file under `root`: any write changes this. */
+async function treeStamp(root: string): Promise<string[]> {
+  const out: string[] = [];
+  const walk = async (current: string): Promise<void> => {
+    for (const entry of await readdir(current, { withFileTypes: true })) {
+      const full = path.join(current, entry.name);
+      if (entry.isDirectory()) await walk(full);
+      else {
+        const st = await stat(full);
+        out.push(`${path.relative(root, full)}:${st.size}:${st.mtimeMs}`);
+      }
+    }
+  };
+  await walk(root);
+  return out.sort();
+}
+
+describe('the time slider reads archived Lage versions on the Hormuz store (ADR-0049)', () => {
+  it('lists the replaced states oldest first with real timestamps, never the current one, and reading writes nothing', async () => {
+    const store = path.join(dir, 'store');
+    const first = await serve();
+    let id = '';
+    const started = Date.now() - 2_000;
+    try {
+      const worlds = (await first.call('GET', '/worlds')).json['worlds'] as unknown as {
+        id: string;
+        name: string;
+      }[];
+      const created = await first.call('POST', '/lagen', {
+        title: 'History of a board',
+        worlds: [worlds.find((w) => w.name === 'Hormuz')!.id],
+        lage: createdLage('Question 1?', ['Reroute']),
+      });
+      expect(created.status).toBe(201);
+      id = (created.json as unknown as Card).id;
+      expect((await first.call('GET', `/lagen/${id}/versions`)).json).toEqual({ versions: [] });
+      for (const version of [2, 3, 4]) {
+        const lage = createdLage(`Question ${version}?`, ['Reroute']);
+        const saved = await first.call('PUT', `/lagen/${id}`, {
+          ...lage,
+          version,
+          updatedAt: new Date().toISOString(),
+        });
+        expect(saved.status).toBe(200);
+      }
+    } finally {
+      await first.service.close();
+    }
+
+    const second = await serve();
+    try {
+      const before = await treeStamp(store);
+      const read = await second.call('GET', `/lagen/${id}/versions`);
+      expect(read.status).toBe(200);
+      const versions = read.json['versions'] as unknown as {
+        version: number;
+        archivedAt: string;
+        lage: Lage;
+      }[];
+      expect(versions.map((v) => v.version)).toEqual([1, 2, 3]);
+      expect(versions.map((v) => v.lage.question)).toEqual([
+        'Question 1?',
+        'Question 2?',
+        'Question 3?',
+      ]);
+      const current = (await second.call('GET', `/lagen/${id}`)).json as unknown as Card;
+      expect(current.lage?.question).toBe('Question 4?');
+      expect(versions.map((v) => v.lage.question)).not.toContain(current.lage?.question);
+      const stamps = versions.map((v) => Date.parse(v.archivedAt));
+      expect(stamps.every((t) => t >= started && t <= Date.now() + 2_000)).toBe(true);
+      expect(stamps).toEqual([...stamps].sort((a, b) => a - b));
+      // Reading again, and reading the current board, leaves every file as it was.
+      await second.call('GET', `/lagen/${id}/versions`);
+      await second.call('GET', `/lagen/${id}`);
+      expect(await treeStamp(store)).toEqual(before);
     } finally {
       await second.service.close();
     }
