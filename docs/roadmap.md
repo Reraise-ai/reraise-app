@@ -88,6 +88,8 @@ The rules panel lists each rule as fired or not fired, with the rule's own text 
 triggering cards, and shows no percentage. The user creates a rule card and changes its
 action. The next evaluation reads that stored card (AC-10). The board form sends one
 card-on-board condition. The API accepts every condition kind.
+A card or a rule card that an agent only proposed neither fires nor appears until the human
+accepts it. Tests: [verification](./verification.md#m2-rules-panel-replacing-the-barometer).
 
 A card with one known origin is marked on the board. The same statement from two origins
 that do not repeat each other is marked as meeting the journalistic standard (Entscheidung 125).
