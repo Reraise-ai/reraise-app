@@ -58,6 +58,8 @@ Not run that day: full `pnpm test`, coverage, the Playwright e2e, axe, and the t
 
 **Also checked 2026-10-14, Windows.** What-if layer only. `pnpm test` passed, 1553 tests (6 skipped). `pnpm build` passed. `pnpm validate:schemas` passed (30 schemas, 77 valid and 189 invalid fixtures). `pnpm check:generated`, `pnpm check:spdx`, `pnpm check:board-tokens`, `pnpm check:licence-imports` and `pnpm lint:openapi` passed. Replacing the layer writes no card. Attaching it writes `scenario-attachments/<decisionId>.json` and leaves the decision card hash unchanged (ADR-0050). No browser pass. The Playwright e2e and the three-OS CI matrix were not run.
 
+**Also checked 2026-10-18, Linux, Node v22.22.0, pnpm 10.28.0.** M2 decision card slice (pre-merge). `pnpm test` passed, 1634 tests (6 skipped). `pnpm lint`, `pnpm typecheck`, `pnpm format:check`, `pnpm check:spdx`, `pnpm check:no-real-data`, `pnpm check:generated`, `pnpm validate:schemas` (30 schemas, 143 examples), `pnpm lint:openapi`, `pnpm check:board-tokens` and `pnpm check:doc-anchors` passed. Playwright `decision-protocol.spec.ts` and `walking-skeleton.spec.ts` passed. "New decision" now empties the title, the nine fields and the cards used (`apps/board/src/DecisionProtocol.test.tsx`). The full `pnpm test:e2e` suite and the three-OS CI matrix were not run for this slice.
+
 Status values:
 
 - **not started**: no test exists yet.
