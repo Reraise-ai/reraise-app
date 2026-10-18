@@ -13,17 +13,15 @@ import path from 'node:path';
 
 /**
  * Open the store at `root`. The folder must hold a `worldbuilder-store.yaml`, unless `init` is
- * set: then a missing store is created with one empty, private starter world. An existing store
- * is opened as it is.
+ * set: then a missing configuration is created, and a new store without a `world.json` gets one
+ * empty, private starter world. Existing files are never overwritten.
  */
 export async function openMarkdownStore(root: string, init = false): Promise<StorageAdapter> {
-  if (init && !existsSync(path.join(root, CONFIG_FILE))) {
+  const exists = (file: string) => existsSync(path.join(root, file));
+  if (init && !exists(CONFIG_FILE) && !exists('world.json')) {
     await mkdir(root, { recursive: true });
     const world = { id: encodeUlid(randomBytes(16)), name: 'My world', visibility: 'private' };
-    // `wx`: a world file that is already there is never overwritten.
-    await writeFile(path.join(root, 'world.json'), `${JSON.stringify(world, null, 2)}\n`, {
-      flag: 'wx',
-    });
+    await writeFile(path.join(root, 'world.json'), `${JSON.stringify(world, null, 2)}\n`);
   }
   return MarkdownFilesAdapter.open(root, { createIfMissing: init });
 }

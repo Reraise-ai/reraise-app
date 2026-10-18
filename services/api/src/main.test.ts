@@ -608,10 +608,30 @@ describe('worldbuilder serve: one process, one origin', () => {
       expect((await fetch(`${url}/worlds`)).status).toBe(401);
       const inject = (u: string, host = `127.0.0.1:${port}`) =>
         service.app.inject({ method: 'GET', url: u, headers: { host } });
-      expect((await inject('/assets/%2e%2e%2f%2e%2e%2fsecret.txt')).body).not.toContain(
-        'not for the browser',
-      );
+      const escape = await inject('/assets/%2e%2e%2f%2e%2e%2fsecret.txt');
+      expect(escape.statusCode).toBe(403);
+      expect(escape.body).not.toContain('not for the browser');
       expect((await inject('/', 'evil.example:80')).statusCode).toBe(403);
+    } finally {
+      await service.close();
+    }
+  });
+
+  it('--init on a folder with a world.json but no store configuration keeps that world', async () => {
+    const store = path.join(dir, 'half-store');
+    await mkdir(store, { recursive: true });
+    const world = { id: '01M1DZPW00JGXPRPG4179ZPNB8', name: 'Mine', visibility: 'private' };
+    await writeFile(path.join(store, 'world.json'), JSON.stringify(world));
+    const { code, port, service } = await serveWith(['--store', store, '--init']);
+    expect(code).toBe(-1);
+    try {
+      const res = await fetch(`http://127.0.0.1:${port}/worlds`, {
+        headers: { 'x-worldbuilder-session': service.sessionToken },
+      });
+      expect(((await res.json()) as { worlds: unknown[] }).worlds).toMatchObject([world]);
+      expect(await readFile(path.join(store, 'worldbuilder-store.yaml'), 'utf8')).toContain(
+        'storeInstanceId',
+      );
     } finally {
       await service.close();
     }

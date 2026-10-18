@@ -264,8 +264,8 @@ open, empty board of their own in under ten minutes, with one command after the 
 | TK-4 | The npx way, prepared: the toolkit folder is the package `@reraise/app` (the only package that is not private; all workspace packages stay private), command `reraise`, every dependency bundled at the top with exact versions; `npm pack` gives a tarball without hard-link entries that `npx` starts | `scripts/pack-toolkit.mjs`; the commands below | none (not published, no CI step) | proven (local, 2026-10-18; no CI run yet) |
 
 Local run of 2026-10-18 for TK-3: `node scripts/pack-toolkit.mjs --version 0.0.0-local` wrote
-`dist/reraise-toolkit-0.0.0-local.zip` (10.6 MB); `node scripts/smoke-toolkit.mjs
-dist/reraise-toolkit-0.0.0-local.zip` printed `toolkit ok: http://127.0.0.1:<port>/ serves the
+`dist/reraise-toolkit-0.0.0-local.zip` (10.6 MB); the check
+`node scripts/smoke-toolkit.mjs <zip>` on that zip printed `toolkit ok: http://127.0.0.1:<port>/ serves the
 board, /health ok, worlds: My world`, exit 0 (the first run of this check found that the service
 reads `schemas/openapi/board-api.yaml` at run time; the toolkit therefore keeps the repository
 layout). `release.yml` and `docker-compose.yml` parse with the `yaml` package; `docker compose
