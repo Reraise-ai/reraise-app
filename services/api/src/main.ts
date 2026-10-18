@@ -43,7 +43,7 @@ class UsageError extends Error {}
 /** What tests replace: the store opener, the output streams and the serve hook. */
 export interface MainDeps {
   readonly openStore?: (root: string, init: boolean) => Promise<StorageAdapter>;
-  /** The built board to serve; found next to the package or in the repository when omitted. */
+  /** The built board to serve; `apps/board/dist` of the repository layout when omitted. */
   readonly boardDir?: string;
   readonly stdout?: { write(text: string): unknown };
   readonly stderr?: { write(text: string): unknown };
@@ -59,12 +59,8 @@ export interface MainDeps {
 
 const isLoopback = (host: string) => ['127.0.0.1', '::1', 'localhost'].includes(host);
 
-/** The built board: `board/` next to a packed service (zip, Docker), else the repository build. */
-function findBoardDir(): string | undefined {
-  return ['../board/', '../../../apps/board/dist/']
-    .map((rel) => fileURLToPath(new URL(rel, import.meta.url)))
-    .find((dir) => existsSync(path.join(dir, 'index.html')));
-}
+/** The built board, in the repository layout (the toolkit zip and the image keep it). */
+const BOARD_DIR = fileURLToPath(new URL('../../../apps/board/dist/', import.meta.url));
 
 function absolute(p: string): string {
   return path.resolve(p);
@@ -131,7 +127,8 @@ async function serve(argv: string[], deps: MainDeps): Promise<void> {
   const allowedHosts = (values['allow-host'] ?? []).map((h) => normaliseAllowedHost(h, port));
   const storeRoot = absolute(values.store);
   const storage = await (deps.openStore ?? openMarkdownStore)(storeRoot, values.init ?? false);
-  const boardDir = deps.boardDir ?? findBoardDir();
+  const boardDir =
+    deps.boardDir ?? (existsSync(path.join(BOARD_DIR, 'index.html')) ? BOARD_DIR : undefined);
   const service = await createService({
     storage,
     storeRoots: [storeRoot],

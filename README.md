@@ -72,6 +72,15 @@ board itself on `http://127.0.0.1:4310`, so one process and one origin are enoug
 creates `worldbuilder-store.yaml` and one empty, private world ("My world"); on an existing store
 it changes nothing.
 
+Without a checkout, with Node 22 only: unpack `reraise-toolkit-<version>.zip` from a GitHub
+release (`.github/workflows/release.yml` builds it on a `v*` tag; no tag exists yet) and run the
+same command in that folder: `node services/api/dist/cli.js serve --init --store ~/my-world` (or
+`npm start -- --init --store ~/my-world`). Nothing to install: the dependencies are in the zip.
+
+With Docker: `docker compose up --build`, then open `http://127.0.0.1:4310` and paste the token
+from `docker compose logs`. Store and state directory live in the volume `reraise-data`
+(`/data/world`, `/data/state`); the port is published on loopback only.
+
 In the other docs, `worldbuilder <command>` stands for `node services/api/dist/cli.js <command>`
 from a checkout (`pnpm start` is `worldbuilder serve`).
 
