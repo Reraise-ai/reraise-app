@@ -2,15 +2,17 @@
 // Copyright The Worldbuilder contributors
 //
 // The `worldbuilder` command (ADR-0029), as a function so tests can run it; `cli.ts` is the bin:
-//   worldbuilder serve --store <path> [--state <path>] [--port <n>] [--host <h>]
+//   worldbuilder serve --store <path> [--init] [--state <path>] [--port <n>] [--host <h>]
 //                      [--allow-host <h>]... [--allow-origin <o>]...
 //   worldbuilder agent add <name> --target local_model|cloud_model [--state <path>]
 //   worldbuilder mcp --stdio [--url <service URL>]   (the stateless stdio bridge, ADR-0029)
 
 import { bridgeMain, type BridgeMainIo } from '@worldbuilder/mcp-server';
 import { assertStateDirSafe, resolveStateDir } from '@worldbuilder/local-state';
+import { existsSync } from 'node:fs';
 import { isIP } from 'node:net';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { addAgent, listAgents, removeAgent } from './agent-registry.js';
 import { configuredEngineIds } from './level1-engines.js';
@@ -23,7 +25,7 @@ import { createService, type Service } from './service.js';
 import { openMarkdownStore } from './store.js';
 
 const USAGE = `Usage:
-  worldbuilder serve --store <path> [--state <path>] [--port <n>] [--host <h>]
+  worldbuilder serve --store <path> [--init] [--state <path>] [--port <n>] [--host <h>]
                      [--allow-host <host>]... [--allow-origin <origin>]...
                      [--rate-limit <requests per minute>] [--auth-failure-limit <n per minute>]
   worldbuilder agent add <name> --target local_model|cloud_model [--state <path>] [--store <path>]
@@ -40,7 +42,9 @@ class UsageError extends Error {}
 
 /** What tests replace: the store opener, the output streams and the serve hook. */
 export interface MainDeps {
-  readonly openStore?: (root: string) => Promise<StorageAdapter>;
+  readonly openStore?: (root: string, init: boolean) => Promise<StorageAdapter>;
+  /** The built board to serve; found next to the package or in the repository when omitted. */
+  readonly boardDir?: string;
   readonly stdout?: { write(text: string): unknown };
   readonly stderr?: { write(text: string): unknown };
   /** Called with the running service instead of installing signal handlers (tests). */
@@ -54,6 +58,13 @@ export interface MainDeps {
 }
 
 const isLoopback = (host: string) => ['127.0.0.1', '::1', 'localhost'].includes(host);
+
+/** The built board: `board/` next to a packed service (zip, Docker), else the repository build. */
+function findBoardDir(): string | undefined {
+  return ['../board/', '../../../apps/board/dist/']
+    .map((rel) => fileURLToPath(new URL(rel, import.meta.url)))
+    .find((dir) => existsSync(path.join(dir, 'index.html')));
+}
 
 function absolute(p: string): string {
   return path.resolve(p);
@@ -89,6 +100,7 @@ async function serve(argv: string[], deps: MainDeps): Promise<void> {
     args: argv,
     options: {
       store: { type: 'string' },
+      init: { type: 'boolean' },
       state: { type: 'string' },
       port: { type: 'string' },
       host: { type: 'string' },
@@ -118,13 +130,15 @@ async function serve(argv: string[], deps: MainDeps): Promise<void> {
   const host = values.host ?? '127.0.0.1';
   const allowedHosts = (values['allow-host'] ?? []).map((h) => normaliseAllowedHost(h, port));
   const storeRoot = absolute(values.store);
-  const storage = await (deps.openStore ?? openMarkdownStore)(storeRoot);
+  const storage = await (deps.openStore ?? openMarkdownStore)(storeRoot, values.init ?? false);
+  const boardDir = deps.boardDir ?? findBoardDir();
   const service = await createService({
     storage,
     storeRoots: [storeRoot],
     ...(values.state ? { stateDir: absolute(values.state) } : {}),
     host,
     port,
+    ...(boardDir ? { boardDir } : {}),
     ...(allowedHosts.length > 0 ? { allowedHosts } : {}),
     ...(values['allow-origin'] ? { allowedOrigins: values['allow-origin'] } : {}),
     ...(max !== undefined || authFailureMax !== undefined
@@ -170,8 +184,13 @@ async function serve(argv: string[], deps: MainDeps): Promise<void> {
     );
   }
   out.write(`State directory:  ${service.stateDir}\n`);
+  // A wildcard bind (a container) is opened through loopback.
+  const browserHost = ['0.0.0.0', '::'].includes(bound.host) ? '127.0.0.1' : bound.host;
+  const open = boardDir
+    ? `  Open http://${browserHost}:${bound.port} in your browser and paste it.`
+    : '';
   out.write(
-    `Session token (shown once, also in ${service.sessionTokenFile}):\n${service.sessionToken}\n`,
+    `Session token: ${service.sessionToken}${open}  (Shown once, also in ${service.sessionTokenFile}.)\n`,
   );
   out.write(
     `Agent connections: worldbuilder agent add --name <name> --target local_model|cloud_model\n`,

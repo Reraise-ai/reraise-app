@@ -58,17 +58,28 @@ See [LICENSING.md](LICENSING.md) for which licence applies where.
 
 ## Quickstart
 
-Run the service on the synthetic Hormuz world and connect an agent over MCP. The board UI is
-available too; the end-to-end browser test (`pnpm test:e2e`) passes locally on Linux, and nothing here has run in CI yet.
+From a checkout to your own empty board (Node 22, pnpm 10):
 
 ```sh
 corepack enable
 pnpm install
 pnpm build
-cp -r examples/hormuz /tmp/hormuz-store            # work on a copy: the service writes to it
+pnpm start --init --store ~/my-world   # creates the store on first start, then just opens it
+```
 
-# the service: Board API and MCP at http://127.0.0.1:4310 (prints a session token once)
-node services/api/dist/cli.js serve --store /tmp/hormuz-store
+Open the URL it prints and paste the session token from the same line. The service serves the
+board itself on `http://127.0.0.1:4310`, so one process and one origin are enough. `--init`
+creates `worldbuilder-store.yaml` and one empty, private world ("My world"); on an existing store
+it changes nothing.
+
+In the other docs, `worldbuilder <command>` stands for `node services/api/dist/cli.js <command>`
+from a checkout (`pnpm start` is `worldbuilder serve`).
+
+To try the synthetic Hormuz world and connect an agent over MCP:
+
+```sh
+cp -r examples/hormuz /tmp/hormuz-store            # work on a copy: the service writes to it
+pnpm start --store /tmp/hormuz-store
 
 # in a second terminal: register an agent (the token goes to an owner-only file)
 umask 077
@@ -79,7 +90,9 @@ node services/api/dist/cli.js agent add planner --target local_model --token-fil
 # stdio-only clients start the bridge, which forwards to the running service:
 WORLDBUILDER_AGENT_TOKEN_FILE=./planner.token node services/api/dist/cli.js mcp --stdio
 
-pnpm --filter @worldbuilder/board dev              # the board; paste the session token
+# board development with hot reload (Vite on :5173) needs the service to allow that origin:
+#   pnpm start --store /tmp/hormuz-store --allow-origin http://127.0.0.1:5173
+#   pnpm --filter @worldbuilder/board dev
 
 # the end-to-end test: builds, then drives the board with Playwright (Chromium)
 # once: pnpm --filter @worldbuilder/e2e exec playwright install chromium

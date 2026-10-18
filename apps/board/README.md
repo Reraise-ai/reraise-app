@@ -8,6 +8,10 @@ Licence: AGPL-3.0-or-later.
 
 ## Run
 
+`pnpm build` writes `dist/`, and `worldbuilder serve` serves it on its own origin
+(`http://127.0.0.1:4310`); the login form then defaults to that origin. For development with hot
+reload, start the service with `--allow-origin http://127.0.0.1:5173` and run:
+
 ```sh
 pnpm --filter @worldbuilder/board dev
 ```

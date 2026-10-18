@@ -12,7 +12,8 @@ export interface Session {
   token: string;
 }
 
-export const DEFAULT_BASE_URL = 'http://127.0.0.1:4310';
+/** The built board is served by the service itself (same origin); the dev server is not. */
+export const DEFAULT_BASE_URL = import.meta.env.DEV ? 'http://127.0.0.1:4310' : location.origin;
 
 export function loadSession(storage: Storage | undefined = safeStorage()): Session | null {
   try {

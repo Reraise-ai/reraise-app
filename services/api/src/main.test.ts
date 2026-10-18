@@ -568,6 +568,88 @@ describe('worldbuilder serve', () => {
   });
 });
 
+describe('worldbuilder serve: one process, one origin', () => {
+  const serveWith = async (args: string[], deps: Parameters<typeof main>[1] = {}) => {
+    const out = sink();
+    const port = await freePort();
+    let service: Service | undefined;
+    const code = await main(
+      ['serve', '--state', path.join(dir, 'state'), '--port', String(port), ...args],
+      { stdout: out, stderr: sink(), logger: false, onServe: (s) => (service = s), ...deps },
+    );
+    return { code, out, port, service: service! };
+  };
+
+  it('serves the built board on its own origin without a credential; the API still needs one', async () => {
+    const board = path.join(dir, 'board');
+    await mkdir(path.join(board, 'assets'), { recursive: true });
+    await writeFile(path.join(board, 'index.html'), '<!doctype html><title>board</title>');
+    await writeFile(path.join(board, 'assets', 'app.js'), 'export {};');
+    await writeFile(path.join(dir, 'secret.txt'), 'not for the browser');
+    const { code, out, port, service } = await serveWith(['--store', path.join(dir, 'store')], {
+      boardDir: board,
+      openStore: async () => new MemoryStorageAdapter(new MemoryStore(crypto.randomUUID())),
+    });
+    try {
+      expect(code).toBe(-1);
+      const url = `http://127.0.0.1:${port}`;
+      const tokenLine = out
+        .text()
+        .split('\n')
+        .find((l) => l.includes(service.sessionToken))!;
+      expect(tokenLine).toContain(`Open ${url} in your browser`);
+      const page = await fetch(`${url}/`);
+      expect(page.status).toBe(200);
+      expect(page.headers.get('content-type')).toContain('text/html');
+      expect(await page.text()).toContain('<title>board</title>');
+      const asset = await fetch(`${url}/assets/app.js`);
+      expect(asset.status).toBe(200);
+      expect(asset.headers.get('content-type')).toContain('javascript');
+      expect((await fetch(`${url}/worlds`)).status).toBe(401);
+      const inject = (u: string, host = `127.0.0.1:${port}`) =>
+        service.app.inject({ method: 'GET', url: u, headers: { host } });
+      expect((await inject('/assets/%2e%2e%2f%2e%2e%2fsecret.txt')).body).not.toContain(
+        'not for the browser',
+      );
+      expect((await inject('/', 'evil.example:80')).statusCode).toBe(403);
+    } finally {
+      await service.close();
+    }
+  });
+
+  it('--init creates an empty store with one starter world and keeps it on the next start', async () => {
+    const store = path.join(dir, 'new-store');
+    const worlds = async (s: Service, port: number) => {
+      const res = await fetch(`http://127.0.0.1:${port}/worlds`, {
+        headers: { 'x-worldbuilder-session': s.sessionToken },
+      });
+      return ((await res.json()) as { worlds: { id: string; name: string }[] }).worlds;
+    };
+    const first = await serveWith(['--store', store, '--init']);
+    let firstWorlds: { id: string; name: string }[];
+    try {
+      expect(first.code).toBe(-1);
+      firstWorlds = await worlds(first.service, first.port);
+      expect(firstWorlds).toMatchObject([{ name: 'My world' }]);
+      const cards = await fetch(`http://127.0.0.1:${first.port}/cards`, {
+        headers: { 'x-worldbuilder-session': first.service.sessionToken },
+      });
+      expect(((await cards.json()) as { cards: unknown[] }).cards).toEqual([]);
+      expect(await readFile(path.join(store, 'worldbuilder-store.yaml'), 'utf8')).toContain(
+        'storeInstanceId',
+      );
+    } finally {
+      await first.service.close();
+    }
+    const second = await serveWith(['--store', store, '--init']);
+    try {
+      expect(await worlds(second.service, second.port)).toEqual(firstWorlds);
+    } finally {
+      await second.service.close();
+    }
+  });
+});
+
 describe('createService', () => {
   it('the seeded default rules are the shipped rule file and allow only screen and local_model', async () => {
     const state = path.join(dir, 'state');

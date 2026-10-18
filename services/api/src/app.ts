@@ -11,6 +11,7 @@
 
 import type { LocalStateStore, StorageAdapter } from '@worldbuilder/core';
 import rateLimit from '@fastify/rate-limit';
+import fastifyStatic from '@fastify/static';
 import Fastify, {
   type FastifyBaseLogger,
   type FastifyInstance,
@@ -62,6 +63,8 @@ export interface AppOptions {
   readonly agentSweepMs?: number;
   /** Origins that may call from a browser, besides the service's own (the board's origin). */
   readonly allowedOrigins?: readonly string[];
+  /** The built board (`index.html`, `assets/`), served on the service's own origin. */
+  readonly boardDir?: string;
   /** Largest accepted request body in bytes; larger bodies get 413. */
   readonly bodyLimit?: number;
   readonly syntheticStores?: readonly string[];
@@ -80,6 +83,10 @@ export interface AppOptions {
 declare module 'fastify' {
   interface FastifyRequest {
     principal?: Principal;
+  }
+  interface FastifyContextConfig {
+    /** Served without a credential: liveness and the board's own files (no data). */
+    open?: boolean;
   }
 }
 
@@ -298,9 +305,10 @@ export async function buildApp(options: AppOptions): Promise<BoardApp> {
   };
 
   // Authentication comes before body handling, so an unauthenticated caller learns nothing from
-  // size limits or parse errors. Only liveness is open (it carries no data).
+  // size limits or parse errors. Only routes marked `open` skip it: liveness and the board's own
+  // files, which carry no data.
   app.addHook('onRequest', async (req) => {
-    if (req.method === 'OPTIONS' || req.url === '/health') return;
+    if (req.method === 'OPTIONS' || req.routeOptions.config.open) return;
     try {
       req.principal = await authenticate(req);
     } catch (error) {
@@ -409,7 +417,18 @@ export async function buildApp(options: AppOptions): Promise<BoardApp> {
   }
 
   // Liveness for the CLI and supervisors; not part of the contract, no data, Host-checked.
-  app.get('/health', async () => ({ status: 'ok' }));
+  const open = { config: { open: true } };
+  app.get('/health', open, async () => ({ status: 'ok' }));
+
+  // The board from the same origin, so a browser needs no --allow-origin. Host-checked like every
+  // route; the files carry no data, the board asks for the session token itself.
+  if (options.boardDir) {
+    await app.register(fastifyStatic, { root: options.boardDir, serve: false });
+    app.get('/', open, (_req, reply) => reply.sendFile('index.html'));
+    app.get<{ Params: { '*': string } }>('/assets/*', open, (req, reply) =>
+      reply.sendFile(`assets/${req.params['*']}`),
+    );
+  }
 
   // MCP over Streamable HTTP at /mcp (ADR-0029): the same process, services and credential rules
   // as the routes above. Host and Origin are already checked by the hook for every path, the

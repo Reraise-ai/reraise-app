@@ -28,6 +28,7 @@ export interface ServiceOptions {
   readonly port?: number;
   readonly allowedHosts?: readonly string[];
   readonly allowedOrigins?: readonly string[];
+  readonly boardDir?: AppOptions['boardDir'];
   readonly bodyLimit?: number;
   /** Rate limits of the HTTP API (ADR-0047); `false` switches them off. */
   readonly rateLimit?: AppOptions['rateLimit'];
@@ -128,6 +129,7 @@ async function assemble(
     port: options.port ?? DEFAULT_PORT,
     ...(options.allowedHosts ? { allowedHosts: options.allowedHosts } : {}),
     ...(options.allowedOrigins ? { allowedOrigins: options.allowedOrigins } : {}),
+    ...(options.boardDir ? { boardDir: options.boardDir } : {}),
     ...(options.bodyLimit !== undefined ? { bodyLimit: options.bodyLimit } : {}),
     ...(options.rateLimit !== undefined ? { rateLimit: options.rateLimit } : {}),
     ...(options.syntheticStores ? { syntheticStores: options.syntheticStores } : {}),
