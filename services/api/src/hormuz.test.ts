@@ -810,3 +810,129 @@ describe('the source profile across restarts on the Hormuz store', () => {
     }
   });
 });
+
+describe('player fields on the Hormuz store (AC-28)', () => {
+  const FIELDS = ['interests', 'capabilities', 'dependencies', 'moves'] as const;
+  const seat = (title: string, extra: Record<string, unknown>) => ({
+    format: 2,
+    collection: 'actors',
+    type: 'organisation',
+    title,
+    layer: 'said',
+    originSystem: 'Synthetic agent',
+    ...extra,
+  });
+
+  let writers = 0;
+  /** A registered agent that proposes cards over HTTP, exactly as a Hermes agent would. */
+  async function proposer(s: Awaited<ReturnType<typeof serve>>) {
+    const { token } = await addAgent(s.service.stateDir, {
+      name: `seat-writer-${++writers}`,
+      target: 'local_model',
+    });
+    const base = s.service.app.server.address() as { port: number };
+    return async (card: unknown) => {
+      const res = await fetch(`http://127.0.0.1:${base.port}/proposals`, {
+        method: 'POST',
+        headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+        body: JSON.stringify({ kind: 'create_card', payload: { card } }),
+      });
+      return { status: res.status, json: (await res.json()) as Record<string, never> };
+    };
+  }
+  const cardFiles = async () => (await readdir(path.join(dir, 'store', 'cards'))).sort();
+
+  it.each([...FIELDS, 'redLines', 'assumedGoals'])(
+    'an unsourced %s entry is refused (400) and nothing is stored or proposed',
+    async (field) => {
+      const s = await serve();
+      try {
+        const propose = await proposer(s);
+        const filesBefore = await cardFiles();
+        const pendingBefore = (await s.call('GET', '/proposals?status=pending&limit=200')).json[
+          'proposals'
+        ] as unknown as unknown[];
+        for (const entry of [{ text: 'No source at all' }, { text: 'Empty source', source: '' }]) {
+          const res = await propose(seat(`Unsourced ${field}`, { [field]: [entry] }));
+          expect(res.status, JSON.stringify(entry)).toBe(400);
+          expect(String(res.json['detail'])).toContain('source');
+        }
+        expect(await cardFiles()).toEqual(filesBefore);
+        const pendingAfter = (await s.call('GET', '/proposals?status=pending&limit=200')).json[
+          'proposals'
+        ] as unknown as unknown[];
+        expect(pendingAfter).toHaveLength(pendingBefore.length);
+        const found = await s.call(
+          'GET',
+          `/cards?text=${encodeURIComponent(`Unsourced ${field}`)}`,
+        );
+        expect(found.json['cards']).toEqual([]);
+      } finally {
+        await s.service.close();
+      }
+    },
+  );
+
+  it('a source that names a card which does not exist cannot be written: accept is 409 and no card appears', async () => {
+    const s = await serve();
+    try {
+      const propose = await proposer(s);
+      const filesBefore = await cardFiles();
+      const res = await propose(
+        seat('Seat with a dangling source', {
+          moves: [{ text: 'Move on nothing', source: '01ARZ3NDEKTSV4RRFFQ69G5FAV' }],
+        }),
+      );
+      expect(res.status).toBe(201);
+      const accepted = await s.call('POST', `/proposals/${res.json['id']}/accept`, {});
+      expect(accepted.status).toBe(409);
+      expect(await cardFiles()).toEqual(filesBefore);
+    } finally {
+      await s.service.close();
+    }
+  });
+
+  it('an empty or absent player field is accepted, and sourced entries are kept across a restart', async () => {
+    const first = await serve();
+    let emptyId = '';
+    let sourcedId = '';
+    const sourced = {
+      interests: [{ text: 'Keep the lane open', source: HORMUZ_PLACED }],
+      capabilities: [{ text: 'Escort fleet', source: 'https://example.org/seat/fleet' }],
+      dependencies: [],
+      moves: [{ text: 'Publish a circular', source: 'https://example.org/seat/circular' }],
+    };
+    try {
+      const propose = await proposer(first);
+      const empty = await propose(seat('Empty seat', { interests: [], moves: [] }));
+      const absent = await propose(seat('Seat with no player fields', {}));
+      const full = await propose(seat('Sourced seat', sourced));
+      expect([empty.status, absent.status, full.status]).toEqual([201, 201, 201]);
+      for (const p of [empty, absent, full]) {
+        expect((await first.call('POST', `/proposals/${p.json['id']}/accept`, {})).status).toBe(
+          200,
+        );
+      }
+      const all = (await first.call('GET', '/cards?limit=200')).json['cards'] as unknown as Card[];
+      emptyId = all.find((c) => c.title === 'Empty seat')!.id;
+      sourcedId = all.find((c) => c.title === 'Sourced seat')!.id;
+      expect(all.find((c) => c.title === 'Seat with no player fields')).toBeDefined();
+    } finally {
+      await first.service.close();
+    }
+
+    const second = await serve();
+    try {
+      const empty = (await second.call('GET', `/cards/${emptyId}`)).json as unknown as Card;
+      expect(empty.interests ?? []).toEqual([]);
+      expect(empty.moves ?? []).toEqual([]);
+      const kept = (await second.call('GET', `/cards/${sourcedId}`)).json as unknown as Card;
+      expect(kept.interests).toEqual(sourced.interests);
+      expect(kept.capabilities).toEqual(sourced.capabilities);
+      expect(kept.dependencies ?? []).toEqual([]);
+      expect(kept.moves).toEqual(sourced.moves);
+    } finally {
+      await second.service.close();
+    }
+  });
+});
