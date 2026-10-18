@@ -10,23 +10,24 @@ It is updated as tests land.
 
 ## Last local verification
 
-**Date:** 2026-10-18  
-**Branch:** `slice/m2-rules-panel` at `a58daac` (the verified tree; the commit that records this run is the next commit on the branch)  
+**Date:** 2026-10-18 (final verification run of the M2 source-profile slice, run independently of the implementer)  
+**Branch:** `slice/m2-source-profile` at `78f4a72` (the verified tree; the commit that records this run is the next commit on the branch)  
 **Platform:** Linux (kernel 6.18.44-fc-v139). Not Windows and not macOS: the three-OS matrix was not run here.  
 **Node:** v22.22.0 (`.nvmrc`: 22)  
 **pnpm:** 10.28.0  
-**Python:** 3.11.17 (venv with `pip install -e "integrations/hermes[test]"`, as in CI)  
-**Chromium:** Playwright 1.56.1 with the browser under `/opt/pw-browsers`, not reinstalled. `CI=1` was set for every step.
+**Python:** 3.11.17 (venv with `pip install -e "integrations/hermes[test]"`, as in CI); ruff 0.17.1 from that venv  
+**Chromium:** Playwright 1.56.1 (`@playwright/test` in `e2e/package.json`) with the browser under `/opt/pw-browsers` (chromium-1194), not reinstalled.  
+**Environment variable `CI`:** set to `1` for the e2e run (`CI=1 pnpm test:e2e`, which runs the CI reporter and `forbidOnly`); unset for the other steps.
 
-**Results** (the exit code and the counts the tool printed; the full run was started from a clean `git status`, HEAD `a58daac`):
-- install (`pnpm install --frozen-lockfile`): PASS, exit 0
-- lint (`pnpm lint`): PASS, exit 0
-- format:check: PASS, exit 0
-- lint:openapi (Redocly): PASS, exit 0
-- typecheck: PASS, exit 0
+**Results** (the exit code and the counts the tool printed; the run started from a clean `git status`, HEAD `78f4a72`):
+- install (`pnpm install --frozen-lockfile`): PASS, exit 0 (lockfile up to date)
+- lint (`pnpm lint`, `eslint .`): PASS, exit 0
+- format:check (`prettier --check .`): PASS, exit 0
+- lint:openapi (Redocly): PASS, exit 0; one problem explicitly ignored, as configured
+- typecheck (`pnpm typecheck`, every package and `tsconfig.scripts.json`): PASS, exit 0
 - check:generated: PASS, exit 0
-- test (`pnpm test`, vitest): PASS, exit 0, 103 files, 1639 passed, 6 skipped, 0 failed
-- test:coverage (the command the `checks` job runs): PASS, exit 0, 103 files, 1639 passed, 6 skipped, 0 failed; all files: 95.57 % statements, 91.42 % branches, 91.91 % functions, 97.88 % lines
+- test (`pnpm test`, vitest): PASS, exit 0, 103 files, 1644 passed, 6 skipped, 0 failed
+- test:coverage (the command the `checks` job runs): PASS, exit 0, 103 files, 1644 passed, 6 skipped, 0 failed; all files: 95.57 % statements, 91.42 % branches, 91.91 % functions, 97.88 % lines (gate in `vitest.config.ts`: 90 lines, 90 functions, 85 branches, 90 statements; met)
 - check:spdx: PASS, exit 0
 - check:board-tokens: PASS, exit 0
 - check:licence-imports: PASS, exit 0
@@ -35,14 +36,14 @@ It is updated as tests land.
 - build (`pnpm build`): PASS, exit 0
 - build:demo: PASS, exit 0
 - check:doc-anchors: PASS, exit 0
-- docs:build: PASS, exit 0
+- docs:build (VitePress): PASS, exit 0
 - audit (`pnpm audit --audit-level high`): PASS, exit 0; the tree has one low-severity advisory, below the gate
-- test:e2e (the full suite: `build`, `build:demo`, then all Playwright specs on Chromium 1194 from `/opt/pw-browsers`): PASS, exit 0, 7 of 7 tests (a11y x3, decision-protocol x1, demo-build x1, rules-panel x1, walking-skeleton x1)
-- test:hermes (Python 3.11.17 venv with `pip install -e "integrations/hermes[test]"`): PASS, exit 0, 261 passed, 7 skipped; `ruff check` and `ruff format --check` on `integrations/hermes`: PASS, exit 0
-- reuse lint (`pipx run reuse==6.2.0 lint`): PASS, exit 0, 991 of 991 files
-- gitleaks 8.28.0 (archive SHA-256 checked against the pinned value), `git` mode over the local clone: PASS, exit 0, 14 commits scanned, no leaks
+- test:e2e (`CI=1`, the full suite: `build`, `build:demo`, then all six spec files on Chromium from `/opt/pw-browsers`): PASS, exit 0, 8 of 8 tests (a11y x3, decision-protocol x1, demo-build x1, rules-panel x1, source-profile x1, walking-skeleton x1); an earlier run of the same suite without `CI` also passed 8 of 8
+- test:hermes (Python 3.11.17): PASS, exit 0, 261 passed, 7 skipped (1 needs `HERMES_SRC`, 6 need `pwsh`); `ruff check` and `ruff format --check` on `integrations/hermes`: PASS, exit 0, 32 files formatted
+- reuse lint (`pipx run reuse==6.2.0 lint`): PASS, exit 0, 992 of 992 files
+- gitleaks 8.28.0 (archive SHA-256 checked against the pinned value: OK), `git` mode over the full local history: PASS, exit 0, 23 commits scanned, no leaks
 
-**Not run here:** the Windows and macOS legs of the `checks` and `e2e` jobs; a real hermes-agent (`HERMES_SRC` unset, so 1 hermes test is skipped); the PowerShell cron variants (`pwsh` absent, 6 hermes tests skipped). Of the 6 vitest skips, 4 are the optional legacy-stance mapping tests of the storage conformance kit (markdown-files, empty and complete Hormuz store), 1 is the fixture regeneration (only with `WB_REGENERATE_FIXTURE`) and 1 is a case-folding test that Linux skips by design (macOS and Windows hosts).
+**Not run here:** the Windows and macOS legs of the `checks` and `e2e` jobs; a real hermes-agent (`HERMES_SRC` unset, so 1 hermes test is skipped); the PowerShell cron variants (`pwsh` absent, 6 hermes tests skipped). Of the 6 vitest skips, 4 are the optional legacy-stance mapping tests of the storage conformance kit (markdown-files, empty and complete Hormuz store), 1 is the fixture regeneration (only with `WB_REGENERATE_FIXTURE`) and 1 is a case-folding test that Linux skips by design (macOS and Windows hosts). That split was recorded earlier and this run did not re-check it. No push and no pull request was made, so CI has not run this branch.
 
 **Note:** the first CI run (pull request 13 on the project's GitHub repository) showed the end-to-end job green on all three operating systems, while the unit-test job failed on macOS (3 tests) and Windows (6 tests); the fixes are on branch `ci/02-macos` and are not yet proven by a green matrix. The Windows run on `7201f3c` (after those fixes) still failed 2 tests: the `fs-util` atomic-write concurrency test (EPERM after the full rename retry budget) and the MCP 413 test (ECONNRESET); fixes are on branch `ci/03-windows`. The gitleaks job also failed on six synthetic values in older history (the published Stripe documentation example key used as test bait, plus five test or fixture tokens: a base64 confirmation token in two Level-1 fixtures, a fake adapter key, an example sentence for the secret router and an arbitrary token in an invalid fixture). History cannot be rewritten, so `.gitleaks.toml` allowlists each exact value in the file(s) where it lives, with the default rules left on; the same value in any other file is still flagged.
 
@@ -142,13 +143,13 @@ The done criterion of the slice ([roadmap](./roadmap.md#m2-vertical-slices)), cl
 
 ## M2: source profile and hit statistics from outcomes
 
-The done criterion of the slice ([roadmap](./roadmap.md#m2-vertical-slices)), clause by clause. The derivation (`deriveSourceProfiles`), the store (`source-profiles/<sha256>.json` with the earlier profiles), `source_profile_get` and the inspector list were already in the code base. This slice adds the missing proof: a decision that cites several sources, no recount on a later edit, the earlier profiles after a restart, and the real path in a browser. The browser test also found one defect, now fixed: the inspector kept the profile it had loaded before the outcome was entered. Status of S1 to S3: each named test was run in the full local run of 2026-10-18 on `slice/m2-source-profile` and passed; the three-OS CI matrix has not run them.
+The done criterion of the slice ([roadmap](./roadmap.md#m2-vertical-slices)), clause by clause. The derivation (`deriveSourceProfiles`), the store (`source-profiles/<sha256>.json` with the earlier profiles), `source_profile_get` and the inspector list were already in the code base. This slice adds the missing proof: a decision that cites several sources, no recount on a later edit, the earlier profiles after a restart, and the real path in a browser. The browser test also found one defect, now fixed: the inspector kept the profile it had loaded before the outcome was entered. Status of S1 to S3: each named test was run in the final local run of 2026-10-18 on `slice/m2-source-profile` (HEAD `78f4a72`) and passed; the three-OS CI matrix has not run them.
 
 | ID | Criterion | Test file | CI job | Status |
 | --- | --- | --- | --- | --- |
 | M2-S1 | A known outcome adds one to the stored hit count of each source cited by the `cardsUsed` of the decision: once per source even when two cited cards share it, none while the outcome is `open`, and nothing more when the outcome text is edited later | `packages/core/src/source-profile.test.ts`; `services/api/src/contract.test.ts` (`source_profile_get`: a decision citing two sources and a card with no resolvable source, which is profiled under its card id); `services/api/src/hormuz.test.ts` (Hormuz store); `e2e/tests/source-profile.spec.ts` (outcome entered on the board: the wire report and the coastal navy each have n=1) | `checks` (`pnpm test:coverage`), `e2e` (`pnpm test:e2e`) | proven (local, 2026-10-18; no CI run yet) |
 | M2-S2 | The previous profile stays on the device and can be read: every earlier state, oldest first, also after a restart, in the state directory and not in the card store | `packages/local-state/src/store.test.ts` (the earlier profile stays); `services/api/src/contract.test.ts` (`earlier` holds the count before); `services/api/src/hormuz.test.ts` (`the source profile across restarts`: after a restart the earlier profiles are there and the next outcome stacks on top); `e2e/tests/source-profile.spec.ts` (after five outcomes `earlier` is 1, 2, 3, 4 through the API and in the profile file on disk; no card file contains `hitAccuracy`) | `checks` (`pnpm test:coverage`), `e2e` (`pnpm test:e2e`) | proven (local, 2026-10-18; no CI run yet) |
-| M2-S3 | The board shows every dimension with its sample size, says "insufficient data" below n of 5, shows only n and "not yet measurable" for hit accuracy from 5 (the constant 1 is never shown, OQ-31), shows the new count after an outcome without selecting another card, and shows no percentage or combined figure | `apps/board/src/SourceProfile.test.tsx` (eight dimensions; n=1 hidden, n=5 shown; the profile is read again when the outcome was stored); `apps/board/src/DecisionProtocol.test.tsx` (the panel reports a known outcome and not an open one); `e2e/tests/source-profile.spec.ts` (n=0, then n=1 right after the outcome, n=4 "insufficient data", n=5 "not yet measurable (n=5)", seven other dimensions at n=0, no `%`, no digit besides n in any row) | `checks` (`pnpm test:coverage`), `e2e` (`pnpm test:e2e`) | proven (local, 2026-10-18; no CI run yet) |
+| M2-S3 | The board shows every dimension with its sample size and says "insufficient data" below n of 5. For hit accuracy it shows no rate from n of 5: only n and the sentence "not yet measurable (n=5): outcomes cannot record a miss yet" (the constant `value` 1 is never shown, OQ-31). It shows the new count after an outcome without selecting another card, and no percentage or combined figure | `apps/board/src/SourceProfile.test.tsx` (eight dimensions; n=1 hidden; n=5 shows the exact hit-accuracy sentence above and no digit besides n in any dimension row; the profile is read again when the outcome was stored); `apps/board/src/DecisionProtocol.test.tsx` (the panel reports a known outcome and not an open one); `e2e/tests/source-profile.spec.ts` (n=0, then n=1 right after the outcome; n=4 "insufficient data (n=4)"; n=5 the exact sentence "Hit accuracy: not yet measurable (n=5): outcomes cannot record a miss yet"; seven other dimensions at n=0; no `%`, `percent`, `verdict` or `score` in the profile; no digit besides n in any row) | `checks` (`pnpm test:coverage`), `e2e` (`pnpm test:e2e`) | proven (local, 2026-10-18; no CI run yet) |
 
 ## Checks promised by the ADRs
 
