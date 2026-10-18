@@ -88,6 +88,9 @@ each dimension (schema test). Unit tests for the minimum-`n` rule.
   `counterPerspectiveValue`, `independence` moves to per-claim provenance
   in [ADR-0009](0009-mandatory-provenance.md); `reliability` and
   `historicalPerformance` are added). The Brier formula of §12 is a
-  candidate for `hitAccuracy` and is decided in the source-profile slice.
+  candidate for `hitAccuracy`. Its decision is deferred to
+  [OQ-31](../owner-questions.md): until then `value` is the constant 1 once
+  `n` is at least 1, the board shows only `n` with the note that an outcome
+  cannot record a miss yet, and no rate is claimed.
 - Related: [ADR-0010](0010-estimative-probability-scale.md),
   [ADR-0017](0017-decision-card-and-training-export.md).

@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- The source profile no longer shows "Hit accuracy: 1 (n=5)". An outcome cannot record a miss yet, so the stored 1 is not a rate. The board shows "not yet measurable (n=5): outcomes cannot record a miss yet" (ADR-0018, OQ-31).
 - The inspector reads the source profile again after the human enters an outcome. Before, it kept the count it had loaded (n=0) until another card was selected, although the service already held n=1 (ADR-0018, AC-11).
 - Typecheck resolves `@worldbuilder/training-export` from its source, the same way as the other workspace packages. `dist/` is not in git, so CI no longer fails before that package is built.
 - The store write lock treats Windows `EPERM` on an exclusive create as "someone else holds it" and waits, when the lock file is there.
