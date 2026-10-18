@@ -98,7 +98,8 @@ that do not repeat each other is marked as meeting the journalistic standard (En
 
 A player entry without a source is rejected. An empty player field is allowed. The board
 shows a source pass, "N findings · M origins", on each placed card, on an actor's seat
-entries and on its moves, on each edge, and on the cards a decision uses (AC-28, AC-30).
+entries and on its moves, on each edge, and on the cards a decision uses (AC-28, AC-30). Tests:
+[verification](./verification.md#m2-player-fields-with-provenance).
 
 The board can be shown as of an earlier date. `lage_versions` returns archived Lage
 versions, oldest first, and the current state is not included. The slider shows that
