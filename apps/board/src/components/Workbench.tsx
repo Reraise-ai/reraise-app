@@ -112,6 +112,15 @@ export function Workbench({
         // A missing archive must not blank the current board.
         nextHistory = [];
       }
+      // A card that left the board since a replaced state is still a file: show its text there.
+      // One that no longer exists stays withheld.
+      const missing = new Set(
+        nextHistory.flatMap((v) => v.lage.cards.map((c) => c.id)).filter((id) => !cards.has(id)),
+      );
+      const older = await Promise.all(
+        [...missing].map((id) => client.card_get(id).catch(() => undefined)),
+      );
+      for (const c of older) if (c?.id) cards.set(c.id, c);
       if (!alive.current) return;
       setHistory(nextHistory);
       setAsOf((index) => (index !== null && index < nextHistory.length ? index : null));
