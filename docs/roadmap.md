@@ -103,7 +103,8 @@ entries and on its moves, on each edge, and on the cards a decision uses (AC-28,
 
 The board can be shown as of an earlier date. `lage_versions` returns archived Lage
 versions, oldest first, and the current state is not included. The slider shows that
-board and does not save the view (ADR-0049).
+board and does not save the view (ADR-0049). Tests:
+[verification](./verification.md#m2-time-slider-on-real-timestamps).
 
 The open board holds a what-if layer of assumptions that are not cards. Saving the layer
 writes nothing to the store. Recording a decision can attach that layer. The attachment
