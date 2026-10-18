@@ -114,6 +114,32 @@ describe('decision protocol', () => {
     expect((screen.getByTestId('decision-outcome') as HTMLInputElement).value).toBe('open');
   });
 
+  it('starts a new decision with an empty form', async () => {
+    setup();
+    await screen.findByTestId('decision-protocol-empty');
+    fireEvent.change(screen.getByTestId('decision-title'), { target: { value: 'First choice' } });
+    for (const key of [
+      'situation',
+      'trigger',
+      'conditions',
+      'facts',
+      'priorities',
+      'action',
+      'alternatives',
+      'exclusions',
+      'rationale',
+    ]) {
+      fireEvent.change(screen.getByTestId(`decision-${key}`), { target: { value: 'Old text' } });
+    }
+    fireEvent.click(screen.getByTestId(`decision-card-${USED}`));
+    fireEvent.click(screen.getByTestId('decision-create-submit'));
+    await screen.findByTestId('decision-saved');
+    fireEvent.click(screen.getByTestId('decision-new'));
+    expect((screen.getByTestId('decision-title') as HTMLInputElement).value).toBe('');
+    expect((screen.getByTestId('decision-situation') as HTMLInputElement).value).toBe('');
+    expect((screen.getByTestId(`decision-card-${USED}`) as HTMLInputElement).checked).toBe(false);
+  });
+
   it('shows a refused list call and keeps the form usable', async () => {
     const api = createMockApi();
     api.failNext(500, 'store unavailable', /^GET \/cards/);
