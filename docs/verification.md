@@ -11,37 +11,38 @@ It is updated as tests land.
 ## Last local verification
 
 **Date:** 2026-10-18  
-**Branch:** `slice/m2-decision-card` at `6098376`  
+**Branch:** `slice/m2-rules-panel` at `a58daac` (the verified tree; the commit that records this run is the next commit on the branch)  
 **Platform:** Linux (kernel 6.18.44-fc-v139). Not Windows and not macOS: the three-OS matrix was not run here.  
 **Node:** v22.22.0 (`.nvmrc`: 22)  
 **pnpm:** 10.28.0  
 **Python:** 3.11.17 (venv with `pip install -e "integrations/hermes[test]"`, as in CI)  
 **Chromium:** Playwright 1.56.1 with the browser under `/opt/pw-browsers`, not reinstalled. `CI=1` was set for every step.
 
-**Results** (the exit code and the counts the tool printed; the full run was started from a clean `git status`):
-- install (`pnpm install --frozen-lockfile`): PASS
-- lint (`pnpm lint`): PASS
-- format:check: PASS
-- lint:openapi (Redocly): PASS, 1 problem explicitly ignored by `.redocly.lint-ignore.yaml`
-- typecheck: PASS
-- check:generated: PASS
-- test (`pnpm test`, vitest): PASS, 103 files, 1634 passed, 6 skipped, 0 failed
-- test:coverage (the command the `checks` job runs): PASS, 103 files, 1634 passed, 6 skipped, 0 failed; all files: 95.46 % statements, 91.34 % branches, 91.61 % functions, 97.88 % lines
-- check:spdx: PASS
-- check:board-tokens: PASS
-- check:licence-imports: PASS
-- check:no-real-data: PASS
-- validate:schemas: PASS, 30 schemas, 143 examples, 83 valid and 194 invalid fixtures
-- build (`pnpm build`): PASS
-- check:doc-anchors: PASS
-- docs:build: PASS
-- audit (`pnpm audit --audit-level high`): PASS
-- test:e2e (the full suite: `build`, `build:demo`, then all Playwright specs on Chromium): PASS, 6 of 6 tests (a11y x3, decision-protocol x1, demo-build x1, walking-skeleton x1)
-- test:hermes (Python 3.11.17): PASS, 261 passed, 7 skipped; `ruff check` and `ruff format --check` on `integrations/hermes`: PASS
-- reuse lint (`pipx run reuse==6.2.0 lint`): PASS, 990 of 990 files
-- gitleaks 8.28.0 (archive SHA-256 checked against the pinned value), `git` mode over the local clone (9 commits): no leaks
+**Results** (the exit code and the counts the tool printed; the full run was started from a clean `git status`, HEAD `a58daac`):
+- install (`pnpm install --frozen-lockfile`): PASS, exit 0
+- lint (`pnpm lint`): PASS, exit 0
+- format:check: PASS, exit 0
+- lint:openapi (Redocly): PASS, exit 0
+- typecheck: PASS, exit 0
+- check:generated: PASS, exit 0
+- test (`pnpm test`, vitest): PASS, exit 0, 103 files, 1639 passed, 6 skipped, 0 failed
+- test:coverage (the command the `checks` job runs): PASS, exit 0, 103 files, 1639 passed, 6 skipped, 0 failed; all files: 95.57 % statements, 91.42 % branches, 91.91 % functions, 97.88 % lines
+- check:spdx: PASS, exit 0
+- check:board-tokens: PASS, exit 0
+- check:licence-imports: PASS, exit 0
+- check:no-real-data: PASS, exit 0
+- validate:schemas: PASS, exit 0, 30 schemas, 143 examples, 83 valid and 194 invalid fixtures
+- build (`pnpm build`): PASS, exit 0
+- build:demo: PASS, exit 0
+- check:doc-anchors: PASS, exit 0
+- docs:build: PASS, exit 0
+- audit (`pnpm audit --audit-level high`): PASS, exit 0; the tree has one low-severity advisory, below the gate
+- test:e2e (the full suite: `build`, `build:demo`, then all Playwright specs on Chromium 1194 from `/opt/pw-browsers`): PASS, exit 0, 7 of 7 tests (a11y x3, decision-protocol x1, demo-build x1, rules-panel x1, walking-skeleton x1)
+- test:hermes (Python 3.11.17 venv with `pip install -e "integrations/hermes[test]"`): PASS, exit 0, 261 passed, 7 skipped; `ruff check` and `ruff format --check` on `integrations/hermes`: PASS, exit 0
+- reuse lint (`pipx run reuse==6.2.0 lint`): PASS, exit 0, 991 of 991 files
+- gitleaks 8.28.0 (archive SHA-256 checked against the pinned value), `git` mode over the local clone: PASS, exit 0, 14 commits scanned, no leaks
 
-**Not run here:** the Windows and macOS legs of the `checks` and `e2e` jobs; a real hermes-agent (`HERMES_SRC` unset, so its tests are skipped); the PowerShell cron variants (`pwsh` absent, 6 tests skipped). Of the 6 vitest skips, one is the fixture regeneration (only with `WB_REGENERATE_FIXTURE`) and one is a case-folding test that Linux skips by design; the other four were not enumerated.
+**Not run here:** the Windows and macOS legs of the `checks` and `e2e` jobs; a real hermes-agent (`HERMES_SRC` unset, so 1 hermes test is skipped); the PowerShell cron variants (`pwsh` absent, 6 hermes tests skipped). Of the 6 vitest skips, 4 are the optional legacy-stance mapping tests of the storage conformance kit (markdown-files, empty and complete Hormuz store), 1 is the fixture regeneration (only with `WB_REGENERATE_FIXTURE`) and 1 is a case-folding test that Linux skips by design (macOS and Windows hosts).
 
 **Note:** the first CI run (pull request 13 on the project's GitHub repository) showed the end-to-end job green on all three operating systems, while the unit-test job failed on macOS (3 tests) and Windows (6 tests); the fixes are on branch `ci/02-macos` and are not yet proven by a green matrix. The Windows run on `7201f3c` (after those fixes) still failed 2 tests: the `fs-util` atomic-write concurrency test (EPERM after the full rename retry budget) and the MCP 413 test (ECONNRESET); fixes are on branch `ci/03-windows`. The gitleaks job also failed on six synthetic values in older history (the published Stripe documentation example key used as test bait, plus five test or fixture tokens: a base64 confirmation token in two Level-1 fixtures, a fake adapter key, an example sentence for the secret router and an arbitrary token in an invalid fixture). History cannot be rewritten, so `.gitleaks.toml` allowlists each exact value in the file(s) where it lives, with the default rules left on; the same value in any other file is still flagged.
 
@@ -126,7 +127,7 @@ The done criterion of the slice ([roadmap](./roadmap.md#m2-vertical-slices)), cl
 
 ## M2: rules panel replacing the barometer
 
-The done criterion of the slice ([roadmap](./roadmap.md#m2-vertical-slices)), clause by clause. The rules panel, `rules_evaluate`, `rule_create` and `rule_save` were already in the code base; this slice adds the missing proof of the clauses that had none (a pending proposal, every condition kind, the real path in a browser).
+The done criterion of the slice ([roadmap](./roadmap.md#m2-vertical-slices)), clause by clause. The rules panel, `rules_evaluate`, `rule_create` and `rule_save` were already in the code base; this slice adds the missing proof of the clauses that had none (a pending proposal, every condition kind, the real path in a browser). Status of R1 to R6: each named test was run in the full local run of 2026-10-18 on `slice/m2-rules-panel` (HEAD `a58daac`) and passed; the three-OS CI matrix has not run them.
 
 | ID | Criterion | Test file | CI job | Status |
 | --- | --- | --- | --- | --- |
@@ -211,14 +212,14 @@ the milestone in which the criterion is first expected to be demonstrated.
 | --- | --- | --- | --- | --- | --- |
 | AC-01 | The three layers (`evidenced`, `said`, `experience`) are never merged into one figure, and a stance is never folded into a layer or a count. Every number on the board decomposes into layers. | M1 | `apps/board/src/layerFigures.test.ts` (three layers stay apart, a shared origin counts once inside its layer, a card with no layer is unclassified); `apps/board/src/App.test.tsx` (the package lists findings and origins per layer, including a zero, and never one summed total; a believed stance is absent from that list; the cloud preview splits "this would be sent" and "withheld by the gate" the same way) | `checks` (`pnpm test`) | in progress (board unit tests; not yet in the Playwright e2e; proposal counts and usage metrics are not layer totals) |
 | AC-02 | The user can classify any foreign statement with a private stance (`believed`, `rejected`, `undecided`, weight, note) without changing the card's layer. | M1 | `apps/board/src/App.test.tsx` (stance overlay: set on a selected card, shown on screen only, never in a package), `e2e/tests/walking-skeleton.spec.ts` (stance set through the inspector, shown on the canvas and after a reload, absent from the cloud package view and from the agent's `knowledge_consult`, `lage_get` and `card_get` results) | `checks` (`pnpm test:coverage`) | in progress (board unit tests pass locally; e2e `walking-skeleton.spec.ts` passes locally on Linux; no CI run yet) |
-| AC-03 | The interface contains no verdict: no meter, no percentage, no highlighted "winning" option. The Rules panel lists fired and not fired rules with triggering cards only. | M2+ | `apps/board/src/RulesPanel.test.tsx` (fired and not fired, the rule's own text, the triggering card, no percentage); `services/api/src/rules.test.ts` (no number that is a score; a proposed card and a proposed rule card never fire or appear until accepted); `apps/board/src/App.test.tsx` (no meter); `e2e/tests/rules-panel.spec.ts` | `checks` (`pnpm test`), `e2e` (`pnpm test:e2e`) | in progress (passes locally; no CI run yet) |
+| AC-03 | The interface contains no verdict: no meter, no percentage, no highlighted "winning" option. The Rules panel lists fired and not fired rules with triggering cards only. | M2+ | `apps/board/src/RulesPanel.test.tsx` (fired and not fired, the rule's own text, the triggering card, no percentage); `services/api/src/rules.test.ts` (no number that is a score; a proposed card and a proposed rule card never fire or appear until accepted); `apps/board/src/App.test.tsx` (no meter); `e2e/tests/rules-panel.spec.ts` | `checks` (`pnpm test`), `e2e` (`pnpm test:e2e`) | proven (local, 2026-10-18; no CI run yet) |
 | AC-04 | The world's content types are visible and stored, including the user's own derivations and premises. | M1 | `apps/board/src/App.test.tsx` (the card, the card list and the inspector show the stored `type`; an `assumption` and a `rating` stay visible); `packages/adapters/storage-markdown-files/src/hormuz.test.ts` (the Hormuz store returns the premise and both own assessments by `type`); `e2e/tests/walking-skeleton.spec.ts` (the placed wire report is `event`, the premise is `assumption`, both ratings are `rating`, the inspector shows `organisation`) | `checks` (`pnpm test`), `e2e` (`pnpm test:e2e`) | in progress (board, store and the Hormuz e2e pass locally on Windows; no CI run yet) |
 | AC-05 | The world stays with the user: state is written to files and survives a reload and a restart. | M1 | `services/api/src/hormuz.test.ts` (a new `worldbuilder serve` process reads back a placed card, a drawn `supports` edge and a private stance from the Hormuz files; the stance note is in `<state>/stances/<cardId>.json` and in no file of the card store); `e2e/tests/walking-skeleton.spec.ts` (a page reload shows the placement, the edge, the accepted card and the stance) | `checks` (`pnpm test`), `e2e` (`pnpm test:e2e`) | in progress (passes locally on Windows, 2026-10-13; no CI run yet) |
 | AC-06 | Cards come from the user's own store through a `StorageAdapter`, and each card shows which system it came from. | M1 | `apps/board/src/App.test.tsx` (canvas, card list and inspector show `originSystem`, and omit the line when the card has none); `e2e/tests/walking-skeleton.spec.ts` (the Hormuz navy card on the canvas and in the inspector, and the private cost card in the list, show the system stored in the markdown files; the wire report, which has no `originSystem`, shows no system line) | `checks` (`pnpm test`), `e2e` (`pnpm test:e2e`) | in progress (board unit test and the Hormuz e2e pass locally on Windows, 2026-10-13; no CI run yet) |
 | AC-07 | The user can create a Lage with their own question and any number of options. | M1 | `apps/board/src/App.test.tsx` (the create form sends the question and the options, including none; a repeated line is one option; the open board shows the question and each option); `services/api/src/hormuz.test.ts` (`lage_create` on the Hormuz store keeps zero options and three options after a restart of `worldbuilder serve`; a duplicate option is rejected) | `checks` (`pnpm test`) | in progress (passes locally; no CI run yet; not in the Playwright e2e) |
 | AC-08 | The user can draw, delete and reverse `supports` and `refutes` edges (both in M1), and they persist. | M1 | `apps/board/src/App.test.tsx` (draw, reverse, retype, delete of supports and refutes through the board); `apps/board/src/lageModel.test.ts`; `services/api/src/hormuz.test.ts` (a new `worldbuilder serve` process reads back a drawn `supports` edge and a drawn `refutes` edge; after a reverse and a delete, a further restart keeps only the reversed `supports` edge) | `checks` (`pnpm test`) | in progress (passes locally; no CI run yet) |
 | AC-09 | A decision card stores all 11 sections and they survive a reload. | M2+ | `services/api/src/hormuz.test.ts` (a new `worldbuilder serve` process reads back all eleven sections); `services/api/src/contract.test.ts` (create and save); `apps/board/src/App.test.tsx` (the board form sends the eleven sections); `apps/board/src/DecisionProtocol.test.tsx` (an opened decision shows all eleven sections); `e2e/tests/decision-protocol.spec.ts` (the stored Hormuz decision shows its sections, also after a page reload) | `checks` (`pnpm test:coverage`), `e2e` (`pnpm test:e2e`) | proven (local, 2026-10-18; no CI run yet) |
-| AC-10 | The user creates and changes rule cards, and evaluation reads from those cards, never from code. | M2+ | `services/api/src/contract.test.ts` (create, every condition kind accepted, unknown card rejected, a changed action is what the next evaluation returns, a stale hash is 409, another field in the body is not stored); `services/api/src/hormuz.test.ts` (a restart of `worldbuilder serve` on the Hormuz store still evaluates the changed action); `apps/board/src/RulesPanel.test.tsx` (the form sends one card-on-board condition and the changed action, and the panel shows the text the service returned); `e2e/tests/rules-panel.spec.ts` (form, change and reload in Chromium) | `checks` (`pnpm test`), `e2e` (`pnpm test:e2e`) | in progress (passes locally; no CI run yet) |
+| AC-10 | The user creates and changes rule cards, and evaluation reads from those cards, never from code. | M2+ | `services/api/src/contract.test.ts` (create, every condition kind accepted, unknown card rejected, a changed action is what the next evaluation returns, a stale hash is 409, another field in the body is not stored); `services/api/src/hormuz.test.ts` (a restart of `worldbuilder serve` on the Hormuz store still evaluates the changed action); `apps/board/src/RulesPanel.test.tsx` (the form sends one card-on-board condition and the changed action, and the panel shows the text the service returned); `e2e/tests/rules-panel.spec.ts` (form, change and reload in Chromium) | `checks` (`pnpm test`), `e2e` (`pnpm test:e2e`) | proven (local, 2026-10-18; no CI run yet) |
 | AC-11 | Recording an outcome creates an experience card linked to the decision and to the cards used, it survives a reload, and source statistics update. | M2+ | `services/api/src/hormuz.test.ts` (the experience card is still there after a restart, with `based_on` edges to the decision and the card used; the source hit count is in the state directory and not in the card store); `services/api/src/contract.test.ts` (one card when the outcome becomes known, none while it is `open`, no second card when the text changes; `source_profile_get` returns the new hit count and the earlier one); `services/api/src/knowledge.test.ts` (accepting `record_outcome` stores the same card); `services/api/src/hormuz.test.ts` (a second restart: a decision saved with `open` in one session gets its outcome in the next and one experience card is there in the third); `e2e/tests/decision-protocol.spec.ts` (outcome entered on the board, one `Experience: ...` file on disk, still shown after a reload); `packages/local-state/src/store.test.ts` (the earlier profile stays); `apps/board/src/SourceProfile.test.tsx` (each dimension shows its sample size and "insufficient data" below `n` of 5) | `checks` (`pnpm test:coverage`), `e2e` (`pnpm test:e2e`) | proven (local, 2026-10-18; no CI run yet) |
 | AC-12 | A decision protocol exists across sessions, not only for the current one. | M2+ | `services/api/src/hormuz.test.ts` (three `worldbuilder serve` processes on the Hormuz store: the decision saved in the first is listed by `GET /cards?type=decision` in the second, which enters the outcome; the third reads the sections and the one linked experience card); `apps/board/src/DecisionProtocol.test.tsx` (the protocol lists stored decisions, opens one, takes the outcome later, and says so when none is stored); `e2e/tests/decision-protocol.spec.ts` (the decision written by an earlier session is in the protocol, takes its outcome, and both survive a reload) | `checks` (`pnpm test:coverage`), `e2e` (`pnpm test:e2e`) | proven (local, 2026-10-18; no CI run yet). The protocol lists every decision of the store, newest first, not those of one Lage: a decision does not name its Lage. |
 | AC-13 | The rationale of a decision is stored. | M2+ | `services/api/src/hormuz.test.ts` (the reloaded decision still has the rationale section that was saved) | `checks` (`pnpm test:coverage`) | proven (local, 2026-10-18; no CI run yet), as one of the eleven sections |
