@@ -24,7 +24,7 @@ The [verification table](../verification.md) records which claims are backed by 
 
 ## Prototype v1 (frozen design study)
 
-[`prototype/board.html`](https://github.com/KarsaOrlong23/Worldbuilder/blob/main/prototype/board.html)
+[`prototype/board.html`](https://github.com/Reraise-ai/reraise-app/blob/main/prototype/board.html)
 is a frozen, clickable design study from concept v1. It is kept as a reference for look and
 flow and is not maintained. It deviates from the current canon in these places, and the
 canon on this page wins:

@@ -1,61 +1,39 @@
-# Bau-Auftrag Worldbuilder/Reraise — gilt bei JEDEM Grok-Lauf in diesem Repo
+# Agent guide
 
-Du (Grok) bist die Bau-Session. Einziger Job: **Umsetzung** — den entschiedenen, aber noch
-nicht gebauten Stand in lauffähigen, bewiesenen Code verwandeln. Permanent, ohne auf den Inhaber
-(Kane) zu warten. Nicht neu entwerfen, nicht Positionierung diskutieren. Sprache mit Kane: Deutsch,
-Klartext. Code/Repo: Englisch.
+This file applies to every AI coding agent and every human contributor who works in this repository. The code and the docs are in English.
 
-## Pflicht-Skills bei jedem Auftrag (installiert, aktiv)
+## Job
 
-- **pstack / poteto-mode**: der Arbeitsablauf — erst Code verstehen → Design wählen → bauen →
-  am ECHTEN Artefakt verifizieren → Diff reviewen, bevor „fertig". Für jede mehrstufige Aufgabe starten.
-- **ponytail** (full): so wenig Code wie möglich, erst Bordmittel/Stdlib/vorhandenen Code nutzen.
-  `ponytail-review` auf den Diff vor jedem Merge, `ponytail-debt` vor jedem Release.
-- **thermo-nuclear-code-quality-review** (claude-team-kit): harter, getrennter Korrektheits-/Quality-Prüfer
-  vor dem Merge (deckt ab, was ponytail-review auslässt).
-  Reihenfolge je PR: pstack führt → ponytail hält schlank → thermo-nuclear prüft → erst dann Merge.
+Implementation: turn what is decided but not yet built into running, proven code. Do not redesign and do not reopen positioning. Decisions live in `docs/adr/` (status accepted). A question about _what_ to build goes to `docs/owner-questions.md` (the question, your default, the reason); then carry on with the default.
 
-## Nur aus dem Katalog bauen
+## Workflow
 
-Dienste/Abhängigkeiten NUR aus `docs/microservice-katalog.md` wählen (Spalte **Erste Wahl** zuerst;
-Ausweichen nur bei Hindernis). Die **raus-Liste** nie verwenden. **ERPNext-Grundregel**: was Frappe/ERPNext
-kann, läuft dort, nicht als eigener Dienst. Für **Reraise/Weltenbauer** gelten Sockel 1,6,10,15,34,39,46
-plus 2,3,12,26,30,36 (Guthaben-Konto 12 und Rechte 3 sind der Kern). Vier Dinge sind Eigenbau
-(ARCA, MercadoPago, Agenten-Zähler, Beleg-Spur). Bei neuem Bedarf ohne Katalog-Eintrag: Eintrag
-vorschlagen (owner-questions.md), nicht beliebige Lib ziehen.
+Understand the code, choose a design, build, verify on the real artefact, review the diff, and only then call it done. Keep the code as small as possible: use the standard library and existing code first.
 
-## Pflichtlektüre zu Beginn jedes Zyklus (so fängst du neue Beschlüsse auf)
+## Build only from the catalogue
 
-1. Diese Datei + `docs/microservice-katalog.md` + `C:\Projects\ARCHITEKTUR-VORGABEN.md`.
-2. `docs/roadmap.md`, `docs/architecture/05-building-blocks.md` (Spalte „exists today"), `docs/adr/*`
-   (Status accepted), `docs/owner-questions.md`.
-3. Jüngste Übergabe in `C:\Projects\Claude outputs\handover\`.
-4. `C:\Users\Kane\Entscheidungsprotokoll\ENTSCHEIDUNGS-PROTOKOLL.md`.
-5. Wissen: `qmd query -c weltenbauer "<thema>"`.
+Choose services and dependencies from `docs/microservice-katalog.md` (column "Erste Wahl" first; use the alternative only when something blocks). Never use the exclusion list. ERPNext rule: what Frappe/ERPNext can do runs there, not as a separate service. For Reraise the base set 1, 6, 10, 15, 34, 39, 46 plus 2, 3, 12, 26, 30, 36 applies. If a need has no catalogue entry, propose one in `docs/owner-questions.md` instead of pulling in an arbitrary library.
 
-## Auftragsquelle — Lücke festgehalten→entschieden→umgesetzt schließen
+## Read at the start of each cycle
 
-Bauliste = Abgleich ENTSCHEIDUNG↔CODE: jede accepted-ADR, deren Sache im Code fehlt/nur Skelett ist
-(jetzt: `packages/mcp-server` und `apps/board` sind 0.0.0-Skelette); jede roadmap-/building-blocks-Zeile
-„geplant, nicht exists today". Reihenfolge (ADR-0020): M0 fertig → **M1 Walking Skeleton** (board UI ↔
-Board-API ↔ Store ↔ MCP, Playwright-e2e Hormuz, CI grün Win/macOS/Linux; dann v0.1.0-alpha) →
-vertikale Slices. Neue Beschlüsse anderer Sessions beim nächsten Zyklus aufnehmen.
+1. This file and `docs/microservice-katalog.md`.
+2. `docs/roadmap.md`, `docs/architecture/05-building-blocks.md` (column "exists today"), `docs/adr/*` (status accepted), `docs/owner-questions.md`.
+3. `CHANGELOG.md` and `docs/verification.md` for the latest state.
 
-## Abnahme (6 Punkte) — „fertig" nur mit Beweis am echten Pfad
+## Work list
 
-getestet · verdrahtet · reboot-sicher · unabhängig verifiziert · dokumentiert · Signatur.
-CI/e2e grün ist der Beweis; Selbstbericht zählt nicht. Kleine PRs, 1 Feature/PR, nach Merge pushen
-(Push scheitert → Konto KarsaOrlong23/Worldbuilder prüfen, sonst auf Branch committen und melden).
-In einem Worktree unter `C:\Projects\worldbuilder-worktrees\` bauen, nie direkt auf main.
+The gap between decision and code: every accepted ADR whose subject is missing or only a skeleton in the code, and every roadmap or building-blocks row marked "planned, not exists today". The order follows the roadmap (ADR-0020).
 
-## Doku im selben Zyklus nachführen
+## Acceptance (six points)
 
-roadmap.md / 05-building-blocks.md „exists today", `docs/verification.md`, `CHANGELOG.md`; bei neuer
-Entscheidung ADR + Entscheidungsprotokoll.
+"Done" only with proof on the real path: tested, wired in, reboot-safe, independently verified, documented, signed. A green CI and e2e run is the proof; a self-report is not.
 
-## Grenzen
+Small pull requests, one feature each. Work on a branch (a separate worktree is fine), never directly on `main`.
 
-Nie auf Kane warten. WAS-/Produktfragen → `docs/owner-questions.md` (Frage, dein Default, Begründung),
-weiter. Geld, Verträge, Irreversibles, Veröffentlichung nach außen: NICHT ohne Kane. Kostendeckel/
-Zeitlimit je Lauf beachten; bei knappem Guthaben PR sauber schließen, grün anhalten. Keine `.md`-
-Deliverables an Kane; Lesbares als PDF, Bauberichte kurz.
+## Documentation in the same cycle
+
+Update `docs/roadmap.md`, `docs/architecture/05-building-blocks.md` ("exists today"), `docs/verification.md` and `CHANGELOG.md`; for a new decision add an ADR.
+
+## Limits
+
+Money, contracts, irreversible steps and publication outside the repository need the maintainers' approval. Keep to the cost cap and time limit of each run; if the budget runs low, close the pull request cleanly and stop on green.

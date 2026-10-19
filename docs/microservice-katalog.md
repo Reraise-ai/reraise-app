@@ -3,7 +3,6 @@ id: wiki-microservice-katalog
 titel: Microservice-Katalog & Open-Source-Bausteine (46 Bausteine, A–F)
 datum: 2026-10-08
 status: freigegeben
-quelle: C:\Users\Kane\Projects\company-spawn-48naehrstoffe\Homepage\Homepage-Bau\Microservice-Katalog_2026-10-10.pdf
 ---
 
 # Microservice-Katalog & Open-Source-Bausteine
@@ -11,7 +10,7 @@ quelle: C:\Users\Kane\Projects\company-spawn-48naehrstoffe\Homepage\Homepage-Bau
 Verbindlicher Katalog, aus dem gebaut wird. Jede Zeile ist ein Dienst, der einmal läuft und von allen Projekten genutzt wird. **Erste Wahl** nehmen, nur bei Hindernis auf **Ausweichen**. Lizenz in Klammern; „ja (AGPL)" = erlaubt, eigene Code-Änderungen offenlegen.
 
 ## Grundregel: ERPNext ist die Plattform
-Alles, was eine Frappe-App kann, läuft in ERPNext (eine Site je Kunde) — **nicht als eigener Dienst daneben**. Ein Katalog-Dienst kommt nur dazu, wenn Frappe die Aufgabe nicht kann. Homepages/Shops = statische Astro-Seiten auf Cloudflare Pages, Daten aus ERPNext über Cloudflare-Tunnel. Verbindlich: `C:\Projects\ARCHITEKTUR-VORGABEN.md`.
+Alles, was eine Frappe-App kann, läuft in ERPNext (eine Site je Kunde) — **nicht als eigener Dienst daneben**. Ein Katalog-Dienst kommt nur dazu, wenn Frappe die Aufgabe nicht kann. Homepages/Shops = statische Astro-Seiten auf Cloudflare Pages, Daten aus ERPNext über Cloudflare-Tunnel.
 
 ## RAUS für unser Modell (Weiterverkauf an Kunden verboten/eingeschränkt — NICHT verwenden)
 n8n, Dify, NocoDB, Invoice Ninja, Akaunting, Outline, Redpanda, Cal.com, Directus (nur <5 Mio. Umsatz), Open WebUI (nur ohne eigenes Branding).
@@ -99,10 +98,6 @@ Gemeinsamer Sockel (alle Projekte): **1, 6, 10, 15, 34, 39, 46**. Zusätzlich:
 | Projekt | Zusätzlich | Besonderheit |
 |---------|-----------|--------------|
 | **Weltenbauer / Reraise (Kartentausch)** | **2, 3, 12, 26, 30, 36** | Karten als Eigentum der Organisation — Guthaben-Konto (12) und Rechte (3) sind der Kern |
-| Private Executive / Donna | 2, 3, 8, 9, 11, 18, 19, 25, 26, 27, 35, 36 | Mandantentrennung je Kunde Pflicht; Matrix vor Telegram |
-| KI-Agentur Buenos Aires | 2, 8, 9, 11, 13, 20, 21, 32 | Abrechnung pro Agent; Verträge digital signieren |
-| Caprey / Mercado Libre | 8, 11, 33 | Mercado-Libre-API als eigener Adapter (Eigenbau) |
-| Supplements Argentinien (Barril 48) | 8, 11, 28, 30, 31 | Shop + Landingpage, Pesos, ARCA |
 
 ## Aufbau-Reihenfolge
 1. Sockel: ERPNext/Frappe (Site je Mandant), Cloudflare-Tunnel, Traefik, Uptime Kuma, Restic.

@@ -85,7 +85,7 @@ A legacy `verknuepfungen` list reads as edges of kind `unspecified`.
 
 ## Card and format fields
 
-The mapping below follows [ADR-0023](./adr/0023-core-domain-model.md), which is normative. The machine-readable values are defined by the JSON Schemas in [`schemas/`](https://github.com/KarsaOrlong23/Worldbuilder/tree/main/schemas), which win if they differ.
+The mapping below follows [ADR-0023](./adr/0023-core-domain-model.md), which is normative. The machine-readable values are defined by the JSON Schemas in [`schemas/`](https://github.com/Reraise-ai/reraise-app/tree/main/schemas), which win if they differ.
 
 | German field | English field |
 | --- | --- |

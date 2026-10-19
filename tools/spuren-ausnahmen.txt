@@ -1,0 +1,6 @@
+# Bewusste Ausnahmen (Zeilen-Regex, gegen "datei:zeile:text" geprueft)
+# Literaturzitat in den Beispielkarten: Chris Masterjohn ist ein oeffentlich zitierter Wissenschaftler.
+Chris Masterjohn
+# Testdaten mit erfundenem Windows-Benutzer "u" und erfundenem Schluessel (Redaktions-Test)
+^packages/local-state/src/state-dir\.test\.ts:
+^services/api/src/knowledge\.test\.ts:.*sk-ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789

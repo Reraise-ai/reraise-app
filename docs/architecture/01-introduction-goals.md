@@ -48,9 +48,9 @@ The five most important quality goals, in priority order. Each has testable scen
 | End user (first target: operators of their own agent systems or second brains) | Connect an existing vault or agent in minutes; keep data local; see where every statement came from; no verdicts. |
 | User's agents and multi-agent system | A stable MCP interface to read the active world and to propose moves. |
 | Adapter authors | Language-neutral contracts (JSON Schema, OpenAPI), adapter interfaces and a conformance kit to prove their adapter. |
-| Owner (maintainer) | Decides what, money and irreversible matters; operates an own store adapter outside this repository. See [governance](https://github.com/KarsaOrlong23/Worldbuilder/blob/main/GOVERNANCE.md). |
+| Owner (maintainer) | Decides what, money and irreversible matters; operates an own store adapter outside this repository. See [governance](https://github.com/Reraise-ai/reraise-app/blob/main/GOVERNANCE.md). |
 | Contributors and reviewing agents | Clear building-block boundaries, ADRs for every decision, required checks. |
-| Security reporters | A documented privacy model and threat surface ([SECURITY.md](https://github.com/KarsaOrlong23/Worldbuilder/blob/main/SECURITY.md)). |
+| Security reporters | A documented privacy model and threat surface ([SECURITY.md](https://github.com/Reraise-ai/reraise-app/blob/main/SECURITY.md)). |
 
 The owner's own card store is one backend among many. It is reached through a
 `StorageAdapter` developed and operated outside this repository against the same contracts and

@@ -1,7 +1,7 @@
 # 7. Deployment view
 
 Status: nothing is deployable yet. There is no quickstart before M1 (see the
-[README](https://github.com/KarsaOrlong23/Worldbuilder#quickstart)). This page fixes the
+[README](https://github.com/Reraise-ai/reraise-app#quickstart)). This page fixes the
 target deployment the M1 implementation must meet.
 
 ## 7.1 Default: local, single user

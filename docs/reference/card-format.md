@@ -11,7 +11,7 @@ This page is the human-readable specification of the canonical model decided in
 [ADR-0008](../adr/0008-believed-as-private-stance.md),
 [ADR-0009](../adr/0009-mandatory-provenance.md) and
 [ADR-0048](../adr/0048-card-descriptive-fields.md). The machine-readable contract is the set of
-JSON Schemas in [`schemas/`](https://github.com/KarsaOrlong23/Worldbuilder/tree/main/schemas),
+JSON Schemas in [`schemas/`](https://github.com/Reraise-ai/reraise-app/tree/main/schemas),
 which are in progress in milestone M0. If this page and a published schema differ, the
 schema wins and this page is a bug. The reference `markdown-files` storage adapter
 (`packages/adapters/storage-markdown-files`) implements this format, and the conformance kit
@@ -442,4 +442,4 @@ A store that uses the German header names maps one to one. The authoritative tab
 [Why layers never merge](../explanation/layers-never-merge.md) ·
 [Provenance and independence](../explanation/provenance-and-independence.md) ·
 [ADR log](../adr/) ·
-[Schemas](https://github.com/KarsaOrlong23/Worldbuilder/tree/main/schemas)
+[Schemas](https://github.com/Reraise-ai/reraise-app/tree/main/schemas)

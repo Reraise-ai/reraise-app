@@ -6,7 +6,7 @@ import { withMermaid } from 'vitepress-plugin-mermaid';
 // The address lives in the board constant, so a change stays one line.
 import { PRIVATE_EXECUTIVE_URL } from '../../apps/board/src/privateExecutive.ts';
 
-const repo = 'https://github.com/KarsaOrlong23/Worldbuilder';
+const repo = 'https://github.com/Reraise-ai/reraise-app';
 
 // The ADR sidebar is generated from docs/adr/NNNN-*.md so a new ADR needs no config change.
 const adrDir = fileURLToPath(new URL('../adr/', import.meta.url));
