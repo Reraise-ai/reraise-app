@@ -421,12 +421,18 @@ export async function buildApp(options: AppOptions): Promise<BoardApp> {
   app.get('/health', open, async () => ({ status: 'ok' }));
 
   // The board from the same origin, so a browser needs no --allow-origin. Host-checked like every
-  // route; the files carry no data, the board asks for the session token itself.
+  // route; the files carry no data, the board asks for the session token itself. Only a page of
+  // this origin may frame it: a foreign page could otherwise show the board as its own and steer
+  // the clicks or the typed token (clickjacking).
   if (options.boardDir) {
     await app.register(fastifyStatic, { root: options.boardDir, serve: false });
-    app.get('/', open, (_req, reply) => reply.sendFile('index.html'));
+    const noForeignFrame = (reply: FastifyReply) =>
+      reply
+        .header('content-security-policy', "frame-ancestors 'self'")
+        .header('x-frame-options', 'SAMEORIGIN');
+    app.get('/', open, (_req, reply) => noForeignFrame(reply).sendFile('index.html'));
     app.get<{ Params: { '*': string } }>('/assets/*', open, (req, reply) =>
-      reply.sendFile(`assets/${req.params['*']}`),
+      noForeignFrame(reply).sendFile(`assets/${req.params['*']}`),
     );
   }
 

@@ -612,6 +612,11 @@ describe('worldbuilder serve: one process, one origin', () => {
       expect(escape.statusCode).toBe(403);
       expect(escape.body).not.toContain('not for the browser');
       expect((await inject('/', 'evil.example:80')).statusCode).toBe(403);
+      // Only a page of this origin may frame the board (no clickjacking from a foreign page).
+      for (const res of [page, asset]) {
+        expect(res.headers.get('content-security-policy')).toBe("frame-ancestors 'self'");
+        expect(res.headers.get('x-frame-options')).toBe('SAMEORIGIN');
+      }
     } finally {
       await service.close();
     }

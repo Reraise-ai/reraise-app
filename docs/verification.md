@@ -147,6 +147,8 @@ Not run that day: full `pnpm test`, coverage, the Playwright e2e, axe, and the t
 
 **Also checked 2026-10-18, Linux, Node v22.22.0, pnpm 10.28.0.** M2 time slider slice (pre-merge, stacked on the player fields branch). `pnpm test` passed, 1667 tests (6 skipped, 103 files). `pnpm test:coverage` passed with the same 1667 tests: 95.57 % statements, 91.42 % branches, 91.91 % functions, 97.88 % lines. `pnpm lint`, `pnpm typecheck`, `pnpm format:check`, `pnpm build`, `pnpm validate:schemas` (30 schemas, 143 examples, 83 valid and 194 invalid fixtures), `pnpm check:generated`, `pnpm check:board-tokens`, `pnpm check:doc-anchors`, `pnpm check:spdx`, `pnpm check:no-real-data`, `pnpm lint:openapi` and `pnpm check:licence-imports` passed. `CI=1 pnpm test:e2e` (build, build:demo, all specs on Chromium from `/opt/pw-browsers`) passed, 10 tests, including the new `time-slider.spec.ts`. Mutations, each reverted: see the mutation probes under M2-T3. The three-OS CI matrix was not run.
 
+**Also checked 2026-10-20, Windows, Node v22.23.2, pnpm 10.28.0.** Frame lock for the served board (pre-merge). `/` and `/assets/*` send `Content-Security-Policy: frame-ancestors 'self'` and `X-Frame-Options: SAMEORIGIN`; `services/api/src/main.test.ts` checks both headers on both routes. `pnpm test`, `pnpm lint`, `pnpm typecheck`, `pnpm format:check`, `pnpm check:spdx`, `pnpm check:no-real-data`, `pnpm docs:build` passed; `pnpm test` 1670 tests (6 skipped, 103 files), `pnpm test:e2e` 11 tests on Chromium. Mutation, reverted: without the two headers the serve test failed. The three-OS CI matrix was not run.
+
 Status values:
 
 - **proven**: the test exists and passed in a full local run of the CI steps on the date in the row. CI has not run it yet, and the row says so.
