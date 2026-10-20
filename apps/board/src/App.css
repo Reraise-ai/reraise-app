@@ -131,14 +131,22 @@ label {
 
 /* Shell */
 
+/* The board fills the window, or the host's box when embedded (a desktop plugin gives one). */
+html,
+body,
+#root {
+  height: 100%;
+}
+
 .wb-shell {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: 100%;
 }
 
 /* The theme wrapper around every screen (data-wb-theme) paints with its own tokens. */
 .wb-theme {
+  height: 100%;
   background: var(--wb-surface);
   color: var(--wb-text);
 }
@@ -168,6 +176,16 @@ label {
   min-height: 0;
 }
 
+/* The board area: status line on top, canvas below, never higher than the window. When a host
+   gives no fixed height and the page scrolls, it stays in view beside the sidebar. */
+.wb-workbench > .wb-canvas-wrap {
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 0;
+  max-height: 100vh;
+}
+
 .wb-canvas-wrap {
   position: relative;
   min-width: 0;
@@ -177,6 +195,11 @@ label {
 .wb-canvas-fill {
   /* The canvas fills the board area; without a height React Flow collapsed to a thin strip. */
   height: 100%;
+}
+
+.wb-workbench > .wb-canvas-wrap > .wb-canvas-fill {
+  flex: 1 1 0;
+  height: auto;
 }
 
 .wb-sidebar {
@@ -192,10 +215,9 @@ label {
 }
 
 .wb-status {
-  position: absolute;
-  top: var(--wb-space-1);
-  left: var(--wb-space-1);
-  z-index: 5;
+  flex: 0 0 auto;
+  align-self: flex-start;
+  margin: var(--wb-space-1);
   background: var(--wb-surface-raised);
   border: var(--wb-stroke) solid var(--wb-line);
   padding: var(--wb-space-half) var(--wb-space-1);
@@ -362,6 +384,9 @@ label {
   .wb-workbench {
     grid-template-columns: 1fr;
     grid-template-rows: 60vh auto;
+  }
+  .wb-workbench > .wb-canvas-wrap {
+    position: relative;
   }
   .wb-sidebar {
     border-left: none;
