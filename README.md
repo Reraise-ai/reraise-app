@@ -19,7 +19,7 @@ propose. A human decides.
 
 ## Status
 
-**M1 is done; M2 slices are in progress; nothing is released yet.** The board, the Board API, the `markdown-files` adapter and the MCP server work together on the synthetic Hormuz world. The end-to-end test (`pnpm test:e2e`, Playwright) runs in CI on Linux, Windows and macOS and was green at commit `4e0ebf8` (see the [roadmap](docs/roadmap.md)). Six M2 slices (decision card, source profile, rules panel, player fields, time slider, what-if) are built and tested on branches. No version is tagged and no release exists yet. No feature is claimed here that is not backed by an automated test.
+**M1 is done; M2 slices are in progress; the first toolkit release is [v0.2.0](https://github.com/Reraise-ai/reraise-app/releases/tag/v0.2.0).** The board, the Board API, the `markdown-files` adapter and the MCP server work together on the synthetic Hormuz world. The end-to-end test (`pnpm test:e2e`, Playwright) runs in CI on Linux, Windows and macOS and was green at commit `4e0ebf8` (see the [roadmap](docs/roadmap.md)). Six M2 slices (decision card, source profile, rules panel, player fields, time slider, what-if) are built and tested on branches. Version 0.2.0 is tagged and released as `reraise-toolkit-0.2.0.zip`; the M2 slices are not part of it. No feature is claimed here that is not backed by an automated test.
 
 ## What and why
 
@@ -69,7 +69,7 @@ creates `worldbuilder-store.yaml` and one empty, private world ("My world"); on 
 it changes nothing.
 
 Without a checkout, with Node 22 only: unpack `reraise-toolkit-<version>.zip` from a GitHub
-release (`.github/workflows/release.yml` builds it on a `v*` tag; no tag exists yet) and run the
+release (`.github/workflows/release.yml` builds it on a `v*` tag; the first is [v0.2.0](https://github.com/Reraise-ai/reraise-app/releases/tag/v0.2.0)) and run the
 same command in that folder: `node services/api/dist/cli.js serve --init --store ~/my-world` (or
 `npm start -- --init --store ~/my-world`). Nothing to install: the dependencies are in the zip.
 To check a zip the way the release does: `node scripts/smoke-toolkit.mjs <zip>`.

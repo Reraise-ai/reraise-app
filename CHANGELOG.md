@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-20
+
+First tagged release. The asset `reraise-toolkit-0.2.0.zip` contains the entries below; the release workflow started the unpacked zip on a new store before attaching it.
+
 ### Changed
 
 - M1 is done. CI job `e2e` runs the Hormuz walking skeleton (`e2e/tests/walking-skeleton.spec.ts`) on Linux, Windows and macOS. The green run is commit `4e0ebf8`.
