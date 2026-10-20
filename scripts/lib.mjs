@@ -28,3 +28,48 @@ export function walk(dir, out = []) {
 export function toPosix(p) {
   return p.split(path.sep).join('/');
 }
+
+export class GitHubApiError extends Error {
+  /** @param {string} message @param {number} status */
+  constructor(message, status) {
+    super(message);
+    this.status = status;
+  }
+}
+
+/**
+ * Minimal GitHub REST client for CI scripts. Every non-2xx answer and every timeout throws, so a
+ * caller can never mistake a failed call for an empty result. The token is never printed.
+ */
+export function createGitHubApi({ token, repo, fetchImpl = fetch }) {
+  /** @param {string} method @param {string} route @param {unknown} [body] @returns {Promise<any>} */
+  async function request(method, route, body) {
+    const res = await fetchImpl(`https://api.github.com/repos/${repo}${route}`, {
+      method,
+      headers: {
+        accept: 'application/vnd.github+json',
+        authorization: `Bearer ${token}`,
+        'x-github-api-version': '2022-11-28',
+        ...(body === undefined ? {} : { 'content-type': 'application/json' }),
+      },
+      body: body === undefined ? undefined : JSON.stringify(body),
+      signal: AbortSignal.timeout(20_000),
+    });
+    if (!res.ok)
+      throw new GitHubApiError(`GitHub API ${method} ${route}: ${res.status}`, res.status);
+    return res.status === 204 ? null : res.json();
+  }
+
+  /** All items of a paginated list, 100 per page, at most `maxPages` pages. */
+  async function list(route, maxPages = 30) {
+    const out = [];
+    for (let page = 1; page <= maxPages; page++) {
+      const items = await request('GET', `${route}?per_page=100&page=${page}`);
+      out.push(...items);
+      if (items.length < 100) break;
+    }
+    return out;
+  }
+
+  return { request, list };
+}

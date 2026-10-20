@@ -1,0 +1,36 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright The Worldbuilder contributors
+// Fails when a commit of the pull request has no DCO sign-off (ADR-0004, ADR-0052).
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { createGitHubApi } from './lib.mjs';
+
+/** GitHub lists at most 250 commits of a pull request; beyond that we fail closed. */
+export const MAX_COMMITS = 250;
+const SIGNOFF_RE = /^Signed-off-by: .+ <([^<>\s]+)>\s*$/gm;
+
+/** Problem text for one commit of `GET /pulls/{n}/commits`, or null when it passes. */
+export function dcoProblem(c) {
+  if (c.parents.length > 1 || c.author?.login === 'dependabot[bot]') return null;
+  const emails = [c.commit.author.email, c.commit.committer.email].map((e) => e.toLowerCase());
+  const signed = [...c.commit.message.matchAll(SIGNOFF_RE)].some((m) =>
+    emails.includes(m[1].toLowerCase()),
+  );
+  if (signed) return null;
+  return `${c.sha.slice(0, 12)}: no "Signed-off-by:" line with the e-mail of its author or committer. Fix: git commit --amend -s (last commit) or git rebase --signoff <base> (all commits), then push with --force-with-lease.`;
+}
+
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  const env = process.env;
+  const pr = JSON.parse(readFileSync(env.GITHUB_EVENT_PATH ?? '', 'utf8')).pull_request;
+  const api = createGitHubApi({ token: env.GITHUB_TOKEN, repo: env.GITHUB_REPOSITORY });
+  const problems =
+    pr.commits > MAX_COMMITS
+      ? [`more than ${MAX_COMMITS} commits cannot be checked; please split the pull request`]
+      : (await api.list(`/pulls/${pr.number}/commits`, 3)).map(dcoProblem).filter(Boolean);
+  if (problems.length > 0) {
+    console.error(problems.join('\n'));
+    process.exitCode = 1;
+  } else console.log(`DCO ok: ${pr.commits} commit(s) signed off`);
+}

@@ -1,0 +1,45 @@
+name: CLA
+
+# Sets the commit status `CLA` on pull requests that touch an AGPL-3.0-or-later directory
+# (ADR-0052). Both triggers run this file and scripts/cla-check.mjs from the default branch, never
+# code from the pull request: checkout without `ref` gives the base branch, and there is no
+# `pnpm install`. Event data reaches the script only through GITHUB_EVENT_PATH. No path filter
+# here: the script decides, so a required status never waits for a run that did not start.
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+  issue_comment:
+    types: [created]
+
+permissions: {}
+
+concurrency:
+  group: cla-${{ github.event.pull_request.number || github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  cla:
+    name: CLA status
+    # contains() ignores case; the script checks the exact sentence.
+    if: >-
+      github.event_name == 'pull_request_target' ||
+      (github.event.issue.pull_request &&
+      (contains(github.event.comment.body, 'Reraise Individual CLA') ||
+      contains(github.event.comment.body, 'recheck')))
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write # only the signature file on the branch cla-signatures
+      pull-requests: write
+      statuses: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+      - run: node scripts/cla-check.mjs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

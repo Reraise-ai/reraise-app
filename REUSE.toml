@@ -14,3 +14,9 @@ SPDX-License-Identifier = "Apache-2.0"
 path = ["apps/board/**", "services/api/**", "packages/mcp-server/**", "e2e/**"]
 SPDX-FileCopyrightText = "The Worldbuilder contributors"
 SPDX-License-Identifier = "AGPL-3.0-or-later"
+
+# The CLA texts are derived from the Harmony Contributor Agreements 1.0 (CC BY 3.0), ADR-0052.
+[[annotations]]
+path = ["legal/cla/CLA-INDIVIDUAL.md", "legal/cla/CLA-ENTITY.md"]
+SPDX-FileCopyrightText = ["The Worldbuilder contributors", "Harmony Contributor Agreements (template, https://www.harmonyagreements.org/)"]
+SPDX-License-Identifier = "CC-BY-3.0"

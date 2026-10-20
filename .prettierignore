@@ -10,3 +10,5 @@ docs
 .claude
 playwright-report
 test-results
+# The CLA texts stay byte-identical: each signature records their SHA-256 (ADR-0052).
+legal/cla/CLA-*.md
