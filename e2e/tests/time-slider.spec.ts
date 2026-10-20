@@ -18,14 +18,20 @@ import { useStack } from '../support/stack.js';
 const getEnv = useStack();
 const INITIAL_VERSION = 3; // examples/hormuz/cards/10-lage-q4-routing.md
 
+/**
+ * The gate decision log (ADR-0030) records every card the screen reads, so a read appends to it.
+ * Its timing follows the reads still in flight, so it is checked as "only appended to" instead.
+ */
+const GATE_LOG = /^gate-log\.jsonl(\.\d+)?$/;
+
 /** Path, size and modification time of every file under `root`: any write changes this. */
-async function treeStamp(root: string): Promise<string[]> {
+async function treeStamp(root: string, skip?: RegExp): Promise<string[]> {
   const out: string[] = [];
   const walk = async (dir: string): Promise<void> => {
     for (const entry of await readdir(dir, { withFileTypes: true })) {
       const full = path.join(dir, entry.name);
       if (entry.isDirectory()) await walk(full);
-      else {
+      else if (!skip?.test(entry.name)) {
         const st = await stat(full);
         out.push(`${path.relative(root, full)}:${st.size}:${st.mtimeMs}`);
       }
@@ -101,7 +107,9 @@ test('the slider shows earlier boards from the archive and saves nothing', async
       writes.push(`${r.method()} ${r.url()}`);
   });
   const filesBefore = await treeStamp(env.storeDir);
-  const stateBefore = await treeStamp(env.stateDir);
+  const stateBefore = await treeStamp(env.stateDir, GATE_LOG);
+  const gateLog = path.join(env.stateDir, 'gate-log.jsonl');
+  const gateLogBefore = await readFile(gateLog, 'utf8').catch(() => '');
   const dates: string[] = [];
 
   const at = async (index: number, version: number) => {
@@ -154,7 +162,9 @@ test('the slider shows earlier boards from the archive and saves nothing', async
     expect(dates).toEqual([...dates].sort());
     expect(writes).toEqual([]);
     expect(await treeStamp(env.storeDir)).toEqual(filesBefore);
-    expect(await treeStamp(env.stateDir)).toEqual(stateBefore);
+    expect(await treeStamp(env.stateDir, GATE_LOG)).toEqual(stateBefore);
+    const gateLogAfter = await readFile(gateLog, 'utf8').catch(() => '');
+    expect(gateLogAfter.startsWith(gateLogBefore)).toBe(true);
     const lage = await readFile(path.join(env.storeDir, 'cards', '10-lage-q4-routing.md'), 'utf8');
     expect(lage).toMatch(new RegExp(`^version:\\s*${INITIAL_VERSION + 3}\\s*$`, 'm'));
   });
