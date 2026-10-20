@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- `worldbuilder serve` let any web page show the board in a frame, so a foreign page could pass it off as its own and steer the clicks or the typed token. `/` and `/assets/*` now send `Content-Security-Policy: frame-ancestors 'self'` and `X-Frame-Options: SAMEORIGIN` (`services/api/src/main.test.ts`).
+
 ## [0.2.0] - 2026-10-20
 
 First tagged release. The asset `reraise-toolkit-0.2.0.zip` contains the entries below; the release workflow started the unpacked zip on a new store before attaching it.
