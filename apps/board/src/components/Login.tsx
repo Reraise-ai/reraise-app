@@ -46,7 +46,7 @@ export function Login({ initialBaseUrl = DEFAULT_BASE_URL, onSignIn, fetchImpl }
   return (
     <div className="wb-shell">
       <main className="wb-page">
-        <h1>The Worldbuilder</h1>
+        <h1>Reraise</h1>
         <form onSubmit={submit} data-testid="login-form" aria-label="Sign in">
           <p className="wb-muted">
             Start the service with <code>worldbuilder serve</code> and paste the session token it

@@ -40,6 +40,7 @@ describe('sign in', () => {
   it('checks the pasted token, keeps it in sessionStorage and sends it as X-Worldbuilder-Session', async () => {
     const api = createMockApi();
     render(<App fetchImpl={api.fetch} />);
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Reraise');
     await userEvent.clear(screen.getByTestId('login-base-url'));
     await userEvent.type(screen.getByTestId('login-base-url'), BASE);
     await userEvent.type(screen.getByTestId('login-token'), 'wrong');
@@ -51,6 +52,7 @@ describe('sign in', () => {
     await userEvent.type(screen.getByTestId('login-token'), TOKEN);
     await userEvent.click(screen.getByTestId('login-submit'));
     await screen.findByTestId('lage-list');
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Reraise');
     expect(JSON.parse(sessionStorage.getItem('wb.session')!)).toEqual({
       baseUrl: BASE,
       token: TOKEN,
