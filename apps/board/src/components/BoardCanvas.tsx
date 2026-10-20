@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright The Worldbuilder contributors
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Background,
   Controls,
   ReactFlow,
   ReactFlowProvider,
   applyNodeChanges,
+  useReactFlow,
   type Connection,
   type NodeChange,
   type OnSelectionChangeParams,
@@ -35,7 +36,45 @@ interface Props {
   readOnly?: boolean;
 }
 
+/**
+ * Fits the cards into view again when the canvas changes size, until the user pans or zooms.
+ * The first fit runs once, at mount; a host that lays out or resizes its window afterwards
+ * (an embedding app, a restored window) otherwise leaves the cards off-centre with an empty
+ * band above or beside them.
+ */
+function useRefitOnResize() {
+  const { fitView } = useReactFlow();
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const userMoved = useRef(false);
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    let last = '';
+    const observer = new ResizeObserver((entries) => {
+      const box = entries[0]?.contentRect;
+      if (!box || box.width === 0 || box.height === 0) return;
+      const size = `${Math.round(box.width)}x${Math.round(box.height)}`;
+      if (size === last) return;
+      const first = last === '';
+      last = size;
+      if (!first && !userMoved.current) void fitView();
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [fitView]);
+  const markMoved = () => {
+    userMoved.current = true;
+  };
+  // A pan or wheel zoom by the user carries an event; a programmatic fit and the zoom buttons
+  // do not, so the buttons mark the move themselves.
+  const onMoveStart = (event: MouseEvent | TouchEvent | null) => {
+    if (event) markMoved();
+  };
+  return { wrapRef, onMoveStart, markMoved };
+}
+
 function Canvas(props: Props) {
+  const { wrapRef, onMoveStart, markMoved } = useRefitOnResize();
   const { lage, cards, stances, selectedCardId, selectedEdgeKey } = props;
   const derived = useMemo(
     () => toNodes(lage, cards, stances, selectedCardId),
@@ -66,6 +105,7 @@ function Canvas(props: Props) {
 
   return (
     <div
+      ref={wrapRef}
       className="wb-canvas-wrap wb-canvas-fill"
       data-testid="board-canvas"
       role="region"
@@ -86,12 +126,13 @@ function Canvas(props: Props) {
         onConnect={onConnect}
         onSelectionChange={onSelectionChange}
         onPaneClick={() => props.onSelect({ cardId: null, edgeKey: null })}
+        onMoveStart={onMoveStart}
         deleteKeyCode={null}
         fitView
         aria-label="Cards and edges of this Lage"
       >
         <Background />
-        <Controls showInteractive={false} />
+        <Controls showInteractive={false} onZoomIn={markMoved} onZoomOut={markMoved} />
       </ReactFlow>
     </div>
   );

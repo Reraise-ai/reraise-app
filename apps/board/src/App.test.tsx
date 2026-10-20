@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright The Worldbuilder contributors
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { App } from './App.js';
@@ -1025,40 +1025,102 @@ describe('theme Lage (e-52, e-58)', () => {
 
 describe('demo client', () => {
   it('skips login and lists the start world', async () => {
-    const seed: DemoSeed = {
-      synthetic: true,
-      stamp: 'demo-test',
-      storeInstanceId: '00000000-0000-4000-8000-000000000001',
-      worlds: [{ id: '01JA0000000000000000000W01', name: 'Hormuz' }],
-      cards: [
-        {
-          id: '01JA0000000000000000000L01',
-          externalId: '01JA0000000000000000000L01',
-          uri: 'wb:00000000-0000-4000-8000-000000000001/01JA0000000000000000000L01',
-          format: 2,
-          type: 'lage',
-          title: 'Q4 tanker routing',
-          author: 'human',
-          contentHash: `sha256:${'ab'.repeat(32)}`,
-          visibility: 'public',
-          lage: {
-            question: 'Reroute?',
-            options: [],
-            cards: [],
-            seats: [],
-            edges: [],
-            version: 1,
-            updatedAt: '2026-09-16T09:30:00.000Z',
-          },
-        },
-      ],
-      versions: {},
-    };
+    const seed = demoSeed();
     render(<App client={createMemoryClient(seed)} pollIntervalMs={30} />);
     expect(screen.getByTestId('demo-banner').textContent).toMatch(/this browser/);
+    expect(screen.getByTestId('session-signout')).toBeTruthy();
     expect(screen.queryByTestId('login-form')).toBeNull();
     expect((await screen.findByTestId('lage-item-01JA0000000000000000000L01')).textContent).toMatch(
       /Q4 tanker routing/,
     );
+  });
+});
+
+function demoSeed(): DemoSeed {
+  return {
+    synthetic: true,
+    stamp: 'demo-test',
+    storeInstanceId: '00000000-0000-4000-8000-000000000001',
+    worlds: [{ id: '01JA0000000000000000000W01', name: 'Hormuz' }],
+    cards: [
+      {
+        id: '01JA0000000000000000000L01',
+        externalId: '01JA0000000000000000000L01',
+        uri: 'wb:00000000-0000-4000-8000-000000000001/01JA0000000000000000000L01',
+        format: 2,
+        type: 'lage',
+        title: 'Q4 tanker routing',
+        author: 'human',
+        contentHash: `sha256:${'ab'.repeat(32)}`,
+        visibility: 'public',
+        lage: {
+          question: 'Reroute?',
+          options: [],
+          cards: [],
+          seats: [],
+          edges: [],
+          version: 1,
+          updatedAt: '2026-09-16T09:30:00.000Z',
+        },
+      },
+    ],
+    versions: {},
+  };
+}
+
+describe('embedding (?embed=1)', () => {
+  const shell = () => document.querySelector('.wb-theme')!;
+
+  it('drops the demo notice and Sign out and takes the host theme', async () => {
+    render(<App client={createMemoryClient(demoSeed())} embed theme="light" />);
+    await screen.findByTestId('lage-item-01JA0000000000000000000L01');
+    expect(screen.queryByTestId('demo-banner')).toBeNull();
+    expect(screen.queryByTestId('session-signout')).toBeNull();
+    expect(screen.getByTestId('nav-boards')).toBeTruthy();
+    expect(shell().getAttribute('data-wb-theme')).toBe('light');
+  });
+
+  it('keeps Sign out with a session of its own: the board, not the host, holds the token', async () => {
+    saveSession({ baseUrl: BASE, token: TOKEN });
+    render(<App fetchImpl={createMockApi().fetch} embed theme="dark" />);
+    await screen.findByTestId('lage-list');
+    expect(screen.getByTestId('session-signout')).toBeTruthy();
+    expect(shell().getAttribute('data-wb-theme')).toBe('dark');
+  });
+
+  it('shows the login form in the host theme', () => {
+    render(<App fetchImpl={createMockApi().fetch} embed theme="light" />);
+    expect(
+      screen.getByTestId('login-form').closest('[data-wb-theme]')?.getAttribute('data-wb-theme'),
+    ).toBe('light');
+  });
+
+  it('follows the system preference when the host names no theme', async () => {
+    let light = true;
+    const listeners = new Set<() => void>();
+    const original = globalThis.matchMedia;
+    globalThis.matchMedia = ((query: string) => ({
+      get matches() {
+        return query === '(prefers-color-scheme: light)' && light;
+      },
+      addEventListener: (_type: string, fn: () => void) => listeners.add(fn),
+      removeEventListener: (_type: string, fn: () => void) => listeners.delete(fn),
+    })) as unknown as typeof matchMedia;
+    try {
+      render(<App client={createMemoryClient(demoSeed())} embed />);
+      await screen.findByTestId('lage-item-01JA0000000000000000000L01');
+      expect(shell().getAttribute('data-wb-theme')).toBe('light');
+      light = false;
+      act(() => listeners.forEach((fn) => fn()));
+      expect(shell().getAttribute('data-wb-theme')).toBe('dark');
+    } finally {
+      globalThis.matchMedia = original;
+    }
+  });
+
+  it('keeps its own dark theme outside a host', async () => {
+    render(<App client={createMemoryClient(demoSeed())} />);
+    await screen.findByTestId('lage-item-01JA0000000000000000000L01');
+    expect(shell().getAttribute('data-wb-theme')).toBe('dark');
   });
 });

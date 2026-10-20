@@ -55,3 +55,39 @@
   --wb-stroke-strong: 3px;
   --wb-sidebar-width: 26rem;
 }
+
+/*
+  Light theme, for a host that shows the board on a light window (`theme: 'light'`, see
+  src/embed.ts). Same roles, darker semantic colours: each text colour reaches WCAG AA (4.5:1)
+  on both surfaces, checked by src/tokens.test.ts.
+*/
+[data-wb-theme='light'] {
+  color-scheme: light;
+
+  --wb-color-paper: #faf8f3;
+  --wb-color-paper-raised: #ffffff;
+  --wb-color-paper-line: #d4cdbf;
+  --wb-color-ink: #0d1722;
+  --wb-color-ink-muted: #525b66;
+  --wb-color-gold: #7d5f16;
+  --wb-color-evidenced: #17705f;
+  --wb-color-said: #2b5c9c;
+  --wb-color-experience: #4a4134;
+  --wb-color-believed: var(--wb-color-gold);
+  --wb-color-agent: #7444a0;
+  --wb-color-warning: #8a5410;
+  --wb-color-danger: #ad3427;
+
+  --wb-surface: var(--wb-color-paper);
+  --wb-surface-raised: var(--wb-color-paper-raised);
+  --wb-line: var(--wb-color-paper-line);
+  --wb-text: var(--wb-color-ink);
+  --wb-text-muted: var(--wb-color-ink-muted);
+  --wb-accent: var(--wb-color-gold);
+  --wb-on-accent: var(--wb-color-paper-raised);
+  --wb-focus: var(--wb-color-gold);
+  --wb-warning: var(--wb-color-warning);
+  --wb-danger: var(--wb-color-danger);
+  --wb-edge-supports: var(--wb-color-evidenced);
+  --wb-edge-refutes: var(--wb-color-danger);
+}

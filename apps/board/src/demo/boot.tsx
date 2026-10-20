@@ -3,6 +3,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from '../App.js';
+import type { EmbedOptions } from '../embed.js';
 import { createMemoryClient, type DemoSeed } from './memoryClient.js';
 
 function isSeed(value: unknown): value is DemoSeed {
@@ -28,7 +29,10 @@ function browserStorage(): Storage | undefined {
 }
 
 /** Load the bundled start world and render the board with no Board API. */
-export async function bootDemo(root: HTMLElement): Promise<void> {
+export async function bootDemo(
+  root: HTMLElement,
+  options: EmbedOptions = { embed: false },
+): Promise<void> {
   try {
     const res = await fetch(`${import.meta.env.BASE_URL}world.json`);
     if (!res.ok) throw new Error('The demo world did not load.');
@@ -38,6 +42,7 @@ export async function bootDemo(root: HTMLElement): Promise<void> {
     createRoot(root).render(
       <StrictMode>
         <App
+          {...options}
           client={client}
           onSignOut={() => {
             client.reset();
