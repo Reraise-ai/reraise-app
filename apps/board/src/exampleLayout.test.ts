@@ -46,4 +46,17 @@ describe('example Lagen', () => {
     );
     expect(overlaps).toEqual([]);
   });
+
+  it('the Hormuz example proposal places its card clear of the Lage cards', () => {
+    const text = lagen.find(([name]) => name === 'hormuz/10-lage-q4-routing.md')![1];
+    const json = /```json\n([\s\S]*?)\n```/.exec(text)?.[1];
+    const cards = (JSON.parse(json!) as { cards: { x: number; y: number }[] }).cards;
+    const proposal = JSON.parse(
+      readFileSync(path.join(examples, 'hormuz', 'proposal-create-card.json'), 'utf8'),
+    ) as { data: { payload: { x: number; y: number } } };
+    const { x, y } = proposal.data.payload;
+    expect(
+      cards.filter((c) => Math.abs(c.x - x) < CARD_WIDTH && Math.abs(c.y - y) < CARD_HEIGHT),
+    ).toEqual([]);
+  });
 });

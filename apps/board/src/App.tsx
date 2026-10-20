@@ -22,7 +22,10 @@ interface Props {
   /** Static demo: this client is the board. There is no Board API. */
   client?: BoardClient;
   onSignOut?: () => void;
-  /** Shown inside a host (`?embed=1`): no demo notice, no Sign out; the host owns the session. */
+  /**
+   * Shown inside a host (`?embed=1`): no demo notice. Sign out goes too when the host also
+   * passes `client` (it owns the session); a board signed in with its own token keeps it.
+   */
   embed?: boolean;
   /** The host's theme (`?theme=light|dark`). Embedded without one, the system preference. */
   theme?: BoardTheme;
@@ -42,40 +45,39 @@ export function App({
   const [session, setSession] = useState<Session | null>(() =>
     client ? null : loadSession(storage),
   );
-  if (client) {
-    return (
-      <Signed
-        client={client}
-        demo
-        embed={embed}
-        theme={shownTheme}
-        pollIntervalMs={pollIntervalMs}
-        level1DebounceMs={level1DebounceMs}
-        onSignOut={() => onSignOut?.()}
-      />
-    );
-  }
-  return session ? (
-    <SignedSession
-      session={session}
-      fetchImpl={fetchImpl}
-      pollIntervalMs={pollIntervalMs}
-      level1DebounceMs={level1DebounceMs}
-      embed={embed}
-      theme={shownTheme}
-      onSignOut={() => {
-        clearSession(storage);
-        setSession(null);
-      }}
-    />
-  ) : (
-    <Login
-      {...(session === null && fetchImpl ? { fetchImpl } : {})}
-      onSignIn={(s) => {
-        saveSession(s, storage);
-        setSession(s);
-      }}
-    />
+  // The theme wraps every screen once, the login form included.
+  return (
+    <div className="wb-theme" data-wb-theme={shownTheme}>
+      {client ? (
+        <Signed
+          client={client}
+          demo
+          embed={embed}
+          pollIntervalMs={pollIntervalMs}
+          level1DebounceMs={level1DebounceMs}
+          onSignOut={() => onSignOut?.()}
+        />
+      ) : session ? (
+        <SignedSession
+          session={session}
+          fetchImpl={fetchImpl}
+          pollIntervalMs={pollIntervalMs}
+          level1DebounceMs={level1DebounceMs}
+          onSignOut={() => {
+            clearSession(storage);
+            setSession(null);
+          }}
+        />
+      ) : (
+        <Login
+          {...(session === null && fetchImpl ? { fetchImpl } : {})}
+          onSignIn={(s) => {
+            saveSession(s, storage);
+            setSession(s);
+          }}
+        />
+      )}
+    </div>
   );
 }
 
@@ -84,8 +86,6 @@ function SignedSession(props: {
   fetchImpl: typeof fetch | undefined;
   pollIntervalMs: number | undefined;
   level1DebounceMs: number | undefined;
-  embed: boolean;
-  theme: BoardTheme;
   onSignOut(): void;
 }) {
   const { session, fetchImpl, onSignOut } = props;
@@ -104,8 +104,6 @@ function SignedSession(props: {
       client={client}
       pollIntervalMs={props.pollIntervalMs}
       level1DebounceMs={props.level1DebounceMs}
-      embed={props.embed}
-      theme={props.theme}
       onSignOut={onSignOut}
     />
   );
@@ -114,8 +112,8 @@ function SignedSession(props: {
 function Signed(props: {
   client: BoardClient;
   demo?: boolean;
-  embed: boolean;
-  theme: BoardTheme;
+  /** With `demo`: the host renders the board with its own client and owns the session. */
+  embed?: boolean;
   pollIntervalMs: number | undefined;
   level1DebounceMs: number | undefined;
   onSignOut(): void;
@@ -133,7 +131,7 @@ function Signed(props: {
   }, [client]);
 
   return (
-    <div className="wb-shell" data-wb-theme={props.theme}>
+    <div className="wb-shell">
       <header className="wb-header">
         <h1>The Worldbuilder</h1>
         {props.demo && !props.embed && (
@@ -159,7 +157,7 @@ function Signed(props: {
             Usage metrics
           </button>
         </nav>
-        {!props.embed && (
+        {!(props.demo && props.embed) && (
           <button type="button" data-testid="session-signout" onClick={onSignOut}>
             Sign out
           </button>

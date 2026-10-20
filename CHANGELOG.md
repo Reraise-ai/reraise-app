@@ -8,13 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
-- Embedding mode for the board: `?embed=1` (or the `embed` option of `<App>`) hides the demo notice and Sign out, because the host owns the session. `?theme=light|dark` (option `theme`) takes the host's theme; embedded without one, the board follows the system preference. A light theme in `src/tokens.css` keeps every text colour at WCAG AA (4.5:1) on both surfaces (`apps/board/src/tokens.test.ts`).
+- Embedding mode for the board: `?embed=1` (or the `embed` option of `<App>`) hides the demo notice; Sign out goes only when the host passes its own `client` and so owns the session, a board signed in with its own token keeps it. `?theme=light|dark` (option `theme`) takes the host's theme for every screen, the login form included; embedded without one, the board follows the system preference. A light theme in `src/tokens.css` keeps every text colour at WCAG AA (4.5:1) on both surfaces (`apps/board/src/tokens.test.ts`).
 
 ### Fixed
 
 - `worldbuilder serve` let any web page show the board in a frame, so a foreign page could pass it off as its own and steer the clicks or the typed token. `/` and `/assets/*` now send `Content-Security-Policy: frame-ancestors 'self'` and `X-Frame-Options: SAMEORIGIN` (`services/api/src/main.test.ts`).
 - The Hormuz example Lage placed its top row 200 px apart, but a card is 240 px wide, so the three cards overlapped. They now stand on the board's 280 px grid; `apps/board/src/exampleLayout.test.ts` checks every example Lage. The example proposal places its card at x 960, clear of the row.
-- The canvas fitted the cards only once, at mount. When the window changed size afterwards (a host laying out its page, a restored window) the cards stayed off-centre with a large empty band above them. The canvas now fits again on a resize until the user pans or zooms.
+- The canvas fitted the cards only once, at mount. When the window changed size afterwards (a host laying out its page, a restored window) the cards stayed off-centre with a large empty band above them. The canvas now fits again on a resize until the user pans or zooms (the + and − buttons count as the user's zoom).
 
 ## [0.2.0] - 2026-10-20
 

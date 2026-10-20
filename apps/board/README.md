@@ -30,9 +30,11 @@ out.
 
 A host that shows the board inside its own window (a desktop app plugin, an iframe) turns on
 the embedding mode with `?embed=1` in the URL, or with the `embed` option when it renders
-`<App>` itself. The host owns the session, so the board shows neither the demo notice nor
+`<App>` itself. The board then drops the demo notice. Sign out goes only when the host also
+passes its own `client` (the host owns the session); a board signed in with its own token keeps
 Sign out. `?theme=light` or `?theme=dark` (option `theme`) takes the host's theme; embedded
-without one, the board follows the system preference. Outside a host the board stays dark.
+without one, the board follows the system preference. Outside a host the board stays dark. The
+theme wraps every screen, the login form included.
 The light theme lives in `src/tokens.css` (`[data-wb-theme='light']`); every text colour in
 both themes reaches WCAG AA on both surfaces (`src/tokens.test.ts`).
 
