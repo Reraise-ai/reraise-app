@@ -11,12 +11,21 @@ import { GitHubApiError, MAX_COMMITS, createGitHubApi } from './lib.mjs';
 
 export const CONTEXT = 'CLA';
 export const MARKER = '<!-- cla-check -->';
-export const SENTENCE = 'I have read the Reraise Individual CLA v1.0 and I agree to it.';
+/**
+ * The one place where the CLA version and its texts are pinned: signatures refer to this version
+ * and hash, and a test fails when a text changes without an update here (a new version).
+ */
+export const CLA = {
+  version: '1.0',
+  individualSha256: '0ab13369e1d92d2b4fe134980b93cfa195f49fa1df08761f06517147076c09dd',
+  entitySha256: '68d9afb562d55f6109612233716c860f1e5897f9c44b95f332522dc494c27c33',
+};
+export const SENTENCE = `I have read the Reraise Individual CLA v${CLA.version} and I agree to it.`;
 export const SIGNATURE_BRANCH = 'cla-signatures';
-export const SIGNATURE_FILE = 'signatures/individual-1.0.json';
+export const SIGNATURE_FILE = `signatures/individual-${CLA.version}.json`;
 export const INDIVIDUAL_CLA = 'legal/cla/CLA-INDIVIDUAL.md';
 export const ENTITIES_DIR = 'legal/cla/entities';
-/** GitHub lists at most 3000 files of a pull request; beyond that we fail closed. */
+/** GitHub lists at most 3000 files of a pull request; from 3000 on the list may be cut, so we fail closed. */
 export const MAX_FILES = 3000;
 /** Pull request authors and commenters that need no signature and cannot sign. */
 export const EXEMPT = new Set(['dependabot[bot]', 'github-actions[bot]']);
@@ -78,7 +87,7 @@ export function hasSigned(person, signatures, entities) {
 
 /** True when GitHub's lists of the pull request cannot be complete; we then fail closed. */
 const tooLarge = (pr, files) =>
-  pr.changed_files > MAX_FILES || files.length > MAX_FILES || pr.commits > MAX_COMMITS;
+  pr.changed_files >= MAX_FILES || files.length >= MAX_FILES || pr.commits > MAX_COMMITS;
 
 /** The CLA status of a pull request: `{ state, description, missing }`. */
 export function evaluate({ pr, files, commits, signatures, entities, agpl = touchesAgpl(files) }) {
@@ -110,7 +119,7 @@ export function addSignature(store, { comment, pullRequest, agreementSha256 }) {
     pullRequest,
     commentId: comment.id,
     commentUrl: comment.html_url,
-    agreementVersion: '1.0',
+    agreementVersion: CLA.version,
     agreementSha256,
   };
   return { ...store, signatures: [...store.signatures, entry] };
@@ -228,7 +237,7 @@ export async function run({ eventName, event, api, entities, agreementSha256, ta
       return result;
     }
     const [files, commits, comments] = await Promise.all([
-      api.list(`/pulls/${pr.number}/files`),
+      api.list(`/pulls/${pr.number}/files`, 31),
       api.list(`/pulls/${pr.number}/commits`, 3),
       api.list(`/issues/${pr.number}/comments`),
     ]);

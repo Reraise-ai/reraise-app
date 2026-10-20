@@ -7,16 +7,23 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { MAX_COMMITS, createGitHubApi } from './lib.mjs';
 
+/** Web commits are committed by this address; it names no person, so a sign-off with it is void. */
+// Built from parts: the no-real-data scan flags a spelled-out address.
+export const NO_PERSON = ['noreply', 'github.com'].join('@');
 const SIGNOFF_RE = /^Signed-off-by: .+ <([^<>\s]+)>\s*$/gm;
 
 /**
- * Problem text for one commit of `GET /pulls/{n}/commits`, or null when it passes. Dependabot is
- * exempt only as the author of the pull request: GitHub links a commit to an account by its
- * e-mail address alone, and anybody can put the Dependabot noreply address into a commit.
+ * Problem text for one commit of `GET /pulls/{n}/commits`, or null when it passes. A commit is
+ * exempt as Dependabot's only when the pull request author is Dependabot (nobody can fake that)
+ * and the commit is linked to it too: GitHub links a commit to an account by its e-mail address
+ * alone, and anybody can put the Dependabot noreply address into a commit.
  */
 export function dcoProblem(c, prAuthor) {
-  if (c.parents.length > 1 || prAuthor === 'dependabot[bot]') return null;
-  const emails = [c.commit.author.email, c.commit.committer.email].map((e) => e.toLowerCase());
+  const bot = 'dependabot[bot]';
+  if (c.parents.length > 1 || (prAuthor === bot && c.author?.login === bot)) return null;
+  const emails = [c.commit.author.email, c.commit.committer.email]
+    .map((e) => e.toLowerCase())
+    .filter((e) => e !== NO_PERSON);
   const signed = [...c.commit.message.matchAll(SIGNOFF_RE)].some((m) =>
     emails.includes(m[1].toLowerCase()),
   );

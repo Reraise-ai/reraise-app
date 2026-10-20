@@ -51,7 +51,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # Every commit needs a `Signed-off-by:` line with the e-mail of its author or committer
-  # (ADR-0004, ADR-0052). Merge commits and Dependabot are exempt. Old history is not checked.
+  # (ADR-0004, ADR-0052). Merge commits and Dependabot pull requests are exempt. Old history is not checked.
   dco:
     name: DCO
     if: github.event_name == 'pull_request_target'
