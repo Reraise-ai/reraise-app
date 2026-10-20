@@ -48,7 +48,8 @@ describe('dcoProblem', () => {
       { message: 'feat: x', login: 'dependabot[bot]', prAuthor: 'dev' },
       true,
     ],
-  ])('%s', (_name, { prAuthor = 'dev', ...input }, fails) => {
+  ])('%s', (_name, spec, fails) => {
+    const { prAuthor = 'dev', ...input } = /** @type {any} */ (spec);
     const problem = dcoProblem(commit(input), prAuthor);
     if (fails) expect(problem).toContain('0123456789ab: no "Signed-off-by:"');
     else expect(problem).toBeNull();
