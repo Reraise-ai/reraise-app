@@ -1,9 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright The Worldbuilder contributors
+import { readFileSync, readdirSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { parse } from 'yaml';
 import {
   MARKER,
   SIGNATURE_FILE,
+  SIGNED_BODY,
   evaluate,
   isSigningComment,
   readEntities,
@@ -12,9 +17,15 @@ import {
 import { GitHubApiError } from './lib.mjs';
 import { makeTree } from './test-helpers.mjs';
 
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+
 const alice = { login: 'alice', id: 1 };
 const bob = { login: 'bob', id: 2 };
 const dependabot = { login: 'dependabot[bot]', id: 49699333 };
+/** The real account behind Claude Code's commit e-mail, as the GitHub API returns it for a commit. */
+const claude = { login: 'claude', id: 81847, type: 'User' };
+const copilot = { login: 'copilot-swe-agent[bot]', id: 198982749, type: 'Bot' };
+const appBot = { login: 'some-app', id: 3, type: 'Bot' };
 const pr = (user = alice, extra = {}) => ({
   number: 7,
   state: 'open',
@@ -104,6 +115,36 @@ describe('evaluate', () => {
       'failure',
       ['bob'],
     ],
+    [
+      'commit by the agent account claude, PR author signed',
+      { files: BOARD, commits: [commitBy(claude)], signatures: [signed(alice)] },
+      'success',
+      [],
+    ],
+    [
+      'commit by the agent account claude, PR author unsigned',
+      { files: BOARD, commits: [commitBy(claude)] },
+      'failure',
+      ['alice'],
+    ],
+    [
+      'commits by bot accounts (type Bot, login [bot]), PR author signed',
+      { files: BOARD, commits: [commitBy(copilot), commitBy(appBot)], signatures: [signed(alice)] },
+      'success',
+      [],
+    ],
+    [
+      'PR opened by a bot other than Dependabot stays red',
+      { pr: pr(copilot), files: BOARD, commits: [commitBy(copilot)] },
+      'failure',
+      ['copilot-swe-agent[bot]'],
+    ],
+    [
+      'path in other case (Apps/Board) counts as AGPL',
+      { files: [file('Apps/Board/x.ts')] },
+      'failure',
+      ['alice'],
+    ],
     ['more than 3000 files', { pr: pr(alice, { changed_files: 3001 }), files: BOARD }, 'error', []],
     ['more than 250 commits', { pr: pr(alice, { commits: 251 }), files: BOARD }, 'error', []],
   ];
@@ -130,13 +171,31 @@ describe('isSigningComment', () => {
 });
 
 describe('readEntities', () => {
+  const acme = {
+    entity: 'Acme',
+    signatory: 'Jane Doe',
+    title: 'CTO',
+    date: '2026-10-20',
+    claVersion: '1.0',
+    contributors: ['bob'],
+  };
   it('reads the json records and ignores other files', () => {
     const root = makeTree({
-      'legal/cla/entities/acme.json': '{"entity":"Acme","contributors":["bob"]}',
+      'legal/cla/entities/acme.json': JSON.stringify(acme),
       'legal/cla/entities/.gitkeep': '',
     });
-    expect(readEntities(root)).toEqual([{ entity: 'Acme', contributors: ['bob'] }]);
+    expect(readEntities(root)).toEqual([acme]);
     expect(readEntities(makeTree({}))).toEqual([]);
+  });
+
+  it('throws on a record without a required field', () => {
+    const noList = { ...acme, contributors: undefined };
+    const root = makeTree({ 'legal/cla/entities/acme.json': JSON.stringify(noList) });
+    expect(() => readEntities(root)).toThrow(/acme\.json: missing contributors/);
+  });
+
+  it('accepts every real record of the repository', () => {
+    expect(() => readEntities(ROOT)).not.toThrow();
   });
 });
 
@@ -293,6 +352,76 @@ describe('run', () => {
     expect(statuses(api).map((s) => s.body.state)).toEqual(['error']);
   });
 
+  it('records a signing comment of an earlier, lost run on the next run, once', async () => {
+    const api = fakeApi({ comments: [comment(alice, SENTENCE, 90)] });
+    const result = await run(ctx(api, 'pull_request_target', { pull_request: pr() }));
+    expect(result?.state).toBe('success');
+    expect(api.store.signatures).toEqual([expect.objectContaining({ id: 1, commentId: 90 })]);
+    await run(ctx(api, 'pull_request_target', { pull_request: pr() }));
+    expect(api.store.signatures).toHaveLength(1);
+    expect(api.calls.filter((c) => c.method === 'PUT')).toHaveLength(1);
+  });
+
+  it('does not count a signing sentence that was added by editing a comment', async () => {
+    const edited = { ...comment(alice, SENTENCE, 90), updated_at: '2026-10-20T11:00:00Z' };
+    const api = fakeApi({ comments: [edited] });
+    const result = await run(ctx(api, 'pull_request_target', { pull_request: pr() }));
+    expect(result?.state).toBe('failure');
+    expect(api.store.signatures).toEqual([]);
+  });
+
+  it('turns green from the store it wrote, even if a later read is stale', async () => {
+    const api = fakeApi();
+    const request = api.request;
+    const stale = Buffer.from(JSON.stringify({ signatures: [] })).toString('base64');
+    let written = false;
+    api.request = async (method, route, body) => {
+      if (method === 'PUT') written = true;
+      if (written && method === 'GET' && route.startsWith('/contents/')) {
+        return { content: stale, sha: 's0' };
+      }
+      return request(method, route, body);
+    };
+    const result = await run(ctx(api, 'issue_comment', commentEvent(comment(alice, SENTENCE))));
+    expect(result?.state).toBe('success');
+    expect(statuses(api).at(-1).body.state).toBe('success');
+  });
+
+  it('edits the bot comment to "signed" when green, and posts none if there was none', async () => {
+    const own = { id: 5, user: { login: 'github-actions[bot]' }, body: `${MARKER} old` };
+    const api = fakeApi({ signatures: [signed(alice)], comments: [own] });
+    await run(ctx(api, 'pull_request_target', { pull_request: pr() }));
+    const patch = api.calls.find((c) => c.method === 'PATCH');
+    expect(patch?.body.body).toBe(SIGNED_BODY);
+
+    const quiet = fakeApi({ signatures: [signed(alice)] });
+    await run(ctx(quiet, 'pull_request_target', { pull_request: pr() }));
+    expect(quiet.calls.filter((c) => c.method === 'POST' && c.route.includes('/comments'))).toEqual(
+      [],
+    );
+  });
+
+  it('explains a missing branch cla-signatures in the error status', async () => {
+    const api = fakeApi({
+      fail: (m, r) => m === 'GET' && r.startsWith('/contents/') && new GitHubApiError('404', 404),
+    });
+    await expect(run(ctx(api, 'pull_request_target', { pull_request: pr() }))).rejects.toThrow();
+    const [status] = statuses(api);
+    expect(status.body.state).toBe('error');
+    expect(status.body.description).toContain('branch cla-signatures');
+  });
+
+  it('sets error when an entity record is broken', async () => {
+    const api = fakeApi();
+    const broken = () => {
+      throw new Error('legal/cla/entities/x.json: missing title');
+    };
+    await expect(
+      run({ ...ctx(api, 'pull_request_target', { pull_request: pr() }), entities: broken }),
+    ).rejects.toThrow();
+    expect(statuses(api).map((s) => s.body.state)).toEqual(['error']);
+  });
+
   it('ignores comments on issues and closed pull requests', async () => {
     const api = fakeApi();
     expect(
@@ -305,5 +434,36 @@ describe('run', () => {
     );
     expect(closed).toBeNull();
     expect(statuses(api)).toEqual([]);
+  });
+});
+
+describe('workflows', () => {
+  const dir = path.join(ROOT, '.github/workflows');
+  const workflows = readdirSync(dir)
+    .filter((f) => f.endsWith('.yml'))
+    .map((f) => ({ f, wf: parse(readFileSync(path.join(dir, f), 'utf8')) }));
+
+  it('runs the CLA and DCO scripts only from the default branch, never pull request code', () => {
+    const users = workflows.filter(({ wf }) =>
+      Object.values(wf.jobs).some((j) =>
+        j.steps?.some((st) => /scripts\/(cla|dco)-check\.mjs/.test(st.run ?? '')),
+      ),
+    );
+    expect(users.map((u) => u.f)).toEqual(['cla.yml']);
+    const wf = users[0]?.wf;
+    expect(Object.keys(wf.on).sort()).toEqual(['issue_comment', 'pull_request_target']);
+    for (const job of Object.values(wf.jobs)) {
+      for (const st of job.steps) {
+        expect(st.with?.ref).toBeUndefined();
+        expect(st.run ?? '').not.toMatch(/\b(pnpm|npm|yarn)\b/);
+      }
+    }
+    expect(wf.jobs.dco.name).toBe('DCO');
+  });
+
+  it('queues runs per pull request instead of cancelling a waiting one', () => {
+    const wf = workflows.find((w) => w.f === 'cla.yml')?.wf;
+    expect(wf.concurrency).toMatchObject({ 'cancel-in-progress': false, queue: 'max' });
+    expect(wf.concurrency.group).toContain('pull_request.number');
   });
 });

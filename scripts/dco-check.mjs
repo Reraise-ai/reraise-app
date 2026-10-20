@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright The Worldbuilder contributors
-// Fails when a commit of the pull request has no DCO sign-off (ADR-0004, ADR-0052).
+// Fails when a commit of the pull request has no DCO sign-off (ADR-0004, ADR-0052). Runs from
+// the default branch on `pull_request_target`, so a pull request cannot change this check.
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createGitHubApi } from './lib.mjs';
+import { MAX_COMMITS, createGitHubApi } from './lib.mjs';
 
-/** GitHub lists at most 250 commits of a pull request; beyond that we fail closed. */
-export const MAX_COMMITS = 250;
 const SIGNOFF_RE = /^Signed-off-by: .+ <([^<>\s]+)>\s*$/gm;
 
 /** Problem text for one commit of `GET /pulls/{n}/commits`, or null when it passes. */

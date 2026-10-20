@@ -29,8 +29,9 @@ A pull request that touches both kinds of parts needs both.
 
 ### Signing the CLA
 
-The check named `CLA` runs on every pull request. If the pull request touches an AGPL part and
-you have not signed, it fails and the bot asks you to sign.
+The check named `CLA` runs on every pull request. If the pull request touches an AGPL part, the
+pull request author and every commit author with a personal GitHub account must have signed.
+If someone has not, the check fails and the bot asks them to sign.
 
 - **Individuals.** Read the [Individual CLA](legal/cla/CLA-INDIVIDUAL.md). Then post this
   sentence, unchanged, as a comment on the pull request:
@@ -39,18 +40,23 @@ you have not signed, it fails and the bot asks you to sign.
   I have read the Reraise Individual CLA v1.0 and I agree to it.
   ```
 
-  The check turns green within a minute. You sign once; it holds for all your later pull
+  The check then runs again and turns green. You sign once; it holds for all your later pull
   requests as long as the CLA stays at version 1.0. Your GitHub username, numeric account ID,
   the time and the link to your comment are stored in a public record (branch
   `cla-signatures`).
 
 - **Companies and other organisations.** If your employer owns what you write, your employer
   signs the [Entity CLA](legal/cla/CLA-ENTITY.md) instead. An authorised signatory opens a pull
-  request that adds `legal/cla/entities/<organisation>.json` (organisation name, signatory
-  name and title, date, CLA version, and the GitHub usernames of the people who may
-  contribute). A maintainer confirms the signatory's authority and merges it. From then on the
+  request that adds `legal/cla/entities/<organisation>.json` with the fields `entity`
+  (organisation name), `signatory`, `title`, `date`, `claVersion` and `contributors` (the GitHub
+  usernames of the people who may contribute). A maintainer confirms the signatory's authority and merges it. From then on the
   listed people do not sign individually.
-- **Bots.** `dependabot[bot]` and `github-actions[bot]` need no signature.
+- **Bots and coding agents.** `dependabot[bot]` and `github-actions[bot]` need no signature.
+  Commits written by a bot account (account type Bot, or a username ending in `[bot]`) or by a
+  coding agent such as Claude Code (account `claude`), and commits without a linked GitHub
+  account, count as the pull request author's own work: the pull request author must have
+  signed. A bot other than Dependabot that opens a pull request itself cannot sign; the person
+  who runs it signs and opens the pull request, or adds a commit of their own.
 
 ### What the CLA does and does not do
 

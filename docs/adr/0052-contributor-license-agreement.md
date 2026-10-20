@@ -91,18 +91,30 @@ Rules:
    `pull_request_target` and `issue_comment`, lists the files of the pull request through the
    GitHub API, requires a signature when a file lies in an AGPL path (a rename from an AGPL
    path counts), and reports the commit status `CLA`. Signatures live as a JSON file on the
-   branch `cla-signatures` (public). A second workflow, `.github/workflows/dco.yml`, runs
+   branch `cla-signatures` (public). A second job in the same workflow runs
    `scripts/dco-check.mjs` as the job `DCO` and checks the `Signed-off-by` line on every
-   commit of a pull request. That closes the DCO half of ADR-C08 that
+   commit of a pull request. It runs on `pull_request_target` from the default branch for the
+   same reason as the CLA check: under `pull_request`, a pull request could change the script
+   or the workflow and turn its own `DCO` green. That closes the DCO half of ADR-C08 that
    [ADR-0004](0004-two-tier-licensing.md) and [ADR-0025](0025-engineering-process-and-quality-gates.md)
    promised and nobody wrote. Reason for not using `contributor-assistant/github-action`: the
    repository was archived on 2026-03-23, it declares the `node20` runtime that GitHub removed
    from its runners on 2026-09-23, it has no path filter, and it needs write permissions in a
-   `pull_request_target` workflow. A project-owned script of about 220 lines has none of these
+   `pull_request_target` workflow. A project-owned script of about 260 lines has none of these
    problems and is unit-tested like the other scripts.
 6. **Founders, bots and agents.** Dependabot and `github-actions[bot]` are exempt. Commit
-   authors without a GitHub account (for example agent identities) count as the responsibility
-   of the pull request author, who must have signed.
+   authors without a GitHub account, with a bot account (type `Bot` or a login ending in
+   `[bot]`) or with a named agent account count as the responsibility of the pull request
+   author, who must have signed. Agent identities do have accounts: the commit
+   e-mail of Claude Code links to the account `claude` (id 81847, type `User`),
+   so the script keeps a named list of such agent accounts (`AGENT_ACCOUNTS`). A pull request
+   opened by a bot other than Dependabot stays red: a person runs that bot and signs.
+7. **Shortcuts (known limits).** Entity members match by login, not by account id; a renamed
+   account's old login could be taken over by someone else, so maintainers check entity records
+   when a listed login changes. The Contents API returns no content for a signature file above
+   1 MB (about 4000 signatures); the check then fails closed with `error` and the store must be
+   split. Commit authors are known through GitHub's e-mail link, which a committer can set to
+   any address; the pull request author must have signed in every case.
 
 ### Consequences
 
@@ -137,8 +149,13 @@ Rules:
   without a signature of its author and of each linked commit author does not merge.
 - `scripts/cla-check.test.mjs` (Vitest): table-driven tests for the path rule, renames, a
   docs-only pull request, an unsigned author, a signed author, an entity member, a bot, an
-  agent identity without account, more than 3000 changed files (fails closed) and an API
-  error (fails closed, never green).
+  agent identity without account, the agent account `claude` and bot accounts as commit
+  authors, more than 3000 changed files (fails closed), an API error (fails closed, never
+  green), a signing comment of a lost run recorded on the next run, and the status taken from
+  the store just written. `scripts/lib.test.mjs` tests the GitHub client: every non-2xx answer,
+  a page that is not a list, too many pages and a timeout throw. A test reads the workflows and
+  fails if a CLA or DCO script runs on any trigger other than `pull_request_target` and
+  `issue_comment` or checks out pull request code.
 - The list of CLA paths is imported from `AGPL_DIRS` in `scripts/check-spdx.mjs`; a test fails
   if the two ever differ, so `LICENSING.md`, `REUSE.toml`, the SPDX check and the CLA check
   stay one list.
@@ -229,4 +246,7 @@ Rules:
   especially electronic acceptance by comment, the moral-rights wording and the forum clause;
   (2) the owner confirms that the sentence "also offered under other terms" may go public in
   `LICENSING.md` (CLA Section 3.4 requires it); (3) the owner signs the Individual CLA; (4)
-  branch protection on `main` requires the statuses `CLA` and `DCO`.
+  branch protection on `main` requires the statuses `CLA` and `DCO`; (5) the branch
+  `cla-signatures` with an empty `signatures/individual-1.0.json` exists before this pull
+  request leaves draft, otherwise every AGPL pull request reports `error` ("no
+  signatures/individual-1.0.json on branch cla-signatures").

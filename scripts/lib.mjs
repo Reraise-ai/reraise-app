@@ -37,11 +37,17 @@ export class GitHubApiError extends Error {
   }
 }
 
+/** GitHub lists at most 250 commits of a pull request; beyond that the CI scripts fail closed. */
+export const MAX_COMMITS = 250;
+
 /**
- * Minimal GitHub REST client for CI scripts. Every non-2xx answer and every timeout throws, so a
- * caller can never mistake a failed call for an empty result. The token is never printed.
+ * Minimal GitHub REST client for CI scripts. Every non-2xx answer, every timeout and every page
+ * that is not a list throws, so a caller can never mistake a failed call for an empty result.
+ * The token is never printed.
+ * @param {{ token?: string, repo?: string, timeoutMs?: number,
+ *   fetchImpl?: (url: string, init: any) => Promise<any> }} options
  */
-export function createGitHubApi({ token, repo, fetchImpl = fetch }) {
+export function createGitHubApi({ token, repo, fetchImpl = fetch, timeoutMs = 20_000 }) {
   /** @param {string} method @param {string} route @param {unknown} [body] @returns {Promise<any>} */
   async function request(method, route, body) {
     const res = await fetchImpl(`https://api.github.com/repos/${repo}${route}`, {
@@ -53,22 +59,23 @@ export function createGitHubApi({ token, repo, fetchImpl = fetch }) {
         ...(body === undefined ? {} : { 'content-type': 'application/json' }),
       },
       body: body === undefined ? undefined : JSON.stringify(body),
-      signal: AbortSignal.timeout(20_000),
+      signal: AbortSignal.timeout(timeoutMs),
     });
     if (!res.ok)
       throw new GitHubApiError(`GitHub API ${method} ${route}: ${res.status}`, res.status);
     return res.status === 204 ? null : res.json();
   }
 
-  /** All items of a paginated list, 100 per page, at most `maxPages` pages. */
+  /** All items of a paginated list, 100 per page; more than `maxPages` full pages throws. */
   async function list(route, maxPages = 30) {
     const out = [];
     for (let page = 1; page <= maxPages; page++) {
       const items = await request('GET', `${route}?per_page=100&page=${page}`);
+      if (!Array.isArray(items)) throw new GitHubApiError(`GitHub API GET ${route}: not a list`, 0);
       out.push(...items);
-      if (items.length < 100) break;
+      if (items.length < 100) return out;
     }
-    return out;
+    throw new GitHubApiError(`GitHub API GET ${route}: more than ${maxPages} pages`, 0);
   }
 
   return { request, list };

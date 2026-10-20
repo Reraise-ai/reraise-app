@@ -16,7 +16,7 @@ This box is a summary. It is not part of the Agreement; the numbered sections co
 
 ---
 
-Thank you for your interest in contributing to Reraise (the "Project"). This contributor agreement ("Agreement") documents the rights granted by contributors to Caprey SAS, a sociedad por acciones simplificada organised under the laws of the Argentine Republic, registered with the Inspección General de Justicia, CUIT 30-71907992-6, with its registered office as recorded in that register (on the date of this version: Av. Leandro N. Alem 734, piso 5, oficina 16, City of Buenos Aires) ("We" or "Us"). This is a legally binding document, so please read it carefully before agreeing to it.
+Thank you for your interest in contributing to Reraise (the "Project"). This contributor agreement ("Agreement") documents the rights granted by contributors to Caprey SAS, a sociedad por acciones simplificada organised under the laws of the Argentine Republic, registered with the Inspección General de Justicia, CUIT 30-71907992-6, with its registered office as recorded with the Inspección General de Justicia ("We" or "Us"). This is a legally binding document, so please read it carefully before agreeing to it.
 
 ## 1. Definitions
 
