@@ -102,7 +102,7 @@ Rules:
    from its runners on 2026-09-23, it has no path filter, and it needs write permissions in a
    `pull_request_target` workflow. A project-owned script of about 260 lines has none of these
    problems and is unit-tested like the other scripts.
-6. **Founders, bots and agents.** Dependabot and `github-actions[bot]` are exempt. Commit
+6. **Founders, bots and agents.** Dependabot and `github-actions[bot]` are exempt (the DCO check exempts Dependabot only as the author of the pull request, because the commit author is set by an e-mail address anybody can write). Commit
    authors without a GitHub account, with a bot account (type `Bot` or a login ending in
    `[bot]`) or with a named agent account count as the responsibility of the pull request
    author, who must have signed. Agent identities do have accounts: the commit

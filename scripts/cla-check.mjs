@@ -221,6 +221,12 @@ export async function run({ eventName, event, api, entities, agreementSha256, ta
       target_url: targetUrl,
     });
   try {
+    if (tooLarge(pr, [])) {
+      // GitHub's lists end at 3000 files and 250 commits; do not read them, say why.
+      const result = evaluate({ pr, files: [], commits: [], signatures: [], entities: [] });
+      await setStatus(result);
+      return result;
+    }
     const [files, commits, comments] = await Promise.all([
       api.list(`/pulls/${pr.number}/files`),
       api.list(`/pulls/${pr.number}/commits`, 3),

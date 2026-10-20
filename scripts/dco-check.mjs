@@ -9,9 +9,13 @@ import { MAX_COMMITS, createGitHubApi } from './lib.mjs';
 
 const SIGNOFF_RE = /^Signed-off-by: .+ <([^<>\s]+)>\s*$/gm;
 
-/** Problem text for one commit of `GET /pulls/{n}/commits`, or null when it passes. */
-export function dcoProblem(c) {
-  if (c.parents.length > 1 || c.author?.login === 'dependabot[bot]') return null;
+/**
+ * Problem text for one commit of `GET /pulls/{n}/commits`, or null when it passes. Dependabot is
+ * exempt only as the author of the pull request: GitHub links a commit to an account by its
+ * e-mail address alone, and anybody can put the Dependabot noreply address into a commit.
+ */
+export function dcoProblem(c, prAuthor) {
+  if (c.parents.length > 1 || prAuthor === 'dependabot[bot]') return null;
   const emails = [c.commit.author.email, c.commit.committer.email].map((e) => e.toLowerCase());
   const signed = [...c.commit.message.matchAll(SIGNOFF_RE)].some((m) =>
     emails.includes(m[1].toLowerCase()),
@@ -27,7 +31,9 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   const problems =
     pr.commits > MAX_COMMITS
       ? [`more than ${MAX_COMMITS} commits cannot be checked; please split the pull request`]
-      : (await api.list(`/pulls/${pr.number}/commits`, 3)).map(dcoProblem).filter(Boolean);
+      : (await api.list(`/pulls/${pr.number}/commits`, 3))
+          .map((c) => dcoProblem(c, pr.user?.login))
+          .filter(Boolean);
   if (problems.length > 0) {
     console.error(problems.join('\n'));
     process.exitCode = 1;

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright The Worldbuilder contributors
+import { createHash } from 'node:crypto';
 import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -422,6 +423,18 @@ describe('run', () => {
     expect(statuses(api).map((s) => s.body.state)).toEqual(['error']);
   });
 
+  it('says "please split" for more than 3000 files instead of a list error', async () => {
+    const api = fakeApi({
+      fail: (m, r) => m === 'LIST' && r.endsWith('/files') && new Error('more than 30 pages'),
+    });
+    const big = pr(alice, { changed_files: 3001 });
+    const result = await run(ctx(api, 'pull_request_target', { pull_request: big }));
+    expect(result?.state).toBe('error');
+    const [status] = statuses(api);
+    expect(status.body.description).toContain('please split');
+    expect(api.calls.filter((x) => x.method === 'LIST')).toEqual([]);
+  });
+
   it('ignores comments on issues and closed pull requests', async () => {
     const api = fakeApi();
     expect(
@@ -434,6 +447,23 @@ describe('run', () => {
     );
     expect(closed).toBeNull();
     expect(statuses(api)).toEqual([]);
+  });
+});
+
+describe('agreement texts', () => {
+  // A signature stores the hash of the text it was given for. Changing a text without a new
+  // CLA version would attach old signatures to new words.
+  it.each([
+    ['CLA-INDIVIDUAL.md', '0ab13369e1d92d2b4fe134980b93cfa195f49fa1df08761f06517147076c09dd'],
+    ['CLA-ENTITY.md', '68d9afb562d55f6109612233716c860f1e5897f9c44b95f332522dc494c27c33'],
+  ])('%s is unchanged (new CLA version needed to change it)', (file, expected) => {
+    const actual = createHash('sha256')
+      .update(readFileSync(path.join(ROOT, 'legal/cla', file)))
+      .digest('hex');
+    expect(
+      actual,
+      `${file} changed: a new CLA version is needed (new version number, new SENTENCE, new hash here)`,
+    ).toBe(expected);
   });
 });
 

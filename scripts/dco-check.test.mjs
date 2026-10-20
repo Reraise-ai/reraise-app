@@ -38,9 +38,18 @@ describe('dcoProblem', () => {
       true,
     ],
     ['merge commit', { message: 'Merge branch main', parents: 2 }, false],
-    ['dependabot', { message: 'chore(deps): bump', login: 'dependabot[bot]' }, false],
-  ])('%s', (_name, input, fails) => {
-    const problem = dcoProblem(commit(input));
+    [
+      'dependabot pull request',
+      { message: 'chore(deps): bump', prAuthor: 'dependabot[bot]' },
+      false,
+    ],
+    [
+      'forged dependabot commit in a pull request of a person',
+      { message: 'feat: x', login: 'dependabot[bot]', prAuthor: 'dev' },
+      true,
+    ],
+  ])('%s', (_name, { prAuthor = 'dev', ...input }, fails) => {
+    const problem = dcoProblem(commit(input), prAuthor);
     if (fails) expect(problem).toContain('0123456789ab: no "Signed-off-by:"');
     else expect(problem).toBeNull();
   });
