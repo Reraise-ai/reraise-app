@@ -10,6 +10,7 @@ import { UsagePanel } from './components/UsagePanel.js';
 import { Login } from './components/Login.js';
 import { PoweredBy } from './components/PoweredBy.js';
 import { Workbench } from './components/Workbench.js';
+import { useBoardTheme, type BoardTheme } from './embed.js';
 
 interface Props {
   /** For tests: a fetch stub that stands in for the service. */
@@ -21,6 +22,10 @@ interface Props {
   /** Static demo: this client is the board. There is no Board API. */
   client?: BoardClient;
   onSignOut?: () => void;
+  /** Shown inside a host (`?embed=1`): no demo notice, no Sign out; the host owns the session. */
+  embed?: boolean;
+  /** The host's theme (`?theme=light|dark`). Embedded without one, the system preference. */
+  theme?: BoardTheme;
 }
 
 export function App({
@@ -30,7 +35,10 @@ export function App({
   level1DebounceMs,
   client,
   onSignOut,
+  embed = false,
+  theme,
 }: Props = {}) {
+  const shownTheme = useBoardTheme(embed, theme);
   const [session, setSession] = useState<Session | null>(() =>
     client ? null : loadSession(storage),
   );
@@ -39,6 +47,8 @@ export function App({
       <Signed
         client={client}
         demo
+        embed={embed}
+        theme={shownTheme}
         pollIntervalMs={pollIntervalMs}
         level1DebounceMs={level1DebounceMs}
         onSignOut={() => onSignOut?.()}
@@ -51,6 +61,8 @@ export function App({
       fetchImpl={fetchImpl}
       pollIntervalMs={pollIntervalMs}
       level1DebounceMs={level1DebounceMs}
+      embed={embed}
+      theme={shownTheme}
       onSignOut={() => {
         clearSession(storage);
         setSession(null);
@@ -72,6 +84,8 @@ function SignedSession(props: {
   fetchImpl: typeof fetch | undefined;
   pollIntervalMs: number | undefined;
   level1DebounceMs: number | undefined;
+  embed: boolean;
+  theme: BoardTheme;
   onSignOut(): void;
 }) {
   const { session, fetchImpl, onSignOut } = props;
@@ -90,6 +104,8 @@ function SignedSession(props: {
       client={client}
       pollIntervalMs={props.pollIntervalMs}
       level1DebounceMs={props.level1DebounceMs}
+      embed={props.embed}
+      theme={props.theme}
       onSignOut={onSignOut}
     />
   );
@@ -98,6 +114,8 @@ function SignedSession(props: {
 function Signed(props: {
   client: BoardClient;
   demo?: boolean;
+  embed: boolean;
+  theme: BoardTheme;
   pollIntervalMs: number | undefined;
   level1DebounceMs: number | undefined;
   onSignOut(): void;
@@ -115,10 +133,10 @@ function Signed(props: {
   }, [client]);
 
   return (
-    <div className="wb-shell">
+    <div className="wb-shell" data-wb-theme={props.theme}>
       <header className="wb-header">
         <h1>The Worldbuilder</h1>
-        {props.demo && (
+        {props.demo && !props.embed && (
           <p className="wb-muted" data-testid="demo-banner">
             Demo. Changes stay in this browser.
           </p>
@@ -141,9 +159,11 @@ function Signed(props: {
             Usage metrics
           </button>
         </nav>
-        <button type="button" data-testid="session-signout" onClick={onSignOut}>
-          Sign out
-        </button>
+        {!props.embed && (
+          <button type="button" data-testid="session-signout" onClick={onSignOut}>
+            Sign out
+          </button>
+        )}
       </header>
       {view === 'usage' ? (
         <UsagePanel client={client} />
