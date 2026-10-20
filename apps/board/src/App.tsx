@@ -133,7 +133,7 @@ function Signed(props: {
   return (
     <div className="wb-shell">
       <header className="wb-header">
-        <h1>The Worldbuilder</h1>
+        <h1>Reraise</h1>
         {props.demo && !props.embed && (
           <p className="wb-muted" data-testid="demo-banner">
             Demo. Changes stay in this browser.

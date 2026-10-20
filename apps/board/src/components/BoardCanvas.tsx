@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright The Worldbuilder contributors
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Background,
   Controls,
   ReactFlow,
   ReactFlowProvider,
   applyNodeChanges,
+  useNodesInitialized,
   useReactFlow,
   type Connection,
   type NodeChange,
@@ -36,16 +37,42 @@ interface Props {
   readOnly?: boolean;
 }
 
+/** Space between the top of the canvas and the highest card after a fit, in screen pixels. */
+export const FIT_TOP_GAP = 16;
+
 /**
- * Fits the cards into view again when the canvas changes size, until the user pans or zooms.
- * The first fit runs once, at mount; a host that lays out or resizes its window afterwards
- * (an embedding app, a restored window) otherwise leaves the cards off-centre with an empty
- * band above or beside them.
+ * Fits all cards into view and aligns them to the top: the board starts right under the status
+ * line instead of floating in the middle of a tall canvas. Across, the cards stay centred.
+ */
+function useTopFit() {
+  const { fitView, getNodes, getNodesBounds, getViewport, setViewport } = useReactFlow();
+  return useCallback(async () => {
+    await fitView({ padding: 0.1 });
+    const nodes = getNodes();
+    if (nodes.length === 0) return;
+    const bounds = getNodesBounds(nodes);
+    const { x, zoom } = getViewport();
+    await setViewport({ x, y: FIT_TOP_GAP - bounds.y * zoom, zoom });
+  }, [fitView, getNodes, getNodesBounds, getViewport, setViewport]);
+}
+
+/**
+ * Fits the cards into view once they are measured, and again when the canvas changes size,
+ * until the user pans or zooms. A host that lays out or resizes its window afterwards (an
+ * embedding app, a restored window) otherwise leaves the cards off with an empty band above
+ * or beside them.
  */
 function useRefitOnResize() {
-  const { fitView } = useReactFlow();
+  const fitTop = useTopFit();
+  const initialized = useNodesInitialized();
   const wrapRef = useRef<HTMLDivElement>(null);
   const userMoved = useRef(false);
+  const fitted = useRef(false);
+  useEffect(() => {
+    if (!initialized || fitted.current) return;
+    fitted.current = true;
+    void fitTop();
+  }, [initialized, fitTop]);
   useEffect(() => {
     const el = wrapRef.current;
     if (!el || typeof ResizeObserver === 'undefined') return;
@@ -57,11 +84,11 @@ function useRefitOnResize() {
       if (size === last) return;
       const first = last === '';
       last = size;
-      if (!first && !userMoved.current) void fitView();
+      if (!first && !userMoved.current && fitted.current) void fitTop();
     });
     observer.observe(el);
     return () => observer.disconnect();
-  }, [fitView]);
+  }, [fitTop]);
   const markMoved = () => {
     userMoved.current = true;
   };
@@ -128,7 +155,6 @@ function Canvas(props: Props) {
         onPaneClick={() => props.onSelect({ cardId: null, edgeKey: null })}
         onMoveStart={onMoveStart}
         deleteKeyCode={null}
-        fitView
         aria-label="Cards and edges of this Lage"
       >
         <Background />
