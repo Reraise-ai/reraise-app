@@ -29,6 +29,8 @@ worldbuilder agent remove <name> [--state <dir>]
 credential, from `apps/board/dist` (the toolkit zip and the container image keep the repository
 layout). A browser then needs no `--allow-origin`; only the Vite dev
 server on another port does. Without a built board the routes `/` and `/assets/*` do not exist.
+Both answer with `Content-Security-Policy: frame-ancestors 'self'` and `X-Frame-Options: SAMEORIGIN`,
+so only a page of the service's own origin may show the board in a frame.
 `--init` creates a missing store (`worldbuilder-store.yaml`, `cards/` and one empty, private world
 "My world" in `world.json`, unless a `world.json` is already there); an existing store is opened
 unchanged and no file is overwritten.
