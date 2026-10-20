@@ -26,11 +26,11 @@ synthetic: true
   ],
   "cards": [
     { "id": "01M1E34QM03WVTE8T1RYS3AM18", "x": 120, "y": 80 },
-    { "id": "01M1E6JK80GR8G0JHMPVT7TDX4", "x": 320, "y": 80 },
-    { "id": "01M1EA0EW0V90F04X7AKQJSKK2", "x": 520, "y": 80 },
+    { "id": "01M1E6JK80GR8G0JHMPVT7TDX4", "x": 400, "y": 80 },
+    { "id": "01M1EA0EW0V90F04X7AKQJSKK2", "x": 680, "y": 80 },
     { "id": "01M1EDEAG082WZ7T7D204BHZDC", "x": 120, "y": 300 },
-    { "id": "01M1EGW640BMD0RDT5NGRMFD70", "x": 520, "y": 300 },
-    { "id": "01M1EMA1R0AH9ZTK3YJK33TNER", "x": 320, "y": 460 }
+    { "id": "01M1EGW640BMD0RDT5NGRMFD70", "x": 680, "y": 300 },
+    { "id": "01M1EMA1R0AH9ZTK3YJK33TNER", "x": 400, "y": 460 }
   ],
   "seats": [
     { "name": "Analyst", "kind": "human" },

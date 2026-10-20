@@ -137,6 +137,12 @@ label {
   height: 100vh;
 }
 
+/* The theme wrapper around every screen (data-wb-theme) paints with its own tokens. */
+.wb-theme {
+  background: var(--wb-surface);
+  color: var(--wb-text);
+}
+
 .wb-header {
   display: flex;
   align-items: center;

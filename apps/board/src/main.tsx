@@ -3,6 +3,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App.js';
+import { embedOptions } from './embed.js';
 import './tokens.css';
 import './App.css';
 
@@ -11,14 +12,15 @@ if (!rootEl) throw new Error('Missing #root element');
 const root: HTMLElement = rootEl;
 
 async function boot(): Promise<void> {
+  const options = embedOptions(location.search);
   if (import.meta.env.MODE === 'demo') {
     const { bootDemo } = await import('./demo/boot.js');
-    await bootDemo(root);
+    await bootDemo(root, options);
     return;
   }
   createRoot(root).render(
     <StrictMode>
-      <App />
+      <App {...options} />
     </StrictMode>,
   );
 }

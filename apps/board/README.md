@@ -26,6 +26,18 @@ out.
 `/board/`. The page loads the Hormuz, gold-market and vitamin D examples from `world.json` and keeps edits in
 `localStorage`. It does not call a Board API. Sign out drops those edits.
 
+## Embedding
+
+A host that shows the board inside its own window (a desktop app plugin, an iframe) turns on
+the embedding mode with `?embed=1` in the URL, or with the `embed` option when it renders
+`<App>` itself. The board then drops the demo notice. Sign out goes only when the host also
+passes its own `client` (the host owns the session); a board signed in with its own token keeps
+Sign out. `?theme=light` or `?theme=dark` (option `theme`) takes the host's theme; embedded
+without one, the board follows the system preference. Outside a host the board stays dark. The
+theme wraps every screen, the login form included.
+The light theme lives in `src/tokens.css` (`[data-wb-theme='light']`); every text colour in
+both themes reaches WCAG AA on both surfaces (`src/tokens.test.ts`).
+
 ## What the screen does
 
 - Lagen: list, open, create (`cards_search type=lage`, `lage_create`, `lage_get`).
