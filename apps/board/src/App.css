@@ -172,9 +172,6 @@ body,
 .wb-workbench {
   display: grid;
   grid-template-columns: 1fr var(--wb-sidebar-width);
-  /* One row as high as the workbench. An auto row can grow with a long sidebar, and the
-     canvas with it: the fitted cards then sit far below an empty band. */
-  grid-template-rows: minmax(0, 1fr);
   flex: 1;
   min-height: 0;
 }

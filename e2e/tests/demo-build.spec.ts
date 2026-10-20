@@ -140,6 +140,41 @@ test.describe('static demo build', () => {
     expect(l.paneBottom).toBeLessThanOrEqual(900);
     expect(l.sidebarScroll).toBeGreaterThan(2400);
   });
+
+  test('in a host without a fixed height the canvas stays within the window beside a long sidebar', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto(`${base}/board/?embed=1&theme=light`);
+    // A host box that grows with its content: the page itself scrolls.
+    await page.evaluate(() => {
+      const root = document.getElementById('root')!;
+      const host = document.createElement('div');
+      host.setAttribute('style', 'margin:48px 0 0 300px');
+      root.replaceWith(host);
+      host.append(root);
+    });
+    await page.addStyleTag({
+      content: '.wb-sidebar::after{content:"";display:block;height:2400px}',
+    });
+    await page.getByTestId(`lage-open-${HORMUZ.lageId}`).click();
+    await expect(page.getByTestId(`card-node-${HORMUZ.experienceCardId}`)).toBeVisible();
+    const pane = () =>
+      page.evaluate(() => {
+        const r = document.querySelector('.react-flow')!.getBoundingClientRect();
+        return { top: r.top, bottom: r.bottom, height: r.height };
+      });
+    expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBeGreaterThan(2400);
+    // Not higher than the window; once the page scrolls, it sits fully in view.
+    const before = await pane();
+    expect(before.height).toBeGreaterThan(300);
+    expect(before.height).toBeLessThanOrEqual(900);
+    await page.evaluate(() => window.scrollTo(0, 1200));
+    await expect.poll(() => pane().then((p) => p.top)).toBeGreaterThanOrEqual(0);
+    const after = await pane();
+    expect(after.bottom).toBeLessThanOrEqual(900);
+    expect(after.height).toBeGreaterThan(300);
+  });
 });
 
 /** Card overlaps, the empty band above the cards, and the Experience badge contrast. */

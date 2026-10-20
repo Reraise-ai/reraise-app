@@ -14,7 +14,8 @@ export type KindEdgeType = Edge<KindEdgeData, 'kind'>;
 /** Arrowhead markers in tokens; SVG presentation attributes cannot hold var(), CSS can. */
 export function EdgeMarkers() {
   return (
-    <svg width="0" height="0" aria-hidden="true" focusable="false">
+    // Out of the flow: an inline svg takes a text line and pushed the canvas 20 px past its area.
+    <svg width="0" height="0" aria-hidden="true" focusable="false" style={{ position: 'absolute' }}>
       <defs>
         {(['supports', 'refutes'] as const).map((kind) => (
           <marker
