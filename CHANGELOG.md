@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- `e2e/tests/time-slider.spec.ts` failed now and then on macOS: the state folder changed during the snapshot because the gate decision log (ADR-0030) appends a line for every card the screen reads, and a read still in flight landed after the snapshot. The test now leaves that log out of the file stamps and checks that it was only appended to.
 - `worldbuilder serve` let any web page show the board in a frame, so a foreign page could pass it off as its own and steer the clicks or the typed token. `/` and `/assets/*` now send `Content-Security-Policy: frame-ancestors 'self'` and `X-Frame-Options: SAMEORIGIN` (`services/api/src/main.test.ts`).
 
 ## [0.2.0] - 2026-10-20
