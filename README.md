@@ -1,4 +1,4 @@
-# The Worldbuilder
+# Reraise
 
 [![CI](https://github.com/Reraise-ai/reraise-app/actions/workflows/ci.yml/badge.svg)](https://github.com/Reraise-ai/reraise-app/actions/workflows/ci.yml)
 [![Licence](https://img.shields.io/badge/licence-Apache--2.0%20%2F%20AGPL--3.0--or--later-blue)](LICENSING.md)
@@ -9,7 +9,7 @@ _The Worldbuilder — Powered by [Private Executive](https://private-executive.c
 
 ## 30-second pitch
 
-The Worldbuilder is a local-first tool for building a personal knowledge graph of typed
+Reraise is a local-first tool for building a personal knowledge graph of typed
 cards, and for turning it into decisions. Every card shows where it comes from: evidenced,
 said, or experience. Your own stance (believed, rejected, undecided) is a private overlay
 that never leaves your device. On a board with a guiding question, cards, players and
@@ -19,15 +19,11 @@ propose. A human decides.
 
 ## Status
 
-**M1 in progress: the end-to-end test passes locally; awaiting CI on three operating systems.**
-The board, the Board API, the `markdown-files` adapter and the MCP server work together on the
-synthetic Hormuz world (`pnpm test:e2e`, Playwright). It has run on Linux only, on a developer
-machine; CI has not run it yet, so nothing is released and no version is tagged. No feature is
-claimed here that is not backed by an automated test.
+**M1 is done; M2 slices are in progress; nothing is released yet.** The board, the Board API, the `markdown-files` adapter and the MCP server work together on the synthetic Hormuz world. The end-to-end test (`pnpm test:e2e`, Playwright) runs in CI on Linux, Windows and macOS and was green at commit `4e0ebf8` (see the [roadmap](docs/roadmap.md)). Six M2 slices (decision card, source profile, rules panel, player fields, time slider, what-if) are built and tested on branches. No version is tagged and no release exists yet. No feature is claimed here that is not backed by an automated test.
 
 ## What and why
 
-Design principles (see ADRs). The first slice of them is implemented and tested locally (M1, see Status):
+Design principles (see ADRs). The first slice of them is implemented and tested (M1, see Status):
 
 - **Files are the truth.** Worlds are Markdown with YAML front matter; any database is derived.
 - **Provenance is explicit.** Evidence, hearsay and experience are never mixed.
