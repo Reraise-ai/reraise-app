@@ -62,15 +62,19 @@ function useRefitOnResize() {
     observer.observe(el);
     return () => observer.disconnect();
   }, [fitView]);
-  // A move started by the user carries an event; a programmatic fit does not.
-  const onMoveStart = (event: unknown) => {
-    if (event) userMoved.current = true;
+  const markMoved = () => {
+    userMoved.current = true;
   };
-  return { wrapRef, onMoveStart };
+  // A pan or wheel zoom by the user carries an event; a programmatic fit and the zoom buttons
+  // do not, so the buttons mark the move themselves.
+  const onMoveStart = (event: MouseEvent | TouchEvent | null) => {
+    if (event) markMoved();
+  };
+  return { wrapRef, onMoveStart, markMoved };
 }
 
 function Canvas(props: Props) {
-  const { wrapRef, onMoveStart } = useRefitOnResize();
+  const { wrapRef, onMoveStart, markMoved } = useRefitOnResize();
   const { lage, cards, stances, selectedCardId, selectedEdgeKey } = props;
   const derived = useMemo(
     () => toNodes(lage, cards, stances, selectedCardId),
@@ -128,7 +132,7 @@ function Canvas(props: Props) {
         aria-label="Cards and edges of this Lage"
       >
         <Background />
-        <Controls showInteractive={false} />
+        <Controls showInteractive={false} onZoomIn={markMoved} onZoomOut={markMoved} />
       </ReactFlow>
     </div>
   );

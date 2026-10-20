@@ -91,7 +91,7 @@ test.describe('static demo build', () => {
     await expect(page.getByTestId(`lage-item-${HORMUZ.lageId}`)).toBeVisible();
     await expect(page.getByTestId('demo-banner')).toHaveCount(0);
     await expect(page.getByTestId('session-signout')).toHaveCount(0);
-    await expect(page.locator('.wb-shell')).toHaveAttribute('data-wb-theme', 'light');
+    await expect(page.locator('.wb-theme')).toHaveAttribute('data-wb-theme', 'light');
 
     await page.getByTestId(`lage-open-${HORMUZ.lageId}`).click();
     await expect(page.getByTestId(`card-node-${HORMUZ.experienceCardId}`)).toBeVisible();
@@ -102,6 +102,17 @@ test.describe('static demo build', () => {
     const l = await page.evaluate(layout);
     expect(l.overlaps).toEqual([]);
     expect(l.badgeContrast).toBeGreaterThanOrEqual(4.5);
+
+    // A zoom with the + button is the user's: the next resize keeps it.
+    const viewport = page.locator('.react-flow__viewport');
+    const fitted = await viewport.getAttribute('style');
+    await page.locator('.react-flow__controls-zoomin').click();
+    await expect.poll(() => viewport.getAttribute('style')).not.toBe(fitted);
+    await page.waitForTimeout(300);
+    const zoomed = await viewport.getAttribute('style');
+    await page.setViewportSize({ width: 1200, height: 800 });
+    await page.waitForTimeout(300);
+    await expect(viewport).toHaveAttribute('style', zoomed!);
   });
 });
 

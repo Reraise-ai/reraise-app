@@ -1069,7 +1069,7 @@ function demoSeed(): DemoSeed {
 }
 
 describe('embedding (?embed=1)', () => {
-  const shell = () => document.querySelector('.wb-shell')!;
+  const shell = () => document.querySelector('.wb-theme')!;
 
   it('drops the demo notice and Sign out and takes the host theme', async () => {
     render(<App client={createMemoryClient(demoSeed())} embed theme="light" />);
@@ -1080,12 +1080,19 @@ describe('embedding (?embed=1)', () => {
     expect(shell().getAttribute('data-wb-theme')).toBe('light');
   });
 
-  it('drops Sign out with a session of its own', async () => {
+  it('keeps Sign out with a session of its own: the board, not the host, holds the token', async () => {
     saveSession({ baseUrl: BASE, token: TOKEN });
     render(<App fetchImpl={createMockApi().fetch} embed theme="dark" />);
     await screen.findByTestId('lage-list');
-    expect(screen.queryByTestId('session-signout')).toBeNull();
+    expect(screen.getByTestId('session-signout')).toBeTruthy();
     expect(shell().getAttribute('data-wb-theme')).toBe('dark');
+  });
+
+  it('shows the login form in the host theme', () => {
+    render(<App fetchImpl={createMockApi().fetch} embed theme="light" />);
+    expect(
+      screen.getByTestId('login-form').closest('[data-wb-theme]')?.getAttribute('data-wb-theme'),
+    ).toBe('light');
   });
 
   it('follows the system preference when the host names no theme', async () => {

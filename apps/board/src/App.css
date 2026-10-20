@@ -135,7 +135,10 @@ label {
   display: flex;
   flex-direction: column;
   height: 100vh;
-  /* The theme tokens are set on the shell (data-wb-theme), so it paints its own background. */
+}
+
+/* The theme wrapper around every screen (data-wb-theme) paints with its own tokens. */
+.wb-theme {
   background: var(--wb-surface);
   color: var(--wb-text);
 }

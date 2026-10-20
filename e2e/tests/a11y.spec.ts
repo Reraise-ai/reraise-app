@@ -20,6 +20,19 @@ test.describe('axe on the board screens', () => {
     await scan(page, 'login');
   });
 
+  test('login and lagen list in the light theme (?embed=1&theme=light)', async ({ page }) => {
+    const env = getEnv();
+    await page.goto(`${env.boardUrl}?embed=1&theme=light`);
+    await expect(page.locator('.wb-theme')).toHaveAttribute('data-wb-theme', 'light');
+    await expect(page.getByTestId('login-form')).toBeVisible();
+    await scan(page, 'login, light theme');
+    await page.getByTestId('login-base-url').fill(env.serviceUrl);
+    await page.getByTestId('login-token').fill(env.sessionToken);
+    await page.getByTestId('login-submit').click();
+    await expect(page.getByTestId(`lage-item-${HORMUZ.lageId}`)).toBeVisible();
+    await scan(page, 'lagen list, light theme');
+  });
+
   test('lagen list and usage metrics', async ({ page }) => {
     const env = getEnv();
     await login(page, env);
