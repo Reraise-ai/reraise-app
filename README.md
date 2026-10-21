@@ -5,7 +5,7 @@
 
 > The model is replaceable. Your personal world is not.
 
-_The Worldbuilder — Powered by [Private Executive](https://private-executive.com.ar)_
+_An open project by Caprey SAS · [reraise.ai](https://reraise.ai/)_
 
 ## 30-second pitch
 

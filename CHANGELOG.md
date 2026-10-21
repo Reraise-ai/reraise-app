@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Board demo (reraise.ai/board): a "model mirror" — the same open question put to five AI models over the very same cards, shown side by side and framed as more voices over the sources, never a verdict of the board. Ships with a first worked example (Vitamin D: the two COVID trials, the blood-level question, and the "instead of the vaccine" claim).
+- First-visit guided intro: what a card is and its three layers (proven / said / experience), that the board takes no side and you set your own stance, the model mirror, and "bring your own board".
+- Board tabs are closable; the market and situation-map board types now sit as views inside their topic instead of separate top-level tabs.
 - Embedding mode for the board: `?embed=1` (or the `embed` option of `<App>`) hides the demo notice; Sign out goes only when the host passes its own `client` and so owns the session, a board signed in with its own token keeps it. `?theme=light|dark` (option `theme`) takes the host's theme for every screen, the login form included; embedded without one, the board follows the system preference. A light theme in `src/tokens.css` keeps every text colour at WCAG AA (4.5:1) on both surfaces (`apps/board/src/tokens.test.ts`).
 
 ### Fixed
