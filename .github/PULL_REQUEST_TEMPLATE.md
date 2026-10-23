@@ -11,3 +11,4 @@
 - [ ] No real personal data, secrets or private infrastructure details
 - [ ] SPDX headers match the directory licence
 - [ ] Commits follow Conventional Commits and are signed off (`git commit -s`)
+- [ ] CLA signed if the change touches `apps/board`, `services/api`, `packages/mcp-server` or `e2e`

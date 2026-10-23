@@ -6,6 +6,11 @@ decision-makers: "Owner (product), CTO/orchestrator (technical)"
 
 # ADR-0004: Two-tier licensing (Apache-2.0 and AGPL-3.0-or-later) with DCO
 
+> Amended by [ADR-0052](0052-contributor-license-agreement.md): contributions to the
+> AGPL-3.0-or-later paths also need a signed Contributor License Agreement (Harmony with a
+> promise-back). "There is no CLA" no longer applies there. The DCO sign-off stays for every
+> commit, and the Apache-2.0 paths stay DCO only.
+
 ## Context and Problem Statement
 
 The repository contains two kinds of code: reusable building blocks

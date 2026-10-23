@@ -35,7 +35,7 @@ decided.
 | Constraint | Consequence | Source |
 | --- | --- | --- |
 | Two-tier licensing: Apache-2.0 for the format, schemas, libraries and adapters; AGPL-3.0-or-later for the board app, the Board API and the MCP server | Apache-2.0 packages never import AGPL packages; dependency direction follows the licence tiers | [ADR-0004](../adr/0004-two-tier-licensing.md), [LICENSING.md](https://github.com/Reraise-ai/reraise-app/blob/main/LICENSING.md) |
-| DCO sign-off, SPDX header in every source file, REUSE compliance | Checked in CI | [ADR-0004](../adr/0004-two-tier-licensing.md) |
+| DCO sign-off, SPDX header in every source file, REUSE compliance, CLA signature for the AGPL-3.0-or-later directories | Checked in CI | [ADR-0004](../adr/0004-two-tier-licensing.md), [ADR-0052](../adr/0052-contributor-license-agreement.md) |
 | The hosted platform is a separate, closed service | Not part of this repository or of these diagrams beyond an external box | [ADR-0021](../adr/0021-privacy-and-sharing-model.md) |
 
 ## 2.4 Conventions

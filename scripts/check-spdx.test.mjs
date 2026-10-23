@@ -4,6 +4,8 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
+  AGPL,
+  AGPL_DIRS,
   checkSpdx,
   expectedLicense,
   findSpdx,
@@ -60,6 +62,27 @@ describe('REUSE.toml', () => {
     expect(reuseLicenseFor(ann, 'apps/board/logo.png')).toBe('AGPL-3.0-or-later');
     expect(reuseLicenseFor(ann, 'packages/core/package.json')).toBe('Apache-2.0');
     expect(reuseLicenseFor([], 'a.json')).toBeNull();
+  });
+});
+
+describe('AGPL_DIRS is the one list of AGPL directories (the CLA check uses it too)', () => {
+  it('matches the AGPL rows of LICENSING.md and the AGPL annotation of REUSE.toml', () => {
+    const licensing = readFileSync(new URL('../LICENSING.md', import.meta.url), 'utf8');
+    const fromLicensing = [
+      ...licensing.matchAll(/^\| `([^`]+?)\/?` .*\| AGPL-3\.0-or-later\s*\|$/gm),
+    ];
+    const fromReuse = parseReuseToml(REUSE)
+      .filter((a) => a.license === AGPL)
+      .flatMap((a) => a.paths.map((p) => p.replace(/\/\*\*$/, '')));
+    expect(fromLicensing.map((m) => m[1]).sort()).toEqual([...AGPL_DIRS].sort());
+    expect(fromReuse.sort()).toEqual([...AGPL_DIRS].sort());
+  });
+
+  it('gives the CLA texts CC-BY-3.0 and the entity records Apache-2.0', () => {
+    const ann = parseReuseToml(REUSE);
+    expect(reuseLicenseFor(ann, 'legal/cla/CLA-INDIVIDUAL.md')).toBe('CC-BY-3.0');
+    expect(reuseLicenseFor(ann, 'legal/cla/CLA-ENTITY.md')).toBe('CC-BY-3.0');
+    expect(reuseLicenseFor(ann, 'legal/cla/entities/acme.json')).toBe('Apache-2.0');
   });
 });
 
