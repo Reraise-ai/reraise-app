@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Automatic source check for every Health card: the source page is fetched and archived, fixed rules test whether the quote, every number and the named speaker actually appear there, and a local model (temperature 0, fixed seed, logged prompt) checks that the English card says what the source says. Repeat runs give identical results. Cards that fail are removed, cards whose wording is not on the source are shown as SAID instead of PROVEN, numbers not found on the source are taken off the card. Health now holds 333 checked cards across 47 nutrients (131 proven, 202 said); each card shows when and how it was checked.
+
 - Board demo (reraise.ai/board): new topic "Health" with 326 sourced cards across 46 nutrients (vitamins, minerals, trace elements, amino acids, fats and other). Each nutrient is its own claim field; cards are sorted by source type (official and conventional vs. independent and longevity), not by verdict. Every card carries its source and its layer (proven or said).
 ### Changed
 
