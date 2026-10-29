@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Board demo (reraise.ai/board): new topic "Health" with 326 sourced cards across 46 nutrients (vitamins, minerals, trace elements, amino acids, fats and other). Each nutrient is its own claim field; cards are sorted by source type (official and conventional vs. independent and longevity), not by verdict. Every card carries its source and its layer (proven or said).
+### Changed
+
+- Board demo now opens in the light theme by default (dark stays one click away).
+### Fixed
+
+- Guided intro on the board: every step now points at a real element on desktop and mobile, waits until the board has rendered, no longer collides with the board's own hint, and is readable in the light theme.
+
 - Board demo (reraise.ai/board): a "model mirror" — the same open question put to five AI models over the very same cards, shown side by side and framed as more voices over the sources, never a verdict of the board. Ships with a first worked example (Vitamin D: the two COVID trials, the blood-level question, and the "instead of the vaccine" claim).
 - First-visit guided intro: what a card is and its three layers (proven / said / experience), that the board takes no side and you set your own stance, the model mirror, and "bring your own board".
 - Board tabs are closable; the market and situation-map board types now sit as views inside their topic instead of separate top-level tabs.
