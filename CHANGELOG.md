@@ -9,20 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Added
 
 - Board demo (reraise.ai/board): new topic "Health" with 326 sourced cards across 46 nutrients (vitamins, minerals, trace elements, amino acids, fats and other). Each nutrient is its own claim field; cards are sorted by source type (official and conventional vs. independent and longevity), not by verdict. Every card carries its source and its layer (proven or said).
-### Changed
-
-- Board demo now opens in the light theme by default (dark stays one click away).
-### Fixed
-
-- Guided intro on the board: every step now points at a real element on desktop and mobile, waits until the board has rendered, no longer collides with the board's own hint, and is readable in the light theme.
-
 - Board demo (reraise.ai/board): a "model mirror" — the same open question put to five AI models over the very same cards, shown side by side and framed as more voices over the sources, never a verdict of the board. Ships with a first worked example (Vitamin D: the two COVID trials, the blood-level question, and the "instead of the vaccine" claim).
 - First-visit guided intro: what a card is and its three layers (proven / said / experience), that the board takes no side and you set your own stance, the model mirror, and "bring your own board".
 - Board tabs are closable; the market and situation-map board types now sit as views inside their topic instead of separate top-level tabs.
 - Embedding mode for the board: `?embed=1` (or the `embed` option of `<App>`) hides the demo notice; Sign out goes only when the host passes its own `client` and so owns the session, a board signed in with its own token keeps it. `?theme=light|dark` (option `theme`) takes the host's theme for every screen, the login form included; embedded without one, the board follows the system preference. A light theme in `src/tokens.css` keeps every text colour at WCAG AA (4.5:1) on both surfaces (`apps/board/src/tokens.test.ts`).
 
+### Changed
+
+- Board demo now opens in the light theme by default (dark stays one click away).
+
 ### Fixed
 
+- Guided intro on the board: every step now points at a real element on desktop and mobile, waits until the board has rendered, no longer collides with the board's own hint, and is readable in the light theme.
+- CI: `CHANGELOG.md` failed `pnpm format:check` because the Unreleased section had headings without a blank line and a second `### Fixed`, which also filed the model mirror, the guided intro, closable tabs and the embedding mode under Fixed. They are back under Added and Changed, and there is one Fixed list.
+- CI: `pnpm audit --audit-level high` failed on new advisories. Vite goes to 8.3.5 (board, e2e) and 7.3.7 (VitePress override), zod to 4.6.7 (MCP server), and new `pnpm.overrides` lift DOMPurify to 3.4.17 (under mermaid), undici to 8.12.x (under jsdom) and body-parser to 2.4.0 (under express); see the dependency notes in `CONTRIBUTING.md`.
+- CI: the e2e job failed on `ubuntu-latest` because the runner image is now Ubuntu 26.04 and Playwright 1.56.1 cannot install Chromium there. `@playwright/test` goes to 1.64.1 (Ubuntu 26.04 is supported from 1.61), and the install step runs `pnpm exec playwright install` so it always uses the pinned version.
+- CI: `apps/board/src/privateExecutive.test.ts` still expected the "Powered by Private Executive" line in the README, which the README branding refresh replaced with "An open project by Caprey SAS". The test now requires the address to live only in the constant `PRIVATE_EXECUTIVE_URL`; the board credit and the docs footer keep importing it.
 - `e2e/tests/time-slider.spec.ts` failed now and then on macOS: the state folder changed during the snapshot because the gate decision log (ADR-0030) appends a line for every card the screen reads, and a read still in flight landed after the snapshot. The test now leaves that log out of the file stamps and checks that it was only appended to.
 - `worldbuilder serve` let any web page show the board in a frame, so a foreign page could pass it off as its own and steer the clicks or the typed token. `/` and `/assets/*` now send `Content-Security-Policy: frame-ancestors 'self'` and `X-Frame-Options: SAMEORIGIN` (`services/api/src/main.test.ts`).
 - The Hormuz example Lage placed its top row 200 px apart, but a card is 240 px wide, so the three cards overlapped. They now stand on the board's 280 px grid; `apps/board/src/exampleLayout.test.ts` checks every example Lage. The example proposal places its card at x 960, clear of the row.
