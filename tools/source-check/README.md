@@ -23,10 +23,10 @@ Input: the cards in [`cards/health/`](../../cards/health/README.md). Output: one
 
 Model `qwen35-fallback:latest` (digest `eeeb0e51a873c307a0d36f83adf24961fc91ff85514b825d9456a81ee8a3c4e8`), Ollama 0.32.7, prompt SHA-256 `b786dc45e54e5a235b1b7cedc599b7ca23f78562b24d53965f1b69bd4506c0b8`.
 
-| Run | Cards | OK | Downgrade | Remove |
-| --- | ---: | ---: | ---: | ---: |
-| First board set | 326 | 181 | 80 | 65 |
-| Follow-up research (replacement sources) | 85 | 55 | 17 | 13 |
+| Run                                      | Cards |  OK | Downgrade | Remove |
+| ---------------------------------------- | ----: | --: | --------: | -----: |
+| First board set                          |   326 | 181 |        80 |     65 |
+| Follow-up research (replacement sources) |    85 |  55 |        17 |     13 |
 
 Cards that failed were removed, cards that were downgraded are shown as `said`, and numbers that were not found on the source were taken off the card. The published set is [`cards/health/`](../../cards/health/README.md): 333 cards across 47 nutrients, 131 `evidenced` and 202 `said`. Each card carries its own `check` block.
 

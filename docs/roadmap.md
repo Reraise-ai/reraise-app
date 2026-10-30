@@ -151,7 +151,7 @@ crypto, and fine-tuning itself. The data model keeps ids, content hash, `level` 
 
 Status: design contract adopted 2026-10-29, build not started. Contract and findings:
 [board experience](./product/board-experience.md). Design studies:
-[`prototype/schools/`](../prototype/schools/index.html), five clickable boards with the same
+[`prototype/schools/`](https://github.com/Reraise-ai/reraise-app/tree/main/prototype/schools), five clickable boards with the same
 cards and the same functions, each in the logic of one school of interface design.
 
 Why a milestone of its own: the mechanics from M1 and M2 hold, the board people see does not.

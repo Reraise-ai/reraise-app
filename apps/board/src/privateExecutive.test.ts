@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright The Worldbuilder contributors
 //
-// The public address is one constant. Nothing else in the tree may copy the address: the board
-// and the docs footer import it. The README no longer carries the credit (its branding line names
-// Caprey SAS and reraise.ai since commit b4958d6), so it must not copy the address either.
+// The public address is one constant. The board and the docs footer import it. The two READMEs
+// (GitHub renders no imports) carry the "Powered by" credit again since 071fff4 and are the only
+// files allowed to repeat the address; the test holds them to the constant's value.
 import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -38,7 +38,17 @@ describe('PRIVATE_EXECUTIVE_URL', () => {
       .filter((file) => readFileSync(file, 'utf8').includes(PRIVATE_EXECUTIVE_URL))
       .map((file) => path.relative(repo, file).replaceAll('\\', '/'))
       .sort();
-    expect(hits).toEqual(['apps/board/src/privateExecutive.ts']);
+    expect(hits).toEqual(['README.de.md', 'README.md', 'apps/board/src/privateExecutive.ts']);
+  });
+
+  it('is the address the README credit links to', () => {
+    for (const readme of ['README.md', 'README.de.md']) {
+      const text = readFileSync(path.join(repo, readme), 'utf8');
+      const links = [...text.matchAll(/href="(https:\/\/private-executive[^"]*)"/g)].map(
+        (m) => m[1],
+      );
+      expect(links, readme).toEqual([PRIVATE_EXECUTIVE_URL]);
+    }
   });
 
   it('is the target the docs footer imports', () => {

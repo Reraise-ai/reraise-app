@@ -10,3 +10,5 @@ docs
 .claude
 playwright-report
 test-results
+# cards/ holds published card data, not source; it is kept byte-identical to what the source check signed off
+cards
