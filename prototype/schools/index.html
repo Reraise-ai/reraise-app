@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Board Denkschulen</title>
+<style>
+:root{--bg:#f4f2ee;--fg:#1a1a1a;--mut:#6b6761;--line:#d9d5ce;--acc:#e4400b;--card:#fff}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#15141a;--fg:#ecebe6;--mut:#9a978f;--line:#2e2d35;--acc:#ff6a35;--card:#1f1e25}}
+:root[data-theme="dark"]{--bg:#15141a;--fg:#ecebe6;--mut:#9a978f;--line:#2e2d35;--acc:#ff6a35;--card:#1f1e25}
+*{box-sizing:border-box}html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--fg);font:15px/1.4 Inter,system-ui,sans-serif;display:flex;flex-direction:column}
+header{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;padding:10px 16px;border-bottom:1px solid var(--line)}
+h1{font-size:15px;margin:0 12px 0 0;font-weight:600}h1 small{color:var(--mut);font-weight:400;margin-left:8px}
+nav{display:flex;flex-wrap:wrap;gap:6px}
+nav button{font:inherit;padding:6px 12px;border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:999px;cursor:pointer}
+nav button[aria-pressed="true"]{border-color:var(--acc);color:var(--acc);font-weight:600}
+.ctl{margin-left:auto;display:flex;gap:6px;align-items:center}
+.ctl button,.ctl a{font:inherit;font-size:13px;padding:5px 10px;border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:6px;cursor:pointer;text-decoration:none}
+.ctl button[aria-pressed="true"]{border-color:var(--acc);color:var(--acc)}
+p.desc{margin:0;padding:8px 16px;color:var(--mut);font-size:14px;border-bottom:1px solid var(--line)}
+p.desc b{color:var(--fg)}
+main{flex:1;display:flex;justify-content:center;background:var(--line);min-height:0}
+iframe{border:0;width:100%;height:100%;background:#fff}
+main.phone iframe{width:390px}
+@media (max-width:600px){h1{width:100%}.ctl{margin-left:0}}
+</style>
+</head>
+<body>
+<header>
+<h1>reraise · Board<small>fünf Denkschulen, gleicher Inhalt, gleiche Funktionen</small></h1>
+<nav id="nav"></nav>
+<div class="ctl">
+<button id="ph" aria-pressed="false">Telefon</button>
+<button id="th" aria-pressed="false">Dunkel</button>
+<a id="full" target="_blank" rel="noopener">Vollbild ↗</a>
+</div>
+</header>
+<p class="desc" id="desc"></p>
+<main id="main"><iframe id="fr" title="Board"></iframe></main>
+<script>
+const S=[
+["01-bauhaus.html","Bauhaus / Rams","<b>Bauhaus / Rams:</b> so wenig Gestaltung wie möglich. Raster, Typografie, eine Akzentfarbe. Ebenen nur durch Schrift unterschieden. Peripherie als Registerspalte rechts."],
+["02-kaminzimmer.html","Kaminzimmer","<b>Kaminzimmer (Objektmetapher):</b> Raum mit Dingen, die man kennt. Schachbrett auf Filz, Kartentisch, Kontorpult. Karten mit Rückseite = Quelle, Sessel = Agenten, Notizblock = Züge. Peripherie als Möbel „Around the room“."],
+["03-canvas.html","Canvas","<b>Direkte Manipulation / Canvas:</b> eine endlose Fläche, keine Leisten. Alles passiert am Objekt (Radialmenü, Griffe, Linie ziehen). Pan/Zoom, Minimap, Strg-K für Ping, Lupe = 5 Modelle, Avatare der Agenten auf der Fläche."],
+["04-usability.html","Usability","<b>Usability-Heuristiken (Nielsen/Norman):</b> um Aufgaben gebaut, nicht um Objekte. Drei Detailstufen (Basic / More / All tools), alles beschriftet, Bestätigung vor Irreversiblem, Hinweise am ersten Objekt statt Tour."],
+["05-tabletop.html","Tabletop","<b>Spiel-UX / Tabletop:</b> Hand, Deck, Ablage, Slots. Legen = Karte aus der Hand auf einen leuchtenden Platz ziehen. Spieler mit Zugmarker und Runden, Role play als Rundenmodus, Orakel-Karten = 5 Modelle. Erstkontakt „Your first hand“."]
+];
+const nav=document.getElementById('nav'),fr=document.getElementById('fr'),desc=document.getElementById('desc'),full=document.getElementById('full');
+let cur=0;
+S.forEach((s,i)=>{const b=document.createElement('button');b.textContent=(i+1)+' · '+s[1];b.onclick=()=>show(i);nav.appendChild(b)});
+function show(i){cur=i;[...nav.children].forEach((b,j)=>b.setAttribute('aria-pressed',j===i));fr.src=S[i][0];desc.innerHTML=S[i][2];full.href=S[i][0];try{localStorage.setItem('rr-schule',i)}catch(e){}}
+document.getElementById('ph').onclick=e=>{const on=e.target.getAttribute('aria-pressed')!=='true';e.target.setAttribute('aria-pressed',on);document.getElementById('main').classList.toggle('phone',on)};
+document.getElementById('th').onclick=e=>{const on=e.target.getAttribute('aria-pressed')!=='true';e.target.setAttribute('aria-pressed',on);document.documentElement.dataset.theme=on?'dark':'light';try{fr.contentDocument&&fr.contentDocument.documentElement.setAttribute('data-theme',on?'dark':'light')}catch(x){}};
+let st=0;try{st=+localStorage.getItem('rr-schule')||0}catch(e){}
+show(st);
+</script>
+</body>
+</html>

@@ -1,0 +1,629 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>reraise board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400;1,500&display=swap" rel="stylesheet">
+<style>
+:root{--p:#fff;--i:#000;--g:#666;--r:#cfcfcf;--a:#e4400b;--f:"IBM Plex Sans",Helvetica,Arial,sans-serif;--m:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;--gut:32px}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]){--p:#000;--i:#f2f2f2;--g:#9a9a9a;--r:#3b3b3b;--a:#ff5a1f}}
+:root[data-theme=dark]{--p:#000;--i:#f2f2f2;--g:#9a9a9a;--r:#3b3b3b;--a:#ff5a1f}
+*{box-sizing:border-box;margin:0;padding:0;border-radius:0}
+html{background:var(--p)}
+body{background:var(--p);color:var(--i);font:400 15px/1.45 var(--f);-webkit-font-smoothing:antialiased;max-width:1440px;margin:0 auto;padding:0 var(--gut) 64px;overflow-x:hidden}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;text-align:left}
+button:focus-visible,[tabindex]:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--a);outline-offset:2px}
+.mono,.cn,.cm,dt,.sm{font-family:var(--m);font-size:12px;letter-spacing:.01em}
+.g{color:var(--g)}
+.u{text-decoration:underline;text-underline-offset:3px}
+/* header */
+.top{display:flex;justify-content:space-between;align-items:baseline;padding:20px 0 14px;border-bottom:1px solid var(--i)}
+.mark{font-weight:600;font-size:22px;letter-spacing:-.03em;line-height:1}
+.pb{font-family:var(--m);font-size:12px;color:var(--g);margin-left:14px}
+.top .btn{font-family:var(--m);font-size:12px}
+.fields{display:flex;gap:28px;padding:12px 0;border-bottom:1px solid var(--r);flex-wrap:wrap}
+.fields button{font-weight:400;padding:2px 0;border-bottom:2px solid transparent}
+.fields button[aria-selected=true]{font-weight:600;border-color:var(--i)}
+.fields .plus{margin-left:auto;font-family:var(--m);font-size:13px}
+.head{display:grid;grid-template-columns:repeat(12,1fr);gap:0 var(--gut);padding:28px 0 12px}
+h1{grid-column:1/9;font-weight:500;font-size:clamp(26px,3.6vw,46px);line-height:1.08;letter-spacing:-.025em;max-width:22ch}
+#players{grid-column:9/13;align-self:end;font-family:var(--m);font-size:12px;color:var(--g);line-height:1.7}
+.time{display:grid;grid-template-columns:5rem 1fr minmax(8rem,auto);gap:var(--gut);align-items:center;padding:14px 0;border-top:1px solid var(--r);border-bottom:1px solid var(--r);margin-top:16px}
+.time label{font-family:var(--m);font-size:12px;color:var(--g)}
+.time output{font-family:var(--m);font-size:12px;text-align:right}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;background:transparent;height:24px}
+input[type=range]::-webkit-slider-runnable-track{height:1px;background:var(--i)}
+input[type=range]::-moz-range-track{height:1px;background:var(--i)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;background:var(--a);margin-top:-6px;border:0;border-radius:0}
+input[type=range]::-moz-range-thumb{width:12px;height:12px;background:var(--a);border:0;border-radius:0}
+.stops{display:flex;justify-content:space-between;font-family:var(--m);font-size:11px;color:var(--g);margin-top:2px}
+/* key */
+.key{display:grid;grid-template-columns:repeat(12,1fr);gap:0 var(--gut);padding:14px 0;border-bottom:1px solid var(--r);align-items:start}
+.key .lead{grid-column:1/5;font-weight:500;font-size:16px;line-height:1.3}
+.key .lead span{display:block;color:var(--g);font-weight:400;font-size:13px;margin-top:4px}
+.key .sp{grid-column:span 2;font-size:13px;line-height:1.35}
+.key .sp b{display:block;margin-bottom:2px}
+.key .x{grid-column:12/13;text-align:right;font-family:var(--m);font-size:12px}
+.keyshow{font-family:var(--m);font-size:12px;padding:8px 0;color:var(--g);text-decoration:underline;text-underline-offset:3px}
+/* layer typography */
+.ly{font-family:var(--f);font-size:11px;letter-spacing:.09em;text-transform:uppercase}
+.ly.P{font-weight:600;text-decoration:underline;text-decoration-thickness:1.5px;text-underline-offset:3px}
+.ly.S{font-weight:400;font-style:italic}
+.ly.E{font-weight:300;letter-spacing:.2em}
+.card.S h4{font-style:italic;font-weight:500}
+.card.P h4{font-weight:600}
+.card.E h4{font-weight:400}
+.card.E{padding-left:14px;border-left:1px solid var(--i)}
+/* layout */
+.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:0 var(--gut);padding-top:20px}
+#sheet{grid-column:1/9;position:relative;min-width:0}
+#reg{grid-column:9/13;border-left:1px solid var(--i);padding-left:var(--gut);min-width:0}
+.tools{display:flex;gap:24px;flex-wrap:wrap;align-items:baseline;padding-bottom:14px;font-size:13px}
+.tools .sm{color:var(--g)}
+.tools button{font-weight:500;text-decoration:underline;text-underline-offset:3px}
+.tools button[aria-pressed=true]{color:var(--a)}
+/* cards */
+.card{position:relative;border-top:1px solid var(--i);padding:8px 0 16px;cursor:pointer;min-width:0}
+.card:hover h4{text-decoration:underline;text-underline-offset:3px}
+.card.sel{border-top:3px solid var(--a);padding-top:6px}
+.card .ch{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
+.cn{color:var(--g)}
+.card h4{font-size:15px;line-height:1.3;letter-spacing:-.005em}
+.card p{font-size:13.5px;margin-top:4px;color:var(--i);max-width:46ch;hyphens:auto}
+.cm{color:var(--g);margin-top:8px;font-size:11.5px}
+.star{color:var(--a);font-size:14px;margin-right:6px}
+.empty{border-top:1px solid var(--r);padding:8px 0 16px;color:var(--g);font-size:13px}
+.empty button{text-decoration:underline;text-underline-offset:3px;color:var(--i)}
+.deb{display:grid;grid-template-columns:6rem 1fr 1fr;column-gap:var(--gut)}
+.deb .hd{font-weight:600;font-size:13px;padding-bottom:8px;letter-spacing:.09em;text-transform:uppercase}
+.deb .rl{padding-top:8px;display:flex;align-items:flex-start}
+.deb>div{min-width:0}
+.deb .col{border-left:1px solid var(--r);padding-left:calc(var(--gut)/2);margin-left:calc(var(--gut)/-2)}
+.map3{display:grid;grid-template-columns:repeat(3,1fr);column-gap:var(--gut)}
+.actor dl{display:grid;grid-template-columns:4.5rem 1fr;gap:2px 8px;margin-top:6px;font-size:13.5px}
+.actor dt{color:var(--g);padding-top:2px}
+.actor dd.nx{font-style:italic}
+.focal{margin:8px 0 12px;border-top:3px solid var(--a);padding:10px 0 6px}
+.focal .fh{font-family:var(--m);font-size:12px;color:var(--g);margin-bottom:6px}
+.focal .ft{font-size:clamp(20px,2.4vw,30px);line-height:1.15;letter-spacing:-.02em;font-weight:500;cursor:pointer;display:block;margin-bottom:12px}
+.focal .ft:hover{text-decoration:underline;text-underline-offset:4px}
+.focal .cols{display:grid;grid-template-columns:repeat(3,1fr);column-gap:var(--gut)}
+.focal .cols .ct{font-weight:600;font-size:12px;letter-spacing:.09em;text-transform:uppercase;padding-bottom:6px}
+.zones{display:grid;grid-template-columns:repeat(var(--z,3),1fr);column-gap:var(--gut);margin-top:8px}
+.zones .zt{font-weight:600;font-size:13px;letter-spacing:.09em;text-transform:uppercase;padding-bottom:8px}
+.slot{border-top:1px solid var(--r);padding:8px 0 14px;font-size:13.5px;color:var(--g)}
+.slot button{text-decoration:underline;text-underline-offset:3px;color:var(--i)}
+#chart{width:100%;margin-bottom:8px}
+#chart svg{display:block;width:100%;font-family:var(--m);font-size:11px}
+.fl{cursor:pointer}
+.fl:focus-visible{outline:2px solid var(--a)}
+.lnk{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;overflow:visible}
+.leg{font-family:var(--m);font-size:11px;color:var(--g)}
+/* register */
+.ridx{display:grid;grid-template-columns:1fr 1fr;gap:0 var(--gut);border-top:1px solid var(--i)}
+.ridx button{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--r);font-size:14px}
+.ridx button[aria-selected=true]{font-weight:600;text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:4px}
+.ridx .n{font-family:var(--m);font-size:11px;color:var(--g);font-weight:400}
+.rh{font-weight:500;font-size:18px;letter-spacing:-.01em;margin:20px 0 4px;line-height:1.25}
+.rs{font-size:13px;color:var(--g);margin-bottom:12px;max-width:44ch}
+.msg{display:grid;grid-template-columns:4.2rem 1fr;gap:8px;padding:9px 0;border-top:1px solid var(--r);font-size:14px}
+.msg .w{font-family:var(--m);font-size:12px;color:var(--g);padding-top:2px}
+.msg.me .w{color:var(--i);font-weight:500}
+.chips{display:flex;flex-wrap:wrap;gap:6px 14px;margin:12px 0}
+.chips button,.lk{font-size:13px;text-decoration:underline;text-underline-offset:3px}
+.send{display:grid;grid-template-columns:auto 1fr auto;gap:8px;border-top:1px solid var(--i);padding-top:10px;align-items:center}
+input[type=text],input[type=search],select,textarea{font:inherit;font-size:14px;background:var(--p);color:var(--i);border:0;border-bottom:1px solid var(--i);padding:6px 0;width:100%;min-width:0}
+textarea{border:1px solid var(--i);padding:8px;min-height:84px;resize:vertical}
+select{width:auto;max-width:100%}
+.act{font-weight:600;border:1px solid var(--i);padding:6px 14px;font-size:13px;text-align:center}
+.act:hover{background:var(--i);color:var(--p)}
+.act.pri{background:var(--i);color:var(--p)}
+.act.pri:hover{background:var(--a);border-color:var(--a);color:#fff}
+.act[disabled]{opacity:.35;pointer-events:none}
+.rule{display:grid;grid-template-columns:1fr auto;gap:12px;width:100%;padding:9px 0;border-top:1px solid var(--r);font-size:14px;align-items:baseline}
+.st{font-family:var(--m);font-size:12px;white-space:nowrap}
+.st.ap{font-weight:500;text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:2px}
+.st.no{text-decoration:line-through}
+.st.un{color:var(--g)}
+.og{display:grid;grid-template-columns:1fr auto;border-top:1px solid var(--r);padding:7px 0;font-size:13.5px}
+.lg{display:grid;grid-template-columns:1fr auto;gap:10px;padding:9px 0;border-top:1px solid var(--r);font-size:14px;align-items:baseline}
+.lg.undone .t{text-decoration:line-through;color:var(--g)}
+.lg .mono{color:var(--g);display:block}
+.lg button{font-family:var(--m);font-size:12px;text-decoration:underline;text-underline-offset:3px}
+.tr{border-top:1px solid var(--r);padding:10px 0 12px}
+.tr .row{display:flex;justify-content:space-between;gap:12px;margin-top:8px;align-items:baseline}
+.tbl{width:100%;border-collapse:collapse;font-size:13.5px;margin:4px 0 8px}
+.tbl td,.tbl th{border-top:1px solid var(--r);padding:7px 8px 7px 0;text-align:left;vertical-align:top;font-weight:400}
+.tbl th{font-family:var(--m);font-size:11px;color:var(--g)}
+.tbl td.r,.tbl th.r{text-align:right;padding-right:0}
+.big{font-size:34px;font-weight:300;letter-spacing:-.03em;line-height:1}
+.mod{border-top:1px solid var(--r);padding:10px 0;font-size:14px;display:grid;grid-template-columns:4.2rem 1fr;gap:8px}
+.mod .w{font-family:var(--m);font-size:12px;color:var(--g)}
+.mod button{display:block;margin-top:6px;font-size:12.5px;text-decoration:underline;text-underline-offset:3px}
+.sw{display:flex;justify-content:space-between;align-items:baseline;border-top:1px solid var(--r);border-bottom:1px solid var(--r);padding:9px 0;margin:10px 0;font-size:14px}
+.sw button{font-family:var(--m);font-size:12px;text-decoration:underline;text-underline-offset:3px}
+.sw button[aria-pressed=true]{color:var(--a);font-weight:500}
+/* dialog */
+dialog{border:1px solid var(--i);background:var(--p);color:var(--i);width:min(680px,calc(100vw - 24px));max-height:calc(100dvh - 24px);padding:0;margin:auto;overflow:auto}
+dialog::backdrop{background:rgba(255,255,255,.88)}
+:root[data-theme=dark] dialog::backdrop{background:rgba(0,0,0,.82)}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]) dialog::backdrop{background:rgba(0,0,0,.82)}}
+.dl{padding:20px 24px 24px}
+.dl .dh{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid var(--i);padding-bottom:10px;margin-bottom:14px}
+.dl h2{font-weight:500;font-size:28px;line-height:1.12;letter-spacing:-.025em;margin-bottom:6px}
+.dl .body{font-size:15px;max-width:52ch;margin-bottom:10px}
+.dl dl{display:grid;grid-template-columns:6.5rem 1fr;gap:0}
+.dl dt{padding:7px 0;border-top:1px solid var(--r);color:var(--g)}
+.dl dd{padding:7px 0;border-top:1px solid var(--r);font-size:14px}
+.dl .acts{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px;align-items:center}
+.dl .conn{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:14px;border-top:1px solid var(--i);padding-top:12px;font-size:13px}
+.dl .note{font-size:12.5px;color:var(--g);margin-top:8px}
+.fm label{display:block;font-family:var(--m);font-size:11.5px;color:var(--g);margin:14px 0 4px}
+.fm .rad{display:flex;gap:18px;flex-wrap:wrap;font-size:14px;padding:4px 0}
+.fm .rad label{display:inline-flex;gap:6px;align-items:center;margin:0;color:var(--i);font-family:var(--f);font-size:14px}
+.fm .step{border-top:1px solid var(--i);margin-top:16px;padding-top:2px}
+.fm .seat{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;border-top:1px solid var(--r);padding:6px 0}
+.toast{position:fixed;left:var(--gut);bottom:16px;background:var(--i);color:var(--p);font-family:var(--m);font-size:12px;padding:8px 12px;max-width:calc(100vw - 32px);z-index:50}
+.toast[hidden]{display:none}
+@media(max-width:900px){
+ :root{--gut:16px}
+ body{padding-bottom:80px}
+ .head{display:block}
+ #players{margin-top:12px}
+ .time{grid-template-columns:1fr;gap:6px}
+ .time output{text-align:left}
+ .key{display:block}
+ .key .sp{margin-top:10px}
+ .key .x{text-align:left;margin-top:10px}
+ .grid{display:block}
+ #reg{border-left:0;border-top:1px solid var(--i);padding-left:0;margin-top:28px;padding-top:0}
+ .deb{display:block}
+ .deb .hd.s{display:none}
+ .deb .rl{padding-top:20px;border-top:1px solid var(--i)}
+ .deb .col{border-left:0;padding-left:0;margin-left:0}
+ .deb .colh{display:block}
+ .map3,.focal .cols,.zones{display:block}
+ .fields{gap:16px}
+ .pb{display:none}
+}
+.deb .colh{display:none;font-family:var(--m);font-size:11px;color:var(--g);padding:10px 0 2px}
+@media(max-width:900px){.deb .colh{display:block}}
+@media(prefers-reduced-motion:no-preference){.card,.ridx button{transition:border-color .12s}}
+</style>
+</head>
+<body>
+<header class="top">
+ <div><span class="mark">reraise</span><span class="pb">Powered by Private Executive</span></div>
+ <button class="btn" id="theme" aria-label="Switch light or dark">Dark</button>
+</header>
+<nav class="fields" id="tabs" role="tablist" aria-label="Fields"></nav>
+<section class="head"><h1 id="title"></h1><div id="players"></div></section>
+<div class="time" id="time"></div>
+<div id="key"></div>
+<main class="grid">
+ <div id="sheet"><div class="tools" id="tools"></div><div id="board"></div><svg class="lnk" id="lnk" aria-hidden="true"></svg></div>
+ <aside id="reg" aria-label="Register"></aside>
+</main>
+<dialog id="dlg"></dialog>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const LN={P:{n:'Proven',d:'A source you can open stands behind this card, reproduced faithfully.'},S:{n:'Said',d:'Someone claims it. Who and where is named. Not checked.'},E:{n:'Experience',d:'Own experience. Needs no source.'}};
+const MONTHS=['Oct 25','Nov 25','Dec 25','Jan 26','Feb 26','Mar 26','Apr 26','May 26','Jun 26','Jul 26','Aug 26','Sep 26','Oct 26'];
+const GOLD=[4000,4120,4050,4210,4380,4300,4450,4520,4610,4580,4700,4820,4790];
+let N=0;const cards=[];
+function C(o){o.id='c'+(++N);o.n=N;o.conn=o.conn||[];cards.push(o);return o}
+/* ---- fields ---- */
+const fields={
+ claim:{id:'claim',tab:'Claim',kind:'debate',title:'Vitamin D helps patients in hospital with COVID-19',players:[['You','human'],['A1 Research','agent'],['A2 Rebuttal','agent']],stops:['29 Aug 2020','17 Feb 2021','today'],t:2,question:'Does vitamin D help people in hospital with COVID-19?',
+  log:[{id:'cm1',who:'A1',text:'laid 8 cards',t:1},{id:'cm2',who:'A2',text:'laid 7 cards',t:2}],
+  rules:[{t:'Copies count once',s:'ap'},{t:'Only advertising as proof',s:'no'},{t:'Compare like with like',s:'ap'},{t:'Intent needs a document',s:'un'}],
+  fire:[['You','Does vitamin D help people in hospital with COVID-19?'],['A1','I laid 8 cards. A trial in Córdoba: 1 of 50 treated needed intensive care, against 13 of 26 untreated. An MIT recalculation, three posts on the maker’s website and Michael Nehls point the same way. Two more cards say why the trials may differ.'],['A2','A trial in São Paulo found no reliable difference: a median of 7 days in hospital with vitamin D3, 7 days with placebo. And six of your eight cards go back to the same 76 patients in Córdoba. That is one origin, not six. I am laying 7 cards.']],
+  chips:['Which origins are independent?','Ask A1 for a source on dose timing','Lay an experience card of mine'],
+  rp:[[['A1','as the Córdoba team: 1 of 50 treated needed intensive care, 13 of 26 untreated.'],['A2','as the São Paulo team: 240 patients, placebo, 7 days against 7 days.']],[['A1','as the Córdoba team: our trial was open and had no placebo. It is a pilot.'],['A2','as the São Paulo team: then a pilot cannot settle it. The larger trial, 517 patients, has posted no results.']]],
+  mod:['Evidence is mixed: a small pilot suggested benefit, a larger placebo trial did not.','No reliable benefit shown for high-dose D3 in hospital; calcifediol rests on one pilot.','Weight sits on the placebo-controlled trial.','Unclear: form of vitamin D and timing of the dose differ between trials.','Not established. Treat Córdoba as a hypothesis, not a finding.']},
+ map:{id:'map',tab:'Map',kind:'map',title:'Strait of Hormuz',players:[['K','human'],['A1','agent'],['A2','agent'],['A3','agent']],stops:['Your assumption','Stage 1 · A1','Checked · A2'],t:2,question:'Will Iran close Hormuz permanently?',
+  log:[{id:'mm1',who:'A1',text:'laid 6 actor cards with will, can, red line, and 2 sources',t:1},{id:'mm2',who:'A2',text:'checked an analyst transcript, laid 2 foreign cards',t:2}],
+  rules:[{t:'Premise: geopolitics beats markets',s:'ap'},{t:'Never only foreign sources',s:'ap'},{t:'Red line first',s:'ap'},{t:'Alternative route',s:'un'}],
+  fire:[['K','Lay everything up to the next stage on the board to test my assumption “Iran does not close Hormuz permanently”.'],['A1','Done: 6 actor cards with will/can/red line, plus 2 sources. I did not touch your assumption.'],['A2','Checked an analyst transcript, laid 2 foreign cards. One deviates from your assumption.'],['K','My assumption stands. I set my stance on it.'],['A1','Suggest stage 2 with insurers and alternative routes?']],
+  chips:['Yes, start stage 2','Ask A3 to play Iran','What would Iran do next?'],
+  rp:[[['A1','as USA: tanker escort. As Israel: warns Iran covertly.'],['A2','as Iran: stops a tanker. As Russia: supports the price via cuts.'],['A3','as China: offers mediation. As Saudi Arabia: raises output.']],[['A3','Round 2 needs your move. Choose a response to a stopped tanker.']]],
+  mod:['A permanent closure would cut Iran’s own oil income; temporary disruption is likelier.','Closure threats are frequent; a sustained closure is rare.','It depends on whether the regime sees itself in existential danger, its red line.','Navies and insurers respond within days; a closure would not hold.','Cannot be forecast from public sources. Watch escort and insurance moves.']},
+ market:{id:'market',tab:'Market',kind:'market',title:'Gold',players:[['You','human'],['A1','agent'],['A2','agent']],stops:MONTHS,t:12,question:'Where does gold go next?',zones:['Demand','Supply','Macro'],
+  log:[{id:'gm1',who:'A1',text:'laid 3 flags on the price line',t:4},{id:'gm2',who:'A2',text:'laid 2 flags on the price line',t:11}],
+  rules:[{t:'Flows beat opinions',s:'ap'},{t:'One analyst is not a trend',s:'ap'},{t:'Geopolitics premium',s:'un'}],
+  fire:[['You','Where does gold go next? Lay what moved the price since last October.'],['A1','Laid 3 flags: central banks keep buying, record ETF inflows, flat mine output. Each has a source.'],['A2','Laid 2 more: an analyst target of 5000 by summer, and Hormuz tension in July. The target is one voice, not a trend.']],
+  chips:['Open the Hormuz field','Which flags have a source?','Lay a jewellery card'],
+  rp:[[['A1','as the demand side: central banks keep buying, ETF inflows are at a record.'],['A2','as the supply side: mine output is flat.']],[['A1','as the macro side: Hormuz tension adds a premium. Whether it stays is open.']]],
+  mod:['Central bank buying and ETF flows carry the price; the trend is intact.','A single analyst target is a forecast, not a trend.','A geopolitical premium can reverse quickly.','Real rates are the main driver to watch.','Flat mine output supports the price; demand matters more.']}
+};
+const order=['claim','map','market'];
+const S={f:'claim',reg:'fire',key:true,lines:true,exchange:true,rp:false,rpn:0,deck:[],mine:[],stance:{},taken:{},sel:null,base:{proven:12,taken:3,origin:9},tookN:0,offerMine:[]};
+const F=()=>fields[S.f];
+/* ---- cards: claim ---- */
+const co=C({f:'claim',layer:'P',side:'sup',t:1,move:'cm1',by:'A1',text:'Córdoba trial 2020',body:'Calcifediol, 76 patients: 1 of 50 treated needed intensive care, 13 of 26 untreated.',src:'Córdoba trial, 2020 (calcifediol, 76 patients)',origin:'Córdoba trial'});
+C({f:'claim',layer:'P',side:'sup',t:1,move:'cm1',by:'A1',text:'Calcifediol acts faster',body:'Measured in 2014.',src:'Measurement of calcifediol uptake, 2014',origin:'Measurement'});
+C({f:'claim',layer:'P',side:'sup',t:1,move:'cm1',by:'A1',text:'São Paulo dosed late',body:'The dose came 10.3 days after the first symptoms.',src:'São Paulo trial, dosing schedule',origin:'São Paulo trial'});
+C({f:'claim',layer:'S',side:'sup',t:1,move:'cm1',by:'A1',text:'MIT recalculation',body:'Could chance explain it?',src:'MIT authors, recalculation of the Córdoba numbers',origin:'Córdoba trial',conn:[{type:'depends on',to:co.id}]});
+for(let i=1;i<=3;i++)C({f:'claim',layer:'S',side:'sup',t:1,move:'cm1',by:'A1',text:'Maker’s site, post '+i,body:'About the same trial, counted as one.',src:'The maker’s website',origin:'Córdoba trial',conn:[{type:'depends on',to:co.id}]});
+C({f:'claim',layer:'S',side:'sup',t:1,move:'cm1',by:'A1',text:'Michael Nehls, 2026',body:'He says: slow substance, too late.',src:'Michael Nehls, 2026',origin:'Córdoba trial',conn:[{type:'depends on',to:co.id}]});
+const sp=C({f:'claim',layer:'P',side:'ref',t:2,move:'cm2',by:'A2',text:'São Paulo trial 2021',body:'Vitamin D3, 240 patients: median 7 days in hospital against 7 days with placebo.',src:'São Paulo trial, 2021 (vitamin D3, 240 patients)',origin:'São Paulo trial',conn:[{type:'refutes',to:co.id}]});
+C({f:'claim',layer:'P',side:'ref',t:2,move:'cm2',by:'A2',text:'Córdoba was a pilot',body:'Open, no placebo.',src:'Córdoba trial, methods section',origin:'Córdoba trial',conn:[{type:'refutes',to:co.id}]});
+C({f:'claim',layer:'P',side:'ref',t:2,move:'cm2',by:'A2',text:'The larger trial',body:'517 patients, no results posted.',src:'Trial register entry',origin:'Trial register'});
+C({f:'claim',layer:'P',side:'ref',t:2,move:'cm2',by:'A2',text:'The calendar',body:'São Paulo ran first.',src:'Registration dates of both trials',origin:'Trial register',conn:[{type:'masks',to:sp.id}]});
+C({f:'claim',layer:'P',side:'ref',t:2,move:'cm2',by:'A2',text:'Córdoba: who stood behind it',body:'Public funds, maker’s drug.',src:'Córdoba trial, funding statement',origin:'Córdoba trial'});
+C({f:'claim',layer:'P',side:'ref',t:2,move:'cm2',by:'A2',text:'São Paulo: who paid',body:'Two public funders.',src:'São Paulo trial, funding statement',origin:'São Paulo trial'});
+C({f:'claim',layer:'S',side:'ref',t:2,move:'cm2',by:'A2',text:'São Paulo authors',body:'No support for high-dose D3.',src:'São Paulo authors, conclusion',origin:'São Paulo trial',conn:[{type:'supports',to:sp.id}]});
+/* ---- cards: map ---- */
+const AC=[['USA','free passage','fleet, sanctions','nuclear weapon','tanker escort','USA'],['China','cheap oil','buy, veto','blockade','offers mediation'],['Russia','high oil price','veto, output','isolation','supports price via cuts'],['Israel','weak Iran','air force, services','nuclear weapon','warns Iran covertly'],['Saudi Arabia','secure exports','output volume','attack','raises output'],['Iran','leverage','control the strait','regime','stop a tanker']];
+const actor={};
+AC.forEach(a=>{actor[a[0]]=C({f:'map',layer:'S',kind:'actor',t:1,move:'mm1',by:'A1',text:a[0],src:'Public positions, collected by A1',origin:'A1',actor:{will:a[1],can:a[2],red:a[3],next:a[4]}})});
+const foc=C({f:'map',layer:'S',side:'focal',t:0,by:'K',text:'Iran closes Hormuz — not permanently',src:'K’s assumption',origin:'K'});
+S.stance[foc.id]=true;
+const oil=C({f:'map',layer:'S',side:'sup',t:2,move:'mm2',by:'A2',foreign:1,text:'Iran needs oil money',body:'Said in an analyst podcast.',src:'Analyst podcast (foreign source)',origin:'Analyst podcast',conn:[{type:'supports',to:foc.id}]});
+const ins=C({f:'map',layer:'P',side:'sup',t:1,move:'mm1',by:'A1',text:'Tanker insurance got pricier',body:'Insurers raised their premiums for tankers.',src:'Insurer premium notices',origin:'Insurers',conn:[{type:'supports',to:foc.id}]});
+C({f:'map',layer:'S',side:'ref',t:2,move:'mm2',by:'A2',foreign:1,text:'Hormuz closed only 2–3 weeks',body:'Deviates from your card.',src:'Analyst podcast (foreign source)',origin:'Analyst podcast',conn:[{type:'refutes',to:foc.id}]});
+C({f:'map',layer:'E',side:'exp',t:0,by:'K',text:'Own delivery 2019 delayed',body:'My own shipment arrived late.',src:'',origin:'K',conn:[{type:'supports',to:foc.id}]});
+/* ---- cards: market ---- */
+const gm=(t,layer,zone,text,by,src,mv,extra)=>C(Object.assign({f:'market',layer,zone,m:t,t,move:mv,by,text,src,origin:by},extra||{}));
+gm(1,'P','Demand','Central banks keep buying','A1','Central bank reserve statistics','gm1');
+gm(4,'P','Demand','ETF inflows record','A1','ETF holdings reports','gm1');
+gm(6,'S','Macro','Analyst: 5000 by summer','A2','One analyst’s note','gm2');
+gm(9,'S','Macro','Hormuz tension','A2','News reports, July','gm2',{link:'map'});
+gm(11,'P','Supply','Mine output flat','A1','Mining output reports','gm1');
+const slots={Demand:['Jewellery'],Supply:['Mines','Recycling'],Macro:['Real rates','Dollar']};
+/* ---- exchange data ---- */
+const offers=[
+ {id:'o1',text:'Supplier lead time rose by a week in 2025',layer:'E',by:'#2 Chris',body:'From his own purchasing.',want:'a card on tanker rates'},
+ {id:'o2',text:'Reserve purchases, quarterly table',layer:'P',by:'#4 Marcos',body:'Official reserve statistics, quarter by quarter.',src:'Published reserve statistics',want:'any gold flow card'},
+ {id:'o3',text:'Insurers reprice war risk within days',layer:'S',by:'#3 Lena',body:'Said by a marine underwriter.',src:'Marine underwriter, interview',want:'a card on alternative routes'}];
+const know=[
+ {text:'Randomised trials use a placebo',layer:'P',body:'The comparison group gets a look-alike without the substance.',by:'#1 Kane',src:'Trial methodology handbook'},
+ {text:'Real interest rates and gold',layer:'S',body:'Higher real rates tend to weigh on gold, say several analysts.',by:'#3 Lena',src:'Analyst notes'},
+ {text:'Alternative route around Hormuz',layer:'S',body:'Pipelines could carry part of the oil, someone says.',by:'#4 Marcos',src:'Industry talk'},
+ {text:'Calcifediol and vitamin D3 differ',layer:'P',body:'Two forms of the substance, taken up at different speeds.',by:'#1 Kane',src:'Pharmacology reference'},
+ {text:'My 2019 delivery log',layer:'E',body:'Dates of the delayed delivery.',by:'#1 Kane',src:''}];
+const members=[['#1','Kane','you'],['#2','Chris','Vitamin D and COVID-19; supply chains'],['#3','Lena','Marine insurance; Gulf shipping'],['#4','Marcos','Gold; central bank reserves']];
+const wiki=[{t:'Copies count once',o:'#1 Kane',n:4},{t:'Reserve purchases, quarterly table',o:'#4 Marcos',n:2},{t:'Insurers reprice war risk within days',o:'#3 Lena',n:2}];
+/* ---- helpers ---- */
+const undone=id=>{for(const k in fields){const l=fields[k].log.find(x=>x.id===id);if(l)return !!l.undone}return false};
+const vis=c=>c.f===S.f&&c.t<=F().t&&!(c.move&&undone(c.move));
+const vc=()=>cards.filter(vis);
+const byId=id=>cards.find(c=>c.id===id);
+function toast(t){const e=$('#toast');e.textContent=t;e.hidden=false;clearTimeout(toast.h);toast.h=setTimeout(()=>e.hidden=true,3200)}
+/* ---- render ---- */
+function renderTabs(){
+ $('#tabs').innerHTML=Object.values(fields).map(f=>`<button role="tab" aria-selected="${f.id===S.f}" data-act="field" data-v="${f.id}">${esc(f.tab)}</button>`).join('')+`<button class="plus" data-act="newfield">+ New field</button>`;
+}
+function renderHead(){
+ const f=F();
+ $('#title').textContent=f.title;
+ $('#players').innerHTML='Players<br>'+f.players.map(p=>`${esc(p[0])} (${p[1]})`).join('<br>');
+ const tm=$('#time');
+ if(f.stops.length<2){tm.hidden=true;return}
+ tm.hidden=false;
+ const mk=f.kind==='market';
+ tm.innerHTML=`<label for="tr">Time</label><div><input id="tr" type="range" min="0" max="${f.stops.length-1}" step="1" value="${f.t}" aria-label="Time">${mk?'':`<div class="stops">${f.stops.map(s=>`<span>${esc(s)}</span>`).join('')}</div>`}</div><output id="tout"></output>`;
+ tout();
+}
+function tout(){const f=F();const e=$('#tout');if(!e)return;e.textContent=f.kind==='market'?`${f.stops[f.t]}  ${GOLD[f.t].toLocaleString('en-US')} USD/oz`:f.stops[f.t]+(f.t===f.stops.length-1?'':' (past)')}
+function renderKey(){
+ const k=$('#key');
+ if(!S.key){k.innerHTML=`<button class="keyshow" data-act="key">Show reading key</button>`;return}
+ k.innerHTML=`<div class="key"><div class="lead">You decide what’s true.<span>Every statement is a card. The board never rules; it only shows where a card comes from.</span></div>
+ <div class="sp"><b><span class="ly P">Proven</span></b>A source you can open stands behind it.</div>
+ <div class="sp"><b><span class="ly S">Said</span></b>Someone claims it. Their name is on it.</div>
+ <div class="sp"><b><span class="ly E">Experience</span></b>Your own. No source needed.</div>
+ <div class="x"><button data-act="key" style="font-family:var(--m);font-size:12px;text-decoration:underline">Hide key</button></div></div>`;
+}
+function cardH(c){
+ const L=c.layer;
+ return `<article class="card ${L}${S.sel===c.id?' sel':''}" data-id="${c.id}" data-act="card" tabindex="0" role="button" aria-label="Open card C${c.n}: ${esc(c.text)}">
+ <div class="ch"><span>${S.stance[c.id]?'<span class="star" title="My stance (private)">★</span>':''}<span class="ly ${L}">${LN[L].n}</span></span><span class="cn">C${c.n}</span></div>
+ <h4>${esc(c.text)}</h4>${c.body?`<p>${esc(c.body)}</p>`:''}<div class="cm">${esc(c.by)}${c.foreign?', foreign source':''}</div></article>`;
+}
+function stack(list,empty){return list.length?list.map(cardH).join(''):(empty||'<div class="empty">None yet.</div>')}
+function renderTools(){
+ $('#tools').innerHTML=`<button data-act="lay">+ Lay a card</button><button data-act="lines" aria-pressed="${S.lines}">Connections ${S.lines?'on':'off'}</button><span class="sm">Lines: solid supports, dashed refutes, dotted depends on, long-short masks</span>`;
+}
+function renderBoard(){
+ const f=F(),V=vc(),b=$('#board');
+ if(f.kind==='debate'){
+  const rows=[['P','Proven'],['S','Said'],['E','Experience']];
+  let h=`<div class="deb"><div class="hd s"></div><div class="hd col">Supports</div><div class="hd col">Refutes</div>`;
+  rows.forEach(r=>{
+   const cell=side=>{const l=V.filter(c=>c.layer===r[0]&&c.side===side);
+    return l.length?l.map(cardH).join(''):(r[0]==='E'?`<div class="empty">No experience card yet. <button data-act="lay" data-layer="E" data-side="${side==='sup'?'sup':'ref'}">Lay yours</button></div>`:`<div class="empty">–</div>`)};
+   h+=`<div class="rl"><span class="ly ${r[0]}">${r[1]}</span></div><div class="col"><div class="colh">Supports</div>${cell('sup')}</div><div class="col"><div class="colh">Refutes</div>${cell('ref')}</div>`;
+  });
+  b.innerHTML=h+'</div>';
+ }else if(f.kind==='map'){
+  const A=n=>{const c=actor[n];if(!vis(c))return '';const a=c.actor;return `<article class="card actor S${S.sel===c.id?' sel':''}" data-id="${c.id}" data-act="card" tabindex="0" role="button" aria-label="Open actor ${n}"><div class="ch"><span class="ly S">Said</span><span class="cn">C${c.n}</span></div><h4>${n}</h4><dl><dt>Will</dt><dd>${esc(a.will)}</dd><dt>Can</dt><dd>${esc(a.can)}</dd><dt>Red line</dt><dd>${esc(a.red)}</dd><dt>Next</dt><dd class="nx">${esc(a.next)}</dd></dl></article>`};
+  const fv=vis(foc)?foc:null;
+  const col=(t,l)=>`<div><div class="ct">${t}</div>${stack(l.filter(vis),'<div class="empty">None yet.</div>')}</div>`;
+  const sup=cards.filter(c=>c.f==='map'&&c.side==='sup'&&c.layer!=='E'),ref=cards.filter(c=>c.f==='map'&&c.side==='ref'&&c.layer!=='E'),ex=cards.filter(c=>c.f==='map'&&c.layer==='E');
+  b.innerHTML=`<div class="map3">${['Israel','USA','Saudi Arabia'].map(A).join('')}</div>
+  <div class="focal"><div class="fh">Focal point</div>${fv?`<a class="ft" data-id="${foc.id}" data-act="card" tabindex="0" role="button">${S.stance[foc.id]?'<span class="star">★</span>':''}${esc(foc.text)}</a>`:''}
+  <div class="cols">${col('Supports',sup)}${col('Refutes',ref)}${col('Experience',ex)}</div></div>
+  <div class="map3">${['China','Iran','Russia'].map(A).join('')}</div>`;
+ }else if(f.kind==='market'){
+  b.innerHTML=`<div id="chart"></div><div class="zones">${f.zones.map(z=>zoneH(z,true)).join('')}</div>`;
+  chart();
+ }else{
+  b.innerHTML=`<div class="zones" style="--z:${Math.min(f.zones.length,3)}">${f.zones.map(z=>zoneH(z,false)).join('')}</div>`;
+ }
+}
+function userCards(f,side){return cards.filter(c=>c.f===f&&c.user&&(c.layer==='E'?side==='exp':c.side===side))}
+function zoneH(z,mk){
+ const l=vc().filter(c=>c.zone===z);
+ const sl=mk?(slots[z]||[]).filter(s=>!l.some(c=>c.text.toLowerCase()===s.toLowerCase())):[];
+ return `<div><div class="zt">${esc(z)}</div>${l.map(cardH).join('')}${sl.map(s=>`<div class="slot">${esc(s)}: open. <button data-act="lay" data-zone="${esc(z)}" data-text="${esc(s)}">Lay card</button></div>`).join('')}${(!l.length&&!sl.length)?`<div class="empty">Empty zone. <button data-act="lay" data-zone="${esc(z)}">Lay a card</button></div>`:''}</div>`;
+}
+function chart(){
+ const el=$('#chart');if(!el)return;
+ const f=F(),W=Math.max(el.clientWidth||300,280),H=W<500?230:270,pl=40,pr=10,pt=44,pb=24;
+ const x=i=>pl+(W-pl-pr)*i/12,mn=3900,mx=4900,y=v=>pt+(H-pt-pb)*(1-(v-mn)/(mx-mn));
+ let s=`<svg viewBox="0 0 ${W} ${H}" height="${H}" role="img" aria-label="Gold price in USD per ounce, month ends October 2025 to October 2026">`;
+ [4000,4500].forEach(v=>s+=`<line x1="${pl}" x2="${W-pr}" y1="${y(v)}" y2="${y(v)}" stroke="var(--r)" stroke-width="1"/><text x="0" y="${y(v)+4}" fill="var(--g)">${v}</text>`);
+ s+=`<text x="0" y="14" fill="var(--g)">USD/oz</text>`;
+ const pts=GOLD.map((v,i)=>[x(i),y(v)]);
+ const pastD='M'+pts.slice(0,f.t+1).map(p=>p.join(',')).join('L');
+ s+=`<path d="${pastD}" fill="none" stroke="var(--i)" stroke-width="1.5"/>`;
+ if(f.t<12)s+=`<path d="M${pts.slice(f.t).map(p=>p.join(',')).join('L')}" fill="none" stroke="var(--g)" stroke-width="1" stroke-dasharray="2 3"/>`;
+ [0,3,6,9,12].forEach(i=>s+=`<text x="${x(i)}" y="${H-6}" text-anchor="${i===0?'start':i===12?'end':'middle'}" fill="var(--g)">${MONTHS[i]}</text>`);
+ s+=`<line x1="${x(f.t)}" x2="${x(f.t)}" y1="${pt-8}" y2="${H-pb}" stroke="var(--a)" stroke-width="1"/><rect x="${x(f.t)-3}" y="${pts[f.t][1]-3}" width="6" height="6" fill="var(--a)"/>`;
+ cards.filter(c=>c.f==='market'&&c.m!=null&&!(c.move&&undone(c.move))).forEach(c=>{
+  const on=c.m<=f.t,px=x(c.m),py=pts[c.m][1];
+  s+=`<g class="fl" data-act="card" data-id="${c.id}" tabindex="0" role="button" aria-label="Flag C${c.n}: ${esc(c.text)}" opacity="${on?1:.3}"><line x1="${px}" x2="${px}" y1="${pt-22}" y2="${py}" stroke="var(--i)" stroke-width="1"/><rect x="${px-14}" y="${pt-36}" width="28" height="15" fill="${S.sel===c.id?'var(--a)':'var(--p)'}" stroke="var(--i)" stroke-width="1"/><text x="${px}" y="${pt-25}" text-anchor="middle" fill="${S.sel===c.id?'#fff':'var(--i)'}">C${c.n}</text><circle cx="${px}" cy="${py}" r="3" fill="${c.layer==='P'?'var(--i)':'var(--p)'}" stroke="var(--i)" stroke-width="1"/></g>`;
+ });
+ s+='</svg>';
+ el.innerHTML=s+`<div class="leg">Flags are cards. Filled dot: Proven. Open dot: Said. Move the time slider to read the board as it stood.</div>`;
+}
+/* ---- register ---- */
+const REG=[['fire','Fireside'],['rules','Rules'],['log','Move log'],['trade','Trade cards'],['ping','Ping a card'],['member','Membership'],['comm','Community'],['models','5 models say']];
+function regCount(k){const f=F();return k==='log'?f.log.length:k==='rules'?f.rules.length:k==='trade'?offers.filter(o=>!S.taken[o.id]).length:k==='comm'?members.length-1:k==='fire'?f.fire.length:''}
+function renderReg(){
+ const f=F();
+ let h=`<div class="ridx" role="tablist" aria-label="Register">${REG.map(r=>`<button role="tab" aria-selected="${S.reg===r[0]}" data-act="reg" data-v="${r[0]}"><span>${r[1]}</span><span class="n">${regCount(r[0])}</span></button>`).join('')}</div>`;
+ h+=regBody();
+ $('#reg').innerHTML=h;
+ if(S.reg==='fire'){const m=$('#fl');if(m)m.scrollTop=m.scrollHeight}
+}
+function regBody(){
+ const f=F();
+ if(S.reg==='fire'){
+  const me=f.players[0][0];
+  const ag=f.players.filter(p=>p[1]==='agent').map(p=>p[0].split(' ')[0]);
+  return `<div class="rh">Fireside</div><div class="rs">Talk to your agents. They lay cards, draw connections and answer here. Address one with the menu.</div>
+  <div>${f.fire.map(m=>`<div class="msg ${m[0]===me?'me':''}"><span class="w">${esc(m[0])}</span><span>${esc(m[1])}</span></div>`).join('')}</div>
+  <div class="chips">${f.chips.map(c=>`<button data-act="chip" data-v="${esc(c)}">${esc(c)}</button>`).join('')}</div>
+  <form class="send" data-act="send"><select id="to" aria-label="Address">${ag.length?ag.map(a=>`<option>${esc(a)}</option>`).join(''):'<option>All</option>'}</select><input id="fi" type="text" placeholder="Say something" aria-label="Message" autocomplete="off"><button class="act pri" type="submit">Send</button></form>
+  <div class="sw"><span>Role play: agents speak as the actors</span><button data-act="rp" aria-pressed="${S.rp}">${S.rp?'On':'Off'}</button></div>
+  ${S.rp?`<div class="rs">Round ${S.rpn} played. Each round, the agents speak in turn.</div><button class="act" data-act="round">Play round ${S.rpn+1}</button>`:''}`;
+ }
+ if(S.reg==='rules'){
+  let h=`<div class="rh">Which of your rules apply</div><div class="rs">Your rules, your call. Select a rule to change its state. The board does not score the claim.</div>`;
+  h+=f.rules.length?f.rules.map((r,i)=>`<button class="rule" data-act="rule" data-v="${i}"><span>${esc(r.t)}</span><span class="st ${r.s}">${r.s==='ap'?'applies':r.s==='no'?'does not apply':'unclear'}</span></button>`).join(''):`<div class="empty">No rules yet.</div>`;
+  h+=`<form class="send" data-act="addrule" style="grid-template-columns:1fr auto;margin-top:10px"><input id="nr" type="text" placeholder="Add a rule" aria-label="New rule"><button class="act" type="submit">Add</button></form>`;
+  if(f.id==='claim'){
+   const sup=vc().filter(c=>c.side==='sup'),og={};sup.forEach(c=>og[c.origin]=(og[c.origin]||0)+1);
+   h+=`<div class="rh">Origins</div><div class="rs">Supports: ${Object.keys(og).length} origins from ${sup.length} cards. Copies of one origin are counted once.</div>`+Object.entries(og).sort((a,b)=>b[1]-a[1]).map(e=>`<div class="og"><span>${esc(e[0])}</span><span class="mono">×${e[1]}</span></div>`).join('');
+  }
+  return h;
+ }
+ if(S.reg==='log'){
+  return `<div class="rh">Move log</div><div class="rs">Every move by you or an agent. Take back removes what the move laid. You can restore it.</div>`+(f.log.length?f.log.slice().reverse().map(l=>`<div class="lg ${l.undone?'undone':''}"><span><span class="t">${esc(l.who)} ${esc(l.text)}</span><span class="mono">${esc(f.stops[Math.min(l.t,f.stops.length-1)])}${l.undone?', taken back':''}</span></span><button data-act="undo" data-v="${l.id}">${l.undone?'Restore':'Take back'}</button></div>`).join(''):'<div class="empty">No moves yet.</div>');
+ }
+ if(S.reg==='trade'){
+  let h=`<div class="rh">Trade cards</div><div class="rs">Swap cards with other members, like a book exchange. You offer, they take. The origin always stays with the author.</div>`;
+  if(!S.exchange)return h+`<div class="empty">The exchange is off. <button data-act="reg" data-v="member">Join in Membership</button></div>`;
+  h+=`<div class="sm g" style="padding:6px 0">Offered by others</div>`;
+  offers.forEach(o=>{h+=`<div class="tr"><span class="ly ${o.layer}">${LN[o.layer].n}</span><h4 style="font-weight:500;font-size:15px;margin-top:4px">${esc(o.text)}</h4><div class="cm">Origin ${esc(o.by)}. Wants ${esc(o.want)}.</div><div class="row"><button class="lk" data-act="openoffer" data-v="${o.id}">Read</button>${S.taken[o.id]?'<span class="mono">Taken</span>':`<button class="act" data-act="takeoffer" data-v="${o.id}">Take</button>`}</div></div>`});
+  h+=`<div class="sm g" style="padding:14px 0 6px">Your offers</div>`+(S.offerMine.length?S.offerMine.map(id=>{const c=byId(id);return `<div class="tr"><span class="ly ${c.layer}">${LN[c.layer].n}</span> <b>${esc(c.text)}</b><div class="cm">Origin #1 Kane. Waiting for a taker.</div></div>`}).join(''):'<div class="empty">Nothing offered. Open one of your cards and choose Offer to the exchange.</div>');
+  h+=`<div class="sm g" style="padding:14px 0 6px">Your deck (${S.deck.length})</div>`+(S.deck.length?S.deck.map((d,i)=>`<div class="tr"><span class="ly ${d.layer}">${LN[d.layer].n}</span> <b>${esc(d.text)}</b><div class="cm">Origin ${esc(d.by)}</div><div class="row"><span></span><button class="lk" data-act="lay-deck" data-v="${i}">Lay on this board</button></div></div>`).join(''):'<div class="empty">Cards you take land here.</div>');
+  return h;
+ }
+ if(S.reg==='ping'){
+  return `<div class="rh">Ping a knowledge card</div><div class="rs">Search your own and shared knowledge. Pick a card to bring it onto this board.</div><input id="ps" type="search" placeholder="Search cards" aria-label="Search knowledge cards" autocomplete="off"><div id="pr">${pingList('')}</div>`;
+ }
+ if(S.reg==='member'){
+  const mine=cards.filter(c=>c.user&&c.layer==='P').length;
+  return `<div class="rh">Membership</div><div class="rs">Numbers are given in order of joining.</div>
+  <table class="tbl"><tr><th>No.</th><th>Member</th><th>Works on</th></tr>${members.map(m=>`<tr><td class="mono">${m[0]}</td><td>${m[1]}</td><td class="g">${esc(m[2])}</td></tr>`).join('')}</table>
+  <div class="rh">Your standing #1</div><div class="rs">Built from cards with a source, takes by others and origin points. It is a reputation, not a verdict on any claim.</div>
+  <table class="tbl"><tr><td>Cards with a source</td><td class="r big" style="font-size:24px">${S.base.proven+mine}</td></tr><tr><td>Your cards taken by others</td><td class="r big" style="font-size:24px">${S.base.taken}</td></tr><tr><td>Origin points</td><td class="r big" style="font-size:24px">${S.base.origin}</td></tr><tr><td>Cards you took</td><td class="r big" style="font-size:24px">${S.tookN}</td></tr></table>
+  <div class="rh">Plan</div>
+  <table class="tbl"><tr><td><b>Board</b></td><td class="r">Free</td></tr><tr><td><b>Exchange</b><br><span class="g">Optional. Trade and ping shared cards.</span></td><td class="r"><button class="lk" data-act="exch" aria-pressed="${S.exchange}">${S.exchange?'Joined':'Join'}</button></td></tr><tr><td><b>Premium</b><br><span class="g">Private Executive, set up from the start.</span></td><td class="r">Included</td></tr></table>`;
+ }
+ if(S.reg==='comm'){
+  return `<div class="rh">Community</div><div class="rs">Other members and their boards. The wiki is made of cards members traded.</div>
+  <table class="tbl"><tr><th>Member</th><th>Board</th></tr>${members.slice(1).map(m=>`<tr><td>${m[0]} ${m[1]}</td><td>${esc(m[2])}</td></tr>`).join('')}</table>
+  <div class="rh">Shared wiki</div><div class="rs">Each entry names its origin and how often it was taken.</div>
+  ${wiki.concat(S.deck.map(d=>({t:d.text,o:d.by,n:1}))).map(w=>`<div class="og"><span>${esc(w.t)}<br><span class="cm">Origin ${esc(w.o)}</span></span><span class="mono">taken ×${w.n}</span></div>`).join('')}`;
+ }
+ if(S.reg==='models'){
+  return `<div class="rh">5 AI models say</div><div class="rs">Question: ${esc(f.question)}<br>A separate layer. Not a verdict of the board.</div>`+f.mod.map((m,i)=>`<div class="mod"><span class="w">Model ${i+1}</span><span>${esc(m)}<button data-act="modcard" data-v="${i}">Lay as a Said card</button></span></div>`).join('');
+ }
+ return '';
+}
+function pingList(q){
+ q=q.toLowerCase();
+ const pool=know.concat(cards.filter(c=>c.f!==S.f).map(c=>({text:c.text,layer:c.layer,body:c.body||'',by:c.by,src:c.src})));
+ const r=pool.filter(k=>!q||(k.text+' '+k.body).toLowerCase().includes(q));
+ return r.length?r.slice(0,12).map((k,i)=>{const gi=pool.indexOf(k);return `<div class="tr"><span class="ly ${k.layer}">${LN[k.layer].n}</span><h4 style="font-weight:500;font-size:15px;margin-top:4px">${esc(k.text)}</h4><div class="cm">${esc(k.by)}</div><div class="row"><span></span><button class="act" data-act="pingadd" data-v="${gi}">Bring to board</button></div></div>`}).join(''):'<div class="empty">No card matches. Try a shorter word.</div>';
+}
+function pingPool(){return know.concat(cards.filter(c=>c.f!==S.f).map(c=>({text:c.text,layer:c.layer,body:c.body||'',by:c.by,src:c.src})))}
+/* ---- connections overlay ---- */
+function drawLines(){
+ const svg=$('#lnk'),sh=$('#sheet');
+ svg.setAttribute('width',sh.offsetWidth);svg.setAttribute('height',sh.offsetHeight);
+ if(!S.lines){svg.innerHTML='';return}
+ const sr=sh.getBoundingClientRect(),V=vc(),D={supports:'',refutes:'6 4','depends on':'1 3',masks:'10 3 2 3'};
+ let s='';
+ const R=id=>{const e=sh.querySelector(`[data-id="${id}"]`);if(!e)return null;const r=e.getBoundingClientRect();return{l:r.left-sr.left,r:r.right-sr.left,t:r.top-sr.top,b:r.bottom-sr.top,w:r.width}};
+ V.forEach(c=>c.conn.forEach(k=>{
+  const a=R(c.id),b=R(k.to);if(!a||!b||!vis(byId(k.to)))return;
+  const ay=a.t+14,by=b.t+14;let p;
+  if(Math.abs(a.l-b.l)<20){const x=a.l-5;p=`M${a.l},${ay}H${x}V${by}H${b.l}`}
+  else if(a.l<b.l){p=`M${a.r},${ay}H${(a.r+b.l)/2}V${by}H${b.l}`}
+  else{p=`M${a.l},${ay}H${(a.l+b.r)/2}V${by}H${b.r}`}
+  const dim=S.sel&&S.sel!==c.id&&S.sel!==k.to?.25:1;
+  const hot=S.sel&&(S.sel===c.id||S.sel===k.to);
+  s+=`<path d="${p}" fill="none" stroke="${hot?'var(--a)':'var(--i)'}" stroke-width="1" ${D[k.type]?`stroke-dasharray="${D[k.type]}"`:''} opacity="${dim}"/>`;
+ }));
+ svg.innerHTML=s;
+}
+function render(){renderTabs();renderHead();renderKey();renderTools();renderBoard();renderReg();requestAnimationFrame(drawLines)}
+/* ---- dialogs ---- */
+const dlg=$('#dlg');
+function show(h){dlg.innerHTML=h;if(!dlg.open)dlg.showModal()}
+function closeD(){if(dlg.open)dlg.close()}
+function openCard(id,keep){
+ const c=byId(id);if(!c)return;S.sel=id;
+ const inc=cards.filter(x=>x.conn.some(k=>k.to===id)).map(x=>[x,x.conn.find(k=>k.to===id).type]);
+ const outc=c.conn.map(k=>[byId(k.to),k.type]);
+ const others=cards.filter(x=>x.f===c.f&&x.id!==id&&vis(x));
+ const mine=c.by==='You'||c.by==='K'||c.user;
+ const connList=outc.concat(inc.map(i=>[i[0],'is '+(i[1]==='depends on'?'depended on':i[1]==='refutes'?'refuted':i[1]==='supports'?'supported':i[1])+' by'])).map(e=>`<button class="lk" data-act="card" data-id="${e[0].id}">${esc(typeof e[1]==='string'&&e[1].startsWith('is ')?e[1]:e[1])} C${e[0].n} ${esc(e[0].text)}</button>`).join('<br>')||'None yet.';
+ const a=c.actor;
+ const taken=S.deck.some(d=>d.id===id);
+ show(`<div class="dl"><div class="dh"><span class="ly ${c.layer}">${LN[c.layer].n}</span><span><span class="cn">C${c.n}</span> <button class="lk" data-act="close" style="margin-left:14px">Close</button></span></div>
+ <h2>${esc(c.text)}</h2>${c.body?`<div class="body">${esc(c.body)}</div>`:''}
+ ${a?`<dl style="margin-bottom:8px"><dt>Will</dt><dd>${esc(a.will)}</dd><dt>Can</dt><dd>${esc(a.can)}</dd><dt>Red line</dt><dd>${esc(a.red)}</dd><dt>Next (estimate)</dt><dd><i>${esc(a.next)}</i></dd></dl>`:''}
+ <dl><dt>Layer</dt><dd>${LN[c.layer].d}</dd>
+ <dt>${c.layer==='S'?'Said by':'Source'}</dt><dd>${c.src?(c.layer==='P'?`<button class="lk" data-act="src" data-v="${esc(c.src)}">${esc(c.src)}</button><div id="srcn" class="note"></div>`:esc(c.src)):'None needed.'}</dd>
+ <dt>Laid by</dt><dd>${esc(c.by)}${c.foreign?', foreign source':''}</dd>
+ <dt>Origin</dt><dd>${esc(c.origin||c.by)}</dd>
+ <dt>Connections</dt><dd>${connList}</dd></dl>
+ <div class="acts"><button class="act ${taken?'':'pri'}" data-act="take" data-v="${id}" ${taken?'disabled':''}>${taken?'Taken':'Take'}</button>
+ <button class="act" data-act="stance" data-v="${id}">${S.stance[id]?'★ My stance set. Clear':'☆ Set my stance'}</button>
+ ${mine&&S.exchange&&c.layer!=='S'?`<button class="act" data-act="offer" data-v="${id}">Offer to the exchange</button>`:''}
+ ${c.link?`<button class="act" data-act="field" data-v="${c.link}" data-close="1">Open field Map</button>`:''}</div>
+ <div class="note">Take copies the card into your deck. The origin stays with ${esc(c.by)}. My stance is private, only you can set it, and it does not travel with the card.</div>
+ <div class="conn"><span>Draw a connection from this card:</span><select id="ct" aria-label="Type"><option>supports</option><option>refutes</option><option>depends on</option><option>masks</option></select><select id="cx" aria-label="Target card">${others.map(o=>`<option value="${o.id}">C${o.n} ${esc(o.text.slice(0,34))}</option>`).join('')}</select><button class="act" data-act="draw" data-v="${id}">Draw</button></div></div>`);
+ renderBoard();requestAnimationFrame(drawLines);
+}
+function openLay(p){
+ p=p||{};const f=F();
+ let place='';
+ if(f.kind==='debate')place=`<label for="ls">Side</label><select id="ls"><option value="sup" ${p.side==='sup'?'selected':''}>Supports</option><option value="ref" ${p.side==='ref'?'selected':''}>Refutes</option></select>`;
+ else if(f.kind==='map')place=`<label for="ls">Place at the focal point</label><select id="ls"><option value="sup">Supports</option><option value="ref">Refutes</option></select>`;
+ else place=`<label for="ls">Zone</label><select id="ls">${f.zones.map(z=>`<option ${p.zone===z?'selected':''}>${esc(z)}</option>`).join('')}</select>`+(f.kind==='market'?`<label for="lm">Pin a flag to the price line at</label><select id="lm"><option value="">No flag</option>${MONTHS.map((m,i)=>`<option value="${i}">${m}</option>`).join('')}</select>`:'');
+ show(`<form class="dl fm" data-act="laysave"><div class="dh"><b>Lay a card</b><button type="button" class="lk" data-act="close">Close</button></div>
+ <label for="lt">Statement</label><textarea id="lt" required maxlength="220">${esc(p.text||'')}</textarea>
+ <label>Layer</label><div class="rad"><label><input type="radio" name="ly" value="P"> <span class="ly P">Proven</span></label><label><input type="radio" name="ly" value="S" ${p.layer!=='E'?'checked':''}> <span class="ly S">Said</span></label><label><input type="radio" name="ly" value="E" ${p.layer==='E'?'checked':''}> <span class="ly E">Experience</span></label></div>
+ <label for="lsrc" id="lsl">Who said it, and where</label><input id="lsrc" type="text" autocomplete="off">
+ ${place}
+ <div class="note" id="lnote">Said: someone claims it. Name them.</div>
+ <div class="acts"><button class="act pri" type="submit">Lay card</button><button type="button" class="act" data-act="close">Cancel</button></div></form>`);
+ const upd=()=>{const v=dlg.querySelector('input[name=ly]:checked').value;const l=$('#lsl'),i=$('#lsrc');
+  l.textContent=v==='P'?'Source (required): a document that can be opened':v==='S'?'Who said it, and where':'Source (not needed)';
+  i.disabled=v==='E';i.required=v!=='E';$('#lnote').textContent=v==='P'?'Proven: the source stands behind the card and is reproduced faithfully.':v==='S'?'Said: someone claims it. Name them.':'Experience: your own. No source needed.';
+  if(v==='E')i.value=''};
+ dlg.querySelectorAll('input[name=ly]').forEach(r=>r.onchange=upd);upd();
+}
+function openNew(){
+ show(`<form class="dl fm" data-act="newsave"><div class="dh"><b>+ New field</b><button type="button" class="lk" data-act="close">Close</button></div>
+ <div class="note">We build the kit, you build the field. Four choices, top to bottom.</div>
+ <div class="step"><label for="nn">Name</label><input id="nn" type="text" required maxlength="60" placeholder="e.g. Should we hire in March?" autocomplete="off"></div>
+ <div class="step"><label for="ng">1 Ground: what the field is laid on</label><select id="ng"><option value="debate">Debate: two sides, rows by layer</option><option value="map">Map: actors with will, can, red line</option><option value="market">Market: price line above, board below</option><option value="blank">Blank sheet</option></select></div>
+ <div class="step"><label for="nz">2 Zones: where cards go, separated by commas</label><input id="nz" type="text" value="Supports, Refutes" autocomplete="off"></div>
+ <div class="step"><label for="ns">3 Seats: roles at the table, separated by commas</label><input id="ns" type="text" value="You, Research, Rebuttal" autocomplete="off"></div>
+ <div class="step"><label>4 Who moves: per seat</label><div id="nw"></div></div>
+ <div class="acts"><button class="act pri" type="submit">Create field</button><button type="button" class="act" data-act="close">Cancel</button></div></form>`);
+ const seats=()=>{const v=$('#ns').value.split(',').map(x=>x.trim()).filter(Boolean);$('#nw').innerHTML=v.map((s,i)=>`<div class="seat"><span>${esc(s)}</span><select data-seat="${i}"><option>human</option><option ${i>0?'selected':''}>agent</option><option>model</option></select></div>`).join('')};
+ $('#ns').oninput=seats;seats();
+ $('#ng').onchange=()=>{const z={debate:'Supports, Refutes',map:'Actors, Focal point, Sources',market:'Demand, Supply, Macro',blank:'Ideas, Questions'};$('#nz').value=z[$('#ng').value]};
+}
+/* ---- actions ---- */
+function addLog(who,text){const f=F();f.log.push({id:'u'+Date.now()+Math.random().toString(36).slice(2,5),who,text,t:f.t})}
+const actions={
+ field(t){S.f=t.dataset.v;S.sel=null;if(t.dataset.close)closeD();render();window.scrollTo(0,0)},
+ newfield(){openNew()},
+ key(){S.key=!S.key;renderKey()},
+ lines(){S.lines=!S.lines;renderTools();drawLines()},
+ reg(t){S.reg=t.dataset.v;renderReg()},
+ card(t){openCard(t.dataset.id)},
+ close(){closeD()},
+ lay(t){openLay({layer:t.dataset.layer,side:t.dataset.side,zone:t.dataset.zone,text:t.dataset.text})},
+ chip(t){sendMsg(t.dataset.v)},
+ rp(){S.rp=!S.rp;renderReg()},
+ round(){const f=F(),r=f.rp[S.rpn];S.rpn++;
+  if(r)r.forEach(m=>f.fire.push([m[0],'Round '+S.rpn+', '+m[1]]));
+  else f.fire.push([f.players[1][0].split(' ')[0],'No further round is prepared. Make your move in the fireside.']);
+  renderReg()},
+ rule(t){const r=F().rules[+t.dataset.v];r.s=r.s==='ap'?'no':r.s==='no'?'un':'ap';renderReg()},
+ undo(t){const l=F().log.find(x=>x.id===t.dataset.v);l.undone=!l.undone;toast(l.undone?'Taken back: '+l.who+' '+l.text:'Restored: '+l.who+' '+l.text);renderBoard();renderReg();requestAnimationFrame(drawLines)},
+ takeoffer(t){const o=offers.find(x=>x.id===t.dataset.v);S.taken[o.id]=1;S.deck.push({id:o.id,text:o.text,layer:o.layer,by:o.by,body:o.body,src:o.src});S.tookN++;toast('Taken. Origin stays with '+o.by+'.');renderReg()},
+ openoffer(t){const o=offers.find(x=>x.id===t.dataset.v);show(`<div class="dl"><div class="dh"><span class="ly ${o.layer}">${LN[o.layer].n}</span><button class="lk" data-act="close">Close</button></div><h2>${esc(o.text)}</h2><div class="body">${esc(o.body)}</div><dl><dt>Origin</dt><dd>${esc(o.by)}</dd><dt>${o.layer==='S'?'Said by':'Source'}</dt><dd>${esc(o.src||'None needed.')}</dd><dt>Wants</dt><dd>${esc(o.want)}</dd></dl><div class="acts">${S.taken[o.id]?'<button class="act" disabled>Taken</button>':`<button class="act pri" data-act="takeoffer" data-v="${o.id}" data-close="1">Take</button>`}</div></div>`)},
+ 'lay-deck'(t){const d=S.deck[+t.dataset.v],f=F();
+  const c=C({f:f.id,layer:d.layer,t:f.t,by:d.by,text:d.text,body:d.body,src:d.src,origin:d.by,user:1,side:'sup',zone:f.zones&&f.zones[0]});
+  if(f.kind==='market')c.zone=f.zones[2];addLog('You','laid 1 card from the exchange');toast('Laid on this board. Origin stays with '+d.by+'.');render()},
+ pingadd(t){const k=pingPool()[+t.dataset.v],f=F();
+  const c=C({f:f.id,layer:k.layer,t:f.t,by:k.by,text:k.text,body:k.body,src:k.src,origin:k.by,user:1,side:'sup',zone:f.zones&&f.zones[0]});
+  addLog('You','pinged 1 card onto the board');toast('Brought to the board: '+k.text);render()},
+ exch(){S.exchange=!S.exchange;renderReg()},
+ modcard(t){const f=F(),i=+t.dataset.v;
+  C({f:f.id,layer:'S',t:f.t,by:'Model '+(i+1),text:f.mod[i],src:'Model '+(i+1)+', answer to “'+f.question+'”',origin:'Model '+(i+1),user:1,side:f.kind==='map'?'sup':'sup',zone:f.zones&&f.zones[f.zones.length-1]});
+  addLog('You','laid a model answer as a Said card');toast('Laid as a Said card. Models stay a separate layer until you lay one.');render()},
+ src(t){const n=$('#srcn');if(n)n.textContent='Opens the cited document: '+t.dataset.v+'. The card reproduces it as written.'},
+ take(t){const c=byId(t.dataset.v);if(S.deck.some(d=>d.id===c.id))return;S.deck.push({id:c.id,text:c.text,layer:c.layer,by:c.by,body:c.body,src:c.src});S.tookN++;toast('Taken into your deck. Origin stays with '+c.by+'.');openCard(c.id);renderReg()},
+ stance(t){const id=t.dataset.v;if(S.stance[id])delete S.stance[id];else S.stance[id]=true;openCard(id);toast(S.stance[id]?'Stance set. Private to you.':'Stance cleared.')},
+ offer(t){const id=t.dataset.v;if(!S.offerMine.includes(id))S.offerMine.push(id);toast('Offered. Origin stays with you.');S.reg='trade';renderReg();closeD()},
+ draw(t){const c=byId(t.dataset.v),to=$('#cx').value;if(!to)return;const ty=$('#ct').value;if(!c.conn.some(k=>k.to===to&&k.type===ty))c.conn.push({type:ty,to});addLog('You','drew '+ty+' from C'+c.n+' to C'+byId(to).n);toast('Connection drawn: C'+c.n+' '+ty+' C'+byId(to).n);openCard(c.id);renderReg()}
+};
+function sendMsg(txt){
+ txt=(txt||'').trim();if(!txt)return;const f=F(),me=f.players[0][0];
+ const to=($('#to')||{}).value||'A1';
+ f.fire.push([me,'To '+to+': '+txt]);
+ const reply=to==='A2'||to==='A2'?'I will test it against the opposing cards and report here before I lay anything.':to==='A3'?'I will play it from the actor’s side and report here.':'Understood. I will look for a source and report here before I lay anything.';
+ renderReg();
+ setTimeout(()=>{f.fire.push([to,reply]);if(S.reg==='fire'&&F()===f)renderReg()},350);
+}
+document.addEventListener('click',e=>{
+ const t=e.target.closest('[data-act]');if(!t||t.tagName==='FORM')return;
+ if(t.tagName==='SELECT'||t.tagName==='INPUT')return;
+ const a=t.dataset.act;if(actions[a]){actions[a](t);if(t.dataset.close&&a!=='field')closeD()}
+});
+document.addEventListener('keydown',e=>{
+ if((e.key==='Enter'||e.key===' ')&&e.target.matches('[data-act=card]:not(button)')){e.preventDefault();openCard(e.target.closest('[data-id]').dataset.id)}
+});
+document.addEventListener('input',e=>{
+ if(e.target.id==='tr'){F().t=+e.target.value;tout();renderBoard();renderReg();requestAnimationFrame(drawLines)}
+ if(e.target.id==='ps'){$('#pr').innerHTML=pingList(e.target.value)}
+});
+document.addEventListener('submit',e=>{
+ e.preventDefault();const a=e.target.dataset.act,f=F();
+ if(a==='send'){const i=$('#fi');sendMsg(i.value);return}
+ if(a==='addrule'){const v=$('#nr').value.trim();if(v){f.rules.push({t:v,s:'un'});renderReg()}return}
+ if(a==='laysave'){
+  const ly=dlg.querySelector('input[name=ly]:checked').value,sel=$('#ls').value,m=$('#lm')&&$('#lm').value;
+  const t=Math.max(f.t,m?+m:0);
+  const c=C({f:f.id,layer:ly,t,by:f.players[0][0],text:$('#lt').value.trim(),src:$('#lsrc').value.trim(),origin:'You',user:1,side:f.kind==='zones'||f.kind==='market'?undefined:sel,zone:f.kind==='debate'||f.kind==='map'?undefined:sel,m:m?+m:undefined});
+  if(c.m==null)delete c.m;
+  if(f.kind==='market'&&c.m!=null){c.move=undefined}
+  f.t=t;addLog(f.players[0][0],'laid 1 card');S.sel=c.id;closeD();render();toast('Card laid: C'+c.n);return}
+ if(a==='newsave'){
+  const g=$('#ng').value,zs=$('#nz').value.split(',').map(x=>x.trim()).filter(Boolean),ss=$('#ns').value.split(',').map(x=>x.trim()).filter(Boolean);
+  const mv=[...dlg.querySelectorAll('[data-seat]')].map(s=>s.value);
+  const id='f'+Date.now(),name=$('#nn').value.trim();
+  fields[id]={id,tab:name.length>14?name.slice(0,13)+'…':name,kind:'zones',title:name,ground:g,players:ss.map((s,i)=>[s,mv[i]||'agent']),stops:['now'],t:0,question:name,zones:zs.length?zs:['Cards'],log:[],rules:[],fire:[[ss[0]||'You','Field created on a '+({debate:'debate',map:'map',market:'market',blank:'blank'}[g])+' ground with '+(zs.length||1)+' zones.']],chips:['Lay the first card'],rp:[],mod:['Not asked yet for this field.','','','','']};
+  fields[id].mod=['Ask the five models once the first cards are laid.','','','',''];
+  S.f=id;S.sel=null;closeD();render();toast('Field created. Lay the first card in a zone.');return}
+});
+$('#dlg').addEventListener('close',()=>{S.sel=null;renderBoard();requestAnimationFrame(drawLines)});
+dlg.addEventListener('click',e=>{if(e.target===dlg)closeD()});
+let rz;window.addEventListener('resize',()=>{clearTimeout(rz);rz=setTimeout(()=>{if(F().kind==='market')chart();drawLines()},120)});
+/* theme */
+function theme(){const r=document.documentElement,d=r.dataset.theme?r.dataset.theme==='dark':matchMedia('(prefers-color-scheme: dark)').matches;return d}
+$('#theme').onclick=()=>{const d=theme();document.documentElement.dataset.theme=d?'light':'dark';$('#theme').textContent=d?'Dark':'Light';if(F().kind==='market')chart();drawLines()};
+$('#theme').textContent=theme()?'Light':'Dark';
+render();
+</script>
+</body>
+</html>

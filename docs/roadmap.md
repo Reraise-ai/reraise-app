@@ -23,6 +23,7 @@ Until then this page is the plan of record.
 | **M0** Repository foundation and contracts | Monorepo, tooling, CI, docs, ADRs, contracts as code. No features. | in progress | CI is green, schemas validate the examples, the ADR log is complete, the docs build |
 | **M1** Walking skeleton | Thinnest end-to-end path, everything real, nothing pretty | done at `4e0ebf8` (job `e2e` green on Linux, Windows and macOS) | one Playwright end-to-end test runs the scenario below in CI |
 | **M2+** Vertical slices | One pull request per slice: UI, API, adapter and tests together | in progress | per slice, see [below](#m2-vertical-slices) |
+| **M3** Board experience | One core, several tables: looks as tokens, two ways of playing, side functions as objects with a place, one test for all | design contract adopted 2026-10-29, build not started | see [below](#m3-board-experience-one-core-and-several-tables) |
 
 ## M0: repository foundation and contracts
 
@@ -145,6 +146,40 @@ transfer is confirmed (ADR-0017).
 Later and out of scope here: a sharing platform, card-exchange economics, gamification and
 crypto, and fine-tuning itself. The data model keeps ids, content hash, `level` and
 `signature` reserved and builds nothing on them.
+
+## M3: board experience, one core and several tables
+
+Status: design contract adopted 2026-10-29, build not started. Contract and findings:
+[board experience](./product/board-experience.md). Design studies:
+[`prototype/schools/`](../prototype/schools/index.html), five clickable boards with the same
+cards and the same functions, each in the logic of one school of interface design.
+
+Why a milestone of its own: the mechanics from M1 and M2 hold, the board people see does not.
+The first design was a fireside room with a chessboard; the demo turned into a dark dashboard
+with a tour overlay, and the things that make Reraise a place (trading, pinging a knowledge
+card, membership, community, the model mirror) became footer links. Five studies showed
+what to keep: an empty table you throw cards onto (Tabletop), tools that appear on the card
+(Canvas), every side function as an object with a place in the room (Fireside), one hint on
+the first object instead of a tour (Usability), and looks that are a user setting (Bauhaus
+vs. Fireside vs. Slate differ only in tokens).
+
+| Step | Done when | Status |
+| --- | --- | --- |
+| Contract | `docs/product/board-experience.md` names the action list, the first-contact rule, the places of the side functions and the one test for all tables | adopted 2026-10-29 |
+| Looks as tokens | three shipped looks (Fireside room, Bauhaus, Slate table) switch at runtime with no code path of their own; the Hermes plugin's colour bridge yields a fourth; `apps/board/src/tokens.css` is the only place a look lives | planned |
+| Table "Table" | empty table on arrival, hand, slots that light up for a fitting layer, players with turn marker, rounds; every item of the action list; the shared end-to-end script green on 1440 and 390, light and dark | planned |
+| Table "Sheet" | columns by relation and layer, tools on the card; same action list, same script; fits the Hermes sidebar and a phone | planned |
+| Around the room | trade, ping, membership, community and model mirror are objects with a fixed place in both tables; a first-time visitor finds all five without a tour (observed with at least two outside users) | planned |
+| First contact | no tour overlay; one hint per kind of object, once; the demo's guided intro is removed | planned |
+| One test for all | one Playwright script drives every table through the action list; CI runs it per table | planned |
+| Hermes plugin | the plugin's board page uses "Sheet" at sidebar width and "Table" in a wide pane, look "Hermes"; the chat card directive renders in the active look (plan stage S0 measures this instead of bundling the old grid board) | planned |
+| Canvas table | later, after Table and Sheet pass with first users | not planned yet |
+
+Open, owner's call: agents at the table act as full players (lay cards, draw edges, build a
+situation) rather than proposing only. That changes ADR-0011 and SECURITY.md ("agents
+propose, humans decide") and is tracked separately; the contract above is written for full
+players, with the human still the only one who sets a stance and accepts a proposal where
+the gate requires one.
 
 ## Toolkit
 
