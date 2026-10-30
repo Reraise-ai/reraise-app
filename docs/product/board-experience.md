@@ -1,7 +1,7 @@
 # Board experience: one core, several tables
 
 Status: design contract, adopted 2026-10-29. Binding for every board view from M3 on.
-Design studies: [`prototype/schools/`](../../prototype/schools/index.html) (five clickable
+Design studies: [`prototype/schools/`](https://github.com/Reraise-ai/reraise-app/tree/main/prototype/schools) (five clickable
 boards, same cards, same functions, five schools of interface design).
 
 ## The problem this solves

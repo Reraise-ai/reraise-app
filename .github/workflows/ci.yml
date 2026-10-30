@@ -95,10 +95,12 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      # From the e2e directory so npx runs the pinned @playwright/test, not the latest release.
+      # From the e2e directory with pnpm exec, so the pinned @playwright/test installs its own
+      # Chromium and never falls back to downloading the latest release. The pin must know the
+      # runner's OS: ubuntu-latest is Ubuntu 26.04, which Playwright supports from 1.61 on.
       - name: Install Chromium for the pinned Playwright
         working-directory: e2e
-        run: npx playwright install --with-deps chromium
+        run: pnpm exec playwright install --with-deps chromium
       - name: Build and run the e2e (pnpm test:e2e)
         run: pnpm test:e2e
       - name: Upload the Playwright report and traces

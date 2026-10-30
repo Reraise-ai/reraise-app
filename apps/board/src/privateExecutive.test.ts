@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright The Worldbuilder contributors
 //
-// The public address is one constant. The README carries the same link because a Markdown file
-// cannot import it. Nothing else in the tree may copy the address.
+// The public address is one constant. The board and the docs footer import it. The two READMEs
+// (GitHub renders no imports) carry the "Powered by" credit again since 071fff4 and are the only
+// files allowed to repeat the address; the test holds them to the constant's value.
 import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -31,20 +32,26 @@ function files(dir: string, out: string[] = []): string[] {
 }
 
 describe('PRIVATE_EXECUTIVE_URL', () => {
-  it('is written only in the constant and the README link', () => {
+  it('is written only in the constant', () => {
     const hits = files(repo)
       .filter((file) => !/\.(png|jpe?g|gif|webp|ico|woff2?|zip|pdf|map)$/i.test(file))
       .filter((file) => readFileSync(file, 'utf8').includes(PRIVATE_EXECUTIVE_URL))
       .map((file) => path.relative(repo, file).replaceAll('\\', '/'))
       .sort();
-    expect(hits).toEqual(['README.md', 'apps/board/src/privateExecutive.ts']);
+    expect(hits).toEqual(['README.de.md', 'README.md', 'apps/board/src/privateExecutive.ts']);
   });
 
-  it('is the README line and the target the docs footer imports', () => {
-    const readme = readFileSync(path.join(repo, 'README.md'), 'utf8');
-    expect(readme).toContain(
-      `_The Worldbuilder — Powered by [Private Executive](${PRIVATE_EXECUTIVE_URL})_`,
-    );
+  it('is the address the README credit links to', () => {
+    for (const readme of ['README.md', 'README.de.md']) {
+      const text = readFileSync(path.join(repo, readme), 'utf8');
+      const links = [...text.matchAll(/href="(https:\/\/private-executive[^"]*)"/g)].map(
+        (m) => m[1],
+      );
+      expect(links, readme).toEqual([PRIVATE_EXECUTIVE_URL]);
+    }
+  });
+
+  it('is the target the docs footer imports', () => {
     const config = readFileSync(path.join(repo, 'docs/.vitepress/config.mts'), 'utf8');
     expect(config).toContain("from '../../apps/board/src/privateExecutive.ts'");
     expect(config).toContain('Powered by');
