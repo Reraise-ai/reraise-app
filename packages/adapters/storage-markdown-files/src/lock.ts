@@ -112,14 +112,12 @@ export async function acquireLock(lockPath: string, options: LockOptions = {}): 
       };
     } catch (err) {
       const code = (err as NodeJS.ErrnoException).code;
-      // Windows reports EPERM when two exclusive creates race on the same lock file.
-      if (code === 'EPERM') {
-        const there = await stat(lockPath).then(
-          () => true,
-          () => false,
-        );
-        if (!there) throw err;
-      } else if (code !== 'EEXIST') {
+      // Windows reports EPERM (not EEXIST) when an exclusive create races with another
+      // writer's create or with the holder's unlink while the file is pending deletion. In
+      // that window the file may already be gone, so the contention cannot be confirmed by
+      // stat; treat it like EEXIST and poll again. A real permission problem still surfaces
+      // as 'locked' when the deadline passes.
+      if (code !== 'EEXIST' && code !== 'EPERM') {
         throw err;
       }
     }
