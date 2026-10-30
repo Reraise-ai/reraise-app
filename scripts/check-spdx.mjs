@@ -32,7 +32,9 @@ export const DATA_EXTENSIONS = new Set([
 ]);
 
 export function expectedLicense(relPosix) {
-  return AGPL_DIRS.some((d) => relPosix === d || relPosix.startsWith(`${d}/`)) ? AGPL : APACHE;
+  // Case-insensitive: `Apps/Board/x` lands in apps/board on Windows and macOS checkouts.
+  const p = relPosix.toLowerCase();
+  return AGPL_DIRS.some((d) => p === d || p.startsWith(`${d}/`)) ? AGPL : APACHE;
 }
 
 const HEADER_RE =

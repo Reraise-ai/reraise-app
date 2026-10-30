@@ -78,3 +78,4 @@ MCP tool definitions, the adapter interfaces, or the product canon
 | [0049](0049-lage-versions.md) | Archived Lage versions are a human-only read | accepted | 2026-10-14 |
 | [0050](0050-what-if-scenario-layer.md) | The what-if layer is not a card | accepted | 2026-10-14 |
 | [0051](0051-theme-lage-questions.md) | A theme Lage carries 2-4 questions and one collector card | accepted | 2026-10-14 |
+| [0052](0052-contributor-license-agreement.md) | Contributor License Agreement (Harmony with promise-back) for the AGPL paths, DCO stays | accepted | 2026-10-18 |

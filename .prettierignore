@@ -10,5 +10,7 @@ docs
 .claude
 playwright-report
 test-results
+# The CLA texts stay byte-identical: each signature records their SHA-256 (ADR-0052).
+legal/cla/CLA-*.md
 # cards/ holds published card data, not source; it is kept byte-identical to what the source check signed off
 cards
