@@ -1,0 +1,745 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>reraise · tabletop</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --table:#cdd8d0; --table2:#dbe4dd; --chrome:#f3f5f1; --chrome2:#e6ebe5;
+  --text:#14221f; --mute:#4a5f59; --gold:#8a6718; --goldfill:#d9b565; --line:rgba(20,34,31,.18);
+  --card:#fffdf6; --cardink:#1d1c18; --cardmute:#5b5a50; --cardline:rgba(29,28,24,.2);
+  --P:#8a6718; --S:#34578a; --E:#456f48; --shadow:0 1px 0 rgba(0,0,0,.08),0 6px 14px rgba(20,34,31,.16);
+  --serif:'Newsreader',Georgia,'Times New Roman',serif; --sans:'Instrument Sans','Segoe UI',system-ui,sans-serif;
+  --glow:rgba(138,103,24,.55); color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --table:#0f2a26; --table2:#143630; --chrome:#0a1a18; --chrome2:#112623;
+  --text:#e7e3d3; --mute:#9bb3ab; --gold:#d6b062; --goldfill:#d6b062; --line:rgba(214,176,98,.28);
+  --card:#efe8d5; --P:#8a6718; --S:#34578a; --E:#456f48; --shadow:0 1px 0 rgba(0,0,0,.4),0 8px 18px rgba(0,0,0,.45);
+  --glow:rgba(214,176,98,.7); color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --table:#0f2a26; --table2:#143630; --chrome:#0a1a18; --chrome2:#112623;
+  --text:#e7e3d3; --mute:#9bb3ab; --gold:#d6b062; --goldfill:#d6b062; --line:rgba(214,176,98,.28);
+  --card:#efe8d5; --shadow:0 1px 0 rgba(0,0,0,.4),0 8px 18px rgba(0,0,0,.45); --glow:rgba(214,176,98,.7); color-scheme:dark;}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{background:var(--table);color:var(--text);font:15px/1.45 var(--sans);min-height:100vh;overflow-x:hidden}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+h1,h2,h3,h4{font-family:var(--serif);font-weight:600;margin:0}
+.ic{width:15px;height:15px;flex:none;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+
+/* header */
+.top{position:sticky;top:0;z-index:20;background:var(--chrome);border-bottom:1px solid var(--line);display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;padding:8px 16px}
+.brand{display:flex;flex-direction:column;line-height:1.05}
+.brand b{font:600 26px/1 var(--serif);letter-spacing:-.01em}
+.brand small{font-size:11px;color:var(--mute)}
+.tabs{display:flex;gap:2px;align-items:flex-end}
+.tab{background:none;border:1px solid transparent;border-bottom:0;border-radius:8px 8px 0 0;padding:7px 14px;font:600 15px var(--serif);color:var(--mute)}
+.tab[aria-selected=true]{background:var(--table);color:var(--text);border-color:var(--line);box-shadow:0 2px 0 var(--table)}
+.tab.new{font-family:var(--sans);font-weight:500;font-size:13px;color:var(--gold)}
+.tools{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.tool{display:flex;gap:6px;align-items:center;background:none;border:1px solid var(--line);border-radius:999px;padding:5px 11px;font-size:13px}
+.tool:hover{border-color:var(--gold)}
+.tool[aria-pressed=true]{background:var(--goldfill);color:#1d1c18;border-color:transparent}
+.skip{margin-left:auto;background:none;border:0;color:var(--mute);text-decoration:underline;font-size:13px}
+body[data-first="1"] .tabs,body[data-first="1"] .tools{display:none}
+body[data-first="0"] .skip{display:none}
+
+/* layout */
+.table{display:grid;grid-template-columns:minmax(0,1fr) 340px;grid-template-areas:"seats rail" "felt rail" "tray rail";gap:0 18px;padding:0 16px;max-width:1500px;margin:0 auto;align-items:start}
+.seats{grid-area:seats}.felt{grid-area:felt}.rail{grid-area:rail;padding-top:14px}.tray{grid-area:tray}
+body[data-first="1"] .table{grid-template-columns:minmax(0,1fr);grid-template-areas:"felt" "tray"}
+body[data-first="1"] .tray{grid-template-columns:1fr}
+body[data-first="1"] .felt{margin-top:14px}
+@media (min-width:761px){body[data-first="1"] .tray{position:static}}
+body[data-first="1"] .seats,body[data-first="1"] .rail,body[data-first="1"] .timebar,body[data-first="1"] .deckbtn,body[data-first="1"] .pile{display:none}
+
+/* seats */
+.seats{display:flex;gap:10px;flex-wrap:wrap;padding:14px 0 6px;align-items:stretch}
+.seat{position:relative;display:grid;grid-template-columns:auto 1fr;gap:2px 10px;align-items:center;padding:9px 14px 9px 10px;border:1px solid var(--line);border-radius:14px;background:var(--table2);min-width:200px;flex:1 1 220px;max-width:340px}
+.seat.turn{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold),0 0 22px -4px var(--glow)}
+.por{grid-row:span 2;width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font:600 20px var(--serif);color:#1d1c18;background:var(--goldfill);border:2px solid var(--chrome);outline:1px solid var(--line)}
+.p-you{background:#e7d3a3}.p-a1{background:#a9c7bd}.p-a2{background:#c7b0b0}.p-a3{background:#b7bfd8}.p-x{background:#cfcfc4}
+.seat b{font:600 16px var(--serif)}
+.seat .sub{font-size:12px;color:var(--mute)}
+.ord{position:absolute;top:-8px;left:12px;background:var(--chrome);border:1px solid var(--line);border-radius:999px;font-size:11px;padding:0 7px;color:var(--mute)}
+.mark{position:absolute;top:-10px;right:12px;background:var(--goldfill);color:#1d1c18;border-radius:999px;font-size:11px;font-weight:600;padding:1px 9px;display:none}
+.seat.turn .mark{display:block}
+.bub{grid-column:1/-1;margin-top:6px;font-size:12.5px;line-height:1.35;background:var(--chrome);border:1px solid var(--line);border-radius:4px 12px 12px 12px;padding:6px 9px}
+.bub span{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.stancebox{grid-column:1/-1;font-size:12px;color:var(--mute);margin-top:4px}
+.stancebox span{color:var(--gold)}
+.ctl{display:flex;flex-direction:column;gap:6px;justify-content:center}
+.btn{border:1px solid var(--gold);background:none;border-radius:999px;padding:6px 14px;font-weight:500;color:var(--text)}
+.btn.main{background:var(--goldfill);color:#1d1c18;border-color:transparent;font-weight:600}
+.btn:disabled{opacity:.45;cursor:default}
+.round{font:600 15px var(--serif);color:var(--mute);padding:0 4px}
+
+/* felt */
+.felt{background:radial-gradient(120% 90% at 50% 0,var(--table2),var(--table));border:1px solid var(--line);border-radius:18px;padding:18px;position:relative;box-shadow:inset 0 0 0 5px var(--table),inset 0 0 0 6px var(--line)}
+.ftitle{font:600 clamp(22px,2.6vw,32px)/1.12 var(--serif);max-width:30ch;margin:0 0 14px}
+.fsub{color:var(--mute);font-size:13px;margin:-8px 0 14px}
+.lanes{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.lane h3{font-size:15px;letter-spacing:.01em;padding-bottom:6px;margin-bottom:8px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between}
+.lane h3 span{font:400 12px var(--sans);color:var(--mute)}
+.cell{border:1px dashed var(--line);border-radius:12px;padding:8px;margin-bottom:10px;min-height:92px;transition:opacity .2s}
+.cell.dim{opacity:.35}
+.chead{display:flex;gap:6px;align-items:center;font-size:12px;color:var(--mute);margin-bottom:6px}
+.chead em{font-style:normal;opacity:.8}
+.stack{display:flex;flex-wrap:wrap;gap:8px;align-items:stretch}
+.slot{width:40px;min-height:70px;flex:none;border:1.5px dashed var(--line);background:none;border-radius:10px;color:var(--mute);font-size:20px;transition:all .15s}
+.slot:hover{border-color:var(--gold);color:var(--gold)}
+.cell.valid{border-color:var(--gold);border-style:solid;background:rgba(214,176,98,.07)}
+.cell.valid .slot{width:90px;border-style:solid;border-color:var(--gold);color:var(--gold);box-shadow:0 0 18px -2px var(--glow);animation:glow 1.4s ease-in-out infinite}
+.cell.hot{background:rgba(214,176,98,.2)}
+@keyframes glow{50%{box-shadow:0 0 6px 0 var(--glow)}}
+
+/* cards */
+.card{width:140px;background:var(--card);color:var(--cardink);border-radius:9px;padding:8px 10px 7px;box-shadow:var(--shadow);position:relative;display:flex;flex-direction:column;gap:3px;cursor:pointer;border:1.5px solid var(--cardline);transition:transform .15s,outline-color .15s}
+.card:hover{transform:translateY(-3px)}
+.card header{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600}
+.card h4{font:600 14.5px/1.18 var(--serif)}
+.card p{margin:0;font-size:12px;line-height:1.35;color:var(--cardmute)}
+.card footer{display:flex;align-items:center;gap:6px;margin-top:auto;padding-top:4px;font-size:11px;color:var(--cardmute)}
+.tok{width:18px;height:18px;border-radius:50%;display:grid;place-items:center;font:600 10px var(--sans);color:#1d1c18;background:#cfcfc4}
+.lk{margin-left:auto}
+.cp{font-style:normal;margin-left:auto;font-weight:400;color:var(--cardmute)}
+.L-PROVEN{border-color:var(--P);border-top-width:4px}.L-PROVEN header{color:var(--P)}
+.L-SAID{border-style:dashed;border-color:var(--S)}.L-SAID header{color:var(--S)}
+.L-EXPERIENCE{border-style:dotted;border-width:2.5px;border-color:var(--E);border-radius:16px 9px 16px 9px}.L-EXPERIENCE header{color:var(--E)}
+.card.rel{outline:2px solid var(--gold);outline-offset:2px}
+.card.pulse{animation:pulse 1.6s ease-out 1}
+.card.land{animation:land .45s cubic-bezier(.2,.9,.3,1.2)}
+@keyframes land{from{transform:translateY(-30px) rotate(-4deg) scale(1.08);opacity:0}}
+@keyframes pulse{0%{box-shadow:0 0 0 0 var(--glow)}60%{box-shadow:0 0 0 14px transparent}}
+.card.enter{animation:enter .5s ease-out both}
+@keyframes enter{from{opacity:0;transform:translateY(10px)}}
+
+/* map */
+.mapgrid{display:grid;grid-template-columns:1fr 1.2fr 1fr;gap:14px}
+.mapcol{display:flex;flex-direction:column;gap:10px}
+.mapcol .card{width:auto}
+.actor{padding:9px 11px}
+.actor dl{margin:2px 0;display:grid;grid-template-columns:auto 1fr;gap:1px 8px;font-size:12px}
+.actor dt{color:var(--cardmute)}.actor dd{margin:0}
+.actor dd.red{color:#8d2b2b;font-weight:600}
+.next{margin-top:4px;font-size:12px;border-top:1px solid var(--cardline);padding-top:4px;display:flex;gap:6px;align-items:baseline}
+.next i{font-style:normal;color:var(--cardmute)}
+.focus{border:1px solid var(--gold);border-radius:16px;padding:12px;background:rgba(214,176,98,.08);text-align:center}
+.focus .cell{text-align:left}
+.focus .card{width:auto;margin:0 auto;max-width:300px}
+.focus>h3{font-size:13px;color:var(--mute);font-family:var(--sans);font-weight:500;margin-bottom:8px}
+.focus .stack{justify-content:flex-start}
+.focus>.cell:first-of-type .stack{justify-content:center}
+
+/* gold */
+.chart{background:var(--chrome2);border:1px solid var(--line);border-radius:12px;padding:8px 10px 2px;margin-bottom:14px}
+.chart svg{display:block;width:100%;height:auto}
+.chart .cap{display:flex;justify-content:space-between;font-size:12px;color:var(--mute);padding:2px 4px 6px;flex-wrap:wrap;gap:4px}
+.chart .flag{cursor:pointer}
+.chart .flag:hover path,.chart .flag:focus path{fill:var(--gold)}
+.zones{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.zone h3{font-size:15px;border-bottom:1px solid var(--line);padding-bottom:6px;margin-bottom:8px}
+.zone .card{width:100%}
+.zones.custom{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+.under{font-size:12px;color:var(--mute);margin:-8px 0 12px}
+
+/* time */
+.timebar{margin-top:14px;display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;font-size:13px;color:var(--mute)}
+.timebar output{color:var(--text);font:600 15px var(--serif);min-width:9ch;text-align:center}
+input[type=range]{width:100%;accent-color:var(--gold)}
+
+/* rail */
+.sec{border:1px solid var(--line);border-radius:14px;background:var(--table2);padding:12px 14px;margin-bottom:14px}
+.sec h3{font-size:17px;margin-bottom:8px}
+.sec .hint{font-size:12px;color:var(--mute);margin:0 0 8px}
+.fire{display:flex;flex-direction:column;gap:8px;max-height:300px;overflow:auto;padding-right:2px}
+.msg{max-width:92%;font-size:13.5px;padding:7px 10px;border-radius:4px 12px 12px 12px;background:var(--chrome);border:1px solid var(--line)}
+.msg b{display:block;font-size:11px;color:var(--mute);font-weight:600}
+.msg.me{align-self:flex-end;border-radius:12px 4px 12px 12px;background:var(--goldfill);color:#1d1c18;border-color:transparent}
+.msg.me b{color:#3b3320}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 8px}
+.chip{border:1px solid var(--gold);background:none;border-radius:999px;padding:4px 10px;font-size:12.5px;color:var(--text)}
+.chip:hover{background:var(--goldfill);color:#1d1c18}
+.say{display:flex;gap:6px}
+.say input,.fld input,.fld textarea,.fld select{width:100%;font:inherit;color:var(--text);background:var(--chrome);border:1px solid var(--line);border-radius:8px;padding:7px 10px}
+.rules{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.rule{display:flex;justify-content:space-between;gap:8px;align-items:center;font-size:13.5px}
+.rs{flex:none;border:1px solid var(--line);background:var(--chrome);border-radius:999px;font-size:12px;padding:2px 10px;min-width:92px;text-align:center}
+.rs.ap{border-color:var(--E);color:var(--text)}.rs.no{border-style:dashed}.rs.un{border-style:dotted}
+.rs.pr{border:0;background:none;color:var(--mute);font-style:italic}
+.origins{font-size:12.5px;color:var(--mute);margin-top:10px;border-top:1px solid var(--line);padding-top:8px}
+.log{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.mv{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;font-size:13px}
+.mv.undone .mt{text-decoration:line-through;color:var(--mute)}
+.mv small{display:block;color:var(--mute);font-size:11px}
+.mv button{border:1px solid var(--line);background:none;border-radius:999px;font-size:12px;padding:2px 10px}
+.mv button:hover{border-color:var(--gold)}
+
+/* tray */
+.tray{position:sticky;bottom:0;z-index:15;display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:end;padding:10px 0 8px;background:linear-gradient(transparent,var(--table) 30%);margin-top:6px}
+.deckbtn,.pile{width:84px;height:116px;border-radius:10px;border:1px solid var(--line);background:var(--chrome2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:12px;text-align:center;padding:6px;position:relative;box-shadow:3px 3px 0 var(--chrome),4px 4px 0 var(--line)}
+.deckbtn b,.pile b{font:600 14px var(--serif)}
+.deckbtn:hover,.pile:hover{border-color:var(--gold)}
+.pile{border-style:dashed;box-shadow:none}
+.hand{display:flex;justify-content:center;align-items:flex-end;min-height:112px;overflow:visible;padding-top:12px;position:relative}
+.coach{order:-1;grid-column:1/-1;text-align:center;font:italic 400 clamp(16px,2vw,20px) var(--serif);color:var(--gold);padding-bottom:2px}
+.hcard{width:128px;height:138px;margin:0 -10px;background:var(--card);color:var(--cardink);border-radius:9px;border:1.5px solid var(--cardline);box-shadow:var(--shadow);padding:7px 9px;text-align:left;display:flex;flex-direction:column;gap:3px;touch-action:none;user-select:none;transform-origin:50% 130%;transform:rotate(var(--r)) translateY(calc(var(--y) + 38px));transition:transform .18s,margin .18s;position:relative;cursor:grab}
+.hcard header{display:flex;gap:5px;align-items:center;font-size:11px;font-weight:600}
+.hcard h4{font:600 14px/1.15 var(--serif)}
+.hcard p{margin:0;font-size:11.5px;color:var(--cardmute);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.hcard:hover,.hcard.sel{transform:rotate(0) translateY(-6px);z-index:5}
+body[data-first="1"] .hcard{transform:rotate(var(--r)) translateY(var(--y))}
+body[data-first="1"] .hcard:hover,body[data-first="1"] .hcard.sel{transform:rotate(0) translateY(-14px)}
+.hcard.sel{outline:2px solid var(--gold);outline-offset:2px}
+.hcard.locked{filter:saturate(.3) brightness(.8);pointer-events:none}
+.hcard.blank{background:var(--table2);color:var(--text);border:1.5px dashed var(--gold);box-shadow:none}
+.hcard.blank p{color:var(--mute)}
+.ghost{position:fixed;z-index:100;pointer-events:none;width:128px;opacity:.92;transform:rotate(-4deg) scale(1.08)}
+.hcard.pilled{animation:land .5s}
+
+/* dialogs */
+dialog{border:1px solid var(--gold);border-radius:16px;background:var(--chrome);color:var(--text);padding:0;width:min(680px,calc(100vw - 24px));max-height:calc(100vh - 32px);box-shadow:0 30px 80px rgba(0,0,0,.5)}
+dialog.wide{width:min(900px,calc(100vw - 24px))}
+dialog::backdrop{background:rgba(5,15,13,.62)}
+.dh{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--chrome)}
+.dh h2{font-size:22px}
+.x{border:0;background:none;font-size:24px;line-height:1;padding:0 6px}
+.db{padding:16px 18px 20px;overflow:auto;max-height:calc(100vh - 110px)}
+.row{display:grid;grid-template-columns:110px 1fr;gap:4px 12px;margin:8px 0;font-size:14px}
+.row dt{color:var(--mute)}.row dd{margin:0}
+.acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.fld{display:block;margin:10px 0;font-size:13px;color:var(--mute)}
+.fld input,.fld textarea,.fld select{margin-top:4px}
+.opts{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0}
+.opt{display:flex;gap:6px;align-items:center;border:1px solid var(--line);border-radius:10px;padding:6px 10px;font-size:13.5px;color:var(--text);cursor:pointer}
+.opt:has(input:checked){border-color:var(--gold);background:rgba(214,176,98,.14)}
+.note{font-size:12.5px;color:var(--mute)}
+.err{color:#b04040;font-size:13px;min-height:1.2em}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.li{display:grid;grid-template-columns:1fr auto;gap:4px 10px;align-items:center;border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:13.5px}
+.li small{color:var(--mute);display:block}
+.li button{border:1px solid var(--gold);background:none;border-radius:999px;padding:3px 12px;font-size:12.5px}
+.li button:hover{background:var(--goldfill);color:#1d1c18}
+.big{font:600 34px/1 var(--serif)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:12px 0}
+.stat{border:1px solid var(--line);border-radius:12px;padding:10px}
+.stat span{display:block;font-size:12px;color:var(--mute)}
+.oracle{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:14px}
+.flip{perspective:900px;height:210px;border:0;background:none;padding:0}
+.flip i{display:block;position:relative;width:100%;height:100%;transition:transform .55s;transform-style:preserve-3d;font-style:normal}
+.flip.on i{transform:rotateY(180deg)}
+.flip i>*{position:absolute;inset:0;backface-visibility:hidden;border-radius:10px;padding:10px;text-align:left}
+.fb{background:var(--chrome2);border:1.5px solid var(--gold);display:grid;place-items:center;font:600 28px var(--serif);color:var(--gold)}
+.ff{transform:rotateY(180deg);background:var(--card);color:var(--cardink);font-size:12.5px;line-height:1.35;overflow:auto;border:1.5px dashed var(--S)}
+.ff b{display:block;font:600 14px var(--serif);margin-bottom:4px;color:var(--S)}
+.steps{display:flex;gap:8px;margin-bottom:12px;font-size:13px;color:var(--mute)}
+.steps span{padding:3px 10px;border-radius:999px;border:1px solid var(--line)}
+.steps .on{border-color:var(--gold);color:var(--text);background:rgba(214,176,98,.14)}
+.under-pick{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.up{border:1px solid var(--line);border-radius:12px;padding:10px;text-align:left;background:none;display:block}
+.up:has(input:checked){border-color:var(--gold);background:rgba(214,176,98,.14)}
+.up b{font:600 16px var(--serif);display:block}.up span{font-size:12.5px;color:var(--mute)}
+.up input{position:absolute;opacity:0}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(20px);background:var(--chrome);color:var(--text);border:1px solid var(--gold);border-radius:999px;padding:8px 18px;font-size:13.5px;opacity:0;pointer-events:none;transition:all .25s;z-index:200;max-width:calc(100vw - 32px)}
+.toast.on{opacity:1;transform:translateX(-50%)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+
+@media (max-width:1100px){
+  .table{grid-template-columns:minmax(0,1fr);grid-template-areas:"seats" "felt" "tray" "rail"}
+  .rail{padding-top:6px}
+  .tray{bottom:0}
+}
+@media (max-width:760px){
+  .top{padding:8px 12px;gap:6px 10px}
+  .table{padding:0 12px}
+  .tools{margin-left:0;width:100%;display:grid;grid-template-columns:repeat(5,1fr);gap:4px}
+  .tool{justify-content:center;padding:6px 2px;font-size:11.5px;border-radius:10px;flex-direction:column;gap:2px}
+  .tool .lb{font-size:11px}
+  .tabs{width:100%}.tab{padding:7px 10px}
+  .seats{gap:6px}.seat{min-width:0;flex:1 1 calc(50% - 6px);max-width:none;padding:6px 8px}
+  .por{width:34px;height:34px;font-size:16px}
+  .bub{display:none}
+  .stancebox{display:none}
+  .lanes,.zones,.mapgrid,.two{grid-template-columns:1fr}
+  .oracle{grid-template-columns:repeat(2,1fr)}
+  .mapgrid .mapcol:first-child{order:2}.mapgrid .focus{order:1}.mapgrid .mapcol:last-child{order:3}
+  .felt{padding:12px}
+  .card{width:calc(50% - 4px);min-width:0}
+  .zone .card,.mapcol .card,.focus .card{width:100%}
+  .cell.valid .slot{width:70px}
+  .tray{grid-template-columns:1fr;gap:4px}
+  .deckbtn,.pile{display:none}
+  .hcard{width:96px;height:128px;margin:0 -15px}
+  .hand{min-height:132px}
+  .stats{grid-template-columns:1fr}
+  .row{grid-template-columns:1fr}
+  .timebar{grid-template-columns:1fr auto}.timebar>span:first-child{display:none}
+  .ctl{flex-direction:row;width:100%}
+}
+@media (max-width:760px){body[data-first="1"] .lane:nth-child(2){order:-1}body[data-first="1"] .lanes{display:flex;flex-direction:column}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body data-first="1">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-PROVEN" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M8.2 12.3l2.6 2.6 5-5.4"/></symbol>
+  <symbol id="i-SAID" viewBox="0 0 24 24"><path d="M4 5h16v11H10l-4.5 4v-4H4z"/><path d="M8 9.5h8M8 12.5h5"/></symbol>
+  <symbol id="i-EXPERIENCE" viewBox="0 0 24 24"><path d="M12 20.5s-7.5-4.6-7.5-10A4.3 4.3 0 0112 7.6 4.3 4.3 0 0119.5 10.5c0 5.4-7.500 10-7.500 10z"/></symbol>
+  <symbol id="i-swap" viewBox="0 0 24 24"><path d="M4 8h14l-3-3M20 16H6l3 3"/></symbol>
+  <symbol id="i-ping" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2.5"/><circle cx="12" cy="12" r="6.5"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3"/></symbol>
+  <symbol id="i-orc" viewBox="0 0 24 24"><rect x="5" y="3.5" width="14" height="17" rx="2"/><path d="M12 8.5l1.2 2.6 2.8.3-2.1 1.9.6 2.8-2.5-1.4-2.5 1.4.6-2.8-2.1-1.9 2.8-.3z"/></symbol>
+  <symbol id="i-com" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2"/><path d="M12 4v6M12 14v6M4 12h6M14 12h6" /></symbol>
+  <symbol id="i-me" viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="3.6"/><path d="M5 20c.8-4 3.5-6 7-6s6.200 2 7 6"/></symbol>
+</svg>
+
+<header class="top">
+  <div class="brand"><b>reraise</b><small>Powered by Private Executive</small></div>
+  <nav class="tabs" role="tablist" aria-label="Fields" id="tabs"></nav>
+  <div class="tools" id="tools">
+    <button class="tool" data-act="tool" data-t="trade" title="Trade cards with other members"><svg class="ic"><use href="#i-swap"/></svg><span class="lb">Trade</span></button>
+    <button class="tool" data-act="tool" data-t="ping" title="Ping a knowledge card"><svg class="ic"><use href="#i-ping"/></svg><span class="lb">Ping</span></button>
+    <button class="tool" data-act="tool" data-t="oracle" title="5 AI models say"><svg class="ic"><use href="#i-orc"/></svg><span class="lb">5 models</span></button>
+    <button class="tool" data-act="tool" data-t="community" title="Community tables"><svg class="ic"><use href="#i-com"/></svg><span class="lb">Community</span></button>
+    <button class="tool" data-act="tool" data-t="member" title="Membership and standing"><svg class="ic"><use href="#i-me"/></svg><span class="lb">#1 Kane</span></button>
+  </div>
+  <button class="skip" data-act="skipintro">Show the full table</button>
+  <span style="display:flex;gap:6px">
+    <button class="tool" id="roleBtn" data-act="role" aria-pressed="false" title="Agents play the actors, round by round">Role play</button>
+    <button class="tool" data-act="theme" id="themeBtn" aria-label="Switch light or dark">Auto</button>
+  </span>
+</header>
+
+<main class="table">
+  <section class="seats" id="seats" aria-label="Players at the table"></section>
+  <section class="felt" id="felt" aria-label="Board"><div id="board"></div><div class="timebar" id="timebar"></div></section>
+  <footer class="tray" id="tray">
+    <button class="deckbtn" data-act="tool" data-t="ping"><svg class="ic"><use href="#i-ping"/></svg><b>Deck</b><span>Ping a card from your knowledge</span></button>
+    <div class="hand" id="hand" aria-label="Your hand"></div>
+    <button class="pile" data-act="pile"><b id="pileN">0</b><span id="pileT">Discard pile</span></button>
+    <p class="coach" id="coach" hidden></p>
+  </footer>
+  <aside class="rail" id="rail"></aside>
+</main>
+
+<dialog id="dlg"><div class="dh"><h2 id="dt"></h2><button class="x" data-act="close" aria-label="Close">×</button></div><div class="db" id="db"></div></dialog>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
+const esc=s=>String(s).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const LM={PROVEN:{n:'Proven',h:'A source you can open stands behind it, rendered faithfully.'},SAID:{n:'Said',h:'Someone claims it. Who and where is named.'},EXPERIENCE:{n:'Experience',h:'Your own experience. It needs no source.'}};
+const ic=n=>`<svg class="ic"><use href="#i-${n}"/></svg>`;
+const SEATS={you:{n:'You',s:'Human · Kane #1',p:'you'},a1:{n:'A1',s:'Agent · Research',p:'a1'},a2:{n:'A2',s:'Agent · Rebuttal',p:'a2'},a3:{n:'A3',s:'Agent · Scenario',p:'a3'}};
+const LINKT={supports:'supports',refutes:'refutes',depends:'depends on',masks:'masks'};
+
+/* ---------- data ---------- */
+const S={field:'claim',order:['claim','map','gold'],first:true,theme:'auto',role:false,sel:null,busy:false,k:0,
+ time:{claim:2,map:2,gold:12},turn:{claim:0,map:0,gold:0},round:{claim:2,map:2,gold:2},
+ cards:{},moves:{claim:[],map:[],gold:[]},fire:{claim:[],map:[],gold:[]},stance:new Set(['f']),deck:new Set(),
+ takes:0,taken:0,offered:new Set(),joined:new Set(['Vitamin D helps patients in hospital with COVID-19','Strait of Hormuz','Gold']),last:{},rules:{}};
+
+function C(id,field,title,body,layer,by,cell,t,x={}){S.cards[id]=Object.assign({id,field,title,body,layer,by,cell,t,links:[],inHand:false,off:false,placed:false},x)}
+const F={
+ claim:{id:'claim',name:'Claim',type:'claim',title:'Vitamin D helps patients in hospital with COVID-19',sub:'Debate. Cards on the left support, cards on the right refute. Rows show where each card comes from.',seats:['you','a1','a2'],
+  times:['29 Aug 2020','17 Feb 2021','Today'],
+  cells:[{id:'sP',lane:'s',accept:'PROVEN',label:'Supports',sub:'Proven'},{id:'sS',lane:'s',accept:'SAID',label:'Supports',sub:'Said'},{id:'sE',lane:'s',accept:'EXPERIENCE',label:'Supports',sub:'Experience'},
+         {id:'rP',lane:'r',accept:'PROVEN',label:'Refutes',sub:'Proven'},{id:'rS',lane:'r',accept:'SAID',label:'Refutes',sub:'Said'},{id:'rE',lane:'r',accept:'EXPERIENCE',label:'Refutes',sub:'Experience'}],
+  question:'Does vitamin D help people in hospital with COVID-19?'},
+ map:{id:'map',name:'Map',type:'map',title:'Strait of Hormuz',sub:'Who wants what, who can do what, where each draws the line. The estimated next move is a guess, not a forecast.',seats:['you','a1','a2','a3'],
+  times:['Your assumption','Stage 1','Now'],youName:'K',
+  cells:[{id:'act',accept:'SAID',label:'Actors',sub:'Said'},{id:'foc',accept:null,label:'Focus',single:1},{id:'mS',accept:null,label:'Supports'},{id:'mR',accept:null,label:'Refutes'},{id:'mE',accept:'EXPERIENCE',label:'Experience'}],
+  question:'Will Iran close the Strait of Hormuz permanently?'},
+ gold:{id:'gold',name:'Market',type:'gold',title:'Gold',sub:'Price above, board below. Flags on the line are cards. Move the time slider and both follow.',seats:['you','a1','a2'],
+  times:null,
+  cells:[{id:'gcb',z:'Demand',accept:null,label:'Central banks'},{id:'getf',z:'Demand',accept:null,label:'ETFs'},{id:'gjw',z:'Demand',accept:null,label:'Jewellery'},
+         {id:'gmi',z:'Supply',accept:null,label:'Mines'},{id:'grc',z:'Supply',accept:null,label:'Recycling'},
+         {id:'grr',z:'Macro',accept:null,label:'Real rates'},{id:'gusd',z:'Macro',accept:null,label:'Dollar'},{id:'ggeo',z:'Macro',accept:null,label:'Geopolitics'},{id:'gop',z:'Macro',accept:null,label:'Opinions'}],
+  question:'What moves gold this year?'}
+};
+const MONTHS=['Oct 25','Nov 25','Dec 25','Jan 26','Feb 26','Mar 26','Apr 26','May 26','Jun 26','Jul 26','Aug 26','Sep 26','Oct 26'];
+const PRICE=[4000,4120,4050,4210,4380,4300,4450,4520,4610,4580,4700,4820,4790];
+F.gold.times=MONTHS;
+
+/* claim cards */
+C('c1','claim','Córdoba trial 2020','Calcifediol, 76 patients: 1 of 50 treated needed intensive care, against 13 of 26 untreated.','PROVEN','a1','sP',0,{src:'Córdoba trial report, 2020'});
+C('c2','claim','Calcifediol acts faster','Measured in 2014.','PROVEN','a1','sP',0,{src:'Measurement study, 2014'});
+C('c3','claim','São Paulo dosed late','Treatment began 10.3 days after symptoms.','PROVEN','a1','sP',1,{src:'São Paulo trial report, dosing table'});
+C('c4','claim','MIT recalculation','Could chance explain the Córdoba result?','SAID','a1','sS',1,{said:'MIT recalculation'});
+C('c5','claim','3 posts on the maker’s site','About one trial.','SAID','a1','sS',1,{said:'The maker’s website'});
+C('c6','claim','Michael Nehls 2026','He says: slow substance, too late.','SAID','a1','sS',2,{said:'Michael Nehls, 2026',inHand:true,fromHand:true});
+C('c7','claim','São Paulo trial 2021','Vitamin D3, 240 patients: median 7 days in hospital, 7 days with placebo.','PROVEN','a2','rP',1,{src:'São Paulo trial report, 2021'});
+C('c8','claim','Córdoba was a pilot','Open, no placebo.','PROVEN','a2','rP',1,{src:'Córdoba trial report, 2020, methods'});
+C('c9','claim','The larger trial','517 patients, no results posted.','PROVEN','a2','rP',2,{src:'Trial register entry',inHand:true,fromHand:true});
+C('c10','claim','The calendar','São Paulo ran first.','PROVEN','a2','rP',1,{src:'Trial registers, dates'});
+C('c11','claim','Córdoba: who stood behind it','Public funds, the maker’s drug.','PROVEN','a2','rP',2,{src:'Córdoba trial report, funding statement'});
+C('c12','claim','São Paulo: who paid','Two public funders.','PROVEN','a2','rP',2,{src:'São Paulo trial report, funding statement'});
+C('c13','claim','São Paulo authors','No support for high-dose D3.','SAID','a2','rS',1,{said:'São Paulo authors',inHand:true,fromHand:true});
+const L=(a,t,b)=>S.cards[a].links.push({type:t,to:b});
+L('c2','supports','c1');L('c4','depends','c1');L('c5','depends','c1');L('c3','masks','c7');L('c8','refutes','c1');L('c10','depends','c7');L('c11','depends','c1');L('c12','depends','c7');L('c13','depends','c7');L('c9','refutes','c1');
+
+/* map cards */
+const AC=[['usa','USA','free passage','fleet, sanctions','nuclear weapon','tanker escort'],['iran','Iran','leverage','control the strait','regime','stop a tanker'],['china','China','cheap oil','buy, veto','blockade','offers mediation'],['israel','Israel','weak Iran','air force, services','nuclear weapon','warns Iran covertly'],['saudi','Saudi Arabia','secure exports','output volume','attack','raises output'],['russia','Russia','high oil price','veto, output','isolation','supports price via cuts']];
+AC.forEach(a=>C('m_'+a[0],'map',a[1],'','SAID','a1','act',1,{said:'Stated positions, summarised by A1',rows:{will:a[2],can:a[3],red:a[4],next:a[5]},actor:true}));
+C('f','map','Iran closes Hormuz — not permanently','','SAID','you','foc',0,{said:'Your own assumption'});
+C('m1','map','Iran needs oil money','','SAID','a2','mS',2,{said:'Analyst podcast',foreign:true});
+C('m2','map','Tanker insurance got pricier','','PROVEN','a1','mS',1,{src:'Insurance rate notices'});
+C('m3','map','Hormuz closed only 2–3 weeks','Deviates from your card.','SAID','a2','mR',2,{said:'Analyst podcast',foreign:true});
+C('m4','map','Own delivery 2019 delayed','','EXPERIENCE','you','mE',0,{});
+L('m1','supports','f');L('m2','supports','f');L('m3','refutes','f');L('m4','supports','f');
+
+/* gold cards */
+C('g1','gold','Central banks keep buying','','PROVEN','a1','gcb',1,{src:'Central bank reserve statistics'});
+C('g2','gold','ETF inflows record','','PROVEN','a1','getf',4,{src:'Fund flow reports'});
+C('g3','gold','Analyst: 5000 by summer','','SAID','a2','gop',6,{said:'An analyst'});
+C('g4','gold','Hormuz tension','Jump to the Map.','SAID','a2','ggeo',9,{said:'Market commentary',jump:'map'});
+C('g5','gold','Mine output flat','','PROVEN','a1','gmi',11,{src:'Mine production statistics'});
+L('g2','supports','g1');L('g3','depends','g2');
+
+/* moves, fire, rules */
+const mv=(f,by,text,ids,round)=>S.moves[f].push({by,text,ids,round,undone:false});
+mv('claim','a2','A2 laid 7 cards',['c7','c8','c10','c11','c12','c13','c9'],1);mv('claim','a1','A1 laid 8 cards',['c1','c2','c3','c4','c5','c6'],1);
+S.moves.claim.forEach(m=>m.ids=m.ids.filter(i=>!S.cards[i].inHand));
+mv('map','a2','A2 laid 2 foreign cards',['m1','m3'],1);mv('map','a1','A1 laid 6 actor cards and 2 sources',['m_usa','m_iran','m_china','m_israel','m_saudi','m_russia','m2'],1);mv('map','you','K laid the assumption',['f','m4'],1);
+mv('gold','a2','A2 laid 2 cards',['g3','g4'],1);mv('gold','a1','A1 laid 3 cards',['g1','g2','g5'],1);
+const say=(f,w,t)=>S.fire[f].push({w,t});
+say('claim','you','Does vitamin D help people in hospital with COVID-19?');
+say('claim','a1','I laid 8 cards. A trial in Córdoba: 1 of 50 treated needed intensive care, against 13 of 26 untreated. An MIT recalculation, three posts on the maker’s website and Michael Nehls point the same way. Two more cards say why the trials may differ.');
+say('claim','a2','A trial in São Paulo found no reliable difference: a median of 7 days in hospital with vitamin D3, 7 days with placebo. And six of your eight cards go back to the same 76 patients in Córdoba. That is one origin, not six. I am laying 7 cards.');
+say('map','you','Lay everything up to the next stage on the board to test my assumption ‘Iran does not close Hormuz permanently’.');
+say('map','a1','Done: 6 actor cards with will/can/red line, plus 2 sources. I did not touch your assumption.');
+say('map','a2','Checked an analyst transcript, laid 2 foreign cards. One deviates from your assumption.');
+say('map','you','My assumption stands. I set my stance on it.');
+say('map','a1','Suggest stage 2 with insurers and alternative routes?');
+say('gold','you','What moves gold this year?');
+say('gold','a1','I laid 3 cards from flows and supply: central banks keep buying, ETF inflows are at a record, mine output is flat. Each has a source behind it.');
+say('gold','a2','I laid 2 cards that are not flows: an analyst calls 5000 by summer, and Hormuz tension. Both are said, not proven.');
+S.rules={claim:[['Copies count once','ap'],['Only advertising as proof','no'],['Compare like with like','ap'],['Intent needs a document','un']],
+ map:[['Premise: geopolitics beats markets','pr'],['Never only foreign sources','ap'],['Red line first','ap'],['Alternative route','un']],
+ gold:[['Flows beat opinions','ap'],['One analyst is not a trend','ap'],['Geopolitics premium','un']]};
+const ORIGINS={claim:'Where the supports come from: 3 origins from 8 cards (Córdoba trial ×6, Measurement ×1, São Paulo trial ×1).'};
+const CHIPS={claim:[['Ask A1 for sources','a1','Which of the supporting cards have a source you can open?','Six of them do: three are proven, three are said. I name who said each. Nothing is rated.'],['Ask A2 for the other side','a2','What stands against the Córdoba trial?','A pilot without placebo, a larger trial that has not posted results, and who paid on each side. I laid them in the refutes lane.']],
+ map:[['Suggest stage 2','a1','Yes, stage 2 with insurers and alternative routes.','Starting: insurers, then routes around the strait. I will lay them as cards and leave your stance alone.'],['Ask A3 to play China','a3','A3, play China for a round.','Playing China: cheap oil first, a blockade is the red line. Likely next move: offers mediation.']],
+ gold:[['Ask A1 what changed since Apr 26','a1','What changed since the April analyst call?','Two flow cards arrived after it: Hormuz tension in July and flat mine output in September. The analyst call itself is still one voice.'],['Ask A2 for a counter-card','a2','Is there a card against the flows?','Not yet. I would need a source that shows buying slowing. I will look.']]};
+const ORACLE={claim:['Mixed. One small open trial was positive; a larger placebo-controlled trial found no clear difference in hospital stay.','Probably not as a treatment once someone is already in hospital. Timing and form of the vitamin may matter, but that is not shown.','Unclear. The positive result rests on one small trial.','Low vitamin D levels go with worse outcomes. That does not show that giving it helps.','No reliable benefit shown in hospital patients. Prevention before infection is a separate question.'],
+ map:['Unlikely. Iran earns its own oil money through the strait.','A permanent closure would cross the red lines of several actors at once. Short disruptions are likelier.','Cannot be known. It depends on a decision at regime level.','Past disruptions were brief, and insurers price risk in before any closure.','Days to weeks is more plausible than permanent.'],
+ gold:['Central bank buying and fund flows.','Real rates and the dollar, with flows second.','Geopolitical stress in bursts that fade.','Hard to separate. Flows and rates move together.','Analyst calls rarely matter more than flows.']};
+const OFFERS=[{t:'Own delivery in 2022 delayed at a port',l:'EXPERIENCE',m:'#2 Chris',o:'#2 Chris'},{t:'Weekly strait traffic counts',l:'PROVEN',m:'#3',o:'#3',src:'Shipping data feed'},{t:'Rerouting adds days, not hours',l:'SAID',m:'#5',o:'#5',said:'A shipping analyst'}];
+const WANTS=[['#4','a source for tanker insurance rates','m2'],['#2 Chris','any card on mine output','g5'],['#3','experience cards about hospital care','']];
+const TABLES=[['Vitamin D helps patients in hospital with COVID-19','You, A1, A2'],['Strait of Hormuz','You, A1, A2, A3'],['Gold','You, A1, A2'],['Heat pumps against gas boilers','#3, 2 agents'],['Shipping insurance after Hormuz','#2 Chris, #5, 1 agent']];
+const WIKI=[['Córdoba trial 2020','Proven','origin A1','via #2 Chris'],['Tanker insurance got pricier','Proven','origin A1','via #4'],['Rerouting adds days, not hours','Said','origin #5','via #2 Chris']];
+
+/* ---------- helpers ---------- */
+const F_=()=>F[S.field];
+const nameOf=id=>{const f=F_();if(id==='you')return f.youName||'You';return (SEATS[id]||{}).n||id};
+const byLabel=c=>(c.by==='you'&&F[c.field]&&F[c.field].youName)||(SEATS[c.by]?SEATS[c.by].n:c.by);
+const cardsOf=f=>Object.values(S.cards).filter(c=>c.field===f);
+const shown=c=>!c.inHand&&!c.off&&c.cell&&(!S.first||c.placed)&&(c.placed||c.t<=S.time[c.field]);
+const links=c=>{const out=c.links.map(l=>({...l,id:l.to,dir:'out'}));cardsOf(c.field).forEach(o=>o.links.forEach(l=>{if(l.to===c.id)out.push({type:l.type,id:o.id,dir:'in'})}));return out};
+function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('on');clearTimeout(toast.h);toast.h=setTimeout(()=>e.classList.remove('on'),2600)}
+const okSlot=(c,cell)=>!cell.accept||cell.accept===c.layer;
+const letter=c=>byLabel(c).replace(/[^A-Za-z]/g,'').charAt(0)||'#';
+
+/* ---------- render ---------- */
+function cardHTML(c,enter){
+  const n=links(c).length,lm=LM[c.layer];
+  const cls=`card L-${c.layer}${c.actor?' actor':''}${c.fresh?' land':''}${c.pulse?' pulse':''}${enter?' enter':''}`;
+  let inner='';
+  if(c.actor){const r=c.rows;inner=`<h4>${esc(c.title)}</h4><dl><dt>will</dt><dd>${esc(r.will)}</dd><dt>can</dt><dd>${esc(r.can)}</dd><dt>red line</dt><dd class="red">${esc(r.red)}</dd></dl><div class="next"><i>est. next</i>${esc(r.next)}</div>`}
+  else inner=`<h4>${esc(c.title)}</h4>${c.body?`<p>${esc(c.body)}</p>`:''}${c.foreign?'<p>Foreign source</p>':''}`;
+  return `<article class="${cls}" data-card="${c.id}" tabindex="0" role="button" aria-label="${esc(c.title)}, ${lm.n}"><header>${ic(c.layer)}<b>${lm.n}</b>${c.copyOf?'<i class="cp">copy</i>':''}</header>${inner}<footer><span class="tok">${letter(c)}</span><span>${esc(byLabel(c))}</span>${n?`<span class="lk" title="${n} connections">⇄ ${n}</span>`:''}</footer></article>`;
+}
+function cellHTML(cell,f,extra=''){
+  const cs=cardsOf(f.id).filter(c=>c.cell===cell.id&&shown(c));
+  const dim=S.first&&f.id==='claim'&&cell.id!=='rP'?' dim':'';
+  return `<div class="cell${dim}" data-cell="${cell.id}"><div class="chead">${cell.accept?ic(cell.accept):''}<span>${esc(cell.label)}</span>${cell.sub?`<em>${esc(cell.sub)}</em>`:''}</div><div class="stack">${cs.map(c=>cardHTML(c,S.entering)).join('')}<button class="slot" data-slot="${cell.id}" aria-label="Lay a card: ${esc(cell.label)}${cell.sub?' '+esc(cell.sub):''}">+</button></div></div>`;
+}
+function chartHTML(){
+  const t=S.time.gold,W=800,H=210,x=i=>46+i*(W-70)/12,y=v=>180-(v-3900)/1000*150;
+  const pts=PRICE.map((v,i)=>[x(i),y(v)]);
+  const d=a=>a.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join('');
+  const flags=cardsOf('gold').filter(c=>c.cell&&!c.off&&!c.inHand&&c.t<=t);
+  let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Gold price in USD per ounce, month ends October 2025 to October 2026">`;
+  [4000,4400,4800].forEach(v=>s+=`<line x1="40" x2="${W-14}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)" stroke-dasharray="3 5"/><text x="36" y="${y(v)+4}" text-anchor="end" font-size="11" fill="var(--mute)">${v}</text>`);
+  MONTHS.forEach((m,i)=>{if(i%2===0)s+=`<text x="${x(i)}" y="${H-6}" text-anchor="middle" font-size="11" fill="var(--mute)">${m}</text>`});
+  s+=`<path d="${d(pts)}" fill="none" stroke="var(--mute)" stroke-width="1.5" stroke-dasharray="2 5" opacity=".6"/>`;
+  s+=`<path d="${d(pts.slice(0,t+1))}" fill="none" stroke="var(--gold)" stroke-width="2.6" stroke-linejoin="round"/>`;
+  s+=`<line x1="${x(t)}" x2="${x(t)}" y1="14" y2="182" stroke="var(--gold)" stroke-width="1" opacity=".7"/><circle cx="${x(t)}" cy="${y(PRICE[t])}" r="5" fill="var(--gold)"/>`;
+  flags.forEach(c=>{const i=c.t,px=x(i),py=y(PRICE[i]),top=Math.max(18,py-52+(i%2)*14);
+    const w=Math.min(150,Math.min(c.title.length,28)*6.2+18);const left=px+w>W-10;const a=left?-1:1;
+    s+=`<g class="flag" data-card="${c.id}" tabindex="0" role="button" aria-label="${esc(c.title)}, ${MONTHS[i]}"><line x1="${px}" x2="${px}" y1="${py}" y2="${top}" stroke="var(--text)" stroke-width="1.2"/><path d="M${px} ${top}h${a*w}v17h${-a*(w-8)}z" fill="${c.layer==='PROVEN'?'var(--card)':'var(--chrome)'}" stroke="${c.layer==='PROVEN'?'var(--P)':'var(--S)'}" stroke-width="1.4" ${c.layer==='SAID'?'stroke-dasharray="3 2"':''}/><text x="${px+a*10}" y="${top+12.5}" ${left?'text-anchor="end"':''} font-size="10.5" fill="${c.layer==='PROVEN'?'#1d1c18':'var(--text)'}">${esc(c.title.length>28?c.title.slice(0,27)+'…':c.title)}</text></g>`});
+  s+='</svg>';
+  return `<div class="chart">${s}<div class="cap"><span>${MONTHS[t]}: USD ${PRICE[t].toLocaleString('en-US')} per oz</span><span>Example series, month ends. Flags are cards.</span></div></div>`;
+}
+const R={
+ claim(f){const lane=(k,h)=>`<div class="lane"><h3>${h}<span>${k==='s'?'cards that point toward the claim':'cards that point against it'}</span></h3>${f.cells.filter(c=>c.lane===k).map(c=>cellHTML(c,f)).join('')}</div>`;
+   return `<h1 class="ftitle">${esc(f.title)}</h1>${S.first?'':`<p class="fsub">${esc(f.sub)}</p>`}<div class="lanes">${lane('s','Supports')}${lane('r','Refutes')}</div>`},
+ map(f){const g=id=>f.cells.find(c=>c.id===id),act=cardsOf('map').filter(c=>c.actor&&shown(c));
+   const half=a=>`<div class="mapcol">${a.map(c=>cardHTML(c,S.entering)).join('')}</div>`;
+   const slot=`<button class="slot" data-slot="act" style="width:100%;min-height:44px" aria-label="Add an actor">+ actor</button>`;
+   return `<h1 class="ftitle">${esc(f.title)}</h1><p class="fsub">${esc(f.sub)}</p><div class="mapgrid"><div class="mapcol cell" data-cell="act" style="border:0;padding:0;min-height:0">${act.slice(0,3).map(c=>cardHTML(c,S.entering)).join('')}</div>
+   <div class="focus"><h3>Focus</h3>${cellHTML(g('foc'),f)}${cellHTML(g('mS'),f)}${cellHTML(g('mR'),f)}${cellHTML(g('mE'),f)}</div>
+   <div class="mapcol cell" data-cell="act" style="border:0;padding:0;min-height:0">${act.slice(3).map(c=>cardHTML(c,S.entering)).join('')}${slot.replace('data-slot="act"','data-slot="act"')}</div></div>`},
+ gold(f){const z=n=>`<div class="zone"><h3>${n}</h3>${f.cells.filter(c=>c.z===n).map(c=>cellHTML(c,f)).join('')}</div>`;
+   return `<h1 class="ftitle">${esc(f.title)}</h1>${chartHTML()}<div class="zones">${z('Demand')}${z('Supply')}${z('Macro')}</div>`},
+ zones(f){return `<h1 class="ftitle">${esc(f.title)}</h1><p class="under">Underlay: ${esc(f.underlay)}. Moves by: ${f.seats.map(s=>`${esc(nameOf(s))} (${esc(SEATS[s].mover||'human')})`).join(', ')}.</p><div class="zones custom">${f.cells.map(c=>`<div class="zone"><h3>${esc(c.label)}</h3>${cellHTML({...c,label:'Open slot'},f)}</div>`).join('')}</div>`}
+};
+function renderBoard(){const f=F_();$('#board').innerHTML=R[f.type==='zones'?'zones':f.type](f);S.entering=false;markValid()}
+function renderTabs(){$('#tabs').innerHTML=S.order.map(id=>`<button class="tab" role="tab" aria-selected="${id===S.field}" data-act="tab" data-f="${id}">${esc(F[id].name)}</button>`).join('')+`<button class="tab new" data-act="newfield">+ New field</button>`}
+function renderSeats(){
+  const f=F_(),t=S.turn[f.id];
+  $('#seats').innerHTML=f.seats.map((id,i)=>{
+    const s=SEATS[id],last=[...S.fire[f.id]].reverse().find(m=>m.w===id);
+    const rl=S.role&&f.roles&&f.roles[id]?f.roles[id]:s.s;
+    const stars=id==='you'?[...S.stance].map(i=>S.cards[i]).filter(c=>c&&c.field===f.id):[];
+    return `<div class="seat${i===t?' turn':''}"><span class="ord" title="Order of play">${i+1}</span><span class="mark">to move</span><div class="por p-${s.p}">${esc((id==='you'?nameOf(id):s.n).charAt(0))}</div><b>${esc(nameOf(id))}</b><span class="sub">${esc(rl)}</span>${last?`<div class="bub"><span>${esc(last.t)}</span></div>`:''}${id==='you'?`<div class="stancebox">${stars.length?stars.map(c=>`<span>★</span> ${esc(c.title)}`).join('<br>')+' <em>(private)</em>':'My stance: private. Star a card to take one.'}</div>`:''}</div>`}).join('')
+   +`<div class="ctl"><span class="round">Round ${S.round[f.id]}</span>${S.role?`<button class="btn main" data-act="playround">Play round</button>`:`<button class="btn" data-act="endturn" ${t!==0||S.busy?'disabled':''}>End turn</button>`}</div>`;
+}
+function renderHand(){
+  const f=F_(),hs=cardsOf(f.id).concat(Object.values(S.cards).filter(c=>c.copyOf&&c.field===f.id)).filter(c=>c.inHand);
+  const hand=[...new Set(hs)];const n=hand.length+2;
+  const cardsH=hand.map((c,i)=>hc(c,i,n)).join('');
+  const blanks=[['blankP','Source card','Proven or said. Write it, name where it comes from.'],['blankE','My experience','Something you lived. No source needed.']].map((b,j)=>`<div class="hcard blank${S.first?' locked':''}" data-hand="${b[0]}" tabindex="0" role="button" style="--r:${((hand.length+j)-(n-1)/2)*5}deg;--y:${Math.abs((hand.length+j)-(n-1)/2)*5}px"><header>${ic(b[0]==='blankE'?'EXPERIENCE':'SAID')}<b>${b[1]}</b></header><h4>+ Write</h4><p>${b[2]}</p></div>`).join('');
+  $('#hand').innerHTML=S.first?cardsH:cardsH+blanks;
+  const first=S.first;$('#coach').hidden=!first;if(first)$('#coach').textContent='Your first hand: drag the card with the gold seal onto the glowing slot.';
+  const undone=S.moves[f.id].filter(m=>m.undone);$('#pileN').textContent=undone.length;$('#pileT').textContent=undone.length?'Taken back. Open the move log.':'Discard pile. Taken-back moves land here.';
+}
+function hc(c,i,n){const lock=S.first&&c.id!=='c9';const r=(i-(n-1)/2)*5,y=Math.abs(i-(n-1)/2)*5;
+  return `<div class="hcard${lock?' locked':''}${S.sel===c.id?' sel':''}" data-hand="${c.id}" tabindex="0" role="button" aria-label="${esc(c.title)}, ${LM[c.layer].n}. Drag to a slot." style="--r:${r}deg;--y:${y}px"><header>${ic(c.layer)}<b>${LM[c.layer].n}</b>${c.copyOf?'<i class="cp" style="margin-left:auto;font-weight:400;font-style:normal">copy</i>':''}</header><h4>${esc(c.title)}</h4>${c.body?`<p>${esc(c.body)}</p>`:''}</div>`}
+function renderRail(){
+  const f=F_(),fi=S.fire[f.id],rules=S.rules[f.id]||[],ch=CHIPS[f.id]||[['Ask A1 for sources','a1','Find a source for the first card.','Looking. I lay it as proven only if I can link the original.']];
+  const lab={ap:'applies',no:'does not apply',un:'unclear',pr:'premise'},gl={ap:'✓ ',no:'✕ ',un:'? ',pr:''};
+  $('#rail').innerHTML=`<div class="sec"><h3>Fireside</h3><div class="fire" id="fire">${fi.map(m=>`<div class="msg${m.w==='you'?' me':''}"><b>${esc(nameOf(m.w))}</b>${esc(m.t)}</div>`).join('')}</div>
+   <div class="chips">${ch.map((c,i)=>`<button class="chip" data-act="chip" data-i="${i}">${esc(c[0])}</button>`).join('')}</div>
+   <form class="say" data-act="send"><input id="sayin" placeholder="Say something (@A1, @A2)" aria-label="Say something at the table" autocomplete="off"><button class="btn main">Send</button></form></div>
+   <div class="sec"><h3>Which of your rules apply</h3><p class="hint">Your rules, your call. Tap a rule to change it. The board never scores anything.</p><ul class="rules">${rules.map((r,i)=>`<li class="rule"><span>${esc(r[0])}</span><button class="rs ${r[1]}" data-act="rule" data-i="${i}" ${r[1]==='pr'?'disabled':''}>${gl[r[1]]}${lab[r[1]]}</button></li>`).join('')}</ul>
+   <form class="say" data-act="addrule" style="margin-top:8px"><input id="rulein" placeholder="Add a rule" aria-label="Add a rule" autocomplete="off"><button class="btn">Add</button></form>${ORIGINS[f.id]?`<p class="origins">${esc(ORIGINS[f.id])}</p>`:''}</div>
+   <div class="sec" id="logsec"><h3>Move log</h3><p class="hint">Every move can be taken back, even the agents’.</p><ul class="log">${S.moves[f.id].map((m,i)=>`<li class="mv${m.undone?' undone':''}"><span class="tok" style="width:24px;height:24px;font-size:11px">${esc(nameOf(m.by).charAt(0))}</span><span class="mt">${esc(m.text)}<small>Round ${m.round}${m.undone?' · taken back':''}</small></span><button data-act="takeback" data-i="${i}">${m.undone?'Replay':'Take back'}</button></li>`).join('')}</ul></div>`;
+  const e=$('#fire');if(e)e.scrollTop=e.scrollHeight;
+}
+function renderTime(){
+  const f=F_(),t=S.time[f.id],n=f.times.length-1;
+  const el=$('#timebar');
+  el.innerHTML=`<span>${esc(f.times[0])}</span><div><input type="range" min="0" max="${n}" step="1" value="${t}" id="tslide" aria-label="Time: show the board as of a date"></div><output>${esc(f.times[t])}</output>`;
+}
+function renderAll(){renderTabs();renderSeats();renderBoard();renderTime();renderHand();renderRail();
+  $('#roleBtn').setAttribute('aria-pressed',S.role);document.body.dataset.first=S.first?'1':'0';
+  $$('.fresh').forEach(e=>e.classList.remove('fresh'));Object.values(S.cards).forEach(c=>{c.fresh=false;c.pulse=false})}
+function markValid(){
+  const f=F_();$$('.cell').forEach(e=>e.classList.remove('valid'));
+  if(S.first&&!S.sel){const e=$('.cell[data-cell=rP]');e&&e.classList.add('valid');return}
+  const id=S.sel;if(!id)return;const c=S.cards[id]||{layer:null,blank:id};
+  $$('.cell[data-cell]').forEach(e=>{const cell=f.cells.find(x=>x.id===e.dataset.cell);if(!cell)return;
+    let ok=id==='blankE'?(!cell.accept||cell.accept==='EXPERIENCE'):id==='blankP'?(!cell.accept||cell.accept!=='EXPERIENCE'):okSlot(c,cell);
+    if(S.first&&id==='c9')ok=cell.id==='rP';
+    if(ok&&!(cell.single&&cardsOf(f.id).some(x=>x.cell===cell.id&&shown(x))))e.classList.add('valid')});
+}
+
+/* ---------- actions ---------- */
+function addMove(by,text,ids){S.moves[S.field].unshift({by,text,ids,round:S.round[S.field],undone:false});S.last[S.field]=text}
+function place(hid,cellId){
+  const f=F_(),cell=f.cells.find(x=>x.id===cellId);if(!cell)return;
+  if(hid==='blankP'||hid==='blankE'){return openLay(cellId,hid==='blankE'?'EXPERIENCE':null)}
+  const c=S.cards[hid];if(!okSlot(c,cell)){toast(`That slot takes ${LM[cell.accept].n.toLowerCase()} cards.`);return}
+  c.cell=cellId;c.inHand=false;c.placed=true;c.fromHand=true;c.field=f.id;c.fresh=true;S.sel=null;
+  addMove('you',`${nameOf('you')} laid “${c.title}”`,[c.id]);
+  const wasFirst=S.first;
+  if(wasFirst){S.first=false;S.entering=true}
+  renderAll();
+  toast(wasFirst?'Laid. The others have taken their seats.':'Laid. You can take it back in the move log.');
+}
+function openLay(cellId,layer){
+  const f=F_(),cells=f.cells.filter(c=>c.id!=='foc'||!cardsOf(f.id).some(x=>x.cell==='foc'&&shown(x)));
+  const pick=cells.find(c=>c.id===cellId)||cells[0];
+  const sel=cells.map(c=>`<option value="${c.id}" ${c.id===pick.id?'selected':''}>${esc((c.z?c.z+': ':'')+c.label+(c.sub?' · '+c.sub:''))}</option>`).join('');
+  const lay=layer||(pick.accept||'SAID');
+  dialog('Lay a card',`<form id="layf"><label class="fld">What does the card say?<textarea name="text" rows="3" maxlength="200" required placeholder="One statement, in your words"></textarea></label>
+   <div class="fld">Where does it come from?</div><div class="opts" id="lyr">${Object.keys(LM).map(k=>`<label class="opt"><input type="radio" name="layer" value="${k}" ${k===lay?'checked':''}>${ic(k)} ${LM[k].n}</label>`).join('')}</div><p class="note" id="lyrh">${LM[lay].h}</p>
+   <label class="fld" id="srcl">Source<input name="src" placeholder="" autocomplete="off"></label>
+   <label class="fld">Slot<select name="cell">${sel}</select></label><p class="err" id="lerr"></p>
+   <div class="acts"><button class="btn main">Lay card</button><button type="button" class="btn" data-act="close">Cancel</button></div></form>`,()=>{
+    const form=$('#layf'),upd=()=>{const l=form.layer.value;$('#lyrh').textContent=LM[l].h;$('#srcl').hidden=l==='EXPERIENCE';form.src.placeholder=l==='PROVEN'?'A link or citation someone can open':'Who said it, and where';};
+    form.layer.forEach?form.layer.forEach(r=>r.onchange=upd):0;upd();
+    form.onsubmit=e=>{e.preventDefault();const d=Object.fromEntries(new FormData(form)),cell=f.cells.find(x=>x.id===d.cell);
+      if(!d.text.trim()){$('#lerr').textContent='Write what the card says.';return}
+      if(d.layer!=='EXPERIENCE'&&!d.src.trim()){$('#lerr').textContent=d.layer==='PROVEN'?'A proven card needs a source someone can open.':'A said card needs to name who said it.';return}
+      if(!okSlot({layer:d.layer},cell)){$('#lerr').textContent=`That slot takes ${LM[cell.accept].n.toLowerCase()} cards. Pick another slot or layer.`;return}
+      const id='n'+(++S.k);C(id,f.id,d.text.length>34?d.text.slice(0,33)+'…':d.text,d.text.length>34?d.text:'',d.layer,'you',d.cell,0,{src:d.layer==='PROVEN'?d.src:null,said:d.layer==='SAID'?d.src:null,placed:true,fresh:true,fromHand:false});
+      addMove('you',`${nameOf('you')} laid “${S.cards[id].title}”`,[id]);S.sel=null;closeDlg();
+      if(S.first){S.first=false;S.entering=true}renderAll();toast('Laid. Take it back any time from the move log.')}
+  });
+}
+function openCard(id){
+  const c=S.cards[id];if(!c)return;const f=F[c.field],lk=links(c),starred=S.stance.has(c.id),mine=c.by==='you';
+  const own=c.layer==='EXPERIENCE'?'Your own experience. No source needed.':c.layer==='PROVEN'?esc(c.src||'Source on file'):esc(c.said||'Named in the card');
+  const cs=cardsOf(c.field).filter(x=>x.id!==c.id&&x.cell&&!x.off&&!x.inHand);
+  const body=c.actor?`<dl class="row"><dt>Will</dt><dd>${esc(c.rows.will)}</dd><dt>Can</dt><dd>${esc(c.rows.can)}</dd><dt>Red line</dt><dd>${esc(c.rows.red)}</dd><dt>Estimated next</dt><dd>${esc(c.rows.next)}</dd></dl>`:(c.body?`<p style="font:400 17px/1.4 var(--serif);margin:6px 0 10px">${esc(c.body)}</p>`:'');
+  dialog(c.title,`<p class="note" style="display:flex;gap:6px;align-items:center;margin:0 0 6px;color:var(--${c.layer==='PROVEN'?'gold':'text'})">${ic(c.layer)} <b>${LM[c.layer].n}</b> — ${LM[c.layer].h} This is where the card comes from, not whether it is true.</p>${body}
+   <dl class="row"><dt>${c.layer==='PROVEN'?'Source':c.layer==='SAID'?'Said by':'Origin'}</dt><dd>${own}${c.layer==='PROVEN'?` <button class="chip" data-act="opensrc">Open source</button>`:''}</dd><dt>Laid by</dt><dd>${esc(byLabel(c))}${c.copyOf?' (copy; origin stays with the author)':''}</dd>
+   <dt>Connections</dt><dd>${lk.length?lk.map(l=>`<div>${l.dir==='out'?`this ${LINKT[l.type]}`:`${LINKT[l.type]} this:`} <a href="#" data-card="${l.id}" style="color:var(--gold)">${esc(S.cards[l.id].title)}</a></div>`).join(''):'None yet. Neighbours in a row are not linked until you say so.'}</dd></dl>
+   <div class="acts"><button class="btn main" data-act="take" data-id="${c.id}">Take into my deck</button>
+   <button class="btn" data-act="star" data-id="${c.id}" aria-pressed="${starred}">${starred?'★ My stance set':'☆ Set my stance'}</button>
+   <button class="btn" data-act="connform" data-id="${c.id}">Connect to another card</button>${c.jump?`<button class="btn" data-act="jump" data-f="${c.jump}">Jump to Map: Strait of Hormuz</button>`:''}</div>
+   <p class="note" style="margin-top:10px">${starred?'Your stance is private. It stays with you, not on the card.':'Only you can set a stance. It is private and never sits on the card.'}</p><div id="conn"></div>`);
+}
+function connForm(id){
+  const c=S.cards[id],cs=cardsOf(c.field).filter(x=>x.id!==id&&x.cell&&!x.off&&!x.inHand);
+  $('#conn').innerHTML=`<form id="cf" class="fld" style="border-top:1px solid var(--line);padding-top:10px"><div class="opts">${Object.entries(LINKT).map(([k,v],i)=>`<label class="opt"><input type="radio" name="t" value="${k}" ${i?'':'checked'}>${v}</label>`).join('')}</div>
+   <select name="to" aria-label="Connect to">${cs.map(x=>`<option value="${x.id}">${esc(x.title)}</option>`).join('')}</select><div class="acts"><button class="btn main">Draw connection</button></div></form>`;
+  $('#cf').onsubmit=e=>{e.preventDefault();const d=Object.fromEntries(new FormData(e.target));if(!d.to)return;c.links.push({type:d.t,to:d.to});
+    addMove('you',`${nameOf('you')} linked “${c.title}” ${LINKT[d.t]} “${S.cards[d.to].title}”`,[]);closeDlg();renderAll();$$('[data-card="'+id+'"],[data-card="'+d.to+'"]').forEach(e=>e.classList.add('rel'));setTimeout(()=>$$('.rel').forEach(e=>e.classList.remove('rel')),1600);toast('Connected. It shows in the move log.')};
+}
+function dialog(title,html,mount,wide){const d=$('#dlg');$('#dt').textContent=title;$('#db').innerHTML=html;d.classList.toggle('wide',!!wide);if(!d.open)d.showModal();mount&&mount();$('#db').scrollTop=0}
+function closeDlg(){const d=$('#dlg');if(d.open)d.close()}
+function takeCard(c,from){const id='t'+(++S.k);S.cards[id]={...c,id,copyOf:c.copyOf||c.id,links:[],inHand:true,fromHand:true,off:false,placed:false,cell:null,field:S.field,fresh:true,t:0};S.takes++;return id}
+
+function tool(t){
+  const f=F_(),own=cardsOf(f.id).filter(c=>c.cell&&!c.off&&!c.inHand);
+  if(t==='ping')return openPing();
+  if(t==='trade')return dialog('Trade cards',`<p class="note">Offer a card, take a card. The origin stays with the author, always.</p><div class="two"><div><h3>Offered to you</h3><ul class="list" style="margin-top:8px">${OFFERS.map((o,i)=>`<li class="li"><span>${esc(o.t)}<small>${LM[o.l].n} · ${o.m} · origin ${o.o}</small></span><button data-act="takeoffer" data-i="${i}">Take</button></li>`).join('')}</ul></div>
+   <div><h3>Wanted</h3><ul class="list" style="margin-top:8px">${WANTS.map((w,i)=>`<li class="li"><span>${w[0]} wants ${esc(w[1])}</span>${w[2]?`<button data-act="offer" data-i="${i}" ${S.offered.has(i)?'disabled':''}>${S.offered.has(i)?'Offered':'I have one'}</button>`:`<small>No matching card yet</small>`}</li>`).join('')}</ul></div></div>
+   <h3 style="margin-top:16px">Your shelf</h3><p class="note">${S.offered.size?[...S.offered].map(i=>esc(S.cards[WANTS[i][2]].title)).join(', ')+' on offer. Your name stays on them.':'Nothing on offer yet. Answer a request to put a card on the shelf.'}</p>`,null,1);
+  if(t==='oracle'){const q=f.question,a=ORACLE[f.id]||['Needs a source first.','Unclear.','Depends on the lens.','Hard to say.','Not enough to go on.'];
+    return dialog('5 AI models say',`<p class="note">Question: <b style="color:var(--text)">${esc(q)}</b><br>Five models answered. This is its own layer, separate from your cards. It is not a verdict of the board.</p><div class="oracle">${a.map((x,i)=>`<button class="flip" data-act="flip" aria-label="Turn over model ${'ABCDE'[i]}"><i><span class="fb">${'ABCDE'[i]}</span><span class="ff"><b>Model ${'ABCDE'[i]}</b>${esc(x)}<br><span class="chip" data-act="oraclecard" data-i="${i}" style="display:inline-block;margin-top:8px;cursor:pointer">Take as said</span></span></i></button>`).join('')}</div>`,null,1)}
+  if(t==='community')return dialog('Community',`<div class="two"><div><h3>Tables</h3><ul class="list" style="margin-top:8px">${TABLES.map((x,i)=>`<li class="li"><span>${esc(x[0])}<small>${esc(x[1])}</small></span><button data-act="join" data-i="${i}">${S.joined.has(x[0])?'Seated':'Observe'}</button></li>`).join('')}</ul></div>
+   <div><h3>Shared wiki</h3><p class="note">Built from cards members traded. Each keeps its author.</p><ul class="list" style="margin-top:8px">${WIKI.map(w=>`<li class="li"><span>${esc(w[0])}<small>${w[1]} · ${w[2]} · ${w[3]}</small></span></li>`).join('')}</ul></div></div>`,null,1);
+  if(t==='member'){const mine=Object.values(S.cards).filter(c=>c.by==='you'&&c.cell&&!c.off&&(c.src||c.said)).length,sourced=Object.values(S.cards).filter(c=>c.cell&&!c.off&&!c.inHand&&c.layer==='PROVEN').length;
+    return dialog('Membership',`<div style="display:flex;gap:14px;align-items:center"><div class="por p-you" style="width:64px;height:64px;font-size:30px">K</div><div><div class="big">#1 Kane</div><div class="note">Member #2 is Chris. Numbers are never reissued.</div></div></div>
+   <div class="stats"><div class="stat"><span>Standing: cards with a source</span><b class="big">${sourced}</b></div><div class="stat"><span>Takes</span><b class="big">${S.takes}</b></div><div class="stat"><span>Origin points (others took your cards)</span><b class="big">${S.taken}</b></div></div>
+   <p class="note">Standing counts cards with a source, takes, and origin points. It never counts whether a card is right or wrong.</p>
+   <ul class="list" style="margin-top:12px"><li class="li"><span><b>Board</b><small>Free. Three fields, your agents, your rules.</small></span><span class="note">Yours</span></li><li class="li"><span><b>Exchange</b><small>Optional. Trade cards, join community tables.</small></span><span class="note">On</span></li><li class="li"><span><b>Premium</b><small>Private Executive, built in from the start.</small></span><span class="note">Included</span></li></ul>`)}
+}
+function openPing(){
+  const pool=Object.values(S.cards).filter(c=>c.field!==S.field&&!c.copyOf&&!c.inHand&&c.cell&&!c.actor).concat(Object.values(S.cards).filter(c=>c.copyOf&&c.field!==S.field));
+  const own=[...S.deck].map(i=>S.cards[i]).filter(Boolean);const all=[...new Set([...own,...pool])];
+  dialog('Ping a card',`<label class="fld">Search your knowledge and the shared wiki<input id="pq" placeholder="Try: insurance, trial, banks" autocomplete="off"></label><ul class="list" id="pr"></ul>`,()=>{
+    const draw=q=>{const r=all.filter(c=>(c.title+' '+(c.body||'')+' '+byLabel(c)).toLowerCase().includes(q.toLowerCase()));
+      $('#pr').innerHTML=r.length?r.map(c=>`<li class="li"><span>${esc(c.title)}<small>${LM[c.layer].n} · ${esc(byLabel(c))} · from ${esc(F[c.field]?F[c.field].name:'')}${S.deck.has(c.id)?' · in your deck':''}</small></span><button data-act="ping" data-id="${c.id}">Draw to hand</button></li>`).join(''):'<li class="note">No card matches. Try a shorter word, or write a new card from your hand.</li>'};
+    draw('');$('#pq').oninput=e=>draw(e.target.value);$('#pq').focus()});
+}
+function newField(){
+  const st={u:'Debate',z:'Supports, Refutes',seats:[['a1','Research','agent'],['a2','Rebuttal','agent']]};
+  let step=0;const un=[['Debate','Two sides of one claim.','Supports, Refutes'],['Map','Actors around one focus.','Actors, Focus, Evidence'],['Chart','A time line on top, zones below.','Demand, Supply, Macro'],['Blank','Open slots, your zones.','Zone 1, Zone 2']];
+  const draw=()=>{
+    const body=[()=>`<div class="under-pick">${un.map((u,i)=>`<label class="up"><input type="radio" name="u" value="${u[0]}" ${st.u===u[0]?'checked':''}><b>${u[0]}</b><span>${u[1]}</span></label>`).join('')}</div>`,
+      ()=>`<label class="fld">Name of the field<input name="name" value="${esc(st.name||'')}" placeholder="e.g. Heat pumps" maxlength="30"></label><label class="fld">Zones, separated by commas<input name="z" value="${esc(st.z)}"></label><p class="note">Each zone becomes a place on the board with open slots.</p>`,
+      ()=>`<p class="note">Seats at the table and who moves for each. Roles are the part each plays.</p><div class="list">${[['you','You','human']].concat(st.seats).map((s,i)=>`<div class="li"><span>${esc(s[1])}</span><select name="m${i}" ${i?'':'disabled'}>${['human','agent','model'].map(m=>`<option ${s[2]===m?'selected':''}>${m}</option>`).join('')}</select></div>`).join('')}</div><button type="button" class="btn" data-act="addseat" style="margin-top:8px">+ Add a seat</button>`,
+      ()=>`<p>You are about to open <b>${esc(st.name||'New field')}</b> on the <b>${st.u}</b> underlay with ${st.z.split(',').filter(x=>x.trim()).length} zones and ${st.seats.length+1} seats.</p><p class="note">Seats: ${['You (human)'].concat(st.seats.map(s=>`${s[0].toUpperCase()} ${s[1]} (${s[2]})`)).join(', ')}.</p>`][step]();
+    $('#db').innerHTML=`<div class="steps">${['Underlay','Zones','Seats and movers','Open'].map((s,i)=>`<span class="${i===step?'on':''}">${i+1}. ${s}</span>`).join('')}</div>${body}<div class="acts"><button class="btn" data-act="nfback" ${step?'':'disabled'}>Back</button><button class="btn main" data-act="nfnext">${step===3?'Open the field':'Next'}</button></div>`;
+    $$('input[name=u]').forEach(r=>r.onchange=()=>{st.u=r.value;st.z=un.find(x=>x[0]===r.value)[2]});
+  };
+  newField.st=st;newField.step=()=>step;newField.go=d=>{const n=$('#db input[name=name]');if(n)st.name=n.value;const z=$('#db input[name=z]');if(z)st.z=z.value;
+    $$('#db select').forEach((s,i)=>{if(i&&st.seats[i-1])st.seats[i-1][2]=s.value});
+    step=Math.max(0,Math.min(3,step+d));draw()};
+  dialog('New field','',draw,1);
+}
+function createField(st){
+  const id='x'+(++S.k),nm=(st.name||'New field').trim()||'New field',zs=st.z.split(',').map(x=>x.trim()).filter(Boolean).slice(0,6);
+  const seatIds=['you'];st.seats.forEach((s,i)=>{const sid='s'+id+i;SEATS[sid]={n:s[0].toUpperCase(),s:`${s[2][0].toUpperCase()+s[2].slice(1)} · ${s[1]}`,p:'x',mover:s[2]};seatIds.push(sid)});
+  F[id]={id,name:nm,type:'zones',underlay:st.u,title:nm,seats:seatIds,times:['Start','Now'],cells:zs.map((z,i)=>({id:id+'z'+i,accept:null,label:z})),question:`What do you make of ${nm}?`};
+  S.order.push(id);S.time[id]=1;S.turn[id]=0;S.round[id]=1;S.moves[id]=[];S.fire[id]=[];S.rules[id]=[];
+  say(id,'you',`New field: ${nm}.`);S.field=id;closeDlg();renderAll();toast('Field opened. Lay the first card.');
+}
+async function endTurn(){
+  const f=F_();if(S.busy)return;S.busy=true;renderSeats();
+  for(let i=1;i<f.seats.length;i++){S.turn[f.id]=i;renderSeats();await sleep(750);const a=f.seats[i],lm=S.last[f.id];
+    say(f.id,a,lm?`Seen: ${lm}. ${a==='a2'?'I will look for what stands on the other side.':'I will look for a source that sits next to it.'}`:'Nothing new from me this turn.');S.last[f.id]=null;renderSeats();renderRail()}
+  await sleep(500);S.turn[f.id]=0;S.round[f.id]++;S.busy=false;renderAll();
+}
+const ROUNDS={claim:{roles:{you:'Moderator',a1:'Plays the Córdoba side',a2:'Plays the São Paulo side'},r:[[['a1','Córdoba side: 1 of 50 treated needed intensive care, 13 of 26 untreated.','c1'],['a2','São Paulo side: median 7 days in hospital with vitamin D3, 7 with placebo.','c7']],[['a1','Late dosing: São Paulo began 10.3 days after symptoms.','c3'],['a2','Córdoba was open, with no placebo.','c8']]]},
+ map:{roles:{you:'Observes, sets the stance',a1:'Plays USA, Saudi Arabia',a2:'Plays Iran, Russia',a3:'Plays China, Israel'},r:[[['a1','USA: tanker escort.','m_usa'],['a2','Iran: stop a tanker.','m_iran'],['a3','China: offers mediation.','m_china']],[['a1','Saudi Arabia: raises output.','m_saudi'],['a2','Russia: supports price via cuts.','m_russia'],['a3','Israel: warns Iran covertly.','m_israel']]]},
+ gold:{roles:{you:'Moderator',a1:'Plays Demand',a2:'Plays Supply'},r:[[['a1','Demand: central banks keep buying.','g1'],['a2','Supply: mine output is flat.','g5']],[['a1','Demand: ETF inflows are at a record.','g2'],['a2','Supply: with output flat, the price leans on demand.','g5']]]}};
+Object.entries(ROUNDS).forEach(([k,v])=>F[k].roles=v.roles);
+function playRound(){
+  const f=F_(),def=ROUNDS[f.id];if(!def){toast('Role play needs roles. Add them when you set up the field.');return}
+  const r=def.r[(S.round[f.id]-1)%def.r.length];const ids=[];
+  r.forEach(x=>{say(f.id,x[0],x[1]);ids.push(x[2])});
+  addMove('a1',`Round ${S.round[f.id]}: ${r.map(x=>nameOf(x[0])).join(', ')} played`,[]);
+  ids.forEach(i=>S.cards[i].pulse=true);S.round[f.id]++;renderAll();
+}
+
+/* ---------- events ---------- */
+document.addEventListener('click',e=>{
+  const a=e.target.closest('[data-act]'),cd=e.target.closest('[data-card]'),sl=e.target.closest('[data-slot]');
+  if(a){const act=a.dataset.act;
+    if(act==='close')return closeDlg();
+    if(act==='tab'){S.field=a.dataset.f;S.sel=null;renderAll();return window.scrollTo(0,0)}
+    if(act==='newfield')return newField();
+    if(act==='nfnext'){if(newField.step()===3){newField.go(0);return createField(newField.st)}return newField.go(1)}
+    if(act==='nfback')return newField.go(-1);
+    if(act==='addseat'){newField.go(0);const n=newField.st.seats.length+1;newField.st.seats.push(['a'+n,'Agent '+n,'agent']);return newField.go(0)}
+    if(act==='tool')return tool(a.dataset.t);
+    if(act==='theme'){S.theme={auto:'light',light:'dark',dark:'auto'}[S.theme];const r=document.documentElement;S.theme==='auto'?r.removeAttribute('data-theme'):r.dataset.theme=S.theme;a.textContent=S.theme[0].toUpperCase()+S.theme.slice(1);return}
+    if(act==='role'){S.role=!S.role;toast(S.role?'Role play on. Agents play the actors, one round at a time.':'Role play off.');return renderAll()}
+    if(act==='playround')return playRound();
+    if(act==='endturn')return endTurn();
+    if(act==='skipintro'){S.first=false;S.entering=true;return renderAll()}
+    if(act==='pile'){S.moves[S.field].some(m=>m.undone);return $('#logsec').scrollIntoView({behavior:'smooth',block:'center'})}
+    if(act==='takeback'){const m=S.moves[S.field][+a.dataset.i];m.undone=!m.undone;
+      m.ids.forEach(id=>{const c=S.cards[id];if(c.fromHand)c.inHand=m.undone,c.off=false;else c.off=m.undone;if(!m.undone)c.fresh=true});
+      toast(m.undone?'Taken back. It waits in the discard pile.':'Replayed.');return renderAll()}
+    if(act==='rule'){const r=S.rules[S.field][+a.dataset.i];r[1]={ap:'no',no:'un',un:'ap'}[r[1]];return renderRail()}
+    if(act==='chip'){const c=CHIPS[S.field][+a.dataset.i];say(S.field,'you',c[2]);renderRail();setTimeout(()=>{say(S.field,c[1],c[3]);renderSeats();renderRail()},650);return}
+    if(act==='take'){const c=S.cards[a.dataset.id];S.deck.add(c.id);takeCard(c);S.last[S.field]=null;closeDlg();renderAll();return toast('Taken into your deck and hand. The origin stays with '+byLabel(c)+'.')}
+    if(act==='star'){const id=a.dataset.id;S.stance.has(id)?S.stance.delete(id):S.stance.add(id);openCard(id);return renderSeats()}
+    if(act==='connform')return connForm(a.dataset.id);
+    if(act==='jump'){closeDlg();S.field=a.dataset.f;renderAll();return window.scrollTo(0,0)}
+    if(act==='opensrc')return toast('The original opens in a new tab in the live product.');
+    if(act==='flip')return a.classList.toggle('on');
+    if(act==='oraclecard'){{const i=+a.dataset.i;const id='o'+(++S.k);C(id,S.field,'Model '+'ABCDE'[i],ORACLE[S.field][i],'SAID','Model '+'ABCDE'[i],null,0,{said:'Model '+'ABCDE'[i]+', one of five models asked',inHand:true,fromHand:true,placed:false,fresh:true});closeDlg();renderAll();return toast('In your hand as a said card, not as a verdict.')}}
+    if(act==='join'){const t=TABLES[+a.dataset.i][0];S.joined.has(t)?0:S.joined.add(t);a.textContent='Seated';return toast('You are watching this table as a guest. Joining asks its host.')}
+    if(act==='takeoffer'){const o=OFFERS[+a.dataset.i];const id='o'+(++S.k);C(id,S.field,o.t,'',o.l,o.o,null,0,{src:o.src,said:o.said,inHand:true,fromHand:true,fresh:true,copyOf:'ext'+a.dataset.i});S.deck.add(id);S.takes++;a.disabled=true;a.textContent='Taken';renderHand();return toast('In your hand. Origin stays with '+o.o+'.')}
+    if(act==='offer'){S.offered.add(+a.dataset.i);S.taken++;a.disabled=true;a.textContent='Offered';return toast('On your shelf. Your name stays on the card.')}
+    if(act==='ping'){const c=S.cards[a.dataset.id];takeCard(c);S.takes--;closeDlg();renderAll();return toast('Drawn to your hand. It counts once with its origin.')}
+    return;
+  }
+  if(sl){const id=sl.dataset.slot;if(S.sel)return place(S.sel,id);return openLay(id,null)}
+  if(cd){if(cd.closest('dialog')&&e.target.closest('a'))e.preventDefault();return openCard(cd.dataset.card)}
+});
+document.addEventListener('submit',e=>{
+  const f=e.target.closest('form[data-act]');if(!f)return;e.preventDefault();
+  if(f.dataset.act==='send'){const v=$('#sayin').value.trim();if(!v)return;say(S.field,'you',v);const f2=F_(),to=/@A2/i.test(v)&&f2.seats.includes('a2')?'a2':/@A3/i.test(v)&&f2.seats.includes('a3')?'a3':'a1';
+    renderRail();setTimeout(()=>{say(f2.id,to,to==='a2'?'Understood. I will look for the strongest card on the other side and lay it with its origin.':to==='a3'?'Understood. I will play it through as the actor and show my reasoning.':'Understood. I will look for a source and lay it as a card, proven only if I can link the original. What is true stays your call.');renderSeats();renderRail()},650)}
+  if(f.dataset.act==='addrule'){const v=$('#rulein').value.trim();if(!v)return;S.rules[S.field].push([v,'un']);renderRail()}
+});
+document.addEventListener('input',e=>{if(e.target.id==='tslide'){S.time[S.field]=+e.target.value;const sel=S.sel;renderBoard();renderSeats();$('#timebar output').textContent=F_().times[S.time[S.field]];renderHand()}});
+document.addEventListener('mouseover',e=>{const c=e.target.closest('.card[data-card]');$$('.card.rel').forEach(x=>x.classList.remove('rel'));if(!c||c.closest('dialog'))return;const o=S.cards[c.dataset.card];links(o).forEach(l=>$$(`[data-card="${l.id}"]`).forEach(x=>x.classList.add('rel')))});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'&&S.sel){S.sel=null;renderHand();markValid()}
+  if((e.key==='Enter'||e.key===' ')&&e.target.matches('.card,.hcard,.flag')){e.preventDefault();e.target.click()}
+});
+
+/* pointer drag from hand */
+let drag=null;
+document.addEventListener('pointerdown',e=>{
+  const h=e.target.closest('.hcard');if(!h||h.classList.contains('locked'))return;
+  drag={id:h.dataset.hand,el:h,x:e.clientX,y:e.clientY,on:false,ghost:null,pid:e.pointerId};
+});
+document.addEventListener('pointermove',e=>{
+  if(!drag)return;
+  if(!drag.on&&Math.hypot(e.clientX-drag.x,e.clientY-drag.y)>8){drag.on=true;S.sel=drag.id;const g=drag.el.cloneNode(true);g.className='hcard ghost'+(drag.el.classList.contains('blank')?' blank':'');g.style.cssText='';document.body.appendChild(g);drag.ghost=g;drag.el.style.opacity='.35';markValid()}
+  if(drag.on){drag.ghost.style.left=(e.clientX-64)+'px';drag.ghost.style.top=(e.clientY-70)+'px';
+    $$('.cell.hot').forEach(x=>x.classList.remove('hot'));const t=document.elementFromPoint(e.clientX,e.clientY),c=t&&t.closest('.cell.valid');c&&c.classList.add('hot')}
+});
+document.addEventListener('pointerup',e=>{
+  if(!drag)return;const d=drag;drag=null;
+  if(d.on){d.ghost.style.display='none';const t=document.elementFromPoint(e.clientX,e.clientY),c=t&&t.closest('.cell.valid');d.ghost.remove();$$('.cell.hot').forEach(x=>x.classList.remove('hot'));
+    if(c){place(d.id,c.dataset.cell)}else{S.sel=null;renderHand();markValid()}
+  }else{S.sel=S.sel===d.id?null:d.id;renderHand();markValid();
+    if(S.sel)toast(S.first?'Now tap the glowing slot.':'Tap a glowing slot to lay it, or drag.')}
+});
+document.addEventListener('pointercancel',()=>{if(drag&&drag.ghost)drag.ghost.remove();drag=null;S.sel=null;renderHand();markValid()});
+document.addEventListener('dblclick',e=>{const h=e.target.closest('.hcard[data-hand]');if(h&&S.cards[h.dataset.hand])openCard(h.dataset.hand)});
+
+renderAll();
+</script>
+</body>
+</html>

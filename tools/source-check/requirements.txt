@@ -1,0 +1,5 @@
+requests
+lxml
+rapidfuzz
+pypdfium2
+pyyaml

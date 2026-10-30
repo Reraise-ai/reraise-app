@@ -1,0 +1,762 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>reraise - the fireside room</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Alegreya:ital,wght@0,400;0,500;0,700;1,400;1,500&family=Alegreya+Sans:wght@400;500;700&family=Caveat:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --wall:#d8cbb3;--wall2:#c9baa0;--wood:#7b4a2a;--wood2:#5a3420;--wood3:#8f5c36;
+  --felt:#2f6b4f;--felt2:#2a6148;--brass:#b8924a;--brass2:#8a6a2c;--brass3:#e2c27d;
+  --paper:#f7efdc;--paper2:#ece0c4;--ink:#2b2118;--muted:#6d5b46;
+  --rtext:#2b2118;--rmuted:#5e4d3a;--panel:#e7dac0;--panel2:#d9c9a8;
+  --glow:rgba(255,236,190,.0);--win:rgba(255,248,225,.55);
+  --proven:#8a6a2c;--said:#7a4b3a;--exp:#2d4f7c;
+  --yes:#2f6b3a;--no:#9a3b2c;--unk:#7a6a50;
+  --grain:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .13 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --wgrain:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300'%3E%3Cfilter id='w'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.012 .35' numOctaves='3' seed='4'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23w)'/%3E%3C/svg%3E");
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){
+  --wall:#1b120d;--wall2:#120b08;--wood:#4a2b19;--wood2:#2f1b10;--wood3:#5d3822;
+  --felt:#1b4533;--felt2:#173b2c;--paper:#efe2c4;--paper2:#e0d0ac;
+  --rtext:#ecdcbc;--rmuted:#b9a583;--panel:#2b1c12;--panel2:#38251a;
+  --glow:rgba(255,150,60,.34);--win:rgba(0,0,0,0);
+  --yes:#2f6b3a;--no:#9a3b2c}}
+:root[data-theme=dark]{
+  --wall:#1b120d;--wall2:#120b08;--wood:#4a2b19;--wood2:#2f1b10;--wood3:#5d3822;
+  --felt:#1b4533;--felt2:#173b2c;--paper:#efe2c4;--paper2:#e0d0ac;
+  --rtext:#ecdcbc;--rmuted:#b9a583;--panel:#2b1c12;--panel2:#38251a;
+  --glow:rgba(255,150,60,.34);--win:rgba(0,0,0,0)}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;font-family:'Alegreya Sans',system-ui,sans-serif;font-size:16px;color:var(--rtext);background:var(--wall);overflow-x:hidden}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--brass3);outline-offset:2px}
+.room{position:relative;min-height:100vh;background:
+  linear-gradient(115deg,var(--win) 0,transparent 38%),
+  repeating-linear-gradient(90deg,transparent 0 118px,rgba(0,0,0,.05) 118px 120px),
+  linear-gradient(var(--wall),var(--wall2));isolation:isolate}
+.room::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+  background:radial-gradient(ellipse 60% 55% at 0% 100%,var(--glow),transparent 70%),radial-gradient(ellipse 40% 40% at 100% 100%,var(--glow),transparent 70%);
+  animation:flame 5s ease-in-out infinite alternate}
+@keyframes flame{from{opacity:.82}to{opacity:1}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+.wrap{max-width:1440px;margin:0 auto;padding:0 16px 40px}
+
+/* mantel */
+.mantel{position:sticky;top:0;z-index:20;background:linear-gradient(var(--wood3),var(--wood) 40%,var(--wood2));border-bottom:3px solid var(--brass2);box-shadow:0 6px 16px rgba(0,0,0,.35);}
+.mantel::after{content:"";position:absolute;inset:0;background:var(--wgrain);opacity:.5;pointer-events:none}
+.mantel .in{max-width:1440px;margin:0 auto;padding:10px 16px 0;display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap;position:relative;z-index:1}
+.plaque{background:linear-gradient(135deg,var(--brass3),var(--brass) 45%,var(--brass2));color:#2b1d0a;border-radius:4px;padding:5px 16px 6px;box-shadow:inset 0 1px 0 rgba(255,255,255,.5),inset 0 -2px 3px rgba(0,0,0,.3),0 2px 4px rgba(0,0,0,.4);margin-bottom:10px;line-height:1}
+.plaque b{display:block;font:italic 700 28px 'Alegreya',serif;letter-spacing:.01em}
+.plaque small{display:block;font-size:11.5px;margin-top:3px;font-weight:500}
+.doors{display:flex;gap:6px;align-items:flex-end;flex:1;min-width:0;flex-wrap:wrap}
+.door{position:relative;border:0;padding:9px 16px 8px;min-width:96px;background:linear-gradient(#6a3f24,#4b2a17);color:#f1e2c2;font:500 15px 'Alegreya Sans';border-radius:34px 34px 0 0;border:2px solid var(--brass2);border-bottom:0;text-align:left;box-shadow:inset 0 2px 3px rgba(255,255,255,.12)}
+.door::after{content:"";position:absolute;right:9px;top:50%;width:7px;height:7px;border-radius:50%;background:radial-gradient(circle at 35% 30%,var(--brass3),var(--brass2));box-shadow:0 1px 2px #000}
+.door span{display:block;font-size:11.5px;opacity:.8}
+.door[aria-selected=true]{background:linear-gradient(#f3e3bd,#e2cf9f);color:#2b2118;padding-top:12px}
+.door.new{background:transparent;border-style:dashed;color:#f1e2c2}
+.tools{display:flex;gap:8px;margin-bottom:10px}
+.tbtn{width:40px;height:40px;border-radius:50%;border:2px solid var(--brass2);background:radial-gradient(circle at 35% 30%,var(--brass3),var(--brass) 55%,var(--brass2));color:#2b1d0a;font-size:18px;box-shadow:0 2px 4px rgba(0,0,0,.45)}
+
+/* layout */
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 370px;gap:22px;margin-top:20px}
+.table-col{min-width:0}
+.fieldhead{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin:0 0 12px}
+.fieldhead h1{font:500 26px/1.15 'Alegreya',serif;margin:0;flex:1;min-width:240px}
+.fieldhead h1 em{display:block;font:italic 400 15px 'Alegreya Sans';color:var(--rmuted);margin-bottom:2px}
+.seats{display:flex;gap:6px;flex-wrap:wrap}
+.seat-tag{font-size:13px;padding:3px 10px;border-radius:12px;background:var(--panel2);border:1px solid var(--brass2)}
+.key{display:flex;gap:14px;flex-wrap:wrap;font-size:14px;margin-bottom:10px;color:var(--rmuted)}
+.key i{font-style:normal;font-weight:700;color:var(--brass2);margin-right:4px}
+:root[data-theme=dark] .key i{color:var(--brass3)}
+
+/* table surfaces */
+.tabletop{position:relative;border-radius:10px;padding:14px;border:14px solid transparent;border-image:none;
+  background:var(--grain),linear-gradient(var(--felt),var(--felt2));background-clip:padding-box;
+  box-shadow:0 0 0 14px var(--wood),0 0 0 17px var(--brass2),0 14px 28px rgba(0,0,0,.45),inset 0 0 40px rgba(0,0,0,.35);margin:14px 14px 28px;color:#f4ecd6}
+.tabletop::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  background:conic-gradient(rgba(255,255,255,.035) 25%,transparent 0 50%,rgba(255,255,255,.035) 0 75%,transparent 0) 0 0/64px 64px}
+.tabletop>*{position:relative}
+.tabletop>.mapbg{position:absolute}
+.tabletop.map{background:var(--grain),linear-gradient(#e6d8b4,#d9c79c);color:#2b2118}
+.tabletop.map::before{display:none}
+.tabletop.ledger{background:var(--grain),linear-gradient(#a9632f 0,#8f5328 100%);background-clip:padding-box;color:#f4ecd6}
+.tabletop.ledger::before{background:var(--wgrain);opacity:.6}
+.tabletop.oak{background:var(--grain),linear-gradient(#a06a3c,#85542c);background-clip:padding-box;color:#f4ecd6}
+.tabletop.oak::before{background:var(--wgrain);opacity:.6}
+.welcome{background:var(--paper);color:var(--ink);padding:14px 16px;margin:0 0 14px;border-radius:3px;box-shadow:0 6px 14px rgba(0,0,0,.4);transform:rotate(-.5deg);font:400 17px/1.4 'Alegreya',serif;max-width:640px;border-left:6px solid var(--brass)}
+.welcome strong{font-weight:700}
+.welcome button{margin-top:6px}
+.pbtn{border:0;border-radius:4px;padding:7px 14px;background:linear-gradient(var(--brass3),var(--brass));color:#2b1d0a;font-weight:700;box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 2px 3px rgba(0,0,0,.35);font-size:15px}
+.pbtn.ghost{background:transparent;color:inherit;border:1px solid currentColor;box-shadow:none;font-weight:500}
+.pbtn:active{transform:translateY(1px)}
+.pbtn[disabled]{opacity:.45;cursor:default}
+
+/* claim board */
+.cboard{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.half h2{margin:0 0 6px;font:700 17px 'Alegreya Sans';letter-spacing:.02em;display:flex;align-items:center;gap:8px}
+.half h2::after{content:"";flex:1;height:2px;background:linear-gradient(90deg,var(--brass),transparent)}
+.rank{padding:8px 0;border-top:1px solid rgba(226,194,125,.45)}
+.rank .rl{display:inline-block;font-size:13px;color:#2b1d0a;background:linear-gradient(135deg,var(--brass3),var(--brass));padding:1px 9px;border-radius:2px;margin-bottom:6px;font-weight:700}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.empty{font:italic 400 15px 'Alegreya',serif;opacity:.8;padding:6px 2px}
+.origins{margin-top:10px;background:rgba(0,0,0,.28);border:1px dashed var(--brass);border-radius:4px;padding:8px 10px;font-size:14.5px}
+
+/* cards */
+.card{position:relative;text-align:left;border:0;padding:10px 11px 8px 12px;background:var(--grain),linear-gradient(160deg,var(--paper),var(--paper2));background-blend-mode:multiply,normal;
+  color:var(--ink);border-radius:7px;min-height:104px;box-shadow:0 1px 0 #fff8 inset,0 2px 2px rgba(0,0,0,.35),0 8px 14px rgba(0,0,0,.25);transform:rotate(var(--r,0deg));transition:transform .15s,box-shadow .15s,opacity .3s;display:flex;flex-direction:column;gap:6px;font:400 15.5px/1.25 'Alegreya',serif}
+.card:hover,.card:focus-visible{transform:translateY(-3px) rotate(0deg);box-shadow:0 12px 20px rgba(0,0,0,.4)}
+.card .idx{position:absolute;top:5px;right:8px;font:700 13px 'Alegreya Sans';color:var(--brass2)}
+.card .tx{padding-right:16px;flex:1}
+.card .ft{display:flex;justify-content:space-between;align-items:center;font:500 12.5px 'Alegreya Sans';color:var(--muted)}
+.card.L-proven{border-left:5px solid var(--proven)}
+.card.L-proven::after{content:"";position:absolute;left:-2px;bottom:-2px;width:0;height:0;border:9px solid transparent;border-left-color:var(--brass);border-bottom-color:var(--brass);border-radius:0 0 0 5px;opacity:.9}
+.card.L-said{border-left:5px dotted var(--said)}
+.card.L-said .idx{color:var(--said)}
+.card.L-exp{border-left:5px solid var(--exp);background:var(--grain),linear-gradient(160deg,#eef0ef,#dfe4e3)}
+.card.L-exp .tx{font:700 19px/1.05 'Caveat',cursive;color:var(--exp)}
+.card.L-exp .idx{color:var(--exp)}
+.card.L-link{border-left:5px solid var(--felt);background:var(--grain),linear-gradient(160deg,#d6e5d8,#bfd3c3)}
+.card.hidden{display:none}
+.card.fresh{animation:land .5s}
+@keyframes land{from{transform:translateY(-26px) rotate(6deg);opacity:0}}
+.thr{display:inline-flex;gap:3px;align-items:center}
+.thr svg{width:14px;height:14px}
+
+/* map table */
+.mapbg{position:absolute;inset:0;border-radius:6px;overflow:hidden;opacity:.9}
+.mapgrid{display:grid;gap:14px}
+.actors{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.actor{position:relative;text-align:left;border:0;background:var(--grain),linear-gradient(160deg,var(--paper),var(--paper2));color:var(--ink);border-radius:5px;padding:10px 12px 10px 56px;box-shadow:0 2px 3px rgba(0,0,0,.35),0 8px 14px rgba(0,0,0,.2);font:400 15px/1.3 'Alegreya',serif;transform:rotate(var(--r,0deg));transition:transform .15s}
+.actor:hover{transform:translateY(-3px)}
+.actor .pawn{position:absolute;left:8px;top:8px;width:38px;height:56px}
+.actor h3{margin:0 0 3px;font:700 18px 'Alegreya',serif}
+.actor dl{margin:0}
+.actor dt{display:inline;font:700 12.5px 'Alegreya Sans';color:var(--brass2)}
+.actor dd{display:inline;margin:0}
+.actor dd::after{content:"";display:block}
+.actor .nx{margin-top:6px;padding:4px 8px;background:#f3df9a;border-radius:2px;font:700 16px/1.1 'Caveat',cursive;color:#4a3410;box-shadow:0 1px 2px rgba(0,0,0,.3);transform:rotate(-1deg)}
+.actor .nx::before{content:"est. next: "}
+.focusbox{position:relative;background:rgba(43,33,24,.12);border:2px dashed #8a6a2c;border-radius:50% / 12%;padding:16px;display:grid;grid-template-columns:1fr 1.2fr 1fr;gap:14px;align-items:start}
+.focusbox h2{font:700 15px 'Alegreya Sans';margin:0 0 6px;color:#4a3410}
+.fcol{display:grid;gap:10px;align-content:start}
+.fcol .cards{grid-template-columns:1fr}
+.stage-lab{font:italic 400 14px 'Alegreya';color:#4a3410;text-align:center;margin:-4px 0 0}
+.tabletop.map .empty{color:#4a3410}
+
+/* gold */
+.ledgerpaper{background:var(--grain),repeating-linear-gradient(#f4ead0 0 27px,#d6c79f 27px 28px);color:var(--ink);border-radius:3px;padding:10px 12px;box-shadow:0 4px 10px rgba(0,0,0,.4);margin-bottom:16px;transform:rotate(-.2deg)}
+.ledgerpaper h3{margin:0 0 4px;font:700 17px 'Alegreya';display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.ledgerpaper h3 span{font:500 13px 'Alegreya Sans';color:var(--muted)}
+svg.chart{width:100%;height:auto;display:block;overflow:visible}
+.flag{cursor:pointer}
+.flag:focus-visible rect.hit{stroke:var(--brass2);stroke-width:2}
+.zones{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.tray{background:linear-gradient(#5d3822,#46281a);border-radius:6px;padding:8px 10px 12px;box-shadow:inset 0 3px 8px rgba(0,0,0,.6),0 1px 0 rgba(255,255,255,.15);border:2px solid #2f1b10}
+.tray h3{margin:0;font:700 17px 'Alegreya';color:#f1e2c2}
+.tray .sub{font-size:13px;color:#d9c49b;margin-bottom:8px}
+.tray .cards{grid-template-columns:1fr}
+
+/* rail */
+.rail{position:relative;margin:0 14px 16px;padding:12px 18px 8px;border-radius:6px;background:linear-gradient(var(--wood3),var(--wood2));box-shadow:0 4px 8px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.2);border:2px solid var(--brass2)}
+.rail label{font-size:14px;display:flex;justify-content:space-between;gap:8px;color:#f1e2c2;margin-bottom:4px;flex-wrap:wrap}
+.rail label b{font-family:'Alegreya';font-size:17px;color:var(--brass3)}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:28px;background:transparent;margin:0}
+input[type=range]::-webkit-slider-runnable-track{height:8px;border-radius:4px;background:linear-gradient(#e8cf8e,#a88437 60%,#7d5f26);box-shadow:inset 0 1px 2px rgba(0,0,0,.5)}
+input[type=range]::-moz-range-track{height:8px;border-radius:4px;background:linear-gradient(#e8cf8e,#a88437 60%,#7d5f26)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;height:26px;margin-top:-9px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff3cc,var(--brass) 50%,var(--brass2));border:2px solid #5a4210;box-shadow:0 2px 4px rgba(0,0,0,.6)}
+input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff3cc,var(--brass) 50%,var(--brass2));border:2px solid #5a4210}
+.ticks{display:flex;justify-content:space-between;font-size:12px;color:#e6d4ac;margin-top:2px}
+.ticks span{flex:1;text-align:center}
+.ticks span:first-child{text-align:left}.ticks span:last-child{text-align:right}
+
+/* side */
+.side{display:grid;gap:18px;align-content:start;min-width:0}
+.panel{position:relative;background:var(--grain),linear-gradient(var(--panel2),var(--panel));border:2px solid var(--brass2);border-radius:8px;padding:12px;box-shadow:0 8px 16px rgba(0,0,0,.3)}
+.panel>h2{margin:-24px 0 8px;display:inline-block}
+.panel>h2 span{display:inline-block;background:linear-gradient(135deg,var(--brass3),var(--brass) 45%,var(--brass2));color:#2b1d0a;border-radius:3px;padding:3px 12px;font:700 14.5px 'Alegreya Sans';box-shadow:0 2px 3px rgba(0,0,0,.4)}
+.panel{margin-top:10px}
+.chairs{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+.chair{display:flex;flex-direction:column;align-items:center;font-size:12.5px;width:70px;text-align:center;line-height:1.1;opacity:.75}
+.chair svg{width:46px;height:42px}
+.chair.on{opacity:1;font-weight:700}
+.chair.on svg path.seat{fill:#a9422d}
+.chat{max-height:300px;overflow:auto;display:grid;gap:8px;padding:2px 2px 6px}
+.msg{max-width:94%;background:var(--paper);color:var(--ink);border-radius:10px 10px 10px 2px;padding:7px 10px;font:400 15px/1.3 'Alegreya',serif;box-shadow:0 1px 2px rgba(0,0,0,.4)}
+.msg b{display:block;font:700 12.5px 'Alegreya Sans';color:var(--brass2)}
+.msg.me{justify-self:end;background:#e3ecd9;border-radius:10px 10px 2px 10px}
+.msg.gone{display:none}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+.chip{border:1px solid var(--brass);background:transparent;border-radius:14px;padding:3px 10px;font-size:13.5px;color:var(--rtext)}
+.chip:hover{background:rgba(226,194,125,.25)}
+.say{display:flex;gap:6px}
+.say input{flex:1;min-width:0;padding:8px 10px;border-radius:4px;border:1px solid var(--brass2);background:var(--paper);color:var(--ink)}
+.pad{background:repeating-linear-gradient(#fbf3a5 0 25px,#e8dc7d 25px 26px);color:#3a2f12;border-radius:2px;padding:6px 10px 10px;font:600 18px/26px 'Caveat',cursive;box-shadow:0 3px 6px rgba(0,0,0,.4);position:relative}
+.pad::before{content:"";position:absolute;left:-1px;right:-1px;top:-5px;height:8px;background:repeating-linear-gradient(90deg,#444 0 4px,transparent 4px 12px);opacity:.7}
+.pad ol{list-style:none;margin:0;padding:0;max-height:210px;overflow:auto}
+.pad li{display:flex;justify-content:space-between;gap:8px;align-items:center}
+.pad li.undone span{text-decoration:line-through;opacity:.55}
+.pad button{font:500 13px 'Alegreya Sans';border:1px solid #6b5a22;background:rgba(255,255,255,.4);border-radius:3px;padding:0 7px;line-height:20px;color:#3a2f12}
+.rule{display:flex;gap:8px;align-items:center;justify-content:space-between;background:var(--paper);color:var(--ink);border-radius:2px;padding:6px 8px;margin-bottom:8px;box-shadow:0 1px 3px rgba(0,0,0,.4);font:400 15px/1.2 'Alegreya',serif;border-top:3px solid var(--no)}
+.rule.premise{border-top-color:var(--brass);font-style:italic}
+.stamp{flex:none;border:2px solid;border-radius:3px;padding:1px 7px;font:700 12.5px 'Alegreya Sans';transform:rotate(-3deg);background:transparent}
+.stamp.s-yes{color:var(--yes)}.stamp.s-no{color:var(--no)}.stamp.s-unk{color:var(--unk);border-style:dashed}
+.rule.r-yes{border-top-color:var(--yes)}.rule.r-unk{border-top-color:var(--unk)}
+.addrule{display:flex;gap:6px;margin-top:4px}
+.addrule input{flex:1;min-width:0;padding:6px 8px;border-radius:3px;border:1px dashed var(--brass);background:transparent}
+.seal{display:flex;gap:10px;align-items:flex-start}
+.wax{flex:none;width:44px;height:44px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#d65a3e,#8d2615 70%);box-shadow:0 2px 4px rgba(0,0,0,.5),inset 0 0 0 3px rgba(0,0,0,.18);display:grid;place-items:center;color:#f7d9a8;font-size:20px}
+.seal ul{margin:0;padding:0 0 0 16px;font:italic 400 15.5px/1.25 'Alegreya',serif}
+.hint{font-size:13.5px;color:var(--rmuted);margin:4px 0 0}
+
+/* furniture */
+.furniture{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-top:6px}
+.furn{border:0;text-align:center;padding:10px 6px 8px;border-radius:8px;background:var(--grain),linear-gradient(var(--wood3),var(--wood2));color:#f1e2c2;box-shadow:0 6px 10px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.18);border:2px solid var(--brass2);display:flex;flex-direction:column;align-items:center;gap:4px;font:700 14.5px/1.15 'Alegreya Sans'}
+.furn svg{width:54px;height:40px}
+.furn small{font:400 12.5px 'Alegreya Sans';opacity:.85}
+.furn:hover{transform:translateY(-2px)}
+
+/* modal */
+.veil{position:fixed;inset:0;z-index:50;background:rgba(10,5,2,.62);display:none;align-items:center;justify-content:center;padding:14px}
+.veil.open{display:flex}
+.sheet{position:relative;width:min(760px,100%);max-height:calc(100vh - 28px);overflow:auto;background:var(--grain),linear-gradient(var(--paper),var(--paper2));color:var(--ink);border-radius:6px;padding:18px 18px 16px;box-shadow:0 20px 50px rgba(0,0,0,.6);border-top:8px solid var(--wood);animation:land .3s}
+.sheet h2{margin:0 0 8px;font:700 22px 'Alegreya',serif}
+.sheet h3{margin:14px 0 6px;font:700 15px 'Alegreya Sans';color:var(--brass2)}
+.sheet .x{position:absolute;right:8px;top:6px;border:0;background:transparent;font-size:24px;line-height:1;color:var(--ink)}
+.sheet label{display:block;font-weight:700;font-size:14px;margin:8px 0 3px}
+.sheet input[type=text],.sheet select,.sheet textarea{width:100%;padding:8px 9px;border:1px solid #a58f5f;border-radius:3px;background:#fffaf0;color:var(--ink)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:12px}
+.flip{perspective:900px;margin:6px 0}
+.flip .in{position:relative;transform-style:preserve-3d;transition:transform .5s;min-height:150px}
+.flip.back .in{transform:rotateY(180deg)}
+.face{position:absolute;inset:0;backface-visibility:hidden;border-radius:8px;padding:14px 16px;box-shadow:0 4px 10px rgba(0,0,0,.35);font:400 20px/1.3 'Alegreya',serif;overflow:auto}
+.face.f{background:#fffaf0;border-left:7px solid var(--proven)}
+.face.b{transform:rotateY(180deg);background:repeating-linear-gradient(135deg,#a9422d 0 10px,#8d2e1d 10px 20px);color:#fff5dc}
+.face.b .lab{background:#fffaf0;color:var(--ink);padding:10px 12px;border-radius:4px;font-size:17px}
+.face.b .lab b{display:block;font:700 12.5px 'Alegreya Sans';color:var(--brass2);margin-bottom:2px}
+.sheet .meta{display:flex;gap:6px 14px;flex-wrap:wrap;font-size:14.5px;color:var(--muted);margin:4px 0}
+.list{margin:0;padding:0;list-style:none;display:grid;gap:6px}
+.list li{display:flex;justify-content:space-between;gap:10px;align-items:center;background:rgba(255,255,255,.55);padding:7px 9px;border-radius:3px;font:400 16px/1.25 'Alegreya',serif}
+.list li small{display:block;font:500 12.5px 'Alegreya Sans';color:var(--muted)}
+.stepper{display:flex;gap:8px;margin-bottom:6px}
+.stepper span{flex:1;text-align:center;padding:4px;border-bottom:3px solid #c9b88f;font-size:13.5px;color:var(--muted)}
+.stepper span.on{border-color:var(--brass2);color:var(--ink);font-weight:700}
+.opts{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.opt{border:2px solid #b9a373;background:rgba(255,255,255,.5);border-radius:5px;padding:10px;text-align:left}
+.opt[aria-pressed=true]{border-color:var(--yes);background:#e5efd8}
+.opt b{display:block;font:700 16px 'Alegreya'}
+.opt small{color:var(--muted)}
+.swatch{height:34px;border-radius:3px;margin-bottom:6px;box-shadow:inset 0 0 8px rgba(0,0,0,.4)}
+.wallet{background:linear-gradient(135deg,#2f1b10,#5d3822);border-radius:10px;padding:16px;color:#f1e2c2;box-shadow:0 8px 16px rgba(0,0,0,.4);border:2px solid var(--brass2);position:relative;overflow:hidden}
+.wallet .no{font:italic 700 36px 'Alegreya';color:var(--brass3)}
+.wallet .nm{font:700 20px 'Alegreya'}
+.wallet .stand{display:flex;gap:16px;flex-wrap:wrap;margin-top:8px}
+.wallet .stand div{font-size:13px}.wallet .stand b{display:block;font:700 24px 'Alegreya';color:var(--brass3)}
+.doorgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.dr{border:2px solid #7b4a2a;border-radius:40px 40px 4px 4px;padding:14px 12px 10px;background:linear-gradient(#8f5c36,#6a3f24);color:#f6e8c8;text-align:left;position:relative;min-height:110px}
+.dr b{font:700 17px 'Alegreya';display:block}
+.dr small{display:block;opacity:.85}
+.dr .pv{display:none;margin-top:8px;background:var(--paper);color:var(--ink);padding:6px 8px;border-radius:3px;font:400 15px/1.25 'Alegreya'}
+.dr.open .pv{display:block}
+.models{display:grid;gap:8px}
+.ml{background:#fffaf0;border-left:5px solid #6a7a8c;padding:8px 10px;border-radius:3px;font:400 16px/1.3 'Alegreya'}
+.ml b{display:block;font:700 12.5px 'Alegreya Sans';color:#4b5a6c}
+.toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:#2b1d0a;color:#f3e3bd;padding:8px 16px;border-radius:20px;border:1px solid var(--brass);z-index:80;font-size:14.5px;opacity:0;transition:opacity .25s;pointer-events:none;max-width:90vw}
+.toast.on{opacity:1}
+.rp{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:4px 0 8px;font-size:14.5px}
+.sw{position:relative;width:44px;height:24px;border-radius:12px;border:2px solid var(--brass2);background:#3a2615;padding:0}
+.sw::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:radial-gradient(circle at 35% 30%,var(--brass3),var(--brass2));transition:left .2s}
+.sw[aria-checked=true]{background:#2f6b3a}.sw[aria-checked=true]::after{left:22px}
+
+@media (max-width:1100px){.layout{grid-template-columns:1fr}.furniture{grid-template-columns:repeat(3,1fr)}}
+@media (max-width:720px){
+  .wrap{padding:0 12px 30px}
+  .mantel .in{padding:8px 12px 0;gap:8px}
+  .plaque{margin-bottom:6px}.plaque b{font-size:22px}
+  .tools{margin-bottom:6px;margin-left:auto}
+  .doors{order:3;flex:1 1 100%;gap:4px;flex-wrap:nowrap;overflow:hidden}
+  .door{min-width:0;flex:1;padding:8px 6px 6px;font-size:13.5px;border-radius:20px 20px 0 0}
+  .door::after{display:none}.door span{display:none}
+  .tabletop{margin:10px 6px 22px;padding:10px;border-width:9px;box-shadow:0 0 0 9px var(--wood),0 0 0 11px var(--brass2),0 10px 20px rgba(0,0,0,.4),inset 0 0 30px rgba(0,0,0,.35)}
+  .cboard{grid-template-columns:1fr}
+  .cards{grid-template-columns:repeat(auto-fill,minmax(140px,1fr))}
+  .actors{grid-template-columns:1fr}
+  .focusbox{grid-template-columns:1fr;border-radius:12px}
+  .zones{grid-template-columns:1fr}
+  .rail{margin:0 6px 14px;padding:10px 12px 6px}
+  .furniture{grid-template-columns:repeat(2,1fr)}
+  .opts,.doorgrid{grid-template-columns:1fr}
+  .fieldhead h1{font-size:22px}
+  .ticks span:nth-child(even){visibility:hidden}
+  .ticks.few span:nth-child(even){visibility:visible}
+}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="pawn" viewBox="0 0 38 56"><circle cx="19" cy="12" r="9" fill="#5a3420"/><path d="M13 22h12l3 16c3 3 7 6 7 12H3c0-6 4-9 7-12z" fill="#7b4a2a"/><rect x="3" y="49" width="32" height="5" rx="2" fill="#3b2314"/><path d="M13 22h12" stroke="#b8924a" stroke-width="2"/></symbol>
+  <symbol id="chair" viewBox="0 0 46 42"><path d="M6 6q0-4 5-4h24q5 0 5 4v18H6z" fill="#6a3f24"/><path class="seat" d="M4 22h38v10H4z" fill="#8d5a34"/><rect x="0" y="14" width="8" height="22" rx="3" fill="#7b4a2a"/><rect x="38" y="14" width="8" height="22" rx="3" fill="#7b4a2a"/><rect x="7" y="32" width="4" height="9" fill="#3b2314"/><rect x="35" y="32" width="4" height="9" fill="#3b2314"/></symbol>
+  <symbol id="thread" viewBox="0 0 14 14"><circle cx="3" cy="3" r="2.4" fill="#b8924a"/><circle cx="11" cy="11" r="2.4" fill="#b8924a"/><path d="M3 3Q10 3 8 7T11 11" stroke="#a9422d" fill="none" stroke-width="1.4"/></symbol>
+</svg>
+<div class="room" id="room">
+  <header class="mantel"><div class="in">
+    <div class="plaque"><b>reraise</b><small>Powered by Private Executive</small></div>
+    <nav class="doors" id="doors" role="tablist" aria-label="Fields (tables in the room)"></nav>
+    <div class="tools">
+      <button class="tbtn" id="themeBtn" title="Light: daylight in the room. Dark: evening at the fire." aria-label="Switch daylight or fire light">&#9788;</button>
+    </div>
+  </div></header>
+  <div class="wrap">
+    <div class="layout">
+      <section class="table-col" id="tableCol" aria-live="polite"></section>
+      <aside class="side" id="side"></aside>
+    </div>
+    <h2 style="font:700 15px 'Alegreya Sans';margin:26px 0 8px;color:var(--rmuted)">Around the room</h2>
+    <nav class="furniture" id="furniture" aria-label="Other places in the room"></nav>
+  </div>
+</div>
+<div class="veil" id="veil" role="dialog" aria-modal="true"><div class="sheet" id="sheet"></div></div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(function(){
+'use strict';
+var h=function(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})};
+var $=function(s,r){return (r||document).querySelector(s)};
+var LAYER={PROVEN:{c:'L-proven',i:'◆',n:'Proven'},SAID:{c:'L-said',i:'❝',n:'Said'},EXPERIENCE:{c:'L-exp',i:'✎',n:'Experience'},LINK:{c:'L-link',i:'↪',n:'Door'}};
+var uid=0;function nid(p){return p+(++uid)+'x'}
+
+/* ---------- data ---------- */
+var F={};
+F.claim={id:'claim',name:'Claim',sub:'Vitamin D',kind:'claim',under:'felt',me:'You',
+ q:'Vitamin D helps patients in hospital with COVID-19',
+ seats:[['You','human'],['A1 Research','agent'],['A2 Rebuttal','agent']],
+ stops:['29 Aug 2020','17 Feb 2021','Today'],pos:2,
+ cards:[
+ {id:'c1',s:'sP',l:'PROVEN',x:'Córdoba trial 2020 (calcifediol, 76 patients): 1 of 50 treated needed ICU vs 13 of 26 untreated',by:'A1',t:0,mv:'m1',src:'Córdoba hospital trial, 2020. Calcifediol, 76 patients.'},
+ {id:'c2',s:'sP',l:'PROVEN',x:'Calcifediol acts faster (measured 2014)',by:'A1',t:0,mv:'m1',src:'Measurement study, 2014, on how fast calcifediol acts compared with vitamin D3.'},
+ {id:'c3',s:'sP',l:'PROVEN',x:'São Paulo dosed late (10.3 days after symptoms)',by:'A1',t:0,mv:'m1',src:'São Paulo trial 2021, methods: days from first symptoms to the dose.'},
+ {id:'c4',s:'sP',l:'PROVEN',x:'Two different substances: calcifediol in Córdoba, vitamin D3 in São Paulo',by:'A1',t:0,mv:'m1',src:'Both trial protocols, side by side.'},
+ {id:'c5',s:'sP',l:'PROVEN',x:'Two different sizes: 76 patients in Córdoba, 240 in São Paulo',by:'A1',t:0,mv:'m1',src:'Both trial reports, patient counts.'},
+ {id:'c6',s:'sS',l:'SAID',x:'MIT recalculation: could chance explain it?',by:'A1',t:0,mv:'m1',src:'Said by an MIT recalculation of the Córdoba numbers. It traces back to the 76 Córdoba patients.'},
+ {id:'c7',s:'sS',l:'SAID',x:'3 posts on the maker\'s site (about 1 trial)',by:'A1',t:0,mv:'m1',src:'Said by the maker of the drug, on its own website. All three posts rest on the Córdoba trial.'},
+ {id:'c8',s:'sS',l:'SAID',x:'Michael Nehls 2026: slow substance, too late',by:'A1',t:0,mv:'m1',src:'Said by Michael Nehls, 2026: the substance acts slowly and was given too late.'},
+ {id:'c9',s:'rP',l:'PROVEN',x:'São Paulo trial 2021 (vitamin D3, 240 patients): median 7 days in hospital vs 7 days placebo',by:'A2',t:1,mv:'m2',src:'São Paulo trial, 2021. Vitamin D3, 240 patients, placebo-controlled.'},
+ {id:'c10',s:'rP',l:'PROVEN',x:'Córdoba was a pilot (open, no placebo)',by:'A2',t:1,mv:'m2',src:'Córdoba trial design as published: open label, no placebo group.'},
+ {id:'c11',s:'rP',l:'PROVEN',x:'The larger trial: 517 patients, no results posted',by:'A2',t:1,mv:'m2',src:'Trial registry entry: 517 patients planned, no results posted.'},
+ {id:'c12',s:'rP',l:'PROVEN',x:'The calendar: São Paulo ran first',by:'A2',t:1,mv:'m2',src:'Registry and publication dates of both trials.'},
+ {id:'c13',s:'rP',l:'PROVEN',x:'Córdoba: who stood behind it (public funds, maker\'s drug)',by:'A2',t:1,mv:'m2',src:'Funding statement of the Córdoba trial.'},
+ {id:'c14',s:'rP',l:'PROVEN',x:'São Paulo: who paid (two public funders)',by:'A2',t:1,mv:'m2',src:'Funding statement of the São Paulo trial.'},
+ {id:'c15',s:'rS',l:'SAID',x:'São Paulo authors: no support for high-dose D3',by:'A2',t:1,mv:'m2',src:'Said by the São Paulo authors in their conclusion.'}],
+ links:[{a:'c9',b:'c1',t:'refutes'},{a:'c10',b:'c1',t:'refutes'},{a:'c2',b:'c9',t:'masks'}],
+ rules:[['Copies count once','yes'],['Only advertising as proof','no'],['Compare like with like','yes'],['Intent needs a document','unk']],
+ log:[{id:'m2',who:'A2',x:'laid 7 cards'},{id:'m1',who:'A1',x:'laid 8 cards'}],
+ fire:[{w:'You',x:'Does vitamin D help people in hospital with COVID-19?'},
+  {w:'A1 Research',x:'I laid 8 cards. A trial in Córdoba: 1 of 50 treated needed intensive care, against 13 of 26 untreated. An MIT recalculation, three posts on the maker\'s website and Michael Nehls point the same way. Two more cards say why the trials may differ.',mv:'m1'},
+  {w:'A2 Rebuttal',x:'A trial in São Paulo found no reliable difference: a median of 7 days in hospital with vitamin D3, 7 days with placebo. And six of your eight cards go back to the same 76 patients in Córdoba. That is one origin, not six. I am laying 7 cards.',mv:'m2'}],
+ chips:['A2: who paid for each trial?','A1: look for a third origin','Ask both: what changed since Feb 2021?'],
+ roles:{'A1 Research':'the Córdoba side','A2 Rebuttal':'the São Paulo side'},
+ rounds:[[['A1 Research','As the Córdoba side: we gave calcifediol on admission, and 1 of 50 treated needed ICU.'],['A2 Rebuttal','As the São Paulo side: we gave D3 to 240 patients, with placebo. Median stay 7 days in both arms.']],[['A1 Research','Our doses were given early; São Paulo dosed 10.3 days after symptoms.'],['A2 Rebuttal','Our result stands as a placebo-controlled trial; yours was a pilot without placebo.']]],
+ models:['Mixed picture: one small trial points to benefit, a larger placebo-controlled one found none.','Probably no reliable benefit for hospital patients; prevention is a separate question.','Calcifediol and vitamin D3 behave differently, so the two trials do not settle each other.','Open question. Trial design differences matter more than the headline results.','I would not rely on it as a treatment; the signals do not agree.']};
+
+F.hormuz={id:'hormuz',name:'Map',sub:'Hormuz',kind:'map',under:'map',me:'K',
+ q:'Strait of Hormuz: who can do what, and what comes next',
+ seats:[['K','human'],['A1','agent'],['A2','agent'],['A3','agent']],
+ stops:['Start','Stage 1','Today'],pos:2,
+ cards:[
+ {id:'a1',s:'act',l:'SAID',nm:'USA',w:'free passage',c:'fleet, sanctions',r:'nuclear weapon',n:'tanker escort',by:'A1',t:1,mv:'n1',src:'Said in public statements and two sources; laid by A1 as an actor card.'},
+ {id:'a2',s:'act',l:'SAID',nm:'Iran',w:'leverage',c:'control the strait',r:'regime',n:'stop a tanker',by:'A1',t:1,mv:'n1',src:'Said in public statements and two sources; laid by A1 as an actor card.'},
+ {id:'a3',s:'act',l:'SAID',nm:'China',w:'cheap oil',c:'buy, veto',r:'blockade',n:'offers mediation',by:'A1',t:1,mv:'n1',src:'Said in public statements and two sources; laid by A1 as an actor card.'},
+ {id:'a4',s:'act',l:'SAID',nm:'Israel',w:'weak Iran',c:'air force, services',r:'nuclear weapon',n:'warns Iran covertly',by:'A1',t:1,mv:'n1',src:'Said in public statements and two sources; laid by A1 as an actor card.'},
+ {id:'a5',s:'act',l:'SAID',nm:'Saudi Arabia',w:'secure exports',c:'output volume',r:'attack',n:'raises output',by:'A1',t:1,mv:'n1',src:'Said in public statements and two sources; laid by A1 as an actor card.'},
+ {id:'a6',s:'act',l:'SAID',nm:'Russia',w:'high oil price',c:'veto, output',r:'isolation',n:'supports price via cuts',by:'A1',t:1,mv:'n1',src:'Said in public statements and two sources; laid by A1 as an actor card.'},
+ {id:'f0',s:'focus',l:'SAID',x:'Iran closes Hormuz, but not permanently',by:'K',t:0,src:'Said by K. This is the assumption on the table.'},
+ {id:'p1',s:'fS',l:'SAID',x:'Iran needs oil money',by:'A2',t:2,mv:'n2',src:'Said in an analyst podcast. Foreign source.',foreign:1},
+ {id:'p2',s:'fS',l:'PROVEN',x:'Tanker insurance got pricier',by:'A1',t:2,mv:'n1',src:'Insurance market report on Gulf transit premiums, laid by A1.'},
+ {id:'p3',s:'fR',l:'SAID',x:'Hormuz closed only 2–3 weeks',by:'A2',t:2,mv:'n2',src:'Said in the same analyst podcast. Deviates from your card. Foreign source.',foreign:1},
+ {id:'p4',s:'fE',l:'EXPERIENCE',x:'Own delivery 2019 delayed',by:'K',t:2,src:'Own experience of K, 2019. No source needed.'}],
+ links:[{a:'p1',b:'f0',t:'supports'},{a:'p2',b:'f0',t:'supports'},{a:'p3',b:'f0',t:'refutes'},{a:'p4',b:'f0',t:'supports'}],
+ rules:[['Premise: geopolitics beats markets','pre'],['Never only foreign sources','yes'],['Red line first','yes'],['Alternative route','unk']],
+ log:[{id:'n2',who:'A2',x:'laid 2 foreign cards'},{id:'n1',who:'A1',x:'laid 6 actor cards and 2 sources'}],
+ fire:[{w:'K',x:'Lay everything up to the next stage on the board to test my assumption "Iran does not close Hormuz permanently".'},
+  {w:'A1',x:'Done: 6 actor cards with will/can/red line, plus 2 sources. I did not touch your assumption.',mv:'n1'},
+  {w:'A2',x:'Checked an analyst transcript, laid 2 foreign cards. One deviates from your assumption.',mv:'n2'},
+  {w:'K',x:'My assumption stands. I set my stance on it.'},
+  {w:'A1',x:'Suggest stage 2 with insurers and alternative routes?'}],
+ chips:['A1: yes, start stage 2','A3: map alternative routes','A2: find a domestic source'],
+ roles:{A1:'USA',A2:'Iran',A3:'China'},
+ rounds:[[['A1','As USA: I send a tanker escort through the strait.'],['A2','As Iran: I stop one tanker to show control, without closing the strait.'],['A3','As China: I offer mediation and keep buying.']],[['A1','As USA: sanctions stay, the escort continues.'],['A2','As Iran: leverage is made; I let tankers pass again.'],['A3','As China: I welcome the pause and keep my offer open.']]],
+ models:['A permanent closure would hurt Iran too, so a limited closure is more likely.','Closure beyond weeks is unlikely; insurers and navies respond quickly.','Depends on escalation; the red line of regime survival is what matters.','Short disruptions are the historical pattern, not permanent closure.','Your assumption is plausible, but the alternative-route question is still open.']};
+
+var MONTHS=['Oct 25','Nov','Dec','Jan 26','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct 26'];
+F.gold={id:'gold',name:'Market',sub:'Gold',kind:'market',under:'ledger',me:'You',
+ q:'Gold: what moves the price?',
+ seats:[['You','human'],['A1','agent'],['A2','agent']],
+ stops:MONTHS,pos:12,
+ prices:[4000,4120,4050,4210,4380,4300,4450,4520,4610,4580,4700,4820,4790],
+ zones:[['demand','Demand','central banks, ETFs, jewellery'],['supply','Supply','mines, recycling'],['macro','Macro','real rates, dollar, geopolitics']],
+ cards:[
+ {id:'g1',s:'demand',l:'PROVEN',x:'Central banks keep buying',by:'A1',t:1,mv:'k1',flag:'Nov 25',src:'Central bank reserve statistics, published monthly.'},
+ {id:'g2',s:'demand',l:'PROVEN',x:'ETF inflows record',by:'A1',t:4,mv:'k1',flag:'Feb 26',src:'ETF holdings data from the fund providers.'},
+ {id:'g3',s:'demand',l:'SAID',x:'Analyst: 5000 by summer',by:'A2',t:6,mv:'k2',flag:'Apr 26',src:'Said by one analyst. Not a trend yet.'},
+ {id:'g4',s:'macro',l:'LINK',x:'Hormuz tension',by:'A2',t:9,mv:'k2',flag:'Jul 26',jump:'hormuz',src:'Door to the table "Map: Strait of Hormuz".'},
+ {id:'g5',s:'supply',l:'PROVEN',x:'Mine output flat',by:'A1',t:11,mv:'k1',flag:'Sep 26',src:'Mine production report, quarterly.'}],
+ links:[{a:'g3',b:'g2',t:'depends on'}],
+ rules:[['Flows beat opinions','yes'],['One analyst is not a trend','yes'],['Geopolitics premium','unk']],
+ log:[{id:'k2',who:'A2',x:'laid 2 flags'},{id:'k1',who:'A1',x:'laid 3 flags'}],
+ fire:[{w:'You',x:'What moves the gold price this year?'},
+  {w:'A1',x:'I put three flags on the curve: central banks, ETF inflows and flat mine output. All three have a source on the back.',mv:'k1'},
+  {w:'A2',x:'Two more flags: one analyst calls 5000 by summer (said, not proven), and the Hormuz tension card is a door to the other table.',mv:'k2'}],
+ chips:['A1: which flag has the weakest source?','A2: link Hormuz to Macro','Ask both: real rates?'],
+ roles:{A1:'the central banks',A2:'the ETF investors'},
+ rounds:[[['A1','As central banks: we keep adding to reserves.'],['A2','As ETF investors: we buy on dips and follow the flows.']],[['A1','As central banks: we slow down if the price runs too fast.'],['A2','As ETF investors: we hold until real rates move.']]],
+ models:['Flows from central banks and ETFs explain most of the climb.','Real rates and the dollar are the main drivers; geopolitics adds a premium.','The upward trend fits steady demand and flat supply.','Hard to separate demand from sentiment; the 5000 call is one opinion.','Mines react slowly, so demand shifts show up first in the price.']};
+
+var order=['claim','hormuz','gold'];
+var S={cur:'claim',theme:'auto',welcome:true,stance:{f0:1},deck:[],undone:{},rp:false,round:0,open:null,faces:{}, standing:{sourced:4,takes:2,origin:3},
+ offers:[
+  {id:'o1',x:'Insurance premium for Gulf transits went up (broker note)',l:'PROVEN',by:'Chris',src:'Broker market note on Gulf transit premiums.'},
+  {id:'o2',x:'Shipping agent confirmed: delivery 2019 arrived late',l:'EXPERIENCE',by:'Chris',src:'Own experience of Chris. No source needed.'},
+  {id:'o3',x:'Gold mine supply forecast: flat for the next year',l:'PROVEN',by:'Mara',src:'Public mining outlook report.'},
+  {id:'o4',x:'Hospital protocol for the timing of the first dose',l:'SAID',by:'Mara',src:'Said by a hospital pharmacist; protocol text not public.'}],
+ members:[['#1','Kane','you'],['#2','Chris','tester'],['#3','Mara','member']],
+ boards:[['Magnesium and sleep','Chris','A claim table with 9 cards'],['Rent or buy in Misiones','Mara','A market table with 6 flags'],['Wiki: swapped cards','everyone','Cards traded between members, each keeps its author']]};
+S.faces={};
+
+/* custom fields start empty */
+function cur(){return F[S.cur]}
+function cardById(id){for(var k in F){var f=F[k];for(var i=0;i<f.cards.length;i++)if(f.cards[i].id===id)return {c:f.cards[i],f:f}}return null}
+function isUndone(m){return m&&S.undone[m]}
+function visible(f,c){return !isUndone(c.mv)&&c.t<=f.pos}
+function rot(id){var n=0;for(var i=0;i<id.length;i++)n+=id.charCodeAt(i);return ((n%7)-3)*.35}
+
+/* ---------- render ---------- */
+function renderDoors(){
+  var d=$('#doors');var html='';
+  order.forEach(function(k){var f=F[k];html+='<button class="door" role="tab" id="d-'+k+'" aria-selected="'+(S.cur===k)+'" data-go="'+k+'">'+h(f.name)+'<span>'+h(f.sub)+'</span></button>'});
+  html+='<button class="door new" data-act="newfield">+ New field<span>build a table</span></button>';
+  d.innerHTML=html;
+}
+function cardHTML(c,f,extra){
+  var L=LAYER[c.l]||LAYER.SAID;
+  var n=linkCount(c.id,f);
+  var ftxt=c.by===f.me||c.by==='K'||c.by==='You'?'by '+h(c.by)+' (you)':'by '+h(c.by);
+  if(c.by==='K'||c.by==='You'){ftxt='by '+h(c.by)}
+  return '<button class="card '+L.c+(extra||'')+'" data-card="'+c.id+'" style="--r:'+rot(c.id)+'deg" aria-label="'+h(L.n+' card: '+(c.x||c.nm))+'"><span class="idx" title="'+L.n+'">'+L.i+'</span><span class="tx">'+h(c.x)+'</span><span class="ft"><span>'+ftxt+'</span>'+(n?'<span class="thr" title="'+n+' thread(s)"><svg><use href="#thread"/></svg>'+n+'</span>':'')+'</span></button>';
+}
+function linkCount(id,f){var n=0;f.links.forEach(function(l){if((l.a===id||l.b===id)&&vis2(f,l))n++});return n}
+function vis2(f,l){var a=f.cards.filter(function(c){return c.id===l.a})[0],b=f.cards.filter(function(c){return c.id===l.b})[0];return a&&b&&visible(f,a)&&visible(f,b)}
+function stack(f,slot){
+  var cs=f.cards.filter(function(c){return c.s===slot&&visible(f,c)});
+  return cs.length?'<div class="cards">'+cs.map(function(c){return cardHTML(c,f,c.fresh?' fresh':'')}).join('')+'</div>':'<div class="empty">Nothing laid here yet.</div>';
+}
+function originsHTML(f){
+  var n=f.cards.filter(function(c){return c.s[0]==='s'&&visible(f,c)&&c.mv}).length;
+  var mine=f.cards.filter(function(c){return c.s[0]==='s'&&visible(f,c)&&!c.mv}).length;
+  if(!n)return '';
+  return '<div class="origins"><b>Origins:</b> supports = 3 origins from 8 cards (Córdoba trial ×6, Measurement ×1, São Paulo trial ×1). Copies count once.'+(mine?' Plus '+mine+' of your own card'+(mine>1?'s':'')+'.':'')+'</div>';
+}
+function renderTable(){
+  var f=cur();var col=$('#tableCol');var html='';
+  html+='<div class="fieldhead"><h1><em>'+h(f.name)+(f.kind==='map'?' on the map table':f.kind==='market'?' at the counting desk':f.kind==='claim'?' on the felt board':' on your table')+'</em>'+h(f.q)+'</h1><div class="seats">'+f.seats.map(function(s){return '<span class="seat-tag">'+h(s[0])+' ('+h(s[1])+')</span>'}).join('')+'</div></div>';
+  html+='<div class="key" aria-label="Key to the corner marks"><span><i>◆</i>Proven: a source stands behind the card</span><span><i>❝</i>Said: someone claims it</span><span><i>✎</i>Experience: own, no source needed</span></div>';
+  var under=f.under==='felt'?'':f.under;
+  html+='<div class="tabletop '+under+'" id="tt">';
+  if(S.welcome&&S.cur==='claim')html+='<div class="welcome"><strong>You sit at a table.</strong> Every statement is a card. Green felt: cards for the claim first, cards against it next. Turn any card over to see its source. The board never decides what is true: <strong>you do</strong>, with your own rules in the side panels.<br><button class="pbtn" data-act="welcome">Got it</button></div>';
+  if(f.kind==='claim'){
+    html+='<div class="cboard">';
+    [['s','SUPPORTS'],['r','REFUTES']].forEach(function(sd){
+      html+='<div class="half"><h2>'+sd[1]+'</h2>';
+      [['P','Proven'],['S','Said'],['E','Experience']].forEach(function(rk){
+        html+='<div class="rank"><span class="rl">'+rk[1]+'</span>'+stack(f,sd[0]+rk[0])+'</div>'});
+      if(sd[0]==='s')html+=originsHTML(f);
+      html+='</div>'});
+    html+='</div>';
+  } else if(f.kind==='map'){
+    html+=mapSVG();
+    html+='<div class="mapgrid"><div class="actors">'+f.cards.filter(function(c){return c.s==='act'}).slice(0,3).map(function(c){return actorHTML(c,f)}).join('')+'</div>'+
+    '<p class="stage-lab">Stage 1: everything up to the next move</p>'+
+    '<div class="focusbox"><div class="fcol"><h2>Supports</h2>'+stack(f,'fS')+'</div><div class="fcol"><h2>Focus</h2>'+stack(f,'focus')+'<h2>Experience</h2>'+stack(f,'fE')+'</div><div class="fcol"><h2>Refutes</h2>'+stack(f,'fR')+'</div></div>'+
+    '<div class="actors">'+f.cards.filter(function(c){return c.s==='act'}).slice(3).map(function(c){return actorHTML(c,f)}).join('')+'</div></div>';
+  } else if(f.kind==='market'){
+    html+=chartHTML(f);
+    html+='<div class="zones">'+f.zones.map(function(z){return '<div class="tray"><h3>'+h(z[1])+'</h3><div class="sub">'+h(z[2])+'</div>'+stack(f,z[0])+'</div>'}).join('')+'</div>';
+  } else {
+    html+='<div class="zones" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">'+f.zones.map(function(z){return '<div class="tray"><h3>'+h(z[1])+'</h3><div class="sub">'+h(z[2]||'')+'</div>'+stack(f,z[0])+'</div>'}).join('')+'</div>';
+  }
+  html+='<div class="row" style="margin-top:14px"><button class="pbtn" data-act="lay">+ Lay a card</button><button class="pbtn ghost" data-act="ping">Ping a knowledge card</button></div>';
+  html+='</div>';
+  /* rail */
+  var st=f.stops,max=st.length-1;
+  html+='<div class="rail"><label for="tslider"><span>Time rail: slide to see the table on that date</span><b id="tlab">'+h(st[f.pos])+'</b></label><input type="range" id="tslider" min="0" max="'+max+'" step="1" value="'+f.pos+'"><div class="ticks'+(max<4?' few':'')+'">'+st.map(function(s){return '<span>'+h(s)+'</span>'}).join('')+'</div></div>';
+  col.innerHTML=html;
+  var sl=$('#tslider');
+  sl.addEventListener('input',function(){f.pos=+sl.value;$('#tlab').textContent=f.stops[f.pos];var sc=window.scrollY;renderTable();var n=$('#tslider');if(n)n.focus({preventScroll:true})});
+}
+function actorHTML(c,f){
+  return '<button class="actor" data-card="'+c.id+'" style="--r:'+rot(c.id)+'deg" '+(visible(f,c)?'':'hidden')+'><svg class="pawn"><use href="#pawn"/></svg><h3>'+h(c.nm)+'</h3><dl><dt>will </dt><dd>'+h(c.w)+'</dd><br><dt>can </dt><dd>'+h(c.c)+'</dd><br><dt>red line </dt><dd>'+h(c.r)+'</dd></dl><div class="nx">'+h(c.n)+'</div></button>';
+}
+function mapSVG(){
+  var s='<svg class="mapbg" viewBox="0 0 600 600" preserveAspectRatio="none" aria-hidden="true"><defs><pattern id="ct" width="120" height="120" patternUnits="userSpaceOnUse"><path d="M0 60Q30 20 60 60T120 60M0 100Q30 60 60 100T120 100M0 20Q30-20 60 20T120 20" fill="none" stroke="#8a6a2c" stroke-opacity=".28" stroke-width="1"/></pattern></defs><rect width="600" height="600" fill="url(#ct)"/><path d="M0 250Q150 300 260 300T360 290Q470 270 600 330V400Q470 360 360 380T230 380Q110 380 0 340Z" fill="#8fb1b8" fill-opacity=".45" stroke="#5f8790" stroke-width="2"/><path d="M300 290v90" stroke="#a9422d" stroke-dasharray="5 4" stroke-width="1.5"/></svg>';
+  return s;
+}
+function chartHTML(f){
+  var p=f.prices,W=640,Ht=220,pl=44,pr=14,pt=22,pb=26,lo=3900,hi=4900;
+  var x=function(i){return pl+(W-pl-pr)*i/(p.length-1)},y=function(v){return pt+(Ht-pt-pb)*(1-(v-lo)/(hi-lo))};
+  var g='';
+  for(var v=4000;v<=4800;v+=200){g+='<line x1="'+pl+'" x2="'+(W-pr)+'" y1="'+y(v)+'" y2="'+y(v)+'" stroke="#9c8a5e" stroke-opacity=".5" stroke-dasharray="2 3"/><text x="'+(pl-6)+'" y="'+(y(v)+4)+'" text-anchor="end" font-size="11" fill="#6d5b46">'+v+'</text>'}
+  var past=[],fut=[];
+  p.forEach(function(v,i){(i<=f.pos?past:fut).push(x(i)+','+y(v))});
+  if(past.length&&f.pos<p.length-1)fut.unshift(x(f.pos)+','+y(p[f.pos]));
+  var months='';
+  f.stops.forEach(function(m,i){if(i%3===0||i===p.length-1)months+='<text x="'+x(i)+'" y="'+(Ht-8)+'" text-anchor="middle" font-size="11" fill="#6d5b46">'+h(m)+'</text>'});
+  var flags='';
+  f.cards.forEach(function(c){
+    if(!c.flag||isUndone(c.mv))return;
+    var i=c.t,on=i<=f.pos,fx=x(i),fy=y(p[i]);
+    var col=c.l==='PROVEN'?'#8a6a2c':c.l==='SAID'?'#7a4b3a':'#2f6b4f';
+    var lab=c.x.length>22?c.x.slice(0,21)+'\u2026':c.x,w=Math.round(lab.length*5.3+14),d=i>9?-1:1;
+    flags+='<g class="flag" tabindex="0" role="button" data-card="'+c.id+'" aria-label="Flag: '+h(c.x)+'" opacity="'+(on?1:.28)+'"><line x1="'+fx+'" x2="'+fx+'" y1="'+fy+'" y2="'+(fy-34)+'" stroke="#3a2a14" stroke-width="1.5"/><rect x="'+(d>0?fx:fx-w)+'" y="'+(fy-34)+'" width="'+w+'" height="15" fill="'+col+'" rx="1"/><text x="'+(fx+d*5)+'" y="'+(fy-23)+'" font-size="10.5" fill="#fff" text-anchor="'+(d>0?'start':'end')+'">'+h(lab)+'</text><rect class="hit" x="'+(d>0?fx-4:fx-w)+'" y="'+(fy-36)+'" width="'+(w+4)+'" height="38" fill="transparent"/><circle cx="'+fx+'" cy="'+fy+'" r="4" fill="'+col+'" stroke="#fff" stroke-width="1.5"/></g>';
+  });
+  var cx=x(f.pos);
+  return '<div class="ledgerpaper"><h3>Gold, month-end price <span>USD per ounce, example series. Tap a pennant to open its card.</span></h3><svg class="chart" viewBox="0 0 '+W+' '+Ht+'" role="img" aria-label="Gold price line, October 2025 to October 2026, from 4000 to 4790 dollars per ounce">'+g+months+'<polyline points="'+fut.join(' ')+'" fill="none" stroke="#9c8a5e" stroke-width="2" stroke-dasharray="4 4"/><polyline points="'+past.join(' ')+'" fill="none" stroke="#2f4f3a" stroke-width="2.6"/><line x1="'+cx+'" x2="'+cx+'" y1="'+pt+'" y2="'+(Ht-pb)+'" stroke="#b8924a" stroke-width="3"/><text x="'+(cx>W-90?cx-6:cx)+'" y="'+(pt-6)+'" text-anchor="'+(cx>W-90?'end':'middle')+'" font-size="12" font-weight="700" fill="#2b2118">'+h(f.stops[f.pos])+': '+p[f.pos]+'</text>'+flags+'</svg></div>';
+}
+
+function seatsHTML(f,speaker){
+  return '<div class="chairs">'+f.seats.map(function(s){return '<div class="chair'+(s[0]===speaker?' on':'')+'"><svg><use href="#chair"/></svg>'+h(s[0])+'<small>'+h(s[1])+'</small></div>'}).join('')+'</div>';
+}
+function renderSide(){
+  var f=cur();var last=f.fire.filter(function(m){return !isUndone(m.mv)}).slice(-1)[0];
+  var html='';
+  html+='<section class="panel"><h2><span>Fireside conversation</span></h2>'+seatsHTML(f,last&&last.w);
+  html+='<div class="rp"><button class="sw" id="rpsw" role="switch" aria-checked="'+S.rp+'" aria-label="Role play"></button><span>Role play: agents play the actors</span>'+(S.rp?'<button class="pbtn" data-act="round">Round '+(S.round+1)+'</button>':'')+'</div>';
+  html+='<div class="chat" id="chat">'+f.fire.map(function(m){return '<div class="msg'+(m.w===f.me?' me':'')+(isUndone(m.mv)?' gone':'')+'"><b>'+h(m.w)+(S.rp&&f.roles&&f.roles[m.w]&&m.rp?' as '+h(f.roles[m.w]):'')+'</b>'+h(m.x)+'</div>'}).join('')+'</div>';
+  html+='<div class="chips">'+f.chips.map(function(c){return '<button class="chip" data-chip="'+h(c)+'">'+h(c)+'</button>'}).join('')+'</div>';
+  html+='<form class="say" id="sayf"><input id="sayi" type="text" placeholder="Speak to your agents..." aria-label="Message to the agents" autocomplete="off"><button class="pbtn">Say</button></form></section>';
+  html+='<section class="panel"><h2><span>Move log (notepad)</span></h2><div class="pad"><ol>'+f.log.map(function(m){var u=S.undone[m.id];return '<li class="'+(u?'undone':'')+'"><span>'+h(m.who)+' '+h(m.x)+'</span><button data-undo="'+m.id+'">'+(u?'put back':'take back')+'</button></li>'}).join('')+'</ol></div><p class="hint">Every move is written here. Take back a move and its cards leave the table.</p></section>';
+  html+='<section class="panel"><h2><span>Which of your rules apply</span></h2>'+f.rules.map(function(r,i){
+    if(r[1]==='pre')return '<div class="rule premise">'+h(r[0])+'</div>';
+    return '<div class="rule r-'+r[1]+'"><span>'+h(r[0])+'</span><button class="stamp s-'+r[1]+'" data-rule="'+i+'" title="Click to change your judgement">'+(r[1]==='yes'?'applies':r[1]==='no'?'does not apply':'unclear')+'</button></div>'}).join('')+
+    '<form class="addrule" id="rulef"><input id="rulei" type="text" placeholder="Pin a new rule..." aria-label="New rule"><button class="pbtn">Pin</button></form><p class="hint">Your rules, your stamp. The board shows no verdict.</p></section>';
+  var st=Object.keys(S.stance).map(function(id){var r=cardById(id);return r?r.c.x:null}).filter(Boolean);
+  html+='<section class="panel"><h2><span>My stance (private)</span></h2><div class="seal"><div class="wax">★</div>'+(st.length?'<ul>'+st.map(function(x){return '<li>'+h(x)+'</li>'}).join('')+'</ul>':'<p class="hint" style="margin:0">Open a card and press your seal on it. Only you set it, only you see it.</p>')+'</div></section>';
+  $('#side').innerHTML=html;
+  var ch=$('#chat');ch.scrollTop=ch.scrollHeight;
+}
+var FURN=[
+ ['trade','Trade cards','swap with members','<svg viewBox="0 0 54 40"><rect x="4" y="18" width="46" height="8" rx="2" fill="#e2c27d"/><rect x="8" y="26" width="38" height="12" fill="#3b2314"/><rect x="10" y="6" width="16" height="12" rx="2" fill="#f7efdc"/><rect x="30" y="8" width="14" height="10" rx="2" fill="#ece0c4"/></svg>'],
+ ['ping','Ping a knowledge card','card index box','<svg viewBox="0 0 54 40"><rect x="6" y="12" width="42" height="26" rx="2" fill="#a06a3c"/><rect x="10" y="6" width="34" height="8" fill="#f7efdc"/><rect x="21" y="22" width="12" height="6" rx="2" fill="#e2c27d"/></svg>'],
+ ['models','5 AI models say','five letters, one question','<svg viewBox="0 0 54 40"><ellipse cx="27" cy="12" rx="22" ry="5" fill="#a06a3c"/><rect x="25" y="14" width="4" height="22" fill="#5a3420"/><rect x="12" y="34" width="30" height="4" fill="#5a3420"/><rect x="14" y="4" width="10" height="8" fill="#f7efdc" transform="rotate(-8 19 8)"/><rect x="28" y="3" width="10" height="8" fill="#e0e8f0" transform="rotate(6 33 7)"/></svg>'],
+ ['wallet','Membership','your card','<svg viewBox="0 0 54 40"><rect x="4" y="8" width="46" height="28" rx="4" fill="#2f1b10" stroke="#b8924a" stroke-width="2"/><rect x="10" y="14" width="22" height="8" rx="1" fill="#e2c27d"/><circle cx="42" cy="26" r="4" fill="#b8924a"/></svg>'],
+ ['community','Community','doors to other tables','<svg viewBox="0 0 54 40"><path d="M6 38V14q8-10 16 0v24zM30 38V14q8-10 16 0v24z" fill="#8f5c36" stroke="#b8924a" stroke-width="2"/><circle cx="19" cy="26" r="2" fill="#e2c27d"/><circle cx="33" cy="26" r="2" fill="#e2c27d"/></svg>']];
+function renderFurn(){$('#furniture').innerHTML=FURN.map(function(x){return '<button class="furn" data-room="'+x[0]+'">'+x[3]+x[1]+'<small>'+x[2]+'</small></button>'}).join('')}
+function renderAll(){renderDoors();renderTable();renderSide()}
+
+/* ---------- modal ---------- */
+function openSheet(html,after){var v=$('#veil');$('#sheet').innerHTML=html+'';v.classList.add('open');var x=$('#sheet .x');if(x)x.focus();if(after)after();S.lastFocus=document.activeElement}
+function closeSheet(){$('#veil').classList.remove('open');S.open=null}
+function toast(t){var e=$('#toast');e.textContent=t;e.classList.add('on');clearTimeout(toast.t);toast.t=setTimeout(function(){e.classList.remove('on')},2200)}
+function closeBtn(){return '<button class="x" data-act="close" aria-label="Close">×</button>'}
+
+function openCard(id){
+  var r=cardById(id);if(!r)return;var c=r.c,f=r.f;
+  if(c.jump){}
+  var L=LAYER[c.l]||LAYER.SAID;S.open=id;
+  var title=c.nm?c.nm:c.x;
+  var body=c.nm?('<b>'+h(c.nm)+'</b><br>will: '+h(c.w)+'<br>can: '+h(c.c)+'<br>red line: '+h(c.r)+'<br>estimated next move: '+h(c.n)):h(c.x);
+  var lk=f.links.filter(function(l){return l.a===id||l.b===id});
+  var others=f.cards.filter(function(o){return o.id!==id&&!isUndone(o.mv)});
+  var backLab={PROVEN:'Source',SAID:'Said by',EXPERIENCE:'Experience',LINK:'Door'}[c.l];
+  var html=closeBtn()+'<h2>'+L.i+' '+h(L.n)+' card</h2><div class="meta"><span>Laid by '+h(c.by)+'</span><span>Table: '+h(f.name+' '+f.sub)+'</span>'+(c.foreign?'<span>Foreign source</span>':'')+'</div>'+
+  '<div class="flip'+(S.faces[id]?' back':'')+'" id="flip"><div class="in"><div class="face f" style="border-left-color:'+(c.l==='SAID'?'#7a4b3a':c.l==='EXPERIENCE'?'#2d4f7c':'#8a6a2c')+'">'+body+'</div><div class="face b"><div class="lab"><b>'+h(backLab)+'</b>'+h(c.src||'')+'</div></div></div></div>'+
+  '<div class="row" style="margin-top:4px"><button class="pbtn ghost" style="color:var(--ink)" data-act="flip">Turn card over (source)</button><button class="pbtn" data-act="take" data-id="'+id+'">Take into my deck</button><button class="pbtn ghost" style="color:var(--ink)" data-act="stance" data-id="'+id+'">'+(S.stance[id]?'★ Lift my seal':'☆ Press my seal')+'</button>'+(c.jump?'<button class="pbtn" data-act="jump" data-id="'+c.jump+'">Go to the Hormuz table</button>':'')+'</div>'+
+  '<h3>Threads</h3>'+(lk.length?'<ul class="list">'+lk.map(function(l){var o=cardById(l.a===id?l.b:l.a).c;return '<li><span>'+(l.a===id?'this card ':'')+'<b>'+h(l.t)+'</b>'+(l.a===id?'':' this card')+'<small>'+h(o.x||o.nm)+'</small></span></li>'}).join('')+'</ul>':'<div class="empty" style="color:var(--muted)">No threads yet. Pull one below.</div>')+
+  '<form id="linkf" class="row"><select id="lt" aria-label="Kind of thread"><option>supports</option><option>refutes</option><option>depends on</option><option>masks</option></select><select id="lo" aria-label="Other card" style="flex:1;min-width:140px">'+others.map(function(o){return '<option value="'+o.id+'">'+h((o.x||o.nm).slice(0,60))+'</option>'}).join('')+'</select><button class="pbtn">Pull thread</button></form>';
+  openSheet(html);
+}
+function layDialog(prefSlot){
+  var f=cur();var slots='';
+  if(f.kind==='claim')slots='<label for="ls">Side</label><select id="ls"><option value="s">Supports</option><option value="r">Refutes</option></select>';
+  else if(f.kind==='map')slots='<label for="ls">Where on the focus</label><select id="ls"><option value="fS">Supports</option><option value="fR">Refutes</option></select>';
+  else slots='<label for="ls">Zone</label><select id="ls">'+f.zones.map(function(z){return '<option value="'+z[0]+'">'+h(z[1])+'</option>'}).join('')+'</select>';
+  openSheet(closeBtn()+'<h2>Lay a card</h2><form id="layf"><label for="lx">What do you want to say?</label><textarea id="lx" rows="3" required></textarea>'+slots+
+  '<label for="ll">Layer</label><select id="ll"><option value="PROVEN">Proven: a source stands behind it</option><option value="SAID">Said: someone claims it</option><option value="EXPERIENCE">Experience: my own</option></select>'+
+  '<div id="srcw"><label for="lsrc" id="lsl">Source (title or link)</label><input id="lsrc" type="text"></div><div class="row"><button class="pbtn">Lay card</button><button type="button" class="pbtn ghost" style="color:var(--ink)" data-act="close">Cancel</button></div></form>',function(){
+    var ll=$('#ll');function sync(){var v=ll.value;$('#srcw').style.display=v==='EXPERIENCE'?'none':'';$('#lsl').textContent=v==='PROVEN'?'Source (title or link), required':'Who said it, and where?';}
+    ll.addEventListener('change',sync);sync();$('#lx').focus();
+  });
+}
+function slotFor(f,v,layer){
+  if(f.kind==='claim')return v+(layer==='PROVEN'?'P':layer==='SAID'?'S':'E');
+  if(f.kind==='map')return layer==='EXPERIENCE'?'fE':v;
+  return v;
+}
+function layCard(f,o){
+  var m={id:nid('m'),who:f.me,x:'laid 1 card'};
+  var c={id:nid('u'),s:o.s,l:o.l,x:o.x,by:f.me,t:f.pos,mv:m.id,src:o.src,fresh:1};
+  f.cards.push(c);f.log.unshift(m);
+  if(o.l==='PROVEN'&&o.src)S.standing.sourced++;
+  return c;
+}
+
+/* ---------- panels ---------- */
+function roomTrade(){
+  var f=cur();var mine=[];for(var k in F)F[k].cards.forEach(function(c){if((c.by===F[k].me)&&!isUndone(c.mv))mine.push(c)});
+  openSheet(closeBtn()+'<h2>Trade cards</h2><p class="hint" style="color:var(--muted)">Like a book swap: put a card on the shelf, take what you need. The card keeps its author.</p><h3>On the shelf</h3><ul class="list">'+S.offers.map(function(o){return '<li><span>'+(LAYER[o.l].i)+' '+h(o.x)+'<small>from '+h(o.by)+' - author stays '+h(o.by)+'</small></span><button class="pbtn" data-take-offer="'+o.id+'">Take</button></li>'}).join('')+'</ul>'+
+   '<h3>Offer one of yours</h3>'+(mine.length?'<form id="offf" class="row"><select id="offs" style="flex:1;min-width:160px">'+mine.map(function(c){return '<option value="'+c.id+'">'+h(c.x.slice(0,60))+'</option>'}).join('')+'</select><button class="pbtn">Put on the shelf</button></form>':'<div class="empty" style="color:var(--muted)">Lay a card first, then you can offer it.</div>')+
+   '<h3>My deck ('+S.deck.length+')</h3>'+(S.deck.length?'<ul class="list">'+S.deck.map(function(c){return '<li><span>'+h(c.x||c.nm)+'<small>author: '+h(c.by)+'</small></span></li>'}).join('')+'</ul>':'<div class="empty" style="color:var(--muted)">Empty. Open a card and choose "Take into my deck", or take one from the shelf.</div>'));
+}
+function roomPing(){
+  var f=cur();
+  openSheet(closeBtn()+'<h2>Ping a knowledge card</h2><p class="hint" style="color:var(--muted)">Search your cards and the shared drawers. Bring one to the table "'+h(f.name+' '+f.sub)+'".</p><input id="pq" type="text" placeholder="Search, for example: insurance, trial, supply" aria-label="Search cards"><ul class="list" id="pres" style="margin-top:10px"></ul>',function(){
+    function run(){
+      var q=$('#pq').value.toLowerCase();var pool=[];
+      for(var k in F)if(k!==f.id)F[k].cards.forEach(function(c){if(c.s!=='act'&&!isUndone(c.mv)&&(c.x))pool.push(c)});
+      S.deck.forEach(function(c){pool.push(c)});S.offers.forEach(function(c){pool.push(c)});
+      var seen={};var res=pool.filter(function(c){if(seen[c.id])return false;seen[c.id]=1;return !q||(c.x||'').toLowerCase().indexOf(q)>-1});
+      var opts;
+      if(f.kind==='claim')opts='<option value="s">Supports</option><option value="r">Refutes</option>';
+      else if(f.kind==='map')opts='<option value="fS">Supports</option><option value="fR">Refutes</option>';
+      else opts=f.zones.map(function(z){return '<option value="'+z[0]+'">'+h(z[1])+'</option>'}).join('');
+      $('#pres').innerHTML=res.length?res.slice(0,12).map(function(c){return '<li><span>'+LAYER[c.l].i+' '+h(c.x)+'<small>author '+h(c.by)+'</small></span><span style="display:flex;gap:4px"><select data-ps="'+c.id+'" aria-label="Place">'+opts+'</select><button class="pbtn" data-bring="'+c.id+'">Bring</button></span></li>'}).join(''):'<li>No card matches. Try fewer words.</li>';
+    }
+    $('#pq').addEventListener('input',run);run();$('#pq').focus();
+  });
+}
+function roomModels(){
+  var f=cur();
+  openSheet(closeBtn()+'<h2>5 AI models say</h2><p class="hint" style="color:var(--muted)">Five letters on the side table, one question: "'+h(f.q)+'"</p>'+(f.models?'<div class="models">'+f.models.map(function(m,i){return '<div class="ml"><b>Model '+'ABCDE'[i]+'</b>'+h(m)+'</div>'}).join('')+'</div>':'<div class="empty" style="color:var(--muted)">Lay a first card so the models have a question to answer.</div>')+'<p class="hint" style="color:var(--muted);margin-top:10px"><b>Not a verdict of the board.</b> This is a separate layer. You decide what is true.</p>');
+}
+function roomWallet(){
+  var s=S.standing;
+  openSheet(closeBtn()+'<h2>Membership</h2><div class="wallet"><div class="no">#1</div><div class="nm">Kane</div><div style="opacity:.8;font-size:14px">reraise member card</div><div class="stand"><div><b>'+s.sourced+'</b>cards with a source</div><div><b>'+s.takes+'</b>takes by you</div><div><b>'+s.origin+'</b>origin points</div></div></div>'+
+  '<h3>Standing</h3><p style="margin:0;font:400 16px/1.35 Alegreya">Standing is your reputation from cards that carry a source, from the cards you take, and from origin points: others taking a card you wrote.</p>'+
+  '<h3>Members</h3><ul class="list">'+S.members.map(function(m){return '<li><span><b>'+m[0]+'</b> '+h(m[1])+'<small>'+h(m[2])+'</small></span></li>'}).join('')+'</ul>'+
+  '<h3>What you get</h3><ul class="list"><li><span>Board<small>free</small></span></li><li><span>Exchange<small>optional</small></span></li><li><span>Premium<small>Private Executive, built in from the start</small></span></li></ul>');
+}
+function roomCommunity(){
+  openSheet(closeBtn()+'<h2>Community</h2><p class="hint" style="color:var(--muted)">Doors to other tables. Open a door to peek in.</p><div class="doorgrid">'+S.boards.map(function(b,i){return '<button class="dr" data-door="'+i+'"><b>'+h(b[0])+'</b><small>host: '+h(b[1])+'</small><div class="pv">'+h(b[2])+'. Visitors read, only the host lays cards. Swap cards through Trade cards.</div></button>'}).join('')+'</div><h3>Shared wiki</h3>'+(S.deck.length?'<ul class="list">'+S.deck.map(function(c){return '<li><span>'+h(c.x||c.nm)+'<small>author '+h(c.by)+'</small></span></li>'}).join('')+'</ul>':'<div class="empty" style="color:var(--muted)">The wiki grows from swapped cards. Take a card from the shelf to start it.</div>'));
+}
+var UNDER=[['felt','Felt board','Debate: for and against','linear-gradient(#2f6b4f,#2a6148)'],['map','Map table','Actors around a focus','linear-gradient(#e6d8b4,#d9c79c)'],['ledger','Counting desk','Curve above, trays below','linear-gradient(#a9632f,#8f5328)'],['oak','Plain oak','Your own zones','linear-gradient(#a06a3c,#85542c)']];
+var ND={step:0,name:'',q:'',under:'felt',zones:'Supports, Refutes',seats:[['You','human'],['A1','agent']]};
+function newField(){ND={step:0,name:'',q:'',under:'felt',zones:'Supports, Refutes',seats:[['You','human'],['A1','agent']]};renderND()}
+function renderND(){
+  var n=ND,st=['Table','Zones','Seats','Who moves'];
+  var h1=closeBtn()+'<h2>New field</h2><div class="stepper">'+st.map(function(s,i){return '<span class="'+(i===n.step?'on':'')+'">'+(i+1)+'. '+s+'</span>'}).join('')+'</div>';
+  if(n.step===0)h1+='<label for="nn">Name of the field</label><input id="nn" type="text" value="'+h(n.name)+'" placeholder="for example: Rent or buy"><label for="nq">The question on the table</label><input id="nq" type="text" value="'+h(n.q)+'"><label>Choose the table top</label><div class="opts">'+UNDER.map(function(u){return '<button type="button" class="opt" data-under="'+u[0]+'" aria-pressed="'+(n.under===u[0])+'"><div class="swatch" style="background:'+u[3]+'"></div><b>'+u[1]+'</b><small>'+u[2]+'</small></button>'}).join('')+'</div>';
+  if(n.step===1)h1+='<label for="nz">Zones on the table, separated by commas</label><input id="nz" type="text" value="'+h(n.zones)+'"><p class="hint" style="color:var(--muted)">Each zone becomes a tray where cards are laid.</p>';
+  if(n.step===2)h1+='<label>Seats at the table</label><ul class="list">'+n.seats.map(function(s,i){return '<li><input type="text" value="'+h(s[0])+'" data-seatname="'+i+'" aria-label="Seat name" style="max-width:60%"><button type="button" class="pbtn ghost" style="color:var(--ink)" data-seatdel="'+i+'">Remove</button></li>'}).join('')+'</ul><div class="row"><button type="button" class="pbtn ghost" style="color:var(--ink)" data-act="seatadd">+ Add a seat</button></div>';
+  if(n.step===3)h1+='<label>Who moves at each seat?</label><ul class="list">'+n.seats.map(function(s,i){return '<li><span>'+h(s[0])+'</span><select data-seatwho="'+i+'" aria-label="Who moves"><option'+(s[1]==='human'?' selected':'')+'>human</option><option'+(s[1]==='agent'?' selected':'')+'>agent</option><option'+(s[1]==='model'?' selected':'')+'>model</option></select></li>'}).join('')+'</ul>';
+  h1+='<div class="row">'+(n.step>0?'<button type="button" class="pbtn ghost" style="color:var(--ink)" data-act="ndback">Back</button>':'')+(n.step<3?'<button type="button" class="pbtn" data-act="ndnext">Next</button>':'<button type="button" class="pbtn" data-act="ndmake">Build the table</button>')+'</div>';
+  openSheet(h1,function(){var e=$('#nn')||$('#nz');if(e)e.focus()});
+}
+function saveND(){var a=$('#nn');if(a)ND.name=a.value;a=$('#nq');if(a)ND.q=a.value;a=$('#nz');if(a)ND.zones=a.value;
+  document.querySelectorAll('[data-seatname]').forEach(function(e){ND.seats[+e.dataset.seatname][0]=e.value});
+  document.querySelectorAll('[data-seatwho]').forEach(function(e){ND.seats[+e.dataset.seatwho][1]=e.value})}
+function makeField(){
+  saveND();var id=nid('f');var zs=ND.zones.split(',').map(function(z){return z.trim()}).filter(Boolean);if(!zs.length)zs=['Zone 1'];
+  var nm=ND.name.trim()||'New field';
+  F[id]={id:id,name:nm,sub:'your field',kind:'custom',under:ND.under,me:ND.seats[0][0],q:ND.q.trim()||nm,seats:ND.seats.filter(function(s){return s[0]}),stops:['Start','Today'],pos:1,
+   zones:zs.map(function(z,i){return ['z'+i,z,'']}),cards:[],links:[],rules:[],log:[],fire:[{w:'reraise',x:'The table is ready. Lay the first card, or ask an agent at your table to start.'}],chips:['Ask an agent to propose the first cards'],roles:{},rounds:[],models:null};
+  order.push(id);S.cur=id;closeSheet();renderAll();toast('Table built');
+}
+
+/* ---------- events ---------- */
+document.addEventListener('click',function(e){
+  var t=e.target.closest('[data-go],[data-act],[data-card],[data-chip],[data-undo],[data-rule],[data-room],[data-take-offer],[data-bring],[data-door],[data-under],[data-seatdel]');
+  if(!t){if(e.target.id==='veil')closeSheet();return}
+  if(t.dataset.go){S.cur=t.dataset.go;closeSheet();renderAll();return}
+  if(t.dataset.card){openCard(t.dataset.card);return}
+  if(t.dataset.chip){say(t.dataset.chip);return}
+  if(t.dataset.undo){S.undone[t.dataset.undo]=!S.undone[t.dataset.undo];renderTable();renderSide();return}
+  if(t.dataset.rule!==undefined){var r=cur().rules[+t.dataset.rule];r[1]={yes:'no',no:'unk',unk:'yes'}[r[1]];renderSide();return}
+  if(t.dataset.room){({trade:roomTrade,ping:roomPing,models:roomModels,wallet:roomWallet,community:roomCommunity})[t.dataset.room]();return}
+  if(t.dataset.takeOffer){var o=S.offers.filter(function(x){return x.id===t.dataset.takeOffer})[0];if(!S.deck.some(function(c){return c.id===o.id})){S.deck.push(o);S.standing.takes++}toast('Taken. The author stays '+o.by);roomTrade();return}
+  if(t.dataset.bring){var f=cur();var id=t.dataset.bring;var src=null;for(var k in F)F[k].cards.forEach(function(c){if(c.id===id)src=c});S.deck.concat(S.offers).forEach(function(c){if(c.id===id)src=c});
+    var v=document.querySelector('[data-ps="'+id+'"]').value;var c=layCard(f,{s:slotFor(f,v,src.l),l:src.l,x:src.x,src:(src.src||'')+' (pinged; author '+src.by+')'});c.by=src.by===f.me?f.me:src.by;
+    closeSheet();renderAll();toast('Brought to the table');return}
+  if(t.dataset.door!==undefined){t.classList.toggle('open');return}
+  if(t.dataset.under){saveND();ND.under=t.dataset.under;ND.zones={felt:'Supports, Refutes',map:'Actors, Focus',ledger:'Demand, Supply, Macro',oak:'Ideas, Open questions, Decided'}[t.dataset.under];renderND();return}
+  if(t.dataset.seatdel){saveND();ND.seats.splice(+t.dataset.seatdel,1);renderND();return}
+  var a=t.dataset.act;
+  if(a==='close')closeSheet();
+  else if(a==='welcome'){S.welcome=false;renderTable()}
+  else if(a==='lay')layDialog();
+  else if(a==='ping')roomPing();
+  else if(a==='newfield')newField();
+  else if(a==='ndnext'){saveND();ND.step++;renderND()}
+  else if(a==='ndback'){saveND();ND.step--;renderND()}
+  else if(a==='seatadd'){saveND();ND.seats.push(['Seat '+(ND.seats.length+1),'agent']);renderND()}
+  else if(a==='ndmake')makeField();
+  else if(a==='flip'){var fl=$('#flip');fl.classList.toggle('back');S.faces[S.open]=fl.classList.contains('back')}
+  else if(a==='take'){var r2=cardById(t.dataset.id).c;if(!S.deck.some(function(c){return c.id===r2.id})){S.deck.push(r2);S.standing.takes++}toast('Taken into your deck. Author stays '+r2.by)}
+  else if(a==='stance'){var id2=t.dataset.id;if(S.stance[id2])delete S.stance[id2];else S.stance[id2]=1;renderSide();openCard(id2);toast(S.stance[id2]?'Seal pressed. Only you see it.':'Seal lifted')}
+  else if(a==='jump'){closeSheet();S.cur=t.dataset.id;renderAll();window.scrollTo({top:0,behavior:'smooth'})}
+  else if(a==='round'){playRound()}
+});
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape')closeSheet();
+  if((e.key==='Enter'||e.key===' ')&&e.target.classList&&e.target.classList.contains('flag')){e.preventDefault();openCard(e.target.dataset.card)}
+});
+document.addEventListener('submit',function(e){
+  e.preventDefault();var id=e.target.id;var f=cur();
+  if(id==='layf'){
+    var x=$('#lx').value.trim(),l=$('#ll').value,src=$('#lsrc').value.trim();
+    if(!x)return;
+    if(l==='PROVEN'&&!src){$('#lsrc').focus();$('#lsrc').style.borderColor='#9a3b2c';toast('A proven card needs a source');return}
+    layCard(f,{s:slotFor(f,$('#ls').value,l),l:l,x:x,src:l==='EXPERIENCE'?'Own experience of '+f.me+'. No source needed.':src});
+    closeSheet();renderAll();toast('Card laid');
+  } else if(id==='linkf'){
+    var o=$('#lo').value;if(!o)return;
+    var m=cardById(S.open);var ff=m.f;ff.links.push({a:S.open,b:o,t:$('#lt').value});
+    var mv={id:nid('m'),who:ff.me,x:'pulled a thread'};ff.log.unshift(mv);
+    renderAll();openCard(S.open);toast('Thread pulled');
+  } else if(id==='rulef'){
+    var v=$('#rulei').value.trim();if(v){f.rules.push([v,'unk']);renderSide()}
+  } else if(id==='sayf'){var i=$('#sayi');if(i.value.trim()){say(i.value.trim());}
+  } else if(id==='offf'){
+    var c=cardById($('#offs').value).c;S.offers.unshift({id:nid('o'),x:c.x,l:c.l,by:'Kane',src:c.src});S.standing.origin++;roomTrade();toast('On the shelf. Author stays Kane')
+  }
+});
+$('#themeBtn').addEventListener('click',function(){
+  var dark=document.documentElement.dataset.theme==='dark'||(!document.documentElement.dataset.theme&&matchMedia('(prefers-color-scheme:dark)').matches);
+  document.documentElement.dataset.theme=dark?'light':'dark';
+});
+function delegateSwitch(){}
+document.addEventListener('click',function(e){if(e.target.id==='rpsw'){S.rp=!S.rp;S.round=0;renderSide();toast(S.rp?'Role play on: agents play the actors':'Role play off')}});
+
+/* fireside */
+function say(txt){
+  var f=cur();f.fire.push({w:f.me,x:txt});renderSide();
+  var ag=f.seats.filter(function(s){return s[1]!=='human'});
+  var who=ag[0]?ag[0][0]:'reraise';
+  var m=txt.match(/^(A\d)[^:]*:/);if(m){var hit=f.seats.filter(function(s){return s[0].indexOf(m[1])===0})[0];if(hit)who=hit[0]}
+  setTimeout(function(){
+    var rep;
+    if(f.kind==='custom')rep='Noted. I would start with a card in the first tray. Say which layer it has: proven, said or experience.';
+    else if(/source|paid|funder/i.test(txt))rep='I will check who stands behind each card and put the answer on the back of the card as its source.';
+    else if(/third|origin/i.test(txt))rep='I have not found a third origin yet. I will say so on the table instead of laying a card without a source.';
+    else if(/route|stage 2|insur/i.test(txt))rep='Starting stage 2. New cards go to the focus, and every move shows up in the notepad so you can take it back.';
+    else if(/weak|rates|link/i.test(txt))rep='I will pull a thread between the cards. You can take the move back from the notepad.';
+    else rep='Understood. I will lay the result as a card with its source and tell you which layer it belongs to.';
+    f.fire.push({w:who,x:rep});renderSide();
+  },500);
+}
+function playRound(){
+  var f=cur();if(!f.rounds||!f.rounds.length){toast('Lay cards first, then agents can play');return}
+  var r=f.rounds[S.round%f.rounds.length];var mv=nid('m');
+  r.forEach(function(p){f.fire.push({w:p[0],x:p[1],mv:mv,rp:1})});
+  f.log.unshift({id:mv,who:'Agents',x:'played round '+(S.round+1)});S.round++;renderSide();
+}
+
+/* init */
+renderFurn();renderAll();
+})();
+</script>
+</body>
+</html>

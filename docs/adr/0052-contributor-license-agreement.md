@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-10-18
 decision-makers: "Owner (product), CTO/orchestrator (technical)"
 ---
@@ -242,11 +242,11 @@ Rules:
   (Node 24 default from 2026-06-16, Node 20 removed 2026-09-23);
   [GitHub: events that trigger workflows](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows)
   (`pull_request_target`, `issue_comment`).
-- Open points before `status: accepted`: (1) review of the two texts by Argentine counsel,
-  especially electronic acceptance by comment, the moral-rights wording and the forum clause;
-  (2) the owner confirms that the sentence "also offered under other terms" may go public in
-  `LICENSING.md` (CLA Section 3.4 requires it); (3) the owner signs the Individual CLA; (4)
-  branch protection on `main` requires the statuses `CLA` and `DCO`; (5) the branch
-  `cla-signatures` with an empty `signatures/individual-1.0.json` exists before this pull
-  request leaves draft, otherwise every AGPL pull request reports `error` ("no
-  signatures/individual-1.0.json on branch cla-signatures").
+- Accepted by the owner on 2026-10-30. State of the points that were open before acceptance:
+  (1) no review by outside counsel; the owner, who handles the legal side of the company
+  himself, accepted the two texts as they stand; (2) the owner confirmed that the sentence
+  "also offered under other terms" goes public in `LICENSING.md` (CLA Section 3.4); (3) the
+  owner signs the Individual CLA by comment on his first pull request that touches an AGPL
+  path; (4) branch protection on `main` requiring the statuses `CLA` and `DCO` is applied
+  after this change is on `main`; (5) the branch `cla-signatures` with an empty
+  `signatures/individual-1.0.json` exists since 2026-10-30.
