@@ -89,6 +89,7 @@ Mehr in der [Dokumentation](docs/index.md) (englisch): [Vision](docs/product/vis
 [Kartenformat](docs/reference/card-format.md),
 [Glossar](docs/glossary.md), [Roadmap](docs/roadmap.md) und
 [Verifikation](docs/verification.md).
+Die 333 quellengeprüften Health-Karten liegen in [`cards/health/`](cards/health/README.md); das Werkzeug, das Karten gegen ihre Quellen prüft, in [`tools/source-check/`](tools/source-check/README.md) (englisch).
 Welche Lizenz wo gilt, steht in [LICENSING.md](LICENSING.md).
 
 ## Das Board

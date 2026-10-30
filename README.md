@@ -89,6 +89,7 @@ More in the [documentation](docs/index.md): [vision](docs/product/vision.md),
 [card format](docs/reference/card-format.md),
 [glossary](docs/glossary.md), [roadmap](docs/roadmap.md) and
 [verification](docs/verification.md).
+The 333 source-checked Health cards are in [`cards/health/`](cards/health/README.md); the tool that checks cards against their sources is in [`tools/source-check/`](tools/source-check/README.md).
 See [LICENSING.md](LICENSING.md) for which licence applies where.
 
 ## The board
